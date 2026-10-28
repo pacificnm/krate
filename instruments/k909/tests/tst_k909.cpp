@@ -1,5 +1,6 @@
 #include <QtTest>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <set>
@@ -86,25 +87,21 @@ private slots:
         QVERIFY(!k.drums.playing());
     }
 
-    // D0: the engine is silent, and a learned CC still moves its parameter.
-    void engineIsSilentAndLearnsCcs()
+    // A learned CC moves its parameter, and a note on the same block plays.
+    void engineLearnsCcsAndPlaysNotes()
     {
         Engine engine;
         engine.prepare(48000.0, 256);
         engine.midiLearnMap()->setMapping(20, int(ParamId::BdDecay));
 
         std::array<float, 256> left, right;
-        left.fill(1.0f);
-        right.fill(1.0f);
         const std::array<krate::MidiEvent, 2> midi{{
-            {0, 3, {0x99, 36, 127}}, // a note: ignored until D2
+            {0, 3, {0x99, 36, 127}},
             {10, 3, {0xB0, 20, 127}},
         }};
         krate::processStereo(engine, left.data(), right.data(), 256, midi.data(), 2);
-        for (std::size_t i = 0; i < left.size(); ++i) {
-            QCOMPARE(left[i], 0.0f);
-            QCOMPARE(right[i], 0.0f);
-        }
+        QVERIFY(engine.sounding(DrumId::Bd));
+        QVERIFY(*std::max_element(left.begin(), left.end()) > 0.0f);
         QCOMPARE(engine.param(ParamId::BdDecay), 1.0f);
         QCOMPARE(engine.takeParamsChangedByAudio(), std::uint64_t(1) << int(ParamId::BdDecay));
     }

@@ -2,7 +2,7 @@
 
 Every voice is synthesized at the host sample rate inside `process()`; no samples, no allocation on the audio thread. Each voice is a small struct with `trigger(velocity, accent)` and `render(out, frames)`; the engine sums them into a stereo pair, applies Volume and a tanh soft clip (as k303's master stage).
 
-Starting values below are for D1; they are tuned by ear in D6 and this page is updated with the final numbers.
+Starting values below are what D1 ships (`dsp/Voices.cpp`); they are tuned by ear in D6 and this page is updated with the final numbers.
 
 ## Building blocks (`dsp/`)
 
@@ -26,10 +26,12 @@ The voice set is deterministic for a given sample rate and trigger sequence, so 
 | **Rim Shot** | An impulse into two resonant bandpasses (≈ 480 Hz and 1.7 kHz), highpassed, 20 ms decay | Level |
 | **Hand Clap** | Noise through a 1.2 kHz bandpass; envelope of three 10 ms bursts 11 ms apart, then a 200 ms tail | Level |
 | **Closed / Open Hat** | `MetalBank` (base ≈ 330 Hz, ratios 1, 1.48, 1.80, 2.55, 2.63, 3.90) plus a little noise, bandpass ≈ 10 kHz then highpass 7 kHz. A closed hat chokes a ringing open hat | CH decay 20–150 ms, OH decay 100–1000 ms |
-| **Crash** | `MetalBank` with wider spacing, highpass 4 kHz, 0.6–3 s decay | Tune: bank pitch ×0.75–1.33 |
-| **Ride** | `MetalBank` with a bell partial (a sine at the bank's 3rd partial), highpass 5 kHz, ~1.5 s decay | Tune: bank pitch ×0.75–1.33 |
+| **Crash** | `MetalBank` (base 300 Hz, wider spacing) plus noise, highpass 4 kHz, lowpass 13 kHz, 1.6 s decay | Tune: bank pitch ×0.75–1.33 |
+| **Ride** | `MetalBank` (base 480 Hz) with a bell partial (a sine at the bank's 4th partial, 0.9 s), highpass 5 kHz, lowpass 13 kHz, 1.5 s decay | Tune: bank pitch ×0.75–1.33 |
 
-`MetalBank` squares alias at 48 kHz: PolyBLEP keeps that below audibility at these pitches, and D1's tests check the spectrum above 20 kHz stays low. If it isn't good enough, the bank runs at 2× through k303's half-band decimator (moved to `shared/` then).
+`MetalBank` squares alias at 48 kHz: PolyBLEP keeps that low at these pitches. `tst_voices` checks that under 2% of each metallic voice's energy is above 20 kHz (measured: hats 0.6%, cymbals under 0.1%). If it is ever audible, the bank can run at 2× through k303's half-band decimator (moved to `shared/` then).
+
+**Levels.** Each voice has a fixed output trim (`kTrim`) so default-level hits sit in a sensible balance; `k909-render` prints every voice's peak, normal and accented. Velocity maps 1..127 to 0.5..1.0 of the voice's gain.
 
 ## Accent and velocity
 
@@ -43,4 +45,4 @@ Each voice is monophonic: a new hit restarts it, with a 1 ms fade of the previou
 
 ## CPU
 
-Budget: all eleven voices ringing at once under 2% of a core at 48 kHz / 64 frames, measured by `k909-render --bench` (D1). Voices that have decayed below −100 dB are skipped.
+Budget: all eleven voices ringing at once under 2% of a core at 48 kHz / 64 frames, measured by `k909-render --bench`. D1 measures 1.05% with every voice hit on every beat. Voices that have decayed below −100 dB are skipped.

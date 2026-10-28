@@ -8,6 +8,8 @@ add_library(k909_dsp STATIC
     dsp/Engine.cpp
     dsp/Params.h
     dsp/Params.cpp
+    dsp/Voices.h
+    dsp/Voices.cpp
 )
 target_include_directories(k909_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(k909_dsp PUBLIC krate_core)
@@ -33,7 +35,17 @@ target_include_directories(k909_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ap
 target_link_libraries(k909_ui PUBLIC k909_dsp krate_host krate_app krate_qml Qt6::Quick)
 target_compile_options(k909_ui PRIVATE -Wall -Wextra -Wpedantic)
 
+# --- k909-render: offline renderer and benchmark
+add_executable(k909-render tools/render_main.cpp)
+target_link_libraries(k909-render PRIVATE k909_dsp)
+target_compile_options(k909-render PRIVATE ${K909_WARNINGS})
+
 # --- Tests
+add_executable(tst_voices tests/tst_voices.cpp)
+target_compile_options(tst_voices PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_voices PRIVATE k909_dsp krate_testing Qt6::Test)
+add_test(NAME tst_voices COMMAND tst_voices)
+
 # Compiles the controller sources directly (plain add_executable) rather than
 # linking the QML module library, so no QML plugin is involved.
 add_executable(tst_k909
