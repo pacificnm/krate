@@ -4,6 +4,8 @@
 #include <cmath>
 #include <numbers>
 
+#include "dsp/PolyBlep.h"
+
 namespace k909 {
 
 namespace {
@@ -30,20 +32,6 @@ constexpr double kRideBaseHz = 480.0;
 // Tom tuning ranges: low, mid, hi.
 constexpr std::array<double, 3> kTomLo{70.0, 110.0, 160.0};
 constexpr std::array<double, 3> kTomHi{130.0, 190.0, 280.0};
-
-// PolyBLEP residual for a discontinuity at phase 0 (t in 0..1, dt = increment).
-double polyBlep(double t, double dt) noexcept
-{
-    if (t < dt) {
-        t /= dt;
-        return t + t - t * t - 1.0;
-    }
-    if (t > 1.0 - dt) {
-        t = (t - 1.0) / dt;
-        return t * t + t + t + 1.0;
-    }
-    return 0.0;
-}
 
 } // namespace
 
@@ -107,10 +95,10 @@ float MetalBank::next() noexcept
         const double t = m_phase[i];
         const double dt = m_increment[i];
         double v = t < 0.5 ? 1.0 : -1.0;
-        v += polyBlep(t, dt);
+        v += krate::polyBlep(t, dt);
         double t2 = t + 0.5;
         t2 -= std::floor(t2);
-        v -= polyBlep(t2, dt);
+        v -= krate::polyBlep(t2, dt);
         sum += v;
         m_phase[i] = t + dt - std::floor(t + dt);
     }

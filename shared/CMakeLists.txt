@@ -20,6 +20,14 @@ add_library(krate_core STATIC
 target_include_directories(krate_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(krate_core PRIVATE ${KRATE_WARNINGS})
 
+# --- krate_dsp: header-only DSP building blocks shared by instruments
+# (oversampling decimator, PolyBLEP); no Qt, no JACK
+add_library(krate_dsp INTERFACE
+    dsp/HalfbandDecimator.h
+    dsp/PolyBlep.h
+)
+target_include_directories(krate_dsp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
 # --- krate_host: standalone JACK host; no Qt
 add_library(krate_host STATIC
     host/AudioHost.h

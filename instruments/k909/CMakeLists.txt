@@ -16,7 +16,7 @@ add_library(k909_dsp STATIC
 # Included as "k909/dsp/...", "k909/app/...": k303 has files of the same names,
 # and the rack and krate-render build against both.
 target_include_directories(k909_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(k909_dsp PUBLIC krate_core)
+target_link_libraries(k909_dsp PUBLIC krate_core krate_dsp)
 target_compile_options(k909_dsp PRIVATE ${K909_WARNINGS})
 
 # --- k909_ui: QML module "K909": controller and the panel

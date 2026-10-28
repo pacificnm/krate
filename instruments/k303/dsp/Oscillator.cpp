@@ -2,26 +2,9 @@
 
 #include <algorithm>
 
+#include "dsp/PolyBlep.h"
+
 namespace k303 {
-
-namespace {
-
-// Two-sample polynomial approximation of a band-limited step residual.
-// t: phase 0..1, dt: phase increment per sample.
-double polyBlep(double t, double dt) noexcept
-{
-    if (t < dt) {
-        t /= dt;
-        return t + t - t * t - 1.0;
-    }
-    if (t > 1.0 - dt) {
-        t = (t - 1.0) / dt;
-        return t * t + t + t + 1.0;
-    }
-    return 0.0;
-}
-
-} // namespace
 
 void Oscillator::setSampleRate(double sampleRate) noexcept
 {
@@ -49,14 +32,14 @@ float Oscillator::next() noexcept
 
     if (m_shape == Shape::Saw) {
         v = 2.0 * t - 1.0;
-        v -= polyBlep(t, dt);
+        v -= krate::polyBlep(t, dt);
     } else {
         v = t < 0.5 ? 1.0 : -1.0;
-        v += polyBlep(t, dt);
+        v += krate::polyBlep(t, dt);
         double t2 = t + 0.5;
         if (t2 >= 1.0)
             t2 -= 1.0;
-        v -= polyBlep(t2, dt);
+        v -= krate::polyBlep(t2, dt);
     }
 
     m_phase += dt;

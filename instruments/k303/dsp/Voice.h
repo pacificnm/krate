@@ -47,8 +47,8 @@ private:
 
     Oscillator m_osc;
     DiodeLadder m_ladder;
-    HalfbandDecimator<31> m_decimate4to2;
-    HalfbandDecimator<31> m_decimate2to1;
+    krate::HalfbandDecimator<31> m_decimate4to2;
+    krate::HalfbandDecimator<31> m_decimate2to1;
 
     double m_sampleRate = 48000.0;
     VoiceParams m_target;

@@ -8,7 +8,6 @@ add_library(k303_dsp STATIC
     dsp/DiodeLadder.cpp
     dsp/Engine.h
     dsp/Engine.cpp
-    dsp/HalfbandDecimator.h
     dsp/Oscillator.h
     dsp/Oscillator.cpp
     dsp/Params.h
@@ -20,7 +19,7 @@ add_library(k303_dsp STATIC
     dsp/Voice.cpp
 )
 target_include_directories(k303_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(k303_dsp PUBLIC krate_core)
+target_link_libraries(k303_dsp PUBLIC krate_core krate_dsp)
 target_compile_options(k303_dsp PRIVATE ${K303_WARNINGS})
 
 # --- k303_ui: QML module "K303": controllers and the panel

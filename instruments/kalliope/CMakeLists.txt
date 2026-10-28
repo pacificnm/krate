@@ -12,7 +12,7 @@ add_library(kalliope_dsp STATIC
 # Included as "kalliope/dsp/...", "kalliope/app/...": instruments share file
 # names (Engine.h, Params.h), and the rack builds against all of them.
 target_include_directories(kalliope_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(kalliope_dsp PUBLIC krate_core)
+target_link_libraries(kalliope_dsp PUBLIC krate_core krate_dsp)
 target_compile_options(kalliope_dsp PRIVATE ${KALLIOPE_WARNINGS})
 
 # --- kalliope_ui: QML module "Kalliope": controller and the panel

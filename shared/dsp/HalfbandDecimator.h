@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <numbers>
 
-namespace k303 {
+namespace krate {
 
 // 2:1 decimator: windowed-sinc half-band FIR (Blackman window), N taps.
 // Feed two input samples, get one output at half the rate. Cascade two for 4:1.
@@ -63,4 +63,4 @@ private:
     std::size_t m_pos = 0;
 };
 
-} // namespace k303
+} // namespace krate
