@@ -10,10 +10,12 @@ add_library(krate_core STATIC
     core/Midi.h
     core/Midi.cpp
     core/ParamDescriptor.h
+    core/ParamValues.h
     core/SpscQueue.h
     core/StandaloneTransport.h
     core/StepClock.h
     core/StepClock.cpp
+    tools/WavFile.h
 )
 target_include_directories(krate_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(krate_core PRIVATE ${KRATE_WARNINGS})

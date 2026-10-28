@@ -330,6 +330,10 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
         const float targetL = level * (pan <= 0.0f ? 1.0f : 1.0f - pan);
         const float targetR = level * (pan >= 0.0f ? 1.0f : 1.0f + pan);
 
+        if (!m_primed) { // start where the faders are, no fade from unity
+            d.gainL = targetL;
+            d.gainR = targetR;
+        }
         // Ramp gains across the chunk so fader moves don't click.
         const float stepL = (targetL - d.gainL) / float(frames);
         const float stepR = (targetR - d.gainR) / float(frames);
@@ -351,6 +355,9 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
 
     // Master level, then the master stage (soft clip + meter).
     const float masterTarget = m_masterLevel.load(std::memory_order_relaxed);
+    if (!m_primed)
+        m_masterGain = masterTarget;
+    m_primed = true;
     const float masterStep = (masterTarget - m_masterGain) / float(frames);
     for (std::uint32_t s = 0; s < frames; ++s) {
         m_masterGain += masterStep;

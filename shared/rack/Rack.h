@@ -150,6 +150,7 @@ private:
     std::atomic<bool> m_programFocus{true};
     std::atomic<float> m_masterLevel{1.0f};
     float m_masterGain = 1.0f; // ramped, audio thread only
+    bool m_primed = false;     // first block starts at the fader settings instead of ramping to them
 
     std::array<std::array<std::atomic<std::uint32_t>, 128>, kChannels + 1> m_ccMap;
     std::array<std::array<std::atomic<std::int32_t>, 128>, kChannels> m_noteActions;

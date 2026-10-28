@@ -5,9 +5,10 @@ A suite of software instruments for Linux, and (coming) a rack that plays them t
 | | Status |
 | --- | --- |
 | [**k303**](instruments/k303/README.md): acid bass synth with a 16-step sequencer, diode-ladder filter, MIDI Learn | Playable |
+| [**Klick**](instruments/klick/README.md): metronome, clicks on the shared transport | Works in the rack core and `krate-render` |
 | **K909**: drum machine | Planned |
 | **Kalliope**: polysynth | Planned |
-| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Planned |
+| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Core done (`tst_rack`, `krate-render`); app in progress |
 
 Design: [docs/SHARED_FOUNDATIONS.MD](docs/SHARED_FOUNDATIONS.MD) (shared interfaces, transport, MIDI, the rack, repo layout).
 
@@ -34,6 +35,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build build
 ctest --test-dir build
 pw-jack ./build/bin/k303
+./build/bin/krate-render --bars 8 --out rack.wav   # k303 + Klick through the rack, to WAV
 ```
 
 More (dependencies, testing, MIDI without hardware): [instruments/k303/docs/BUILD.md](instruments/k303/docs/BUILD.md).

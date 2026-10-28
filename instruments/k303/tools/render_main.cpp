@@ -17,41 +17,11 @@
 
 #include "core/MasterStage.h"
 #include "core/StandaloneTransport.h"
+#include "tools/WavFile.h"
 #include "dsp/Engine.h"
 #include "dsp/Params.h"
 
 namespace {
-
-void writeLe(std::FILE *f, std::uint32_t v, int bytes)
-{
-    for (int i = 0; i < bytes; ++i)
-        std::fputc(int((v >> (8 * i)) & 0xff), f);
-}
-
-bool writeWav(const std::string &path, const std::vector<float> &interleaved, int rate)
-{
-    std::FILE *f = std::fopen(path.c_str(), "wb");
-    if (!f)
-        return false;
-    const std::uint32_t dataBytes = std::uint32_t(interleaved.size() * 2);
-    std::fwrite("RIFF", 1, 4, f);
-    writeLe(f, 36 + dataBytes, 4);
-    std::fwrite("WAVEfmt ", 1, 8, f);
-    writeLe(f, 16, 4);            // fmt chunk size
-    writeLe(f, 1, 2);             // PCM
-    writeLe(f, 2, 2);             // channels
-    writeLe(f, std::uint32_t(rate), 4);
-    writeLe(f, std::uint32_t(rate) * 4, 4); // byte rate
-    writeLe(f, 4, 2);             // block align
-    writeLe(f, 16, 2);            // bits per sample
-    std::fwrite("data", 1, 4, f);
-    writeLe(f, dataBytes, 4);
-    for (float s : interleaved) {
-        const float c = s > 1.0f ? 1.0f : (s < -1.0f ? -1.0f : s);
-        writeLe(f, std::uint32_t(std::uint16_t(std::int16_t(c * 32767.0f))), 2);
-    }
-    return std::fclose(f) == 0;
-}
 
 void usage()
 {
@@ -141,7 +111,7 @@ int main(int argc, char **argv)
         }
     }
 
-    if (!writeWav(out, interleaved, rate)) {
+    if (!krate::writeStereoWav(out, interleaved, rate)) {
         std::fprintf(stderr, "k303-render: could not write %s\n", out.c_str());
         return 1;
     }

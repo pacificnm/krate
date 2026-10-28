@@ -360,6 +360,21 @@ private slots:
             QVERIFY(out.left[i] <= out.left[i - 1] + 1e-7f); // no jumps up
     }
 
+    // The very first block starts at the fader settings: a muted device is
+    // silent from sample 0 instead of fading out from unity.
+    void firstBlockStartsAtTheFaderSettings()
+    {
+        FakeDevice a(kParamsA, 0.5f), b(kParamsB, 0.25f);
+        Rack rack;
+        rack.addDevice(a);
+        rack.addDevice(b);
+        rack.setMute(0, true);
+        rack.setMasterLevel(0.5f);
+        const auto out = run(rack, 64);
+        QVERIFY(std::abs(out.left.front() - std::tanh(0.125f)) < 1e-6f);
+        QVERIFY(std::abs(out.left.back() - std::tanh(0.125f)) < 1e-6f);
+    }
+
     void deviceOutputsAreBeforeTheMixer()
     {
         FakeDevice a(kParamsA, 0.25f);

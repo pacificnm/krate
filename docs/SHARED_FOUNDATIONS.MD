@@ -146,12 +146,14 @@ shared/
 instruments/
   k303/      dsp/ (k303_dsp: Engine : IInstrument), app/ + qml/ (k303_ui: QML module "K303"),
              tools/ (k303-render), tests/, docs/, README.md
+  klick/     dsp/ (klick_dsp: metronome, IInstrument), tests/, README.md
   k909/      ...
   kalliope/  ...
 apps/
   k303/      main.cpp: JackHost + the K303 and Krate modules
   k909/, kalliope/
   krate/     main.cpp: RackHost + all instrument modules + rack UI (binary: krate)
+  krate-render/  main.cpp: the rack (k303 + Klick) rendered offline to WAV
 docs/        suite-level docs (this file); each instrument keeps its own docs/
 ```
 
@@ -259,7 +261,7 @@ Each step ends with something runnable and tested; commit after each. Instrument
 | # | Step | Done when |
 | --- | --- | --- |
 | K1 ✅ | **Rack core** (`shared/rack`, no Qt, no JACK): `krate::Rack` owns the device list, per-device buffers, the shared transport, MIDI routing (channel map + focus), the rack CC map (fixed and follow-focus, resolved via `setParamFromHost`), focus actions, and the mixer (level, pan, mute, solo) into the master stage. Adds `setParamFromHost` to `IInstrument` | Offline tests with fake instruments: routing by channel and focus, focus switching from a learned message, fixed vs follow-focus CCs, mixer math, two devices locked to one transport. Result: `shared/rack` (`krate::Rack`, library `krate_rack`), `tst_rack` (19 tests); a learned button doesn't fire on the press that teaches it; Program Change *n* focuses device *n* (can be turned off); blocks longer than the rack's buffers are split with MIDI and beat re-based |
-| K2 | **Klick** (proposed): a tiny metronome instrument in `instruments/klick` (beat clicks, accented bar, level) | Second real device in the rack; locks to the transport; also serves as the click track for k303's timing check |
+| K2 ✅ | **Klick**: a tiny metronome instrument in `instruments/klick` (beat clicks, accented bar, level) | Second real device in the rack; locks to the transport; also serves as the click track for k303's timing check. Result: `instruments/klick` (`tst_klick`), shared `krate::ParamValues<N>` and `tools/WavFile.h`, and `apps/krate-render` (k303 + Klick through a real `krate::Rack` to WAV). Verified: with Klick muted the rack render is byte-identical to standalone k303; clicks land on k303's beats to the sample. The mixer now starts at its fader settings instead of ramping from unity |
 | K3 | **Controller split and registry.** Instrument controllers stop owning a host or transport: k303's `Synth` gets its transport and audio status from whoever hosts it. Each instrument library exports a registry entry (id, name, factory, panel, default MIDI channel) | Standalone k303 unchanged: renders byte-identical, app behaves the same |
 | K4 | **RackHost and the `krate` app.** One JACK client: a stereo pair per device plus master, MIDI in. Window: transport bar, device panels (tabs or stack, focus indicator), mixer strip. Panels hide their own Tempo and RUN/STOP | `./build/bin/krate` plays k303 (and Klick) in time from the transport bar; mixer and per-device ports work |
 | K5 | **Rack MIDI learn and session.** Learn fixed and follow-focus knobs and focus actions; `rack.json` saves transport, mixer, routing, MIDI map, focus, device choice and each device's state | A restart restores everything |

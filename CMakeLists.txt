@@ -32,4 +32,6 @@ enable_testing()
 
 add_subdirectory(shared)
 add_subdirectory(instruments/k303)
+add_subdirectory(instruments/klick)
 add_subdirectory(apps/k303)
+add_subdirectory(apps/krate-render)
