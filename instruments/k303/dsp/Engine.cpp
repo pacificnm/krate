@@ -27,6 +27,12 @@ void Engine::setParam(int index, float normalized) noexcept
         m_params.set(ParamId(index), normalized);
 }
 
+void Engine::setParamFromHost(int index, float normalized) noexcept
+{
+    if (index >= 0 && index < ParamCount)
+        m_params.setFromAudio(ParamId(index), normalized);
+}
+
 void Engine::prepare(double sampleRate, std::uint32_t /*maxFrames: k303 renders per sample*/) noexcept
 {
     m_sampleRate = sampleRate;
@@ -65,8 +71,9 @@ void Engine::handleMidi(const MidiEvent &event) noexcept
     case krate::MidiMessage::Type::NoteOff:
         midiNoteOff(m.data1);
         break;
+    case krate::MidiMessage::Type::ProgramChange:
     case krate::MidiMessage::Type::Other:
-        break; // clock and everything else: later milestones
+        break; // program changes, clock and everything else: not used by k303
     }
 }
 

@@ -26,6 +26,14 @@ add_library(krate_host STATIC
 target_link_libraries(krate_host PUBLIC krate_core PkgConfig::JACK)
 target_compile_options(krate_host PRIVATE ${KRATE_WARNINGS})
 
+# --- krate_rack: the rack's realtime core; no Qt, no JACK
+add_library(krate_rack STATIC
+    rack/Rack.h
+    rack/Rack.cpp
+)
+target_link_libraries(krate_rack PUBLIC krate_core)
+target_compile_options(krate_rack PRIVATE ${KRATE_WARNINGS})
+
 # --- krate_app: Qt helpers for any instrument app (files, screenshot hook)
 add_library(krate_app STATIC
     app/JsonFile.h
@@ -73,3 +81,8 @@ add_test(NAME tst_queue COMMAND tst_queue)
 add_library(krate_testing INTERFACE)
 target_include_directories(krate_testing INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 target_link_libraries(krate_testing INTERFACE krate_core)
+
+add_executable(tst_rack tests/tst_rack.cpp)
+target_compile_options(tst_rack PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_rack PRIVATE krate_rack krate_testing Qt6::Test)
+add_test(NAME tst_rack COMMAND tst_rack)

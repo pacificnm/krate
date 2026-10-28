@@ -14,11 +14,11 @@ namespace krate {
 // A decoded channel message. Note On with velocity 0 decodes as NoteOff.
 struct MidiMessage
 {
-    enum class Type : std::uint8_t { NoteOn, NoteOff, ControlChange, Other };
+    enum class Type : std::uint8_t { NoteOn, NoteOff, ControlChange, ProgramChange, Other };
 
     Type type = Type::Other;
     std::uint8_t channel = 0;  // 0..15
-    std::uint8_t data1 = 0;    // note or CC number
+    std::uint8_t data1 = 0;    // note, CC number or program
     std::uint8_t data2 = 0;    // velocity or CC value
 };
 

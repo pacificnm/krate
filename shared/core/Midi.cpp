@@ -18,6 +18,7 @@ MidiMessage decode(const MidiEvent &event) noexcept
     case 0x90: m.type = m.data2 > 0 ? MidiMessage::Type::NoteOn : MidiMessage::Type::NoteOff; break;
     case 0x80: m.type = MidiMessage::Type::NoteOff; break;
     case 0xB0: m.type = MidiMessage::Type::ControlChange; break;
+    case 0xC0: m.type = MidiMessage::Type::ProgramChange; break;
     default: m.type = MidiMessage::Type::Other; break;
     }
     return m;

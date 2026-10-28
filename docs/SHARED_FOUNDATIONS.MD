@@ -80,6 +80,7 @@ public:
     // Any thread: parameters by index into parameters(), normalized 0..1.
     virtual float param(int index) const noexcept = 0;
     virtual void setParam(int index, float normalized) noexcept = 0;
+    virtual void setParamFromHost(int index, float normalized) noexcept = 0;  // audio thread; flags the change (K1)
     virtual std::uint64_t takeParamsChangedByAudio() noexcept = 0;  // bit = index
 
     // The instrument's CC map and MIDI Learn state (added in R4); nullptr if none.
@@ -257,7 +258,7 @@ Each step ends with something runnable and tested; commit after each. Instrument
 
 | # | Step | Done when |
 | --- | --- | --- |
-| K1 | **Rack core** (`shared/rack`, no Qt, no JACK): `krate::Rack` owns the device list, per-device buffers, the shared transport, MIDI routing (channel map + focus), the rack CC map (fixed and follow-focus, resolved via `setParamFromHost`), focus actions, and the mixer (level, pan, mute, solo) into the master stage. Adds `setParamFromHost` to `IInstrument` | Offline tests with fake instruments: routing by channel and focus, focus switching from a learned message, fixed vs follow-focus CCs, mixer math, two devices locked to one transport |
+| K1 ✅ | **Rack core** (`shared/rack`, no Qt, no JACK): `krate::Rack` owns the device list, per-device buffers, the shared transport, MIDI routing (channel map + focus), the rack CC map (fixed and follow-focus, resolved via `setParamFromHost`), focus actions, and the mixer (level, pan, mute, solo) into the master stage. Adds `setParamFromHost` to `IInstrument` | Offline tests with fake instruments: routing by channel and focus, focus switching from a learned message, fixed vs follow-focus CCs, mixer math, two devices locked to one transport. Result: `shared/rack` (`krate::Rack`, library `krate_rack`), `tst_rack` (19 tests); a learned button doesn't fire on the press that teaches it; Program Change *n* focuses device *n* (can be turned off); blocks longer than the rack's buffers are split with MIDI and beat re-based |
 | K2 | **Klick** (proposed): a tiny metronome instrument in `instruments/klick` (beat clicks, accented bar, level) | Second real device in the rack; locks to the transport; also serves as the click track for k303's timing check |
 | K3 | **Controller split and registry.** Instrument controllers stop owning a host or transport: k303's `Synth` gets its transport and audio status from whoever hosts it. Each instrument library exports a registry entry (id, name, factory, panel, default MIDI channel) | Standalone k303 unchanged: renders byte-identical, app behaves the same |
 | K4 | **RackHost and the `krate` app.** One JACK client: a stereo pair per device plus master, MIDI in. Window: transport bar, device panels (tabs or stack, focus indicator), mixer strip. Panels hide their own Tempo and RUN/STOP | `./build/bin/krate` plays k303 (and Klick) in time from the transport bar; mixer and per-device ports work |

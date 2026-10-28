@@ -55,6 +55,10 @@ public:
     // Parameters by index into parameters(), normalized 0..1. Any thread.
     virtual float param(int index) const noexcept = 0;
     virtual void setParam(int index, float normalized) noexcept = 0;
+    // Set on behalf of the host (e.g. a rack-mapped MIDI knob), from the audio
+    // thread: like setParam(), but also flagged in takeParamsChangedByAudio()
+    // so the instrument's panel follows.
+    virtual void setParamFromHost(int index, float normalized) noexcept = 0;
     // Bitmask (bit = index) of parameters the audio thread changed (e.g. from MIDI) since the last call.
     virtual std::uint64_t takeParamsChangedByAudio() noexcept = 0;
 

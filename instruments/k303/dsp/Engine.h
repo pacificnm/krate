@@ -63,6 +63,7 @@ public:
     std::span<const krate::ParamDescriptor> parameters() const noexcept override { return kParams; }
     float param(int index) const noexcept override;
     void setParam(int index, float normalized) noexcept override;
+    void setParamFromHost(int index, float normalized) noexcept override;
     std::uint64_t takeParamsChangedByAudio() noexcept override { return m_params.takeChangedByAudio(); }
     void process(const krate::AudioBlock &block) noexcept override;
     krate::MidiLearnMap *midiLearnMap() noexcept override { return &m_learn; }
