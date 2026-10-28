@@ -3,8 +3,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Krate
 
-// K909's panel at design size 1600 x 940 (docs/UI.md). D0: chassis, branding,
-// section headers, labels and every knob; the buttons arrive in D3-D5.
+// K909's panel at design size 1600 x 940 (docs/UI.md): knob sections, the
+// sequencer's step buttons and track strip, START/STOP/CLEAR. Pattern
+// selection arrives in D4, the MIDI Learn controls in D5.
 Item {
     id: panel
 
@@ -243,23 +244,102 @@ Item {
         color: panel.lowerDeck
         border.color: Theme.deckLine
     }
-    PanelLabel { centerX: 120; y: 760; text: "START"; visible: Drums.ownsTransport }
-    PanelLabel { centerX: 120; y: 820; text: "STOP"; visible: Drums.ownsTransport }
-    PanelLabel { centerX: 120; y: 870; text: "CLEAR" }
+    // START / STOP (standalone only: the rack's transport bar owns them) and CLEAR
+    PanelButton {
+        visible: Drums.ownsTransport
+        x: 60
+        y: 752
+        width: 120
+        height: 54
+        faceText: "START"
+        text: "Start"
+        hasLed: true
+        ledOn: Drums.playing
+        onClicked: Drums.playing = true
+    }
+    PanelButton {
+        visible: Drums.ownsTransport
+        x: 60
+        y: 816
+        width: 120
+        height: 44
+        faceText: "STOP"
+        text: "Stop"
+        onClicked: Drums.playing = false
+    }
+    PanelButton {
+        x: 60
+        y: 872
+        width: 120
+        height: 36
+        dark: true
+        faceText: "CLEAR"
+        text: "Clear track (Shift: whole pattern)"
+        onClicked: (panelKeys.shift ? Drums.clearPattern() : Drums.clearTrack(Drums.selectedTrack))
+    }
 
+    // Step numbers, playhead LEDs and the step buttons for the selected track
     Repeater {
         model: 16
 
-        PanelLabel {
+        Item {
+            id: stepSlot
             required property int index
-            centerX: panel.stepLeft + (index + 0.5) * panel.stepWidth
-            y: 752
-            text: index + 1
-            font.pixelSize: 15
+            readonly property real cx: panel.stepLeft + (index + 0.5) * panel.stepWidth
+            readonly property int state: Drums.patternRevision >= 0
+                                         ? Drums.stepState(Drums.selectedTrack, index) : 0
+            readonly property bool inPattern: index < Drums.length
+
+            PanelLabel {
+                centerX: stepSlot.cx
+                y: 746
+                text: stepSlot.index + 1
+                font.pixelSize: 15
+                opacity: stepSlot.inPattern ? 1.0 : 0.35
+            }
+            Led {
+                x: stepSlot.cx - width / 2
+                y: 772
+                on: Drums.currentStep === stepSlot.index
+            }
+            Rectangle { // the step button: cream face, lit inset
+                id: stepButton
+                x: stepSlot.cx - width / 2
+                y: stepMouse.pressed ? 794 : 792
+                width: panel.stepWidth - 18
+                height: 64
+                radius: 5
+                border.color: Theme.buttonEdge
+                opacity: stepSlot.inPattern ? 1.0 : 0.5
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Theme.buttonLight }
+                    GradientStop { position: 1.0; color: Theme.buttonLightShade }
+                }
+
+                Accessible.role: Accessible.Button
+                Accessible.name: "Step " + (stepSlot.index + 1)
+                    + [": off", ": on", ": accent"][stepSlot.state]
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width * 0.5
+                    height: parent.height * 0.42
+                    radius: 3
+                    border.color: "#2A2B2D"
+                    color: stepSlot.state === 2 ? Theme.ledOn
+                         : stepSlot.state === 1 ? Theme.labelOrange : "#55575B"
+                }
+
+                MouseArea {
+                    id: stepMouse
+                    anchors.fill: parent
+                    onClicked: Drums.cycleStep(stepSlot.index)
+                }
+            }
         }
     }
 
-    // Track strip: right-click auditions a voice (left-click selects its track from D4).
+    // Track strip: click selects the track the step buttons edit; right-click auditions it.
     Repeater {
         model: panel.tracks
 
@@ -267,12 +347,13 @@ Item {
             id: trackCell
             required property var modelData
             required property int index
+            readonly property bool selected: Drums.selectedTrack === index
             x: panel.stepLeft + (modelData.first - 1) * panel.stepWidth + 4
             y: 876
             width: modelData.steps * panel.stepWidth - 8
             height: 30
             radius: 4
-            color: trackMouse.pressed ? Theme.labelOrange : "transparent"
+            color: trackMouse.pressed || selected ? Theme.labelOrange : "transparent"
             border.color: panel.stripBar
             border.width: 2
 
@@ -283,14 +364,32 @@ Item {
                 anchors.centerIn: parent
                 text: trackCell.modelData.name
                 font.pixelSize: 13
+                inverse: trackCell.selected
             }
 
             MouseArea {
                 id: trackMouse
                 anchors.fill: parent
-                acceptedButtons: Qt.RightButton
-                onPressed: Drums.audition(trackCell.index)
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onPressed: mouse => {
+                    if (mouse.button === Qt.RightButton)
+                        Drums.audition(trackCell.index)
+                    else
+                        Drums.selectedTrack = trackCell.index
+                }
             }
         }
     }
+
+    // Keyboard (docs/UI.md): Space run/stop, Up/Down change track. Shift is
+    // tracked for CLEAR.
+    Item {
+        id: panelKeys
+        property bool shift: false
+    }
+    Keys.onSpacePressed: Drums.playing = !Drums.playing // no-op in the rack (no transport of its own)
+    Keys.onUpPressed: Drums.selectedTrack = Drums.selectedTrack - 1
+    Keys.onDownPressed: Drums.selectedTrack = Drums.selectedTrack + 1
+    Keys.onPressed: event => panelKeys.shift = (event.modifiers & Qt.ShiftModifier) !== 0
+    Keys.onReleased: event => panelKeys.shift = (event.modifiers & Qt.ShiftModifier) !== 0
 }

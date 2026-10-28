@@ -8,8 +8,10 @@
 namespace k909 {
 
 namespace {
-constexpr int kAccentVelocity = 100; // MIDI velocity at and above this plays accented
+constexpr int kAccentNoteVelocity = 100; // MIDI velocity at and above this plays accented
 constexpr double kVolumeSmoothingSeconds = 0.01;
+constexpr float kStepVelocity = 0.8f;   // a sequenced step (docs/DSP.md#accent-and-velocity)
+constexpr float kAccentVelocity = 1.0f; // an accented step, plus Total Accent
 
 // Each voice's knobs: tune, level, decay, then the extras (docs/BRIEF.md#parameters).
 // ParamId::Count = the voice has no such knob.
@@ -82,6 +84,25 @@ void Engine::apply(const Command &command) noexcept
     case Command::Kind::Trigger:
         trigger(DrumId(command.drum), command.velocity, command.accent);
         break;
+    case Command::Kind::SetStep:
+        m_sequencer.setStep(command.drum, command.step, command.state);
+        break;
+    case Command::Kind::SetLength:
+        m_sequencer.setLength(command.value);
+        break;
+    case Command::Kind::SetStepsPerBeat:
+        m_sequencer.setStepsPerBeat(command.value);
+        break;
+    }
+}
+
+void Engine::play(const Hits &hits) noexcept
+{
+    for (int d = 0; d < DrumCount; ++d) {
+        if (!(hits.on & (1u << d)))
+            continue;
+        const bool accent = (hits.accent & (1u << d)) != 0;
+        trigger(DrumId(d), accent ? kAccentVelocity : kStepVelocity, accent);
     }
 }
 
@@ -95,7 +116,7 @@ void Engine::handleMidi(const krate::MidiEvent &event) noexcept
         break;
     case krate::MidiMessage::Type::NoteOn:
         // Velocity 1..127 -> 0.5..1.0, so soft pads still speak.
-        trigger(drumForNote(m.data1), 0.5f + 0.5f * float(m.data2) / 127.0f, m.data2 >= kAccentVelocity);
+        trigger(drumForNote(m.data1), 0.5f + 0.5f * float(m.data2) / 127.0f, m.data2 >= kAccentNoteVelocity);
         break;
     case krate::MidiMessage::Type::NoteOff:
     case krate::MidiMessage::Type::ProgramChange:
@@ -115,17 +136,43 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     while (const auto command = m_commands.pop())
         apply(*command);
 
-    // Render up to each MIDI event, then apply it on its exact frame.
+    m_sequencer.setShuffle(units::shuffleAmount(m_params.get(int(ParamId::Shuffle))));
+
+    static constexpr krate::TransportState kStopped{};
+    const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
+    if (transport.playing && (transport.restarted || !m_sequencer.running()))
+        m_sequencer.start();
+    else if (!transport.playing && m_sequencer.running())
+        m_sequencer.stop(); // voices ring out
+    const double beatsPerSample = transport.bpm / 60.0 / m_sampleRate;
+
+    // Voices render in runs between the frames where something triggers:
+    // MIDI notes and sequencer steps land on their exact sample.
     std::uint32_t done = 0;
-    for (std::uint32_t e = 0; e <= block.midiCount; ++e) {
-        const std::uint32_t until = e < block.midiCount ? std::min(block.midi[e].frame, block.frames) : block.frames;
-        if (until > done) {
-            m_voices.render(left + done, right + done, until - done);
-            done = until;
+    const auto renderTo = [&](std::uint32_t frame) {
+        if (frame > done) {
+            m_voices.render(left + done, right + done, frame - done);
+            done = frame;
         }
-        if (e < block.midiCount)
-            handleMidi(block.midi[e]);
+    };
+    std::uint32_t nextEvent = 0;
+    for (std::uint32_t i = 0; i < block.frames; ++i) {
+        while (nextEvent < block.midiCount && block.midi[nextEvent].frame <= i) {
+            renderTo(i);
+            handleMidi(block.midi[nextEvent++]);
+        }
+        if (transport.playing) {
+            const Hits hits = m_sequencer.tick(transport.beatAtBlockStart + double(i) * beatsPerSample);
+            if (hits.on) {
+                renderTo(i);
+                play(hits);
+            }
+        }
     }
+    while (nextEvent < block.midiCount) // events past the block's end (malformed): apply at the end
+        handleMidi(block.midi[nextEvent++]);
+    renderTo(block.frames);
+    m_currentStep.store(m_sequencer.currentStep(), std::memory_order_relaxed);
 
     const double target = units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)

@@ -19,7 +19,9 @@ Pattern
 
 On each step start, every track whose step is on triggers its voice on that exact sample (accented if the step is 2). Closed Hat on the same step as Open Hat wins (the open hat is choked).
 
-**Shuffle** delays every second step (the 2nd, 4th, … of each pair) by `shuffle × 1/3` of a step, in 6 positions from straight to fully swung. The delay is in samples from the step start, so it stays sample-accurate at any tempo. Steps keep their position in the pattern; only the trigger moves.
+**Shuffle** delays every second step in time (the 2nd, 4th, … step played since START, whatever the play order) by `shuffle/5 × 1/3` of a step, in 6 positions from straight to fully swung. It uses `StepClock`'s gate point as the delayed trigger, so it stays sample-accurate at any tempo. Steps keep their position in the pattern; only the trigger moves.
+
+**Velocities.** A sequenced step plays at velocity 0.8; an accented step at 1.0 plus Total Accent (docs/DSP.md#accent-and-velocity).
 
 **Play order and scale** come from `StepClock` (Forward, Reverse, Fwd+Rev, Random), the same as k303's.
 

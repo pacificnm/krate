@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 
 #include "core/Instrument.h"
@@ -7,24 +8,32 @@
 #include "core/ParamValues.h"
 #include "core/SpscQueue.h"
 #include "dsp/Params.h"
+#include "dsp/Sequencer.h"
 #include "dsp/Voices.h"
 
 namespace k909 {
 
-// GUI -> audio thread (docs/SEQUENCER.md#editing-gui--audio). D2: audition only;
-// pattern edits join it in D3-D4.
+// GUI -> audio thread (docs/SEQUENCER.md#editing-gui--audio).
 struct Command
 {
-    enum class Kind : std::uint8_t { Trigger };
+    enum class Kind : std::uint8_t {
+        Trigger,        // play `drum` now (audition)
+        SetStep,        // drum's track, `step` = `state`
+        SetLength,      // `value` steps
+        SetStepsPerBeat // `value`
+    };
     Kind kind = Kind::Trigger;
     std::uint8_t drum = 0;     // DrumId
     bool accent = false;
     float velocity = 1.0f;
+    std::uint8_t step = 0;
+    StepState state = StepState::Off;
+    std::uint8_t value = 0;
 };
 
 // K909's realtime core (docs/DSP.md, docs/SEQUENCER.md): eleven voices played
-// by MIDI notes (General MIDI drum numbers, docs/BRIEF.md#midi-notes), plus
-// MIDI Learn for the knobs. The sequencer arrives in D3.
+// by the sequencer (following the transport) and by MIDI notes (General MIDI
+// drum numbers, docs/BRIEF.md#midi-notes), plus MIDI Learn for the knobs.
 class Engine final : public krate::IInstrument
 {
 public:
@@ -46,6 +55,14 @@ public:
     void trigger(DrumId drum, float velocity, bool accent) noexcept;
     bool sounding(DrumId drum) const noexcept { return m_voices.sounding(drum); }
 
+    // Any thread: the playing step 0..15, or -1 when stopped (step LEDs).
+    int currentStep() const noexcept { return m_currentStep.load(std::memory_order_relaxed); }
+
+    // Setup, before processing starts (and offline tools): the starting pattern.
+    // While running, edit through post().
+    void setPattern(const Pattern &pattern) noexcept { m_sequencer.setPattern(pattern); }
+    const Pattern &pattern() const noexcept { return m_sequencer.pattern(); }
+
     // GUI thread: queue a command for the next block. False if the queue is full.
     bool post(const Command &command) noexcept { return m_commands.push(command); }
 
@@ -55,11 +72,14 @@ public:
 private:
     void handleMidi(const krate::MidiEvent &event) noexcept;
     void apply(const Command &command) noexcept;
+    void play(const Hits &hits) noexcept;
 
     krate::ParamValues<ParamCount> m_params{kParams};
     krate::MidiLearnMap m_learn{kParams}; // parameters are ParamId values
     Voices m_voices;
     krate::SpscQueue<Command, 256> m_commands;
+    Sequencer m_sequencer;
+    std::atomic<int> m_currentStep{-1};
     double m_sampleRate = 48000.0;
     double m_volume = -1.0;          // smoothed output gain; < 0 = not yet primed
     double m_volumeSmoothing = 0.0;  // per-sample one-pole coefficient

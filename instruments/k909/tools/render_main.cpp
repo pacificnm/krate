@@ -1,10 +1,13 @@
 // k909-render: render K909 offline to WAV files, or benchmark it.
 //
 //   k909-render [--out-dir DIR] [--rate HZ] [--tempo BPM] [--<param> 0..1 ...]
+//   k909-render --pattern N [--bars B] [--out file.wav] [--rate HZ] [--tempo BPM] [--<param> 0..1 ...]
 //   k909-render --bench [--rate HZ]
 //
 // Writes DIR/k909-voices.wav (every voice in turn, normal then accented, with
-// its peak level printed) and DIR/k909-beat.wav (a 4-bar demo beat). <param> is
+// its peak level printed) and DIR/k909-beat.wav (a 4-bar demo beat). --pattern
+// plays factory pattern N (0..3) through the sequencer and the transport, as
+// the app does (the reference render compared byte for byte). <param> is
 // any key from docs/BRIEF.md#parameters. Everything is played through MIDI
 // notes on the IInstrument interface, as a host would.
 
@@ -19,6 +22,7 @@
 #include <vector>
 
 #include "core/MasterStage.h"
+#include "core/Transport.h"
 #include "dsp/Engine.h"
 #include "dsp/Params.h"
 #include "tools/WavFile.h"
@@ -90,6 +94,7 @@ const Track kBeat[] = {
 void usage()
 {
     std::fprintf(stderr, "usage: k909-render [--out-dir DIR] [--rate HZ] [--tempo BPM] [--<param> 0..1 ...]\n"
+                         "       k909-render --pattern N [--bars B] [--out file.wav] [--rate HZ] [--tempo BPM]\n"
                          "       k909-render --bench [--rate HZ]\n");
 }
 
@@ -109,6 +114,9 @@ int main(int argc, char **argv)
     int rate = 48000;
     double bpm = 128.0;
     bool bench = false;
+    int pattern = -1;
+    int bars = 4;
+    std::string out = "k909-pattern.wav";
     k909::Engine engine;
     krate::IInstrument &instrument = engine; // everything below goes through the interface
 
@@ -117,6 +125,12 @@ int main(int argc, char **argv)
         const bool hasValue = i + 1 < argc;
         if (arg == "--bench") {
             bench = true;
+        } else if (arg == "--pattern" && hasValue) {
+            pattern = std::atoi(argv[++i]);
+        } else if (arg == "--bars" && hasValue) {
+            bars = std::atoi(argv[++i]);
+        } else if (arg == "--out" && hasValue) {
+            out = argv[++i];
         } else if (arg == "--out-dir" && hasValue) {
             outDir = argv[++i];
         } else if (arg == "--rate" && hasValue) {
@@ -130,12 +144,41 @@ int main(int argc, char **argv)
             return 2;
         }
     }
-    if (rate < 8000 || bpm < 20.0 || bpm > 400.0) {
+    if (rate < 8000 || bpm < 20.0 || bpm > 400.0 || bars < 1 || pattern >= k909::kFactoryPatternCount) {
         usage();
         return 2;
     }
     instrument.prepare(rate, kBlock);
     krate::MasterStage master;
+
+    if (pattern >= 0) {
+        engine.setPattern(k909::factoryPattern(pattern));
+        krate::Transport transport;
+        transport.setBpm(bpm);
+        transport.setPlaying(true);
+        const auto frames = std::uint64_t(bars * 16 * rate * 60.0 / (bpm * 4.0));
+        const auto tail = std::uint64_t(rate * 2);
+        std::vector<float> l(kBlock), r(kBlock), wav;
+        wav.reserve((frames + tail) * 2 + 2 * kBlock);
+        for (std::uint64_t done = 0; done < frames + tail; done += kBlock) {
+            if (done >= frames)
+                transport.setPlaying(false); // let the last hits ring out
+            const krate::TransportState state = transport.advance(kBlock, rate);
+            krate::processStereo(instrument, l.data(), r.data(), kBlock, nullptr, 0, &state);
+            float *const outputs[2] = {l.data(), r.data()};
+            master.process(outputs, 2, kBlock);
+            for (std::uint32_t i = 0; i < kBlock; ++i) {
+                wav.push_back(l[i]);
+                wav.push_back(r[i]);
+            }
+        }
+        if (!krate::writeStereoWav(out, wav, rate)) {
+            std::fprintf(stderr, "k909-render: could not write %s\n", out.c_str());
+            return 1;
+        }
+        std::printf("wrote %s: pattern %d, %d bars at %.0f BPM\n", out.c_str(), pattern, bars, bpm);
+        return 0;
+    }
 
     if (bench) {
         // Every voice hit together on every beat: the worst case.
