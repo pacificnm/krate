@@ -29,7 +29,7 @@ On each step start, every track whose step is on triggers its voice on that exac
 
 ## Editing (GUI → audio)
 
-The controller owns the pattern bank and sends edits to the engine through the lock-free command queue (`SetStep`, `SetLength`, `SetScale`, `SelectPattern`, `LoadPattern`). The engine publishes the current step on its event queue for the step LEDs. QML never owns timing.
+The controller (`Drums`) keeps the GUI's copy of the pattern and sends every edit to the engine through the lock-free command queue (`Engine::post`: `SetStep`, `SetLength`, `SetStepsPerBeat`, and `Trigger` for audition; whole-pattern loads arrive with A–H in D4). The engine publishes the playing step in an atomic that the controller polls at 60 Hz for the step LEDs. QML never owns timing.
 
 | Action | How |
 | --- | --- |
