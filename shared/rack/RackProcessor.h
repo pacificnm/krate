@@ -1,0 +1,61 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "core/Transport.h"
+#include "host/JackProcessor.h"
+#include "rack/Rack.h"
+
+namespace krate {
+
+// The krate app's processor: advances the shared transport and runs the rack.
+// Outputs: master_L, master_R (to the speakers), then <device>_L, <device>_R
+// for every device (its own output, before the mixer: for recording or a DAW).
+class RackProcessor final : public JackProcessor
+{
+public:
+    RackProcessor(Rack &rack, Transport &transport, std::vector<std::string> deviceIds)
+        : m_rack(rack)
+        , m_transport(transport)
+        , m_ids(std::move(deviceIds))
+    {
+    }
+
+    int outputCount() const override { return 2 + 2 * m_rack.deviceCount(); }
+    std::string outputName(int index) const override
+    {
+        if (index < 2)
+            return index == 0 ? "master_L" : "master_R";
+        const int device = (index - 2) / 2;
+        const std::string id = device < int(m_ids.size()) ? m_ids[std::size_t(device)] : "device" + std::to_string(device + 1);
+        return id + ((index - 2) % 2 == 0 ? "_L" : "_R");
+    }
+    int playbackChannel(int index) const override { return index < 2 ? index : -1; }
+
+    void prepare(double sampleRate, std::uint32_t) noexcept override { m_rack.prepare(sampleRate); }
+
+    void process(float *const *outputs, std::uint32_t frames, const MidiEvent *midi, std::uint32_t midiCount,
+                 double sampleRate) noexcept override
+    {
+        const TransportState transport = m_transport.advance(frames, sampleRate);
+        RackBlock block;
+        block.frames = frames;
+        block.midi = midi;
+        block.midiCount = midiCount;
+        block.transport = &transport;
+        block.masterL = outputs[0];
+        block.masterR = outputs[1];
+        block.deviceOutputs = outputs + 2;
+        m_rack.process(block);
+    }
+
+    float takePeak() noexcept override { return m_rack.takeMasterPeak(); }
+
+private:
+    Rack &m_rack;
+    Transport &m_transport;
+    std::vector<std::string> m_ids;
+};
+
+} // namespace krate

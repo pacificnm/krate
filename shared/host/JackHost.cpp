@@ -5,8 +5,6 @@
 #include <jack/midiport.h>
 
 #include "core/Denormals.h"
-#include "core/Instrument.h"
-#include "core/Transport.h"
 
 namespace krate {
 
@@ -17,10 +15,9 @@ void silentJackMessage(const char *) {}
 
 } // namespace
 
-JackHost::JackHost(IInstrument &instrument, Transport &transport)
-    : m_instrument(instrument)
-    , m_transport(transport)
-    , m_channels(std::clamp(instrument.outputChannels(), 1, kMaxChannels))
+JackHost::JackHost(JackProcessor &processor)
+    : m_processor(processor)
+    , m_channels(std::clamp(processor.outputCount(), 1, kMaxChannels))
 {
     jack_set_error_function(silentJackMessage);
     jack_set_info_function(silentJackMessage);
@@ -49,7 +46,7 @@ bool JackHost::open(const char *clientName, std::string *error)
 
     bool portsOk = true;
     for (int c = 0; c < m_channels; ++c) {
-        const std::string name = m_channels == 2 ? (c == 0 ? "out_L" : "out_R") : "out_" + std::to_string(c + 1);
+        const std::string name = m_processor.outputName(c);
         m_outs[std::size_t(c)] = jack_port_register(m_client, name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
         portsOk = portsOk && m_outs[std::size_t(c)];
     }
@@ -64,7 +61,7 @@ bool JackHost::open(const char *clientName, std::string *error)
     const jack_nframes_t rate = jack_get_sample_rate(m_client);
     m_sampleRate.store(rate, std::memory_order_relaxed);
     m_bufferSize.store(jack_get_buffer_size(m_client), std::memory_order_relaxed);
-    m_instrument.prepare(rate, jack_get_buffer_size(m_client));
+    m_processor.prepare(rate, jack_get_buffer_size(m_client));
     m_preparedRate = rate;
 
     jack_set_process_callback(m_client, &JackHost::onProcess, this);
@@ -111,10 +108,13 @@ std::vector<std::string> JackHost::connectToPlayback()
     int available = 0;
     while (ports[available])
         ++available;
-    // Channel c goes to playback port c; with fewer playback ports, wrap around
-    // (a mono device gets every channel).
+    // Output c goes to the playback port the processor names; with fewer playback
+    // ports, wrap around (a mono device gets every channel).
     for (int c = 0; c < m_channels && available > 0; ++c) {
-        const char *target = ports[c % available];
+        const int channel = m_processor.playbackChannel(c);
+        if (channel < 0)
+            continue;
+        const char *target = ports[channel % available];
         if (jack_connect(m_client, jack_port_name(m_outs[std::size_t(c)]), target) == 0)
             connected.emplace_back(target);
     }
@@ -153,7 +153,7 @@ int JackHost::onProcess(jack_nframes_t frames, void *arg)
 
     const std::uint32_t rate = self->m_sampleRate.load(std::memory_order_relaxed);
     if (rate != self->m_preparedRate) {
-        self->m_instrument.prepare(rate, frames);
+        self->m_processor.prepare(rate, frames);
         self->m_preparedRate = rate;
     }
 
@@ -178,9 +178,7 @@ int JackHost::onProcess(jack_nframes_t frames, void *arg)
             out.data[b] = ev.buffer[b];
     }
 
-    const TransportState transport = self->m_transport.advance(frames, double(rate));
-    self->m_instrument.process(AudioBlock{outputs, frames, events, count, &transport});
-    self->m_master.process(outputs, self->m_channels, frames);
+    self->m_processor.process(outputs, frames, events, count, double(rate));
     return 0;
 }
 

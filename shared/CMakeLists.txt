@@ -23,6 +23,7 @@ target_compile_options(krate_core PRIVATE ${KRATE_WARNINGS})
 # --- krate_host: standalone JACK host; no Qt
 add_library(krate_host STATIC
     host/AudioHost.h
+    host/JackProcessor.h
     host/JackHost.h
     host/JackHost.cpp
 )
@@ -33,6 +34,7 @@ target_compile_options(krate_host PRIVATE ${KRATE_WARNINGS})
 add_library(krate_rack STATIC
     rack/Rack.h
     rack/Rack.cpp
+    rack/RackProcessor.h
 )
 target_link_libraries(krate_rack PUBLIC krate_core)
 target_compile_options(krate_rack PRIVATE ${KRATE_WARNINGS})
@@ -63,6 +65,8 @@ qt_add_qml_module(krate_qml
         app/InstrumentRegistry.h
         app/MidiLearnController.h
         app/MidiLearnController.cpp
+        app/ParamController.h
+        app/ParamController.cpp
     QML_FILES
         qml/Knob.qml
         qml/LcdField.qml

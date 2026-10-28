@@ -23,6 +23,8 @@ public:
     bool playing() const noexcept { return m_playing.load(std::memory_order_relaxed); }
     void setBpm(double bpm) noexcept { m_bpm.store(bpm, std::memory_order_relaxed); }
     double bpm() const noexcept { return m_bpm.load(std::memory_order_relaxed); }
+    // Beat position at the start of the last block (for display: beat LEDs, counters).
+    double beatPosition() const noexcept { return m_lastBeat.load(std::memory_order_relaxed); }
 
     // Audio thread, once per block: the state for this block, then advance past it.
     TransportState advance(std::uint32_t frames, double sampleRate) noexcept
@@ -43,6 +45,7 @@ public:
             state.beatAtBlockStart = beatNow();
             m_samplesSinceAnchor += frames;
         }
+        m_lastBeat.store(state.beatAtBlockStart, std::memory_order_relaxed);
         return state;
     }
 
@@ -62,6 +65,7 @@ private:
 
     std::atomic<bool> m_playing{false};
     std::atomic<double> m_bpm{120.0};
+    std::atomic<double> m_lastBeat{0.0};
 
     // Audio thread only.
     bool m_wasPlaying = false;

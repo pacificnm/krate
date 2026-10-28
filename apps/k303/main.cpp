@@ -43,7 +43,8 @@ int main(int argc, char *argv[])
     QObject::connect(&midiLearn, &MidiLearnController::actionTriggered, &app,
                      [&instrument](const QString &action) { instrument->triggerAction(action); });
 
-    krate::JackHost jack(instrument->instrument(), transport);
+    krate::InstrumentProcessor processor(instrument->instrument(), transport);
+    krate::JackHost jack(processor);
     krate::HostController host(jack, entry.id, nullptr);
     host.setMidiInputMatch(midiLearn.inputPortMatch());
 
