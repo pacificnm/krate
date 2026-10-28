@@ -10,6 +10,9 @@ class QJSEngine;
 namespace krate {
 class Transport;
 }
+namespace k909 {
+class Engine;
+}
 
 // QML singleton "Drums": K909's knobs (krate::ParamController by key), plus
 // START/STOP and Tempo. Standalone, those drive the transport it is given; in
@@ -26,7 +29,7 @@ class DrumsController : public krate::ParamController
 
 public:
     // Not default-constructible on purpose (see k303's SynthController).
-    DrumsController(krate::IInstrument &instrument, const QString &panelFilePath, krate::Transport *transport,
+    DrumsController(k909::Engine &engine, const QString &panelFilePath, krate::Transport *transport,
                     QObject *parent);
     ~DrumsController() override;
 
@@ -36,6 +39,9 @@ public:
     bool playing() const;
     void setPlaying(bool playing);
 
+    // Play one voice now (0 = bass drum .. 10 = ride, track order), unaccented.
+    Q_INVOKABLE void audition(int track);
+
 signals:
     void playingChanged();
 
@@ -44,5 +50,6 @@ private:
 
     static inline DrumsController *s_instance = nullptr;
 
+    k909::Engine &m_engine;
     krate::Transport *m_transport = nullptr;
 };

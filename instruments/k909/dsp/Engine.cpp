@@ -76,6 +76,15 @@ void Engine::trigger(DrumId drum, float velocity, bool accent) noexcept
     m_voices.trigger(drum, hit);
 }
 
+void Engine::apply(const Command &command) noexcept
+{
+    switch (command.kind) {
+    case Command::Kind::Trigger:
+        trigger(DrumId(command.drum), command.velocity, command.accent);
+        break;
+    }
+}
+
 void Engine::handleMidi(const krate::MidiEvent &event) noexcept
 {
     const krate::MidiMessage m = krate::decode(event); // all channels (omni)
@@ -102,6 +111,9 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     float *right = block.outputs[1];
     std::fill_n(left, block.frames, 0.0f);
     std::fill_n(right, block.frames, 0.0f);
+
+    while (const auto command = m_commands.pop())
+        apply(*command);
 
     // Render up to each MIDI event, then apply it on its exact frame.
     std::uint32_t done = 0;

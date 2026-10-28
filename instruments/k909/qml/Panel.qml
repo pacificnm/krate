@@ -80,6 +80,10 @@ Item {
         defaultValue: Drums.defaultValue(key)
         displayText: Drums.displayText(key, value)
         onMoved: v => Drums.setValue(key, v)
+        capColor: "#3A3B3E"
+        capShadeColor: "#111213"
+        capBorderColor: "#08080A"
+        pointerColor: Theme.labelOrange
 
         LearnOverlay {
             anchors.fill: parent
@@ -255,24 +259,37 @@ Item {
         }
     }
 
+    // Track strip: right-click auditions a voice (left-click selects its track from D4).
     Repeater {
         model: panel.tracks
 
         Rectangle {
+            id: trackCell
             required property var modelData
+            required property int index
             x: panel.stepLeft + (modelData.first - 1) * panel.stepWidth + 4
             y: 876
             width: modelData.steps * panel.stepWidth - 8
             height: 30
             radius: 4
-            color: "transparent"
+            color: trackMouse.pressed ? Theme.labelOrange : "transparent"
             border.color: panel.stripBar
             border.width: 2
 
+            Accessible.role: Accessible.Button
+            Accessible.name: modelData.name
+
             PanelLabel {
                 anchors.centerIn: parent
-                text: parent.modelData.name
+                text: trackCell.modelData.name
                 font.pixelSize: 13
+            }
+
+            MouseArea {
+                id: trackMouse
+                anchors.fill: parent
+                acceptedButtons: Qt.RightButton
+                onPressed: Drums.audition(trackCell.index)
             }
         }
     }

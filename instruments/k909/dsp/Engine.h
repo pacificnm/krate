@@ -5,10 +5,22 @@
 #include "core/Instrument.h"
 #include "core/Midi.h"
 #include "core/ParamValues.h"
+#include "core/SpscQueue.h"
 #include "dsp/Params.h"
 #include "dsp/Voices.h"
 
 namespace k909 {
+
+// GUI -> audio thread (docs/SEQUENCER.md#editing-gui--audio). D2: audition only;
+// pattern edits join it in D3-D4.
+struct Command
+{
+    enum class Kind : std::uint8_t { Trigger };
+    Kind kind = Kind::Trigger;
+    std::uint8_t drum = 0;     // DrumId
+    bool accent = false;
+    float velocity = 1.0f;
+};
 
 // K909's realtime core (docs/DSP.md, docs/SEQUENCER.md): eleven voices played
 // by MIDI notes (General MIDI drum numbers, docs/BRIEF.md#midi-notes), plus
@@ -34,15 +46,20 @@ public:
     void trigger(DrumId drum, float velocity, bool accent) noexcept;
     bool sounding(DrumId drum) const noexcept { return m_voices.sounding(drum); }
 
+    // GUI thread: queue a command for the next block. False if the queue is full.
+    bool post(const Command &command) noexcept { return m_commands.push(command); }
+
     // The voice a MIDI note plays, or DrumId::Count for none.
     static DrumId drumForNote(int note) noexcept;
 
 private:
     void handleMidi(const krate::MidiEvent &event) noexcept;
+    void apply(const Command &command) noexcept;
 
     krate::ParamValues<ParamCount> m_params{kParams};
     krate::MidiLearnMap m_learn{kParams}; // parameters are ParamId values
     Voices m_voices;
+    krate::SpscQueue<Command, 256> m_commands;
     double m_sampleRate = 48000.0;
     double m_volume = -1.0;          // smoothed output gain; < 0 = not yet primed
     double m_volumeSmoothing = 0.0;  // per-sample one-pole coefficient

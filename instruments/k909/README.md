@@ -2,7 +2,7 @@
 
 A drum machine for the [Krate](../../README.md) suite: eleven synthesized drum voices, a tracks × steps sequencer with accent and shuffle, and a hardware-style panel. Runs standalone (`k909`) and in the Krate rack (default MIDI channel 10).
 
-Status: D1 (voices). `pw-jack ./build/bin/k909` plays from MIDI notes (pads on channel 10 or any channel); `./build/bin/k909-render --out-dir build` writes `k909-voices.wav` and a demo `k909-beat.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
+Status: D2 (voices, knobs, notes; right-click a drum name to hear it). `pw-jack ./build/bin/k909` plays from MIDI notes (pads on channel 10 or any channel); `./build/bin/k909-render --out-dir build` writes `k909-voices.wav` and a demo `k909-beat.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
 
 | Doc | Contents |
 | --- | --- |

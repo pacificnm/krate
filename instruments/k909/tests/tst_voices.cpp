@@ -181,6 +181,20 @@ private slots:
         }
     }
 
+    // The panel's audition goes through the command queue to the next block.
+    void postedTriggerPlays()
+    {
+        Engine engine;
+        engine.prepare(kRate, kBlock);
+        Command command;
+        command.drum = std::uint8_t(DrumId::Cp);
+        QVERIFY(engine.post(command));
+        QVERIFY(!engine.sounding(DrumId::Cp));
+        const Render r = play(engine, {}, kBlock);
+        QVERIFY(engine.sounding(DrumId::Cp));
+        QVERIFY(r.peak() > 0.0f);
+    }
+
     void volumeScalesOutput()
     {
         Engine loud, quiet;

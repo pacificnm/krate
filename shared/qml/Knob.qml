@@ -22,6 +22,13 @@ Item {
     property real dragRange: 200
     property string displayText: ""     // shown in a bubble while dragging
 
+    // Style: k303's silver cap and black pointer by default; instruments may
+    // restyle (K909: black cap, orange pointer).
+    property color capColor: Theme.knobCap
+    property color capShadeColor: Theme.knobCapShade
+    property color capBorderColor: "#6A6C70"
+    property color pointerColor: Theme.ink
+
     signal moved(real value)
 
     readonly property real angle: minAngle + (maxAngle - minAngle) * value
@@ -97,11 +104,11 @@ Item {
         width: knob.width * 0.7
         height: width
         radius: width / 2
-        border.color: "#6A6C70"
+        border.color: knob.capBorderColor
         border.width: 1
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Theme.knobCap }
-            GradientStop { position: 1.0; color: Theme.knobCapShade }
+            GradientStop { position: 0.0; color: knob.capColor }
+            GradientStop { position: 1.0; color: knob.capShadeColor }
         }
     }
 
@@ -115,7 +122,7 @@ Item {
             x: (knob.width - width) / 2
             y: knob.height * 0.15 + 3
             radius: width / 2
-            color: Theme.ink
+            color: knob.pointerColor
         }
     }
 

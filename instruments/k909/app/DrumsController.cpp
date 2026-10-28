@@ -3,11 +3,13 @@
 #include <QJSEngine>
 
 #include "core/Transport.h"
+#include "dsp/Engine.h"
 #include "dsp/Params.h"
 
-DrumsController::DrumsController(krate::IInstrument &instrument, const QString &panelFilePath,
+DrumsController::DrumsController(k909::Engine &engine, const QString &panelFilePath,
                                  krate::Transport *transport, QObject *parent)
-    : krate::ParamController(instrument, panelFilePath, parent)
+    : krate::ParamController(engine, panelFilePath, parent)
+    , m_engine(engine)
     , m_transport(transport)
 {
     Q_ASSERT(!s_instance);
@@ -40,6 +42,17 @@ void DrumsController::setPlaying(bool playing)
         return;
     m_transport->setPlaying(playing);
     emit playingChanged();
+}
+
+void DrumsController::audition(int track)
+{
+    if (track < 0 || track >= k909::DrumCount)
+        return;
+    k909::Command command;
+    command.kind = k909::Command::Kind::Trigger;
+    command.drum = std::uint8_t(track);
+    command.velocity = 0.85f; // a normal (unaccented) sequencer step
+    m_engine.post(command);
 }
 
 void DrumsController::syncTempo()
