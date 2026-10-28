@@ -31,6 +31,9 @@ public:
     Q_INVOKABLE qreal value(const QString &key) const;
     Q_INVOKABLE void setValue(const QString &key, qreal value);
     Q_INVOKABLE qreal defaultValue(const QString &key) const;
+    // The parameter's label from the descriptor table, e.g. "Bass Drum Tune"
+    // (accessible names).
+    Q_INVOKABLE QString label(const QString &key) const;
     // Display text, e.g. "1340 Hz"; pass the value so bindings update with it.
     Q_INVOKABLE QString displayText(const QString &key, qreal value) const;
 

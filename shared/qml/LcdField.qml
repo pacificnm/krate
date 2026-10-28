@@ -7,12 +7,16 @@ Item {
     id: field
 
     property string text: ""
+    property string name: ""   // accessible name, e.g. "Pattern"
 
     signal up()
     signal down()
 
     width: 340
     height: 40
+
+    Accessible.role: Accessible.StaticText
+    Accessible.name: name !== "" ? name + ": " + text : text
 
     Rectangle {
         width: field.width - 34
@@ -53,6 +57,8 @@ Item {
 
                 width: 30
                 height: field.height / 2
+                Accessible.role: Accessible.Button
+                Accessible.name: (field.name !== "" ? field.name + " " : "") + (index === 0 ? "up" : "down")
                 color: arrowMouse.pressed ? Theme.buttonLightShade : Theme.buttonLight
                 border.color: Theme.buttonEdge
 

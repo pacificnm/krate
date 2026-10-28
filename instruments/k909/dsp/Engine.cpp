@@ -10,6 +10,9 @@ namespace k909 {
 namespace {
 constexpr int kAccentNoteVelocity = 100; // MIDI velocity at and above this plays accented
 constexpr double kVolumeSmoothingSeconds = 0.01;
+// -3 dB under the voices' trims: an accented kick and clap together at the
+// default Volume stay a few dB under the host's soft clip.
+constexpr double kOutputTrim = 0.7071;
 constexpr float kStepVelocity = 0.8f;   // a sequenced step (docs/DSP.md#accent-and-velocity)
 constexpr float kAccentVelocity = 1.0f; // an accented step, plus Total Accent
 
@@ -193,7 +196,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     m_playingSlot.store(m_sequencer.slot(), std::memory_order_relaxed);
     m_queuedSlot.store(m_sequencer.queuedSlot(), std::memory_order_relaxed);
 
-    const double target = units::gain(m_params.get(int(ParamId::Volume)));
+    const double target = kOutputTrim * units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)
         m_volume = target; // first block: no fade-in
     for (std::uint32_t i = 0; i < block.frames; ++i) {

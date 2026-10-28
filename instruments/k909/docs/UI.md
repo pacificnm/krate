@@ -53,3 +53,7 @@ Keyboard (standalone window): Space run/stop; A–H select a pattern; ↑ ↓ ch
 ## Rack
 
 In the rack, the panel is loaded by `Main.qml`'s Loader like the others and scaled to fit (K909's panel is taller than k303's, so it scales down further). Its own Tempo and START/STOP are hidden when `!Drums.ownsTransport`, the same rule as k303.
+
+## Accessibility
+
+Every control has an accessible name: knobs use the parameter's label from the descriptor table ("Bass Drum Tune", "Closed Hat Decay") with the value as the description; step buttons say their number and state ("Step 5: accent") and take Tab and Enter; track names say when they are selected; pattern buttons, START/STOP/CLEAR and the utilities are named; the LCD fields read "Pattern: Pattern A" and their arrows "Pattern up" / "Pattern down".

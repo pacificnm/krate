@@ -75,6 +75,15 @@ qreal ParamController::defaultValue(const QString &key) const
     return i >= 0 ? m_instrument.parameters()[std::size_t(i)].defaultValue : 0.0;
 }
 
+QString ParamController::label(const QString &key) const
+{
+    const int i = indexOf(key);
+    if (i < 0)
+        return {};
+    const std::string_view l = m_instrument.parameters()[std::size_t(i)].label;
+    return QString::fromUtf8(l.data(), qsizetype(l.size()));
+}
+
 QString ParamController::displayText(const QString &key, qreal value) const
 {
     const int i = indexOf(key);

@@ -76,7 +76,8 @@ Item {
         required property string key
         width: 62
         height: 62
-        name: key
+        name: Drums.label(key)
+        Accessible.description: displayText
         value: Drums.revision >= 0 ? Drums.value(key) : 0
         defaultValue: Drums.defaultValue(key)
         displayText: Drums.displayText(key, value)
@@ -270,6 +271,7 @@ Item {
         }
     }
     LcdField {
+        name: "Pattern"
         x: 520
         y: 574
         width: 384
@@ -282,6 +284,7 @@ Item {
         onDown: Drums.patternIndex = Math.max(0, Drums.patternIndex - 1)
     }
     LcdField {
+        name: "Length"
         x: 520
         y: 608
         width: 384
@@ -291,6 +294,7 @@ Item {
         onDown: Drums.length = Drums.length - 1
     }
     LcdField {
+        name: "Scale"
         x: 520
         y: 642
         width: 384
@@ -300,6 +304,7 @@ Item {
         onDown: Drums.scaleIndex = Math.max(0, Drums.scaleIndex - 1)
     }
     LcdField {
+        name: "Play order"
         x: 520
         y: 676
         width: 384
@@ -473,6 +478,9 @@ Item {
             }
             Rectangle { // the step button: cream face, lit inset
                 id: stepButton
+                activeFocusOnTab: true
+                Keys.onReturnPressed: Drums.cycleStep(stepSlot.index)
+                Keys.onEnterPressed: Drums.cycleStep(stepSlot.index)
                 x: stepSlot.cx - width / 2
                 y: stepMouse.pressed ? 794 : 792
                 width: panel.stepWidth - 18
@@ -527,7 +535,7 @@ Item {
             border.width: 2
 
             Accessible.role: Accessible.Button
-            Accessible.name: modelData.name
+            Accessible.name: modelData.name + (selected ? ", selected" : "")
 
             PanelLabel {
                 anchors.centerIn: parent
