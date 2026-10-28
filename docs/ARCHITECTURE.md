@@ -53,7 +53,7 @@ Every channel is single-producer / single-consumer and fixed size. Nothing alloc
 | CC map | GUI → audio | `std::array<std::atomic<int16_t>, 128>`: CC number → ParamId, −1 = unmapped | MIDI Learn bindings |
 | Learn arm | GUI → audio | `std::atomic<int16_t> learnTarget` (−1 = off) | Param waiting for a CC |
 | Commands | GUI → audio | `SpscQueue<Command, 256>` (`Engine::post`), drained at the start of each block | `SetStep`, `SetLength`, `LoadPattern` |
-| Run/stop | GUI → audio | `std::atomic<bool>` (`Engine::setRunning`) | Transport |
+| Transport | GUI → audio | `krate::StandaloneTransport` atomics (playing, BPM), advanced by the JACK callback each block and passed in `AudioBlock::transport` | Run/stop, tempo, beat position |
 | Events | audio → GUI | `SpscQueue<EngineEvent, 256>` (`Engine::popEvent`), drained by `MidiLearn` at 60 Hz | `CcLearned{cc, param}`, `NoteOn{note, velocity}` (for step record). Xruns are counted by the JACK client instead |
 | Playhead | audio → GUI | `std::atomic<int8_t> currentStep` (−1 = stopped) | LED playhead |
 

@@ -3,12 +3,42 @@
 #include <cmath>
 #include <vector>
 
+#include "core/StandaloneTransport.h"
 #include "dsp/Sequencer.h"
 
 using namespace k303;
 using Kind = SequencerEvent::Kind;
 
 namespace {
+
+// Feeds a sequencer from a real transport, one sample at a time.
+struct Driver
+{
+    Sequencer &seq;
+    double sampleRate = 48000.0;
+    krate::StandaloneTransport transport;
+    long sample = 0;
+
+    explicit Driver(Sequencer &s, double bpm = 120.0, double rate = 48000.0)
+        : seq(s)
+        , sampleRate(rate)
+    {
+        transport.setBpm(bpm);
+        transport.setPlaying(true);
+    }
+
+    SequencerEvent tick()
+    {
+        const auto state = transport.advance(1, sampleRate);
+        ++sample;
+        return seq.tick(state.beatAtBlockStart);
+    }
+
+    double samplesPerStep() const
+    {
+        return sampleRate * 60.0 / (transport.bpm() * seq.stepsPerBeat());
+    }
+};
 
 struct Logged
 {
@@ -18,13 +48,14 @@ struct Logged
 };
 
 // Run the sequencer for `samples` ticks and log every event with the step it fell in.
-std::vector<Logged> run(Sequencer &seq, long samples)
+std::vector<Logged> run(Driver &d, long samples)
 {
     std::vector<Logged> log;
     for (long i = 0; i < samples; ++i) {
-        const auto ev = seq.tick();
+        const long at = d.sample;
+        const auto ev = d.tick();
         if (ev.kind != Kind::None)
-            log.push_back({ev.kind, seq.currentStep(), i});
+            log.push_back({ev.kind, d.seq.currentStep(), at});
     }
     return log;
 }
@@ -53,20 +84,19 @@ private slots:
     void timingIsExactOverLongRuns()
     {
         Sequencer seq;
-        seq.setSampleRate(48000.0);
-        seq.setTempo(133.0);
+        Driver d(seq, 133.0);
         Pattern p;
         for (auto &s : p.steps)
             s = note(0);
         seq.setPattern(p);
         seq.start();
 
-        const double sps = seq.samplesPerStep();
+        const double sps = d.samplesPerStep();
         QVERIFY(sps != std::floor(sps)); // genuinely fractional
         long n = 0;
         const long steps = 100000;
         for (long i = 0; n < steps; ++i) {
-            if (seq.tick().kind == Kind::NoteOn) {
+            if (d.tick().kind == Kind::NoteOn) {
                 const double expected = n * sps;
                 if (std::abs(double(i) - expected) > 1.0)
                     QFAIL(qPrintable(QString("step %1 at sample %2, expected %3").arg(n).arg(i).arg(expected)));
@@ -78,8 +108,7 @@ private slots:
     void playbackRules()
     {
         Sequencer seq;
-        seq.setSampleRate(48000.0);
-        seq.setTempo(120.0); // 6000 samples per step
+        Driver d(seq); // 120 BPM: 6000 samples per step
         Pattern p;
         p.length = 6;
         p.steps[0] = note(0);              // plain note: gate off at half step
@@ -91,7 +120,7 @@ private slots:
         seq.setPattern(p);
         seq.start();
 
-        const auto log = run(seq, 6 * 6000 + 1); // one pass plus the wrap
+        const auto log = run(d, 6 * 6000 + 1); // one pass plus the wrap
         const std::vector<std::pair<Kind, int>> expected = {
             {Kind::NoteOn, 0}, {Kind::GateOff, 0},
             {Kind::NoteOn, 1},
@@ -111,15 +140,14 @@ private slots:
     void slideWrapsAroundThePattern()
     {
         Sequencer seq;
-        seq.setSampleRate(48000.0);
-        seq.setTempo(120.0);
+        Driver d(seq);
         Pattern p;
         p.length = 2;
         p.steps[0] = note(0);
         p.steps[1] = note(7, /*slide*/ true);
         seq.setPattern(p);
         seq.start();
-        const auto log = run(seq, 2 * 6000 + 1);
+        const auto log = run(d, 2 * 6000 + 1);
         QCOMPARE(log.back().step, 0);
         QCOMPARE(int(log.back().kind), int(Kind::SlideTo));
     }
@@ -127,13 +155,13 @@ private slots:
     void accentAndPitchFromStep()
     {
         Sequencer seq;
-        seq.setSampleRate(48000.0);
+        Driver d(seq);
         Pattern p;
         p.length = 1;
         p.steps[0] = Step{3, 1, true, false, Gate::Note};
         seq.setPattern(p);
         seq.start();
-        const auto ev = seq.tick();
+        const auto ev = d.tick();
         QCOMPARE(int(ev.kind), int(Kind::NoteOn));
         QCOMPARE(ev.note, 24 + 12 * 2 + 3); // D#3
         QVERIFY(ev.accent);
@@ -142,35 +170,34 @@ private slots:
     void stopReleasesSoundingNote()
     {
         Sequencer seq;
-        seq.setSampleRate(48000.0);
+        Driver d(seq);
         Pattern p;
         p.steps[0] = note(0);
         seq.setPattern(p);
         seq.start();
-        seq.tick();
+        d.tick();
         QCOMPARE(int(seq.stop().kind), int(Kind::GateOff));
         QCOMPARE(seq.currentStep(), -1);
-        QCOMPARE(int(seq.tick().kind), int(Kind::None));
+        QCOMPARE(int(d.tick().kind), int(Kind::None));
         QCOMPARE(int(seq.stop().kind), int(Kind::None)); // nothing sounding
     }
 
-    // Halving the step length mid-step keeps the fraction done: 3000 of 6000
+    // Doubling the tempo mid-step keeps the fraction done: 3000 of 6000
     // samples becomes 1500 of 3000, so the next step starts 1500 samples later.
     void tempoChangeMidStep()
     {
         Sequencer seq;
-        seq.setSampleRate(48000.0);
-        seq.setTempo(120.0);
+        Driver d(seq);
         Pattern p;
         for (auto &s : p.steps)
             s = note(0);
         seq.setPattern(p);
         seq.start();
-        run(seq, 3000);
-        seq.setTempo(240.0);
+        run(d, 3000);
+        d.transport.setBpm(240.0);
         long i = 3000;
         for (;; ++i)
-            if (seq.tick().kind == Kind::NoteOn)
+            if (d.tick().kind == Kind::NoteOn)
                 break;
         QVERIFY(std::abs(i - 4500) <= 1);
     }
@@ -179,8 +206,7 @@ private slots:
     static std::vector<int> order(Sequencer::PlayMode mode, int steps, int length = 4)
     {
         Sequencer seq;
-        seq.setSampleRate(48000.0);
-        seq.setTempo(120.0);
+        Driver d(seq);
         seq.setPlayMode(mode);
         Pattern p;
         p.length = std::uint8_t(length);
@@ -191,8 +217,7 @@ private slots:
         std::vector<int> result;
         int last = -1;
         for (long i = 0; int(result.size()) < steps; ++i) {
-            seq.tick();
-            if (seq.currentStep() != last || i % 6000 == 0) {
+            if (d.tick().kind != Kind::None || seq.currentStep() != last) {
                 if (i % 6000 == 0)
                     result.push_back(seq.currentStep());
                 last = seq.currentStep();
@@ -224,8 +249,7 @@ private slots:
     void invertMirrorsPitch()
     {
         Sequencer seq;
-        seq.setSampleRate(48000.0);
-        seq.setTempo(120.0);
+        Driver d(seq);
         seq.setPlayMode(Sequencer::PlayMode::Invert);
         Pattern p;
         p.length = 4;
@@ -237,42 +261,137 @@ private slots:
         seq.start();
         std::vector<int> notes;
         while (notes.size() < 4) {
-            const auto ev = seq.tick();
+            const auto ev = d.tick();
             if (ev.kind == Kind::NoteOn)
                 notes.push_back(ev.note);
         }
         QCOMPARE(notes, (std::vector<int>{36, 36 + 9, 36 + 5, 48}));
     }
 
+    // Scale sets the step length: steps start every 6000 (16ths), 3000 (32nds)
+    // or 4000 (16th triplets) samples at 120 BPM.
     void scaleSetsStepLength()
     {
-        Sequencer seq;
-        seq.setSampleRate(48000.0);
-        seq.setTempo(120.0);
-        QCOMPARE(seq.samplesPerStep(), 6000.0);  // 16ths
-        seq.setStepsPerBeat(8);
-        QCOMPARE(seq.samplesPerStep(), 3000.0);  // 32nds
-        seq.setStepsPerBeat(6);
-        QCOMPARE(seq.samplesPerStep(), 4000.0);  // 16th triplets
+        for (auto [perBeat, expected] : {std::pair{4, 6000L}, {8, 3000L}, {6, 4000L}}) {
+            Sequencer seq;
+            Driver d(seq);
+            seq.setStepsPerBeat(perBeat);
+            Pattern p;
+            for (auto &st : p.steps)
+                st = note(0);
+            seq.setPattern(p);
+            seq.start();
+            const auto log = run(d, 4 * expected + 1);
+            std::vector<long> starts;
+            for (const auto &e : log)
+                if (e.kind == Kind::NoteOn)
+                    starts.push_back(e.sample);
+            QCOMPARE(starts, (std::vector<long>{0, expected, 2 * expected, 3 * expected, 4 * expected}));
+        }
     }
 
-    void beatFollowsScale()
+    // Switching from 16ths to 32nds halfway through a step keeps the half done:
+    // the next step starts 1500 samples later, not at once and not after 3000.
+    void scaleChangeMidStepKeepsFraction()
     {
-        for (int perBeat : {4, 8, 6}) {
-            Sequencer seq;
-            seq.setSampleRate(48000.0);
-            seq.setTempo(120.0);
-            seq.setStepsPerBeat(perBeat);
-            seq.start();
-            std::vector<bool> beats;
-            for (long i = 0; beats.size() < std::size_t(2 * perBeat); ++i)
-                if (seq.tick().kind == Kind::NoteOn || i % long(seq.samplesPerStep()) == 0) {
-                    if (i % long(seq.samplesPerStep()) == 0)
-                        beats.push_back(seq.onBeat());
-                }
-            for (std::size_t s = 0; s < beats.size(); ++s)
-                QCOMPARE(bool(beats[s]), s % std::size_t(perBeat) == 0);
+        Sequencer seq;
+        Driver d(seq);
+        Pattern p;
+        for (auto &st : p.steps)
+            st = note(0);
+        seq.setPattern(p);
+        seq.start();
+        run(d, 3000);
+        seq.setStepsPerBeat(8);
+        long i = 3000;
+        for (;; ++i)
+            if (d.tick().kind == Kind::NoteOn)
+                break;
+        QVERIFY2(std::abs(i - 4500) <= 1, qPrintable(QString::number(i)));
+    }
+
+    // Two sequencers on one transport (as in the rack) step together, even
+    // when one is set to a different scale.
+    void sequencersShareTheClock()
+    {
+        Sequencer a, b;
+        b.setStepsPerBeat(8);
+        Pattern p;
+        for (auto &st : p.steps)
+            st = note(0);
+        a.setPattern(p);
+        b.setPattern(p);
+        a.start();
+        b.start();
+        krate::StandaloneTransport transport;
+        transport.setBpm(133.0);
+        transport.setPlaying(true);
+        long aSteps = 0, bSteps = 0;
+        for (long i = 0; i < 48000 * 60; ++i) { // one minute
+            const double beat = transport.advance(1, 48000.0).beatAtBlockStart;
+            const bool aStep = a.tick(beat).kind == Kind::NoteOn;
+            const bool bStep = b.tick(beat).kind == Kind::NoteOn;
+            if (aStep && !bStep)
+                QFAIL(qPrintable(QString("16th step at sample %1 without a 32nd step").arg(i)));
+            aSteps += aStep;
+            bSteps += bStep;
         }
+        QVERIFY(std::abs(bSteps - 2 * aSteps) <= 1);
+    }
+
+    // --- Standalone transport --------------------------------------------------
+
+    void transportRestartsAtBeatZero()
+    {
+        krate::StandaloneTransport t;
+        t.setBpm(120.0);
+        auto s = t.advance(64, 48000.0);
+        QVERIFY(!s.playing);
+        QCOMPARE(s.beatAtBlockStart, 0.0);
+        t.setPlaying(true);
+        s = t.advance(64, 48000.0);
+        QVERIFY(s.playing && s.restarted);
+        QCOMPARE(s.beatAtBlockStart, 0.0);
+        s = t.advance(64, 48000.0);
+        QVERIFY(!s.restarted);
+        QCOMPARE(s.beatAtBlockStart, 64.0 / 24000.0); // 120 BPM: 24000 samples per beat
+        t.setPlaying(false);
+        t.advance(64, 48000.0);
+        t.setPlaying(true);
+        s = t.advance(64, 48000.0);
+        QVERIFY(s.restarted);
+        QCOMPARE(s.beatAtBlockStart, 0.0);
+    }
+
+    // A tempo change continues from the current beat, then moves at the new rate.
+    void transportTempoChangeIsContinuous()
+    {
+        krate::StandaloneTransport t;
+        t.setBpm(120.0);
+        t.setPlaying(true);
+        for (int i = 0; i < 375; ++i)
+            t.advance(64, 48000.0); // 24000 samples = 1 beat
+        t.setBpm(60.0);
+        auto s = t.advance(64, 48000.0);
+        QVERIFY(std::abs(s.beatAtBlockStart - 1.0) < 1e-12);
+        QCOMPARE(s.bpm, 60.0);
+        s = t.advance(64, 48000.0);
+        QVERIFY(std::abs(s.beatAtBlockStart - (1.0 + 64.0 / 48000.0)) < 1e-12);
+    }
+
+    // Beat position comes from sample count, not a running sum: no drift over an hour.
+    void transportDoesNotDrift()
+    {
+        krate::StandaloneTransport t;
+        t.setBpm(133.0);
+        t.setPlaying(true);
+        const long blocks = 48000L * 3600 / 64;
+        krate::TransportState s;
+        for (long i = 0; i <= blocks; ++i)
+            s = t.advance(64, 48000.0);
+        const double expected = double(blocks) * 64.0 * 133.0 / 60.0 / 48000.0;
+        QVERIFY2(std::abs(s.beatAtBlockStart - expected) < 1e-6,
+                 qPrintable(QString("%1 vs %2").arg(s.beatAtBlockStart, 0, 'g', 17).arg(expected, 0, 'g', 17)));
     }
 
     void demoPatternIsValid()

@@ -22,6 +22,11 @@ qt_standard_project_setup(REQUIRES 6.8)
 
 # --- DSP core: no Qt, no JACK -------------------------------------------------
 add_library(k303_dsp STATIC
+    src/core/Instrument.h
+    src/core/ParamDescriptor.h
+    src/core/StandaloneTransport.h
+    src/core/StepClock.h
+    src/core/StepClock.cpp
     src/dsp/Denormals.h
     src/dsp/DiodeLadder.h
     src/dsp/DiodeLadder.cpp

@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "core/StandaloneTransport.h"
 #include "dsp/Engine.h"
 #include "dsp/Params.h"
 
@@ -100,17 +101,23 @@ int main(int argc, char **argv)
         return 2;
     }
 
-    krate::IInstrument &instrument = engine; // everything below goes through the interface
-    instrument.prepare(rate, 64);
-    engine.setRunning(true);
     constexpr std::uint32_t kBlock = 64;
+    krate::IInstrument &instrument = engine; // everything below goes through the interface
+    instrument.prepare(rate, kBlock);
+    krate::StandaloneTransport transport;
+    transport.setBpm(k303::units::tempoBpm(params.get(k303::ParamId::Tempo)));
+    transport.setPlaying(true);
+    const auto render = [&](float *left, float *right) {
+        const krate::TransportState state = transport.advance(kBlock, rate);
+        krate::processStereo(instrument, left, right, kBlock, nullptr, 0, &state);
+    };
     std::vector<float> l(kBlock), r(kBlock);
 
     if (bench) {
         const std::uint64_t frames = std::uint64_t(rate) * 60; // one minute of audio
         const auto t0 = std::chrono::steady_clock::now();
         for (std::uint64_t done = 0; done < frames; done += kBlock)
-            krate::processStereo(instrument, l.data(), r.data(), kBlock);
+            render(l.data(), r.data());
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         std::printf("rendered 60 s at %d Hz in %.3f s: %.2f%% of one core\n", rate, seconds, seconds / 60.0 * 100.0);
         return 0;
@@ -122,8 +129,8 @@ int main(int argc, char **argv)
     interleaved.reserve(frames * 2 + 2 * kBlock);
     for (std::uint64_t done = 0; done < frames; done += kBlock) {
         if (done + kBlock >= frames - std::uint64_t(rate / 2))
-            engine.setRunning(false); // last half second: let the release ring out
-        krate::processStereo(instrument, l.data(), r.data(), kBlock);
+            transport.setPlaying(false); // last half second: let the release ring out
+        render(l.data(), r.data());
         for (std::uint32_t i = 0; i < kBlock; ++i) {
             interleaved.push_back(l[i]);
             interleaved.push_back(r[i]);

@@ -11,6 +11,7 @@
 #include "app/PatternModel.h"
 #include "app/Persistence.h"
 #include "dsp/Engine.h"
+#include "TestHost.h"
 
 using namespace k303;
 namespace kp = k303::persistence;
@@ -344,9 +345,11 @@ private slots:
         QVERIFY(engine.takePeak() < 0.001f);
 
         // While the sequencer runs, live notes are ignored (no restart of the voice).
-        engine.setRunning(true);
+        TestHost host(engine);
+        host.play();
+        host.run(64);
         model.auditionOn(0);
-        pump(engine);
+        host.run(64);
         QVERIFY(engine.sequencer().running());
     }
 

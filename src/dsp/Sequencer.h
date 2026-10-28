@@ -3,6 +3,8 @@
 #include <array>
 #include <cstdint>
 
+#include "core/StepClock.h"
+
 namespace k303 {
 
 enum class Gate : std::uint8_t { Note, Tie, Rest };
@@ -44,9 +46,10 @@ struct SequencerEvent
     bool accent = false;
 };
 
-// 16-step sequencer timed by sample count (docs/SEQUENCER.md). Call tick()
-// once per sample at the base rate; it returns at most one event, which takes
-// effect on that sample. Realtime-safe.
+// k303's 16-step sequencer (docs/SEQUENCER.md): the note, slide, tie, accent
+// and gate rules. Timing and step order come from krate::StepClock, driven by
+// the transport's beat position. Call tick() once per sample while running;
+// it returns at most one event, which takes effect on that sample. Realtime-safe.
 class Sequencer
 {
 public:
@@ -61,53 +64,35 @@ public:
         Random,
     };
 
-    void setSampleRate(double sampleRate) noexcept;
-    void setTempo(double bpm) noexcept;
-    void setStepsPerBeat(int steps) noexcept;      // 4 = 16ths, 8 = 32nds, 6 = 16th triplets
-    void setPlayMode(PlayMode mode) noexcept { m_playMode = mode; }
+    Sequencer();
+
     void setPattern(const Pattern &pattern) noexcept;
     void setStep(int index, const Step &step) noexcept;  // ignored if out of range
     void setLength(int length) noexcept;                  // clamped to 1..16
     const Pattern &pattern() const noexcept { return m_pattern; }
 
+    void setStepsPerBeat(int steps) noexcept { m_clock.setStepsPerBeat(steps); } // 4, 8 or 6
+    void setPlayMode(PlayMode mode) noexcept;
+
     void start() noexcept;
     // Returns GateOff if a note was sounding.
     SequencerEvent stop() noexcept;
 
-    bool running() const noexcept { return m_running; }
-    int currentStep() const noexcept { return m_running ? m_step : -1; }
-    double samplesPerStep() const noexcept { return m_samplesPerStep; }
-    // True while the current step starts a beat (for the beat LED).
-    bool onBeat() const noexcept { return m_running && m_stepCount % m_stepsPerBeat == 0; }
+    bool running() const noexcept { return m_clock.running(); }
+    int currentStep() const noexcept { return m_clock.step(); }
+    int stepsPerBeat() const noexcept { return m_clock.stepsPerBeat(); }
 
-    SequencerEvent tick() noexcept;
+    // Once per sample while running, with that sample's beat position.
+    SequencerEvent tick(double beat) noexcept;
 
 private:
-    void updateSamplesPerStep() noexcept;
     SequencerEvent startStep() noexcept;
     bool continuesInto(int nextStep) const noexcept;
-    int firstStep() noexcept;
-    void chooseNextStep() noexcept;  // sets m_next (and m_nextDirection)
-    int nextStepIndex() const noexcept { return m_next < m_pattern.length ? m_next : 0; }
-    std::uint32_t random() noexcept; // xorshift32: realtime-safe
 
     Pattern m_pattern = demoPattern();
-    double m_sampleRate = 48000.0;
-    double m_bpm = 120.0;
-    double m_samplesPerStep = 6000.0;
-    double m_phase = 0.0;      // samples into the current step
-    int m_step = -1;
-    int m_next = 0;
-    int m_direction = 1;       // ping-pong: +1 / -1
-    int m_nextDirection = 1;
-    int m_stepsPerBeat = 4;
-    long m_stepCount = -1;     // steps played since start
+    krate::StepClock m_clock;
     PlayMode m_playMode = PlayMode::Forward;
-    std::uint32_t m_rng = 0x9E3779B9u;
-    int m_prevStep = -1;
-    bool m_running = false;
     bool m_sounding = false;   // gate is high
-    bool m_gateChecked = false;
 };
 
 } // namespace k303

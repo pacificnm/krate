@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
+#include "core/StandaloneTransport.h"
 #include "dsp/Engine.h"
 #include "jack/JackClient.h"
 
@@ -71,7 +72,7 @@ public:
     // to midi_in, from midimap.json. Retried whenever ports appear.
     void setMidiInputMatch(const QString &pattern);
 
-    bool playing() const { return m_engine.isRunning(); }
+    bool playing() const { return m_transport.playing(); }
     int currentStep() const { return m_currentStep; }
     void setPlaying(bool playing);
 
@@ -119,6 +120,7 @@ signals:
 private:
     qreal param(k303::ParamId id) const { return m_engine.params().get(id); }
     void setParam(k303::ParamId id, qreal value);
+    void syncTempo(); // the Tempo knob drives the standalone transport
     void poll();
     void setAudioStatus(const QString &status);
     void connectMidiInput();
@@ -127,7 +129,8 @@ private:
     static inline SynthController *s_instance = nullptr;
 
     mutable k303::Engine m_engine; // mutable: ParamStore reads are const in spirit
-    k303::JackClient m_client{m_engine};
+    krate::StandaloneTransport m_transport; // run/stop and tempo for the standalone app
+    k303::JackClient m_client{m_engine, m_transport};
 
     QTimer m_pollTimer;
     QTimer m_retryTimer;

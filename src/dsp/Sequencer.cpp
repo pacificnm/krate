@@ -99,41 +99,17 @@ Pattern factoryPattern(int index)
     return p;
 }
 
-void Sequencer::setSampleRate(double sampleRate) noexcept
+Sequencer::Sequencer()
 {
-    m_sampleRate = sampleRate;
-    updateSamplesPerStep();
-}
-
-void Sequencer::setTempo(double bpm) noexcept
-{
-    if (bpm == m_bpm)
-        return;
-    m_bpm = bpm;
-    updateSamplesPerStep();
-}
-
-void Sequencer::setStepsPerBeat(int steps) noexcept
-{
-    if (steps == m_stepsPerBeat || steps < 1)
-        return;
-    m_stepsPerBeat = steps;
-    updateSamplesPerStep();
-}
-
-void Sequencer::updateSamplesPerStep() noexcept
-{
-    const double sps = m_sampleRate * 60.0 / (m_bpm * m_stepsPerBeat);
-    // Keep the same fraction of the current step, so a tempo change never skips or repeats one.
-    if (m_samplesPerStep > 0.0)
-        m_phase *= sps / m_samplesPerStep;
-    m_samplesPerStep = sps;
+    m_clock.setGateLength(kGateLength);
+    m_clock.setLength(m_pattern.length);
 }
 
 void Sequencer::setPattern(const Pattern &pattern) noexcept
 {
     m_pattern = pattern;
     m_pattern.length = std::clamp<std::uint8_t>(pattern.length, 1, 16);
+    m_clock.setLength(m_pattern.length);
 }
 
 void Sequencer::setStep(int index, const Step &step) noexcept
@@ -145,24 +121,31 @@ void Sequencer::setStep(int index, const Step &step) noexcept
 void Sequencer::setLength(int length) noexcept
 {
     m_pattern.length = std::uint8_t(std::clamp(length, 1, 16));
+    m_clock.setLength(m_pattern.length);
+}
+
+void Sequencer::setPlayMode(PlayMode mode) noexcept
+{
+    m_playMode = mode;
+    using Order = krate::StepClock::Order;
+    switch (mode) {
+    case PlayMode::Forward:
+    case PlayMode::Invert: m_clock.setOrder(Order::Forward); break;
+    case PlayMode::Reverse: m_clock.setOrder(Order::Reverse); break;
+    case PlayMode::PingPong: m_clock.setOrder(Order::PingPong); break;
+    case PlayMode::Random: m_clock.setOrder(Order::Random); break;
+    }
 }
 
 void Sequencer::start() noexcept
 {
-    m_running = true;
-    m_step = -1;
-    m_stepCount = -1;
-    m_direction = m_nextDirection = 1;
-    m_prevStep = -1;
-    m_phase = 0.0;
+    m_clock.start();
     m_sounding = false;
-    m_gateChecked = false;
 }
 
 SequencerEvent Sequencer::stop() noexcept
 {
-    m_running = false;
-    m_step = -1;
+    m_clock.stop();
     SequencerEvent ev;
     if (m_sounding) {
         m_sounding = false;
@@ -171,38 +154,23 @@ SequencerEvent Sequencer::stop() noexcept
     return ev;
 }
 
-SequencerEvent Sequencer::tick() noexcept
+SequencerEvent Sequencer::tick(double beat) noexcept
 {
     SequencerEvent ev;
-    if (!m_running)
-        return ev;
-
-    if (m_step < 0 || m_phase >= m_samplesPerStep) {
-        if (m_step >= 0)
-            m_phase -= m_samplesPerStep; // carry the fraction: no drift
-        m_prevStep = m_step;
-        m_step = m_step < 0 ? firstStep() : nextStepIndex();
-        m_direction = m_nextDirection;
-        ++m_stepCount;
-        chooseNextStep(); // decided now, so the gate can know whether the note continues
-        m_gateChecked = false;
+    const auto t = m_clock.tick(beat);
+    if (t.stepStarted) {
         ev = startStep();
-    } else if (!m_gateChecked && m_phase >= kGateLength * m_samplesPerStep) {
-        m_gateChecked = true;
-        if (m_sounding && !continuesInto(nextStepIndex())) {
-            m_sounding = false;
-            ev.kind = SequencerEvent::Kind::GateOff;
-        }
+    } else if (t.gatePoint && m_sounding && !continuesInto(m_clock.nextStep())) {
+        m_sounding = false;
+        ev.kind = SequencerEvent::Kind::GateOff;
     }
-
-    m_phase += 1.0;
     return ev;
 }
 
 SequencerEvent Sequencer::startStep() noexcept
 {
     SequencerEvent ev;
-    const Step &step = m_pattern.steps[m_step];
+    const Step &step = m_pattern.steps[std::size_t(m_clock.step())];
 
     switch (step.gate) {
     case Gate::Rest:
@@ -216,7 +184,8 @@ SequencerEvent Sequencer::startStep() noexcept
         // Extends a sounding note; after a rest it is a rest.
         break;
     case Gate::Note: {
-        const bool slid = m_sounding && m_prevStep >= 0 && m_pattern.steps[m_prevStep].slide;
+        const int prev = m_clock.previousStep();
+        const bool slid = m_sounding && prev >= 0 && m_pattern.steps[std::size_t(prev)].slide;
         ev.kind = slid ? SequencerEvent::Kind::SlideTo : SequencerEvent::Kind::NoteOn;
         ev.note = stepMidiNote(step);
         if (m_playMode == PlayMode::Invert) // mirror around the step's C: n -> (12 - n) mod 12
@@ -229,60 +198,12 @@ SequencerEvent Sequencer::startStep() noexcept
     return ev;
 }
 
-int Sequencer::firstStep() noexcept
-{
-    const int len = m_pattern.length;
-    switch (m_playMode) {
-    case PlayMode::Reverse: return len - 1;
-    case PlayMode::Random: return int(random() % std::uint32_t(len));
-    default: return 0;
-    }
-}
-
-void Sequencer::chooseNextStep() noexcept
-{
-    const int len = m_pattern.length;
-    const int step = std::min(m_step, len - 1);
-    m_nextDirection = m_direction;
-
-    switch (m_playMode) {
-    case PlayMode::Forward:
-    case PlayMode::Invert:
-        m_next = (step + 1) % len;
-        break;
-    case PlayMode::Reverse:
-        m_next = (step + len - 1) % len;
-        break;
-    case PlayMode::PingPong:
-        if (len == 1) {
-            m_next = 0;
-        } else if (step + m_direction >= len || step + m_direction < 0) {
-            m_nextDirection = -m_direction; // turn around without repeating the end step
-            m_next = step + m_nextDirection;
-        } else {
-            m_next = step + m_direction;
-        }
-        break;
-    case PlayMode::Random:
-        m_next = int(random() % std::uint32_t(len));
-        break;
-    }
-}
-
-std::uint32_t Sequencer::random() noexcept
-{
-    m_rng ^= m_rng << 13;
-    m_rng ^= m_rng >> 17;
-    m_rng ^= m_rng << 5;
-    return m_rng;
-}
-
 bool Sequencer::continuesInto(int nextStep) const noexcept
 {
-    const Step &next = m_pattern.steps[nextStep];
+    const Step &next = m_pattern.steps[std::size_t(nextStep)];
     if (next.gate == Gate::Tie)
         return true;
-    return m_pattern.steps[m_step].slide && next.gate == Gate::Note;
+    return m_pattern.steps[std::size_t(m_clock.step())].slide && next.gate == Gate::Note;
 }
 
 } // namespace k303

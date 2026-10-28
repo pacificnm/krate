@@ -32,7 +32,6 @@ void Engine::setParam(int index, float normalized) noexcept
 void Engine::prepare(double sampleRate, std::uint32_t /*maxFrames: k303 renders per sample*/) noexcept
 {
     m_sampleRate = sampleRate;
-    m_sequencer.setSampleRate(sampleRate);
     m_voice.setSampleRate(sampleRate);
     m_volumeCoeff = static_cast<float>(1.0 - std::exp(-1.0 / (kVolumeSmoothingSeconds * sampleRate)));
 }
@@ -199,25 +198,29 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     vp.tuningSemitones = units::tuningSemitones(p.get(ParamId::Tuning));
     m_voice.setParams(vp);
 
-    m_sequencer.setTempo(units::tempoBpm(p.get(ParamId::Tempo)));
     m_sequencer.setStepsPerBeat(units::scaleStepsPerBeat(p.get(ParamId::Scale)));
     m_sequencer.setPlayMode(Sequencer::PlayMode(units::playMode(p.get(ParamId::PlayMode))));
     const float volumeTarget = static_cast<float>(units::volumeGain(p.get(ParamId::Volume)));
 
-    const bool run = m_running.load(std::memory_order_relaxed);
-    if (run && !m_sequencer.running()) {
+    static constexpr krate::TransportState kStopped{};
+    const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
+    if (transport.playing && (transport.restarted || !m_sequencer.running())) {
+        if (m_sequencer.running())
+            handle(m_sequencer.stop());
         m_sequencer.start();
         m_heldCount = 0; // the sequencer owns the voice now
-    }
-    else if (!run && m_sequencer.running())
+    } else if (!transport.playing && m_sequencer.running()) {
         handle(m_sequencer.stop());
+    }
+    const double beatsPerSample = transport.bpm / 60.0 / m_sampleRate;
 
     float peak = 0.0f;
     std::uint32_t nextEvent = 0;
     for (std::uint32_t i = 0; i < frames; ++i) {
         while (nextEvent < eventCount && events[nextEvent].frame <= i)
             handleMidi(events[nextEvent++]);
-        handle(m_sequencer.tick());
+        if (transport.playing)
+            handle(m_sequencer.tick(transport.beatAtBlockStart + double(i) * beatsPerSample));
         m_volume += (volumeTarget - m_volume) * m_volumeCoeff;
         const float s = std::tanh(m_voice.next() * m_volume); // soft clip after volume
         outL[i] = s;
@@ -226,7 +229,11 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     }
 
     m_currentStep.store(m_sequencer.currentStep(), std::memory_order_relaxed);
-    m_onBeat.store(m_sequencer.onBeat(), std::memory_order_relaxed);
+    // Lit for the first step of each beat: the beat's fractional part is within one step.
+    const double lastBeat = transport.beatAtBlockStart + double(frames ? frames - 1 : 0) * beatsPerSample;
+    m_onBeat.store(m_sequencer.running()
+                       && lastBeat - std::floor(lastBeat) < 1.0 / m_sequencer.stepsPerBeat(),
+                   std::memory_order_relaxed);
     // Single writer (this thread); the GUI's exchange may drop one block's peak, which is harmless.
     if (peak > m_peak.load(std::memory_order_relaxed))
         m_peak.store(peak, std::memory_order_relaxed);

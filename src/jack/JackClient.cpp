@@ -3,6 +3,7 @@
 #include <jack/midiport.h>
 
 #include "core/Instrument.h"
+#include "core/StandaloneTransport.h"
 #include "dsp/Denormals.h"
 
 namespace k303 {
@@ -14,8 +15,9 @@ void silentJackMessage(const char *) {}
 
 } // namespace
 
-JackClient::JackClient(krate::IInstrument &instrument)
+JackClient::JackClient(krate::IInstrument &instrument, krate::StandaloneTransport &transport)
     : m_instrument(instrument)
+    , m_transport(transport)
 {
     jack_set_error_function(silentJackMessage);
     jack_set_info_function(silentJackMessage);
@@ -169,7 +171,8 @@ int JackClient::onProcess(jack_nframes_t frames, void *arg)
             out.data[b] = ev.buffer[b];
     }
 
-    krate::processStereo(self->m_instrument, outL, outR, frames, events, count);
+    const krate::TransportState transport = self->m_transport.advance(frames, double(rate));
+    krate::processStereo(self->m_instrument, outL, outR, frames, events, count, &transport);
     return 0;
 }
 

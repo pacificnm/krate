@@ -9,17 +9,18 @@
 
 namespace krate {
 class IInstrument;
+class StandaloneTransport;
 }
 
 namespace k303 {
 
-// Owns the JACK client and its ports and runs the instrument's process() in
-// the JACK realtime callback. All public methods are for the GUI thread; the callbacks
+// Owns the JACK client and its ports. In the JACK realtime callback it advances
+// the transport and runs the instrument's process() with it. All public methods are for the GUI thread; the callbacks
 // only touch atomics and the engine.
 class JackClient
 {
 public:
-    explicit JackClient(krate::IInstrument &instrument);
+    JackClient(krate::IInstrument &instrument, krate::StandaloneTransport &transport);
     ~JackClient();
 
     JackClient(const JackClient &) = delete;
@@ -58,6 +59,7 @@ private:
     static void onPortRegistration(jack_port_id_t port, int registered, void *arg);
 
     krate::IInstrument &m_instrument;
+    krate::StandaloneTransport &m_transport;
     jack_client_t *m_client = nullptr;
     jack_port_t *m_outL = nullptr;
     jack_port_t *m_outR = nullptr;

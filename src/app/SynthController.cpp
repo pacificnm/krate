@@ -29,6 +29,7 @@ SynthController::SynthController(const QString &panelFilePath, QObject *parent)
         m_panelFilePath += QStringLiteral(".v1"); // leave a newer file alone
     for (int i = 0; i < k303::ParamCount; ++i)
         m_engine.setParam(i, values[std::size_t(i)]);
+    syncTempo();
 
     // Save 2 s after the last change, from the panel or from MIDI.
     m_saveTimer.setSingleShot(true);
@@ -50,7 +51,7 @@ SynthController::~SynthController()
 {
     if (m_saveTimer.isActive())
         savePanel();
-    m_engine.setRunning(false);
+    m_transport.setPlaying(false);
     m_client.close();
     s_instance = nullptr;
 }
@@ -64,9 +65,9 @@ SynthController *SynthController::create(QQmlEngine *, QJSEngine *)
 
 void SynthController::setPlaying(bool playing)
 {
-    if (playing == m_engine.isRunning())
+    if (playing == m_transport.playing())
         return;
-    m_engine.setRunning(playing);
+    m_transport.setPlaying(playing);
     emit playingChanged();
 }
 
@@ -76,7 +77,14 @@ void SynthController::setParam(k303::ParamId id, qreal value)
     if (v == m_engine.params().get(id))
         return;
     m_engine.params().set(id, v);
+    if (id == k303::ParamId::Tempo)
+        syncTempo();
     emit paramsChanged();
+}
+
+void SynthController::syncTempo()
+{
+    m_transport.setBpm(k303::units::tempoBpm(m_engine.params().get(k303::ParamId::Tempo)));
 }
 
 void SynthController::setParamByKey(const QString &key, qreal value)
@@ -213,8 +221,11 @@ void SynthController::poll()
     }
 
     // Values the audio thread changed (MIDI CCs, from M6) need the knobs to follow.
-    if (m_engine.params().takeChangedByAudio() != 0)
+    if (const auto changed = m_engine.params().takeChangedByAudio(); changed != 0) {
+        if (changed & (std::uint64_t(1) << int(k303::ParamId::Tempo)))
+            syncTempo(); // a MIDI-mapped tempo knob
         emit paramsChanged();
+    }
 
     // Meter: peak in dB mapped to 0..1 over kMeterFloorDb..0, with a steady fall.
     const float peak = m_engine.takePeak();

@@ -46,8 +46,10 @@ struct EngineEvent
 // Everything the audio callback renders. Host-agnostic: JACK today, LV2 later.
 // process() runs on the realtime thread and must not allocate, lock or block.
 //
-// Sequencer -> Voice -> volume -> soft clip. While running, the sequencer
-// plays its pattern; while stopped, MIDI keys play the voice. MIDI CCs move
+// Sequencer -> Voice -> volume -> soft clip. Time comes from the block's
+// transport: while it plays, the sequencer plays its pattern; while stopped
+// (or with no transport), MIDI keys play the voice. The Tempo parameter is not
+// read here: the host's transport carries the tempo. MIDI CCs move
 // mapped parameters (docs/MIDI.md).
 class Engine final : public krate::IInstrument
 {
@@ -64,9 +66,8 @@ public:
 
     // k303-specific, any thread.
     ParamStore &params() noexcept { return m_params; }
-    void setRunning(bool running) noexcept { m_running.store(running, std::memory_order_relaxed); }
-    bool isRunning() const noexcept { return m_running.load(std::memory_order_relaxed); }
     int currentStep() const noexcept { return m_currentStep.load(std::memory_order_relaxed); }
+    // True while the playing step starts a beat (beat LED).
     bool onBeat() const noexcept { return m_onBeat.load(std::memory_order_relaxed); }
 
     // GUI thread (single producer). Returns false if the queue is full.
@@ -112,7 +113,6 @@ private:
     std::array<std::atomic<std::int16_t>, 128> m_ccMap; // CC -> ParamId, -1 = unmapped
     std::atomic<std::int16_t> m_learnTarget{-1};
 
-    std::atomic<bool> m_running{false};
     std::atomic<int> m_currentStep{-1};
     std::atomic<bool> m_onBeat{false};
     std::atomic<float> m_peak{0.0f};

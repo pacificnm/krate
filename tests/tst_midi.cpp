@@ -9,6 +9,7 @@
 #include "app/MidiLearnController.h"
 #include "app/Persistence.h"
 #include "dsp/Engine.h"
+#include "TestHost.h"
 
 using namespace k303;
 namespace kp = k303::persistence;
@@ -175,9 +176,12 @@ private slots:
         for (auto &s : clear.pattern.steps)
             s.gate = Gate::Rest;
         engine.post(clear);
-        engine.setRunning(true);
-        block(engine);
-        QVERIFY(block(engine, {noteOn(48)}, 2400) < 1e-3f); // silent pattern, key ignored
+        TestHost host(engine);
+        host.play();
+        host.run(64);
+        engine.takePeak();
+        host.run(2400, {noteOn(48)});
+        QVERIFY(engine.takePeak() < 1e-3f); // silent pattern, key ignored
         // ...but the GUI still hears about the key (for step record later).
         bool sawNote = false;
         while (const auto ev = engine.popEvent())

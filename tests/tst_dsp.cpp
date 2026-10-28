@@ -9,6 +9,7 @@
 #include "dsp/Oscillator.h"
 #include "dsp/Params.h"
 #include "dsp/Voice.h"
+#include "TestHost.h"
 
 using namespace k303;
 
@@ -88,14 +89,13 @@ private slots:
     void engineProducesSoundWhenRunning()
     {
         Engine engine;
-        engine.prepare(48000.0, 0);
-        engine.setRunning(true);
-        std::vector<float> l(24000), r(24000);
-        krate::processStereo(engine, l.data(), r.data(), 24000);
+        TestHost host(engine);
+        host.play();
+        host.run(24000);
         const float peak = engine.takePeak();
         QVERIFY(peak > 0.05f);
         QVERIFY(peak < 1.0f); // soft clip
-        QCOMPARE(l, r);
+        QCOMPARE(host.left, host.right);
         QCOMPARE(engine.currentStep(), 3); // 0.5 s at 120 BPM = 4 steps of 125 ms
     }
 
@@ -138,37 +138,37 @@ private slots:
     void engineReportsCurrentStep()
     {
         Engine engine;
-        engine.prepare(48000.0, 0);
-        std::vector<float> l(64), r(64);
-        krate::processStereo(engine, l.data(), r.data(), 64);
+        TestHost host(engine);
+        host.run(64);
         QCOMPARE(engine.currentStep(), -1); // stopped
-        engine.setRunning(true);
-        krate::processStereo(engine, l.data(), r.data(), 64);
+        host.play();
+        host.run(64);
         QCOMPARE(engine.currentStep(), 0);
-        engine.setRunning(false);
-        krate::processStereo(engine, l.data(), r.data(), 64);
+        QVERIFY(engine.onBeat());
+        host.play(false);
+        host.run(64);
         QCOMPARE(engine.currentStep(), -1);
+        QVERIFY(!engine.onBeat());
     }
 
     // A volume jump is smoothed over ~10 ms instead of landing on one sample.
     void volumeIsSmoothed()
     {
         Engine loud;
-        loud.prepare(48000.0, 0);
+        TestHost loudHost(loud);
         loud.params().set(ParamId::Volume, 1.0f);
-        loud.setRunning(true);
-        std::vector<float> l(4800), r(4800);
-        krate::processStereo(loud, l.data(), r.data(), 4800);
+        loudHost.play();
+        loudHost.run(4800);
         const float steadyPeak = loud.takePeak();
 
         Engine engine;
-        engine.prepare(48000.0, 0);
+        TestHost host(engine);
         engine.params().set(ParamId::Volume, 0.0f);
-        engine.setRunning(true);
-        krate::processStereo(engine, l.data(), r.data(), 4800);
+        host.play();
+        host.run(4800);
         engine.takePeak();
         engine.params().set(ParamId::Volume, 1.0f);
-        krate::processStereo(engine, l.data(), r.data(), 32);
+        host.run(32);
         // 32 samples into a 480-sample one-pole: ~6% of the way.
         QVERIFY(engine.takePeak() < 0.2f * steadyPeak);
     }
