@@ -33,8 +33,8 @@ A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and sca
 | Unmap / Audio / About | Clear all MIDI mappings / audio status LED, click to reconnect / about box (M7) | M6, M1, M7 |
 | 1–8 buttons + red block | Pattern select 1–8; the red block is a beat LED | M5, M4 |
 | Tempo knob | Sequencer tempo | M4 |
-| Scale selector (1/16, 1/32, 1/16T) | Step resolution, drawn | Later |
-| Play Mode selector (Forward, Reverse, Fwd+Rev, Invert, Random) | Step order, drawn | Later |
+| Scale selector (1/16, 1/32, 1/16T) | Step length (SEQUENCER.md) | Done |
+| Play Mode selector (Forward, Reverse, Fwd+Rev, Invert, Random) | Step order / pitch inversion (SEQUENCER.md) | Done |
 | Pattern / Length displays | Current pattern and its length, ▲▼ to change | M5 |
 | Red bar under displays | Output level meter | M1 |
 | Model plate | "K-303 / Acid Bass Synthesizer" | — |

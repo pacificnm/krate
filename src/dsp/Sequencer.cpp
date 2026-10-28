@@ -113,9 +113,17 @@ void Sequencer::setTempo(double bpm) noexcept
     updateSamplesPerStep();
 }
 
+void Sequencer::setStepsPerBeat(int steps) noexcept
+{
+    if (steps == m_stepsPerBeat || steps < 1)
+        return;
+    m_stepsPerBeat = steps;
+    updateSamplesPerStep();
+}
+
 void Sequencer::updateSamplesPerStep() noexcept
 {
-    const double sps = m_sampleRate * 60.0 / (m_bpm * 4.0);
+    const double sps = m_sampleRate * 60.0 / (m_bpm * m_stepsPerBeat);
     // Keep the same fraction of the current step, so a tempo change never skips or repeats one.
     if (m_samplesPerStep > 0.0)
         m_phase *= sps / m_samplesPerStep;
@@ -143,6 +151,8 @@ void Sequencer::start() noexcept
 {
     m_running = true;
     m_step = -1;
+    m_stepCount = -1;
+    m_direction = m_nextDirection = 1;
     m_prevStep = -1;
     m_phase = 0.0;
     m_sounding = false;
@@ -171,7 +181,10 @@ SequencerEvent Sequencer::tick() noexcept
         if (m_step >= 0)
             m_phase -= m_samplesPerStep; // carry the fraction: no drift
         m_prevStep = m_step;
-        m_step = m_step < 0 ? 0 : nextStepIndex();
+        m_step = m_step < 0 ? firstStep() : nextStepIndex();
+        m_direction = m_nextDirection;
+        ++m_stepCount;
+        chooseNextStep(); // decided now, so the gate can know whether the note continues
         m_gateChecked = false;
         ev = startStep();
     } else if (!m_gateChecked && m_phase >= kGateLength * m_samplesPerStep) {
@@ -206,12 +219,62 @@ SequencerEvent Sequencer::startStep() noexcept
         const bool slid = m_sounding && m_prevStep >= 0 && m_pattern.steps[m_prevStep].slide;
         ev.kind = slid ? SequencerEvent::Kind::SlideTo : SequencerEvent::Kind::NoteOn;
         ev.note = stepMidiNote(step);
+        if (m_playMode == PlayMode::Invert) // mirror around the step's C: n -> (12 - n) mod 12
+            ev.note += (12 - step.note) % 12 - step.note;
         ev.accent = step.accent;
         m_sounding = true;
         break;
     }
     }
     return ev;
+}
+
+int Sequencer::firstStep() noexcept
+{
+    const int len = m_pattern.length;
+    switch (m_playMode) {
+    case PlayMode::Reverse: return len - 1;
+    case PlayMode::Random: return int(random() % std::uint32_t(len));
+    default: return 0;
+    }
+}
+
+void Sequencer::chooseNextStep() noexcept
+{
+    const int len = m_pattern.length;
+    const int step = std::min(m_step, len - 1);
+    m_nextDirection = m_direction;
+
+    switch (m_playMode) {
+    case PlayMode::Forward:
+    case PlayMode::Invert:
+        m_next = (step + 1) % len;
+        break;
+    case PlayMode::Reverse:
+        m_next = (step + len - 1) % len;
+        break;
+    case PlayMode::PingPong:
+        if (len == 1) {
+            m_next = 0;
+        } else if (step + m_direction >= len || step + m_direction < 0) {
+            m_nextDirection = -m_direction; // turn around without repeating the end step
+            m_next = step + m_nextDirection;
+        } else {
+            m_next = step + m_direction;
+        }
+        break;
+    case PlayMode::Random:
+        m_next = int(random() % std::uint32_t(len));
+        break;
+    }
+}
+
+std::uint32_t Sequencer::random() noexcept
+{
+    m_rng ^= m_rng << 13;
+    m_rng ^= m_rng >> 17;
+    m_rng ^= m_rng << 5;
+    return m_rng;
 }
 
 bool Sequencer::continuesInto(int nextStep) const noexcept

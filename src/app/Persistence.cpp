@@ -180,6 +180,53 @@ bool savePatterns(const QString &path, const PatternBank &bank)
     return writeJson(path, toJson(bank));
 }
 
+PanelValues defaultPanel()
+{
+    PanelValues values{};
+    for (const auto &info : kParams)
+        values[std::size_t(info.id)] = info.defaultValue;
+    return values;
+}
+
+LoadResult loadPanel(const QString &path, PanelValues *values)
+{
+    *values = defaultPanel();
+
+    QFile file(path);
+    if (!file.exists())
+        return LoadResult::Missing;
+    if (!file.open(QIODevice::ReadOnly))
+        return LoadResult::Invalid;
+    QJsonParseError error{};
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError || !doc.isObject())
+        return LoadResult::Invalid;
+
+    const QJsonObject json = doc.object();
+    const int version = json.value(u"version").toInt(0);
+    if (version > kPanelFileVersion)
+        return LoadResult::NewerVersion;
+    if (version < 1)
+        return LoadResult::Invalid;
+
+    const QJsonObject params = json.value(u"params").toObject();
+    for (const auto &info : kParams) {
+        const QJsonValue v = params.value(QString::fromLatin1(info.key.data(), qsizetype(info.key.size())));
+        if (v.isDouble())
+            (*values)[std::size_t(info.id)] = float(std::clamp(v.toDouble(), 0.0, 1.0));
+    }
+    return LoadResult::Loaded;
+}
+
+bool savePanel(const QString &path, const PanelValues &values)
+{
+    QJsonObject params;
+    for (const auto &info : kParams)
+        params.insert(QString::fromLatin1(info.key.data(), qsizetype(info.key.size())),
+                      double(values[std::size_t(info.id)]));
+    return writeJson(path, {{QStringLiteral("version"), kPanelFileVersion}, {QStringLiteral("params"), params}});
+}
+
 LoadResult loadMidiMap(const QString &path, MidiMap *map)
 {
     *map = MidiMap{};

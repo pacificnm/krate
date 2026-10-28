@@ -24,7 +24,7 @@ Auto-connect: at startup, and again whenever JACK ports appear (e.g. the control
         ─► GUI shows the binding, saves midimap.json
 ```
 
-- Learn mode is a panel toggle (MIDI LEARN button, or L; Esc leaves it). In learn mode a click on any knob or switch arms it instead of changing it; clicking the armed control again disarms it. Learnable: the six sound knobs, Tempo, Volume and the Waveform switch. Learn mode stays on after a binding, so you can map several controls in a row.
+- Learn mode is a panel toggle (MIDI LEARN button, or L; Esc leaves it). In learn mode a click on any knob or switch arms it instead of changing it; clicking the armed control again disarms it. Learnable: the six sound knobs, Tempo, Scale, Play Mode, Volume and the Waveform switch. Learn mode stays on after a binding, so you can map several controls in a row.
 - Implementation: `MidiLearn` QML singleton (`MidiLearnController`) plus a `LearnOverlay` inside each learnable control. The overlay shows a blue outline (pulsing while armed) and a "CC n" badge, and takes the clicks only while learn mode is on.
 - The first CC that arrives while a parameter is armed binds to it. The binding is done in the audio thread so the next CC of that same turn already moves the knob.
 - One CC drives one parameter. Binding a CC that was already mapped elsewhere moves it (the old binding is removed). A parameter may have several CCs.

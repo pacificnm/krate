@@ -186,6 +186,8 @@ void Engine::process(float *outL, float *outR, std::uint32_t frames,
     m_voice.setParams(vp);
 
     m_sequencer.setTempo(units::tempoBpm(p.get(ParamId::Tempo)));
+    m_sequencer.setStepsPerBeat(units::scaleStepsPerBeat(p.get(ParamId::Scale)));
+    m_sequencer.setPlayMode(Sequencer::PlayMode(units::playMode(p.get(ParamId::PlayMode))));
     const float volumeTarget = static_cast<float>(units::volumeGain(p.get(ParamId::Volume)));
 
     const bool run = m_running.load(std::memory_order_relaxed);
@@ -210,6 +212,7 @@ void Engine::process(float *outL, float *outR, std::uint32_t frames,
     }
 
     m_currentStep.store(m_sequencer.currentStep(), std::memory_order_relaxed);
+    m_onBeat.store(m_sequencer.onBeat(), std::memory_order_relaxed);
     // Single writer (this thread); the GUI's exchange may drop one block's peak, which is harmless.
     if (peak > m_peak.load(std::memory_order_relaxed))
         m_peak.store(peak, std::memory_order_relaxed);

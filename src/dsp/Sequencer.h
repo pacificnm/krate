@@ -52,8 +52,19 @@ class Sequencer
 public:
     static constexpr double kGateLength = 0.5; // fraction of a step
 
+    // Order matches the PLAY MODE selector.
+    enum class PlayMode : std::uint8_t {
+        Forward,
+        Reverse,
+        PingPong,   // Fwd+Rev: bounces without repeating the end steps
+        Invert,     // forward, pitches mirrored around C: C stays, D# <-> A, G <-> F
+        Random,
+    };
+
     void setSampleRate(double sampleRate) noexcept;
     void setTempo(double bpm) noexcept;
+    void setStepsPerBeat(int steps) noexcept;      // 4 = 16ths, 8 = 32nds, 6 = 16th triplets
+    void setPlayMode(PlayMode mode) noexcept { m_playMode = mode; }
     void setPattern(const Pattern &pattern) noexcept;
     void setStep(int index, const Step &step) noexcept;  // ignored if out of range
     void setLength(int length) noexcept;                  // clamped to 1..16
@@ -66,6 +77,8 @@ public:
     bool running() const noexcept { return m_running; }
     int currentStep() const noexcept { return m_running ? m_step : -1; }
     double samplesPerStep() const noexcept { return m_samplesPerStep; }
+    // True while the current step starts a beat (for the beat LED).
+    bool onBeat() const noexcept { return m_running && m_stepCount % m_stepsPerBeat == 0; }
 
     SequencerEvent tick() noexcept;
 
@@ -73,7 +86,10 @@ private:
     void updateSamplesPerStep() noexcept;
     SequencerEvent startStep() noexcept;
     bool continuesInto(int nextStep) const noexcept;
-    int nextStepIndex() const noexcept { return (m_step + 1) % m_pattern.length; }
+    int firstStep() noexcept;
+    void chooseNextStep() noexcept;  // sets m_next (and m_nextDirection)
+    int nextStepIndex() const noexcept { return m_next < m_pattern.length ? m_next : 0; }
+    std::uint32_t random() noexcept; // xorshift32: realtime-safe
 
     Pattern m_pattern = demoPattern();
     double m_sampleRate = 48000.0;
@@ -81,6 +97,13 @@ private:
     double m_samplesPerStep = 6000.0;
     double m_phase = 0.0;      // samples into the current step
     int m_step = -1;
+    int m_next = 0;
+    int m_direction = 1;       // ping-pong: +1 / -1
+    int m_nextDirection = 1;
+    int m_stepsPerBeat = 4;
+    long m_stepCount = -1;     // steps played since start
+    PlayMode m_playMode = PlayMode::Forward;
+    std::uint32_t m_rng = 0x9E3779B9u;
     int m_prevStep = -1;
     bool m_running = false;
     bool m_sounding = false;   // gate is high

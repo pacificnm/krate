@@ -210,7 +210,7 @@ Item {
         width: 40
         height: 26
         radius: 3
-        on: Synth.currentStep >= 0 && Synth.currentStep % 4 === 0 // lit for the first step of each beat
+        on: Synth.beat // lit for the first step of each beat, at any Scale
     }
 
     Grid {
@@ -262,11 +262,17 @@ Item {
         width: 66
         height: 66
         name: "Scale"
-        value: 0
-        onMoved: v => value = v // later feature: no model yet
+        value: Synth.scale
+        displayText: Synth.displayText("scale", value)
+        onMoved: v => Synth.scale = v
         detents: 3
         minAngle: -60
         maxAngle: 60
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "scale"
+        }
     }
     Repeater {
         model: ["1/16", "1/32", "1/16T"]
@@ -291,11 +297,17 @@ Item {
         width: 66
         height: 66
         name: "Play mode"
-        value: 0
-        onMoved: v => value = v // later feature: no model yet
+        value: Synth.playMode
+        displayText: Synth.displayText("playmode", value)
+        onMoved: v => Synth.playMode = v
         detents: 5
         minAngle: 35
         maxAngle: 145
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "playmode"
+        }
     }
     Column {
         x: 652

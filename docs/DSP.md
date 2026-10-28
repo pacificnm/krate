@@ -28,8 +28,10 @@ UI and MIDI values are normalized 0–1. Each parameter maps to engine units wit
 | `waveform` | Waveform | saw / square | switch | saw |
 | `volume` | Volume | −inf … 0 dB | audio taper: gain = v³ (0.8 → −5.8 dB) | 0.8 |
 | `tempo` | Tempo | 40 … 240 BPM | linear | 120 |
+| `scale` | Scale | 1/16, 1/32, 1/16T (4, 8, 6 steps per beat) | 3 detents | 1/16 |
+| `playmode` | Play Mode | Forward, Reverse, Fwd+Rev, Invert, Random | 5 detents | Forward |
 
-Ids are stable strings: they are the keys in `midimap.json`. The mappings live in `src/dsp/Params.h` (`k303::units`); keep that file and this table in step.
+Ids are stable strings: they are the keys in `midimap.json` and `panel.json`. All positions are saved to `~/.config/k303/panel.json` 2 s after a change and on quit, and restored at startup. The mappings live in `src/dsp/Params.h` (`k303::units`); keep that file and this table in step.
 
 ## Oscillator
 

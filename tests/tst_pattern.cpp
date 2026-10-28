@@ -297,6 +297,22 @@ private slots:
         QCOMPARE(model.data(model.index(0), PatternModel::LabelRole).toString(), QStringLiteral("D#↓"));
     }
 
+    void panelRoundTrip()
+    {
+        kp::PanelValues values = kp::defaultPanel();
+        values[std::size_t(ParamId::Cutoff)] = 0.25f;
+        values[std::size_t(ParamId::PlayMode)] = 1.0f;
+        QVERIFY(kp::savePanel(m_path, values));
+        kp::PanelValues back;
+        QCOMPARE(kp::loadPanel(m_path, &back), kp::LoadResult::Loaded);
+        QVERIFY(back == values);
+
+        writeFile(m_path, R"({ "version": 1, "params": { "cutoff": 7, "warp": 0.5 } })");
+        QCOMPARE(kp::loadPanel(m_path, &back), kp::LoadResult::Loaded);
+        QCOMPARE(back[std::size_t(ParamId::Cutoff)], 1.0f);  // clamped
+        QCOMPARE(back[std::size_t(ParamId::Volume)], paramInfo(ParamId::Volume).defaultValue); // missing: default
+    }
+
     void jsonRoundTrip()
     {
         kp::PatternBank bank = kp::defaultBank();

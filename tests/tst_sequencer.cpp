@@ -175,6 +175,106 @@ private slots:
         QVERIFY(std::abs(i - 4500) <= 1);
     }
 
+    // Step order for each play mode over a 4-step pattern.
+    static std::vector<int> order(Sequencer::PlayMode mode, int steps, int length = 4)
+    {
+        Sequencer seq;
+        seq.setSampleRate(48000.0);
+        seq.setTempo(120.0);
+        seq.setPlayMode(mode);
+        Pattern p;
+        p.length = std::uint8_t(length);
+        for (auto &s : p.steps)
+            s = note(0);
+        seq.setPattern(p);
+        seq.start();
+        std::vector<int> result;
+        int last = -1;
+        for (long i = 0; int(result.size()) < steps; ++i) {
+            seq.tick();
+            if (seq.currentStep() != last || i % 6000 == 0) {
+                if (i % 6000 == 0)
+                    result.push_back(seq.currentStep());
+                last = seq.currentStep();
+            }
+        }
+        return result;
+    }
+
+    void playModeOrder()
+    {
+        using M = Sequencer::PlayMode;
+        QCOMPARE(order(M::Forward, 9), (std::vector<int>{0, 1, 2, 3, 0, 1, 2, 3, 0}));
+        QCOMPARE(order(M::Reverse, 9), (std::vector<int>{3, 2, 1, 0, 3, 2, 1, 0, 3}));
+        QCOMPARE(order(M::PingPong, 10), (std::vector<int>{0, 1, 2, 3, 2, 1, 0, 1, 2, 3}));
+        QCOMPARE(order(M::PingPong, 4, 1), (std::vector<int>{0, 0, 0, 0}));
+        QCOMPARE(order(M::Invert, 5), (std::vector<int>{0, 1, 2, 3, 0}));
+
+        const auto random = order(M::Random, 400);
+        std::vector<int> seen(4, 0);
+        for (int s : random) {
+            QVERIFY(s >= 0 && s < 4);
+            ++seen[std::size_t(s)];
+        }
+        for (int count : seen)
+            QVERIFY(count > 50); // every step turns up, roughly evenly
+    }
+
+    // Invert mirrors pitch around the step's C: C stays, D# -> A, G -> F, top C -> C.
+    void invertMirrorsPitch()
+    {
+        Sequencer seq;
+        seq.setSampleRate(48000.0);
+        seq.setTempo(120.0);
+        seq.setPlayMode(Sequencer::PlayMode::Invert);
+        Pattern p;
+        p.length = 4;
+        p.steps[0] = note(0);
+        p.steps[1] = note(3);
+        p.steps[2] = note(7);
+        p.steps[3] = Step{12, 1, false, false, Gate::Note};
+        seq.setPattern(p);
+        seq.start();
+        std::vector<int> notes;
+        while (notes.size() < 4) {
+            const auto ev = seq.tick();
+            if (ev.kind == Kind::NoteOn)
+                notes.push_back(ev.note);
+        }
+        QCOMPARE(notes, (std::vector<int>{36, 36 + 9, 36 + 5, 48}));
+    }
+
+    void scaleSetsStepLength()
+    {
+        Sequencer seq;
+        seq.setSampleRate(48000.0);
+        seq.setTempo(120.0);
+        QCOMPARE(seq.samplesPerStep(), 6000.0);  // 16ths
+        seq.setStepsPerBeat(8);
+        QCOMPARE(seq.samplesPerStep(), 3000.0);  // 32nds
+        seq.setStepsPerBeat(6);
+        QCOMPARE(seq.samplesPerStep(), 4000.0);  // 16th triplets
+    }
+
+    void beatFollowsScale()
+    {
+        for (int perBeat : {4, 8, 6}) {
+            Sequencer seq;
+            seq.setSampleRate(48000.0);
+            seq.setTempo(120.0);
+            seq.setStepsPerBeat(perBeat);
+            seq.start();
+            std::vector<bool> beats;
+            for (long i = 0; beats.size() < std::size_t(2 * perBeat); ++i)
+                if (seq.tick().kind == Kind::NoteOn || i % long(seq.samplesPerStep()) == 0) {
+                    if (i % long(seq.samplesPerStep()) == 0)
+                        beats.push_back(seq.onBeat());
+                }
+            for (std::size_t s = 0; s < beats.size(); ++s)
+                QCOMPARE(bool(beats[s]), s % std::size_t(perBeat) == 0);
+        }
+    }
+
     void demoPatternIsValid()
     {
         const Pattern p = demoPattern();

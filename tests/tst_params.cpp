@@ -54,6 +54,20 @@ private slots:
         QVERIFY(std::abs(tempoBpm(paramInfo(ParamId::Tempo).defaultValue) - 120.0) < 1e-3);
     }
 
+    void selectorDetents()
+    {
+        using namespace units;
+        QCOMPARE(scaleStepsPerBeat(0.0f), 4);
+        QCOMPARE(scaleStepsPerBeat(0.5f), 8);
+        QCOMPARE(scaleStepsPerBeat(1.0f), 6);
+        QCOMPARE(scaleStepsPerBeat(0.2f), 4);  // snaps to the nearest position
+        QCOMPARE(playMode(0.0f), 0);
+        QCOMPARE(playMode(0.75f), 3);
+        QCOMPARE(playMode(1.0f), 4);
+        // A MIDI CC of 127 reaches the last position.
+        QCOMPARE(playMode(127.0f / 127.0f), 4);
+    }
+
     void storeDefaultsAndClamp()
     {
         ParamStore store;

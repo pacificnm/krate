@@ -1,5 +1,7 @@
 #include "app/SynthController.h"
 
+#include "app/Persistence.h"
+
 #include <QJSEngine>
 #include <QLoggingCategory>
 #include <QRegularExpression>
@@ -14,11 +16,25 @@ constexpr qreal kMeterFloorDb = -60.0;
 constexpr qreal kMeterFallPerPoll = 0.015; // ~1 s from full scale to empty
 } // namespace
 
-SynthController::SynthController(QObject *parent)
+SynthController::SynthController(const QString &panelFilePath, QObject *parent)
     : QObject(parent)
+    , m_panelFilePath(panelFilePath)
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
+
+    // Knob positions from last time (missing or unreadable file: defaults).
+    k303::persistence::PanelValues values;
+    if (k303::persistence::loadPanel(m_panelFilePath, &values) == k303::persistence::LoadResult::NewerVersion)
+        m_panelFilePath += QStringLiteral(".v1"); // leave a newer file alone
+    for (const auto &info : k303::kParams)
+        m_engine.params().set(info.id, values[std::size_t(info.id)]);
+
+    // Save 2 s after the last change, from the panel or from MIDI.
+    m_saveTimer.setSingleShot(true);
+    m_saveTimer.setInterval(2000);
+    connect(&m_saveTimer, &QTimer::timeout, this, &SynthController::savePanel);
+    connect(this, &SynthController::paramsChanged, &m_saveTimer, qOverload<>(&QTimer::start));
 
     m_pollTimer.setInterval(kPollIntervalMs);
     connect(&m_pollTimer, &QTimer::timeout, this, &SynthController::poll);
@@ -32,6 +48,8 @@ SynthController::SynthController(QObject *parent)
 
 SynthController::~SynthController()
 {
+    if (m_saveTimer.isActive())
+        savePanel();
     m_engine.setRunning(false);
     m_client.close();
     s_instance = nullptr;
@@ -112,6 +130,14 @@ QString SynthController::displayText(const QString &key, qreal value) const
     }
     case k303::ParamId::Tempo:
         return QStringLiteral("%1 BPM").arg(qRound(u::tempoBpm(v)));
+    case k303::ParamId::Scale: {
+        static const char *names[] = {"1/16", "1/32", "1/16T"};
+        return QString::fromLatin1(names[u::detent(v, u::kScalePositions)]);
+    }
+    case k303::ParamId::PlayMode: {
+        static const char *names[] = {"Forward", "Reverse", "Fwd+Rev", "Invert", "Random"};
+        return QString::fromLatin1(names[u::detent(v, u::kPlayModePositions)]);
+    }
     case k303::ParamId::Resonance:
     case k303::ParamId::Accent:
     case k303::ParamId::Count:
@@ -145,6 +171,16 @@ void SynthController::connectAudio()
 
     m_lastXruns = -1; // force a status refresh
     poll();
+}
+
+void SynthController::savePanel()
+{
+    m_saveTimer.stop();
+    k303::persistence::PanelValues values{};
+    for (const auto &info : k303::kParams)
+        values[std::size_t(info.id)] = m_engine.params().get(info.id);
+    if (!k303::persistence::savePanel(m_panelFilePath, values))
+        qCWarning(lcAudio) << "could not save panel settings to" << m_panelFilePath;
 }
 
 void SynthController::setMidiInputMatch(const QString &pattern)
@@ -214,8 +250,10 @@ void SynthController::poll()
 
     // While offline the engine doesn't run, so it can't report a step.
     const int step = m_client.isOpen() ? m_engine.currentStep() : -1;
-    if (step != m_currentStep) {
+    const bool beat = step >= 0 && m_engine.onBeat();
+    if (step != m_currentStep || beat != m_beat) {
         m_currentStep = step;
+        m_beat = beat;
         emit currentStepChanged();
     }
 

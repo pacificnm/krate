@@ -70,6 +70,7 @@ public:
     void setRunning(bool running) noexcept { m_running.store(running, std::memory_order_relaxed); }
     bool isRunning() const noexcept { return m_running.load(std::memory_order_relaxed); }
     int currentStep() const noexcept { return m_currentStep.load(std::memory_order_relaxed); }
+    bool onBeat() const noexcept { return m_onBeat.load(std::memory_order_relaxed); }
 
     // GUI thread (single producer). Returns false if the queue is full.
     bool post(const Command &command) noexcept { return m_commands.push(command); }
@@ -116,6 +117,7 @@ private:
 
     std::atomic<bool> m_running{false};
     std::atomic<int> m_currentStep{-1};
+    std::atomic<bool> m_onBeat{false};
     std::atomic<float> m_peak{0.0f};
 };
 

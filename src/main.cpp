@@ -20,17 +20,16 @@ int main(int argc, char *argv[])
 
     // Created before the QML engine (which looks it up as the Synth singleton)
     // and destroyed after it, so audio outlives every binding to it.
-    SynthController synth(nullptr);
+    const QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    // ~/.config/k303/panel.json: knob and switch positions
+    SynthController synth(configDir + QStringLiteral("/panel.json"), nullptr);
     // ~/.local/share/k303/patterns.json (docs/SEQUENCER.md#pattern-storage)
     PatternModel pattern(synth.engine(),
                          QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
                              + QStringLiteral("/patterns.json"),
                          nullptr);
     // ~/.config/k303/midimap.json (docs/MIDI.md#mapping-file)
-    MidiLearnController midiLearn(synth.engine(),
-                                  QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
-                                      + QStringLiteral("/midimap.json"),
-                                  nullptr);
+    MidiLearnController midiLearn(synth.engine(), configDir + QStringLiteral("/midimap.json"), nullptr);
     synth.setMidiInputMatch(midiLearn.inputPortMatch());
 
     QQmlApplicationEngine engine;

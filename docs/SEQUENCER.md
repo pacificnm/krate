@@ -56,6 +56,20 @@ Accent applies to the step that starts a note (new note or slide target). A tied
 
 The pattern wraps at `length`; wrap-around follows the same rules (step `length−1` can slide or tie into step 0).
 
+## Scale and play mode
+
+**Scale** sets the step length: 1/16 (4 steps per beat), 1/32 (8) or 1/16T, sixteenth-note triplets (6). `samplesPerStep = sampleRate · 60 / (bpm · stepsPerBeat)`; changing it mid-step keeps the step's phase, like a tempo change. The beat LED lights on the first step of each beat at any scale.
+
+**Play mode** sets the step order. The next step is chosen when a step starts, so slide and tie rules (which look at the next step) still work in every mode.
+
+| Mode | Order (4-step pattern) |
+| --- | --- |
+| Forward | 0 1 2 3 0 1 … |
+| Reverse | 3 2 1 0 3 2 … |
+| Fwd+Rev | 0 1 2 3 2 1 0 1 … (end steps not repeated) |
+| Invert | Forward order; each note mirrored around its octave's C: `n → (12 − n) mod 12`, so C stays C, D# ↔ A, G ↔ F, the top C plays as the bottom C |
+| Random | Uniformly random step each time (realtime-safe xorshift generator) |
+
 ## Transport
 
 - **Play** starts at step 0 on the next block, sample offset 0 of that block.

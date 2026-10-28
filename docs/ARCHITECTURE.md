@@ -80,7 +80,7 @@ Singleton instances: `main()` creates each controller before the QML engine, and
 
 ## Startup and shutdown
 
-1. Load `midimap.json` and `patterns.json` (missing or invalid → defaults, warning logged).
+1. Load `panel.json` (knob positions), `patterns.json` and `midimap.json` (missing or invalid → defaults, warning logged).
 2. Create JACK client `k303`, register `out_L`, `out_R`, `midi_in`, set callbacks, activate.
 3. Auto-connect outputs to the first two physical playback ports (under PipeWire these are the default sink's, which it lists first); connect `midi_in` to the first capture port whose name matches the configured regex (default `Impact LX49`).
 4. If JACK is unavailable, the UI still starts with an "audio offline" indicator and retries every 2 s.

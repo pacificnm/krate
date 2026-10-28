@@ -41,11 +41,16 @@ class SynthController : public QObject
     Q_PROPERTY(qreal waveform READ waveform WRITE setWaveform NOTIFY paramsChanged)
     Q_PROPERTY(qreal volume READ volume WRITE setVolume NOTIFY paramsChanged)
     Q_PROPERTY(qreal tempo READ tempo WRITE setTempo NOTIFY paramsChanged)
+    Q_PROPERTY(qreal scale READ scale WRITE setScale NOTIFY paramsChanged)
+    Q_PROPERTY(qreal playMode READ playMode WRITE setPlayMode NOTIFY paramsChanged)
+    // True while the playing step starts a beat (beat LED). Display only.
+    Q_PROPERTY(bool beat READ beat NOTIFY currentStepChanged)
 
 public:
     // Deliberately not default-constructible: Qt prefers a default constructor
     // over create(), which would give QML a second instance (and JACK client).
-    explicit SynthController(QObject *parent);
+    // panelFilePath: where knob positions are saved (docs/ARCHITECTURE.md).
+    SynthController(const QString &panelFilePath, QObject *parent);
     ~SynthController() override;
 
     // The instance main() created; QML gets this one rather than a new object.
@@ -79,6 +84,9 @@ public:
     qreal waveform() const { return param(k303::ParamId::Waveform); }
     qreal volume() const { return param(k303::ParamId::Volume); }
     qreal tempo() const { return param(k303::ParamId::Tempo); }
+    qreal scale() const { return param(k303::ParamId::Scale); }
+    qreal playMode() const { return param(k303::ParamId::PlayMode); }
+    bool beat() const { return m_beat; }
     void setTuning(qreal v) { setParam(k303::ParamId::Tuning, v); }
     void setCutoff(qreal v) { setParam(k303::ParamId::Cutoff, v); }
     void setResonance(qreal v) { setParam(k303::ParamId::Resonance, v); }
@@ -88,6 +96,8 @@ public:
     void setWaveform(qreal v) { setParam(k303::ParamId::Waveform, v); }
     void setVolume(qreal v) { setParam(k303::ParamId::Volume, v); }
     void setTempo(qreal v) { setParam(k303::ParamId::Tempo, v); }
+    void setScale(qreal v) { setParam(k303::ParamId::Scale, v); }
+    void setPlayMode(qreal v) { setParam(k303::ParamId::PlayMode, v); }
 
     // Key-based access for generic controls (keys are the ids in docs/DSP.md).
     Q_INVOKABLE void setParamByKey(const QString &key, qreal value);
@@ -112,6 +122,7 @@ private:
     void poll();
     void setAudioStatus(const QString &status);
     void connectMidiInput();
+    void savePanel();
 
     static inline SynthController *s_instance = nullptr;
 
@@ -123,6 +134,9 @@ private:
     QString m_audioStatus;
     qreal m_outputLevel = 0.0;
     int m_currentStep = -1;
+    bool m_beat = false;
+    QString m_panelFilePath;
+    QTimer m_saveTimer;
     QString m_midiMatch;
     bool m_midiConnected = false;
     int m_lastXruns = 0;

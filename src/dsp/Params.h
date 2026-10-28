@@ -19,6 +19,8 @@ enum class ParamId : int {
     Waveform,
     Volume,
     Tempo,
+    Scale,      // step length: 1/16, 1/32, 1/16T
+    PlayMode,   // Forward, Reverse, Fwd+Rev, Invert, Random
     Count
 };
 
@@ -41,6 +43,8 @@ inline constexpr std::array<ParamInfo, ParamCount> kParams{{
     {ParamId::Waveform,  "waveform",  "Waveform",     0.0f}, // 0 = saw
     {ParamId::Volume,    "volume",    "Volume",       0.8f},
     {ParamId::Tempo,     "tempo",     "Tempo",        0.4f}, // 120 BPM in 40..240
+    {ParamId::Scale,     "scale",     "Scale",        0.0f}, // 1/16
+    {ParamId::PlayMode,  "playmode",  "Play Mode",    0.0f}, // Forward
 }};
 
 constexpr const ParamInfo &paramInfo(ParamId id)
@@ -68,6 +72,14 @@ inline double decaySeconds(float v) { return kDecayMinS * std::pow(kDecayMaxS / 
 inline bool waveformIsSquare(float v) { return v >= 0.5f; }
 inline double volumeGain(float v) { return double(v) * v * v; }                 // audio taper
 inline double tempoBpm(float v) { return kTempoMinBpm + (kTempoMaxBpm - kTempoMinBpm) * v; }
+
+// Selector positions: the normalized value snaps to evenly spaced detents.
+inline constexpr int kScalePositions = 3;
+inline constexpr int kPlayModePositions = 5;
+inline int detent(float v, int positions) { return int(std::lround(double(v) * (positions - 1))); }
+// 1/16 = 4 steps per beat, 1/32 = 8, 1/16T (triplet sixteenths) = 6.
+inline int scaleStepsPerBeat(float v) { constexpr int steps[] = {4, 8, 6}; return steps[detent(v, kScalePositions)]; }
+inline int playMode(float v) { return detent(v, kPlayModePositions); } // as Sequencer::PlayMode
 
 } // namespace units
 

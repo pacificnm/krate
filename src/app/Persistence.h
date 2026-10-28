@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QString>
 
+#include "dsp/Params.h"
 #include "dsp/Sequencer.h"
 
 namespace k303::persistence {
@@ -52,6 +53,17 @@ struct MidiMap
 // CC numbers outside 0..127 are skipped.
 LoadResult loadMidiMap(const QString &path, MidiMap *map);
 bool saveMidiMap(const QString &path, const MidiMap &map);
+
+// --- Panel settings: every knob/switch position (normalized 0..1) -------------
+
+inline constexpr int kPanelFileVersion = 1;
+using PanelValues = std::array<float, ParamCount>;
+
+PanelValues defaultPanel();
+// On anything but Loaded, *values is set to defaultPanel(). Unknown keys are
+// ignored; missing ones keep their default; values are clamped to 0..1.
+LoadResult loadPanel(const QString &path, PanelValues *values);
+bool savePanel(const QString &path, const PanelValues &values);
 
 // JSON conversion (docs/SEQUENCER.md#pattern-storage). Unknown keys are
 // ignored; out-of-range values are clamped; missing steps are rests.
