@@ -154,19 +154,20 @@ void SynthController::setMidiInputMatch(const QString &pattern)
 
 void SynthController::connectMidiInput()
 {
-    if (!m_client.isOpen() || m_midiMatch.isEmpty() || m_client.midiInputConnected())
+    if (!m_client.isOpen() || m_midiMatch.isEmpty())
         return;
     const QRegularExpression match(m_midiMatch, QRegularExpression::CaseInsensitiveOption);
     if (!match.isValid()) {
         qCWarning(lcAudio) << "invalid MIDI input pattern" << m_midiMatch;
         return;
     }
+    // Every matching port: a controller can have several (the LX49 mk3 sends its
+    // keys and knobs on MIDI1 and its control buttons on MIDI2). Ports already
+    // connected are skipped by JACK, so this is safe to repeat on every port change.
     for (const auto &port : m_client.midiSourcePorts()) {
         const QString name = QString::fromStdString(port);
-        if (name.contains(match) && m_client.connectMidiFrom(port)) {
+        if (name.contains(match) && m_client.connectMidiFrom(port))
             qCInfo(lcAudio) << "midi_in <-" << name;
-            return;
-        }
     }
 }
 

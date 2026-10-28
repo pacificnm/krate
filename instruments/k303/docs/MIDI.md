@@ -13,7 +13,7 @@ MIDI arrives on a JACK MIDI input port (`k303:midi_in`). Under PipeWire, USB MID
 
 Channel: v1 listens on all channels (omni). A channel filter is a later setting. Keys are ignored while the sequencer runs; starting the sequencer forgets held keys.
 
-Auto-connect: at startup, and again whenever JACK ports appear (e.g. the controller is plugged in later), `midi_in` connects to the first MIDI source whose name matches `inputPortMatch` (case-insensitive regex). The status line under the pattern buttons shows "MIDI in" or "no MIDI".
+Auto-connect: at startup, and again whenever JACK ports appear (e.g. the controller is plugged in later), `midi_in` connects to **every** MIDI source whose name matches `inputPortMatch` (case-insensitive regex). The LX49 mk3 has two USB MIDI ports, `Impact LX49mk3 MIDI1` (keys, knobs, faders, pads) and `Impact LX49mk3 MIDI2` (control and transport buttons); both match the default "Impact LX49". The status line under the pattern buttons shows "MIDI in" or "no MIDI".
 
 ## MIDI Learn
 
