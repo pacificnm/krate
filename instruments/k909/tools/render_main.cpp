@@ -23,8 +23,8 @@
 
 #include "core/MasterStage.h"
 #include "core/Transport.h"
-#include "dsp/Engine.h"
-#include "dsp/Params.h"
+#include "k909/dsp/Engine.h"
+#include "k909/dsp/Params.h"
 #include "tools/WavFile.h"
 
 namespace {

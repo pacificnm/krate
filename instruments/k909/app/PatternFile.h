@@ -6,7 +6,7 @@
 #include <QString>
 
 #include "app/JsonFile.h"
-#include "dsp/Sequencer.h"
+#include "k909/dsp/Sequencer.h"
 
 namespace k909::persistence {
 

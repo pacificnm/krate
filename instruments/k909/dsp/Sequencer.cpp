@@ -1,4 +1,4 @@
-#include "dsp/Sequencer.h"
+#include "k909/dsp/Sequencer.h"
 
 #include <algorithm>
 #include <string_view>

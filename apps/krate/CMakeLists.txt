@@ -25,6 +25,7 @@ target_compile_definitions(krate PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSI
 target_compile_options(krate PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(krate PRIVATE
     k303_ui k303_uiplugin
+    k909_ui k909_uiplugin
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin
     krate_rack krate_host

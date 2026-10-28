@@ -5,7 +5,7 @@ import Krate
 
 // K909's panel at design size 1600 x 940 (docs/UI.md): knob sections, the
 // sequencer's step buttons and track strip, START/STOP/CLEAR, patterns A-H
-// and the LCD block. The MIDI Learn controls arrive in D5.
+// and the LCD block, UNMAP/AUDIO/LEARN with the status line and meter.
 Item {
     id: panel
 
@@ -335,6 +335,68 @@ Item {
         height: 70
     }
 
+    // Utilities: clear all MIDI mappings, audio status (click to reconnect),
+    // MIDI Learn; the status line and output meter below.
+    Repeater {
+        model: [{ name: "UNMAP", cx: 1418 }, { name: "AUDIO", cx: 1484 }, { name: "LEARN", cx: 1550 }]
+
+        Item {
+            id: utility
+            required property var modelData
+            readonly property string name: modelData.name
+
+            PanelLabel {
+                centerX: utility.modelData.cx
+                y: 572
+                text: utility.name
+                font.pixelSize: 12
+            }
+            PanelButton {
+                x: utility.modelData.cx - width / 2
+                y: 592
+                width: 52
+                height: 30
+                text: utility.name === "AUDIO" ? "Audio: reconnect"
+                    : utility.name === "LEARN" ? "MIDI Learn" : "Clear all MIDI mappings"
+                hasLed: utility.name !== "UNMAP"
+                ledOn: utility.name === "AUDIO" ? Host.audioConnected : MidiLearn.active
+                onClicked: {
+                    if (utility.name === "AUDIO")
+                        Host.connectAudio()
+                    else if (utility.name === "LEARN")
+                        MidiLearn.active = !MidiLearn.active
+                    else
+                        MidiLearn.clearAll()
+                }
+            }
+        }
+    }
+    PanelLabel { // audio status: rate, buffer, xruns, MIDI, or AUDIO OFFLINE
+        x: 1392
+        y: 640
+        width: 184
+        horizontalAlignment: Text.AlignLeft
+        elide: Text.ElideRight
+        text: Host.audioStatus
+        color: Host.audioConnected ? Theme.ink : Theme.ledOn
+        font.pixelSize: 11
+    }
+    Rectangle { // output level meter
+        x: 1392
+        y: 668
+        width: 184
+        height: 10
+        radius: 2
+        color: Theme.ledOff
+
+        Rectangle {
+            width: parent.width * Host.outputLevel
+            height: parent.height
+            radius: 2
+            color: Theme.ledOn
+        }
+    }
+
     // Lower deck: transport buttons, step buttons and the track strip
     Rectangle {
         x: panel.margin
@@ -357,6 +419,12 @@ Item {
         hasLed: true
         ledOn: Drums.playing
         onClicked: Drums.playing = true
+
+        LearnOverlay { // a MIDI button learned here toggles start/stop
+            anchors.fill: parent
+            paramKey: "startstop"
+            round: false
+        }
     }
     PanelButton {
         visible: Drums.ownsTransport
@@ -482,8 +550,8 @@ Item {
         }
     }
 
-    // Keyboard (docs/UI.md): Space run/stop, Up/Down change track. Shift is
-    // tracked for CLEAR.
+    // Keyboard (docs/UI.md): Space run/stop, Up/Down change track, A-H pattern,
+    // L learn, Esc leaves learn. Shift is tracked for CLEAR.
     Item {
         id: panelKeys
         property bool shift: false
@@ -493,6 +561,16 @@ Item {
     Keys.onDownPressed: Drums.selectedTrack = Drums.selectedTrack + 1
     Keys.onPressed: event => {
         panelKeys.shift = (event.modifiers & Qt.ShiftModifier) !== 0
+        if (event.modifiers === Qt.NoModifier && event.key === Qt.Key_L) {
+            MidiLearn.active = !MidiLearn.active
+            event.accepted = true
+            return
+        }
+        if (event.key === Qt.Key_Escape && MidiLearn.active) {
+            MidiLearn.active = false
+            event.accepted = true
+            return
+        }
         // A-H select a pattern (no modifiers, so shortcuts elsewhere stay free).
         if (event.key >= Qt.Key_A && event.key <= Qt.Key_H && event.modifiers === Qt.NoModifier) {
             Drums.patternIndex = event.key - Qt.Key_A

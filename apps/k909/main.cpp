@@ -5,7 +5,7 @@
 #include <QStandardPaths>
 
 #include "app/HostController.h"
-#include "app/K909Instrument.h"
+#include "k909/app/K909Instrument.h"
 #include "app/InstrumentMidiLearn.h"
 #include "app/ScreenshotHook.h"
 #include "core/Transport.h"

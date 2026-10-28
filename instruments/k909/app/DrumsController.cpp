@@ -1,4 +1,4 @@
-#include "app/DrumsController.h"
+#include "k909/app/DrumsController.h"
 
 #include <algorithm>
 #include <array>
@@ -7,8 +7,8 @@
 #include <QLoggingCategory>
 
 #include "core/Transport.h"
-#include "dsp/Engine.h"
-#include "dsp/Params.h"
+#include "k909/dsp/Engine.h"
+#include "k909/dsp/Params.h"
 
 Q_LOGGING_CATEGORY(lcPatterns, "k909.patterns")
 

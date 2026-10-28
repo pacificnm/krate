@@ -18,6 +18,7 @@
 #include "app/HostController.h"
 #include "app/InstrumentRegistry.h"
 #include "app/K303Instrument.h"
+#include "k909/app/K909Instrument.h"
 #include "app/KlickInstrument.h"
 #include "app/ScreenshotHook.h"
 #include "core/Midi.h"
@@ -28,6 +29,7 @@
 
 Q_IMPORT_QML_PLUGIN(KratePlugin)
 Q_IMPORT_QML_PLUGIN(K303Plugin)
+Q_IMPORT_QML_PLUGIN(K909Plugin)
 Q_IMPORT_QML_PLUGIN(KlickPlugin)
 
 int main(int argc, char *argv[])
@@ -42,6 +44,7 @@ int main(int argc, char *argv[])
     // (docs/SHARED_FOUNDATIONS.MD#adding-instruments).
     const QList<krate::InstrumentEntry> entries = {
         k303::registryEntry(),
+        k909::registryEntry(),
         klick::registryEntry(),
     };
 

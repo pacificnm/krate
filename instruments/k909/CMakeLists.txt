@@ -13,7 +13,9 @@ add_library(k909_dsp STATIC
     dsp/Voices.h
     dsp/Voices.cpp
 )
-target_include_directories(k909_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# Included as "k909/dsp/...", "k909/app/...": k303 has files of the same names,
+# and the rack and krate-render build against both.
+target_include_directories(k909_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(k909_dsp PUBLIC krate_core)
 target_compile_options(k909_dsp PRIVATE ${K909_WARNINGS})
 
@@ -35,7 +37,7 @@ qt_add_qml_module(k909_ui
         qml/Panel.qml
 )
 # Generated type registration includes headers by bare name.
-target_include_directories(k909_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE app)
+target_include_directories(k909_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
 target_link_libraries(k909_ui PUBLIC k909_dsp krate_host krate_app krate_qml Qt6::Quick)
 target_compile_options(k909_ui PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -53,6 +55,11 @@ foreach(test tst_voices tst_sequencer)
     add_test(NAME k909_${test} COMMAND k909_${test})
 endforeach()
 
+add_executable(k909_tst_rack tests/tst_rack.cpp)
+target_compile_options(k909_tst_rack PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(k909_tst_rack PRIVATE k909_dsp krate_rack krate_testing Qt6::Test)
+add_test(NAME k909_tst_rack COMMAND k909_tst_rack)
+
 # Compiles the controller sources directly (plain add_executable) rather than
 # linking the QML module library, so no QML plugin is involved.
 add_executable(tst_k909
@@ -66,7 +73,7 @@ add_executable(tst_k909
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
 )
-target_include_directories(tst_k909 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(tst_k909 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(tst_k909 PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_k909 PRIVATE k909_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
 add_test(NAME tst_k909 COMMAND tst_k909)

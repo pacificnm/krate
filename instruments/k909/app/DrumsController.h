@@ -4,8 +4,8 @@
 #include <QtQml/qqmlregistration.h>
 
 #include "app/ParamController.h"
-#include "app/PatternFile.h"
-#include "dsp/Sequencer.h"
+#include "k909/app/PatternFile.h"
+#include "k909/dsp/Sequencer.h"
 
 class QQmlEngine;
 class QJSEngine;

@@ -4,7 +4,7 @@
 #include <cstdint>
 
 #include "core/StepClock.h"
-#include "dsp/Voices.h"
+#include "k909/dsp/Voices.h"
 
 namespace k909 {
 

@@ -11,10 +11,10 @@
 #include <QJsonObject>
 #include <QTemporaryDir>
 
-#include "app/K909Instrument.h"
-#include "app/PatternFile.h"
+#include "k909/app/K909Instrument.h"
+#include "k909/app/PatternFile.h"
 #include "core/Transport.h"
-#include "dsp/Params.h"
+#include "k909/dsp/Params.h"
 
 using namespace k909;
 

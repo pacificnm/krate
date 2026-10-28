@@ -7,9 +7,9 @@
 #include "core/Midi.h"
 #include "core/ParamValues.h"
 #include "core/SpscQueue.h"
-#include "dsp/Params.h"
-#include "dsp/Sequencer.h"
-#include "dsp/Voices.h"
+#include "k909/dsp/Params.h"
+#include "k909/dsp/Sequencer.h"
+#include "k909/dsp/Voices.h"
 
 namespace k909 {
 

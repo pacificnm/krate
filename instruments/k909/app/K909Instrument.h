@@ -1,8 +1,8 @@
 #pragma once
 
-#include "app/DrumsController.h"
 #include "app/InstrumentRegistry.h"
-#include "dsp/Engine.h"
+#include "k909/app/DrumsController.h"
+#include "k909/dsp/Engine.h"
 
 namespace k909 {
 

@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "core/Transport.h"
-#include "dsp/Engine.h"
-#include "dsp/Sequencer.h"
+#include "k909/dsp/Engine.h"
+#include "k909/dsp/Sequencer.h"
 
 using namespace k909;
 
