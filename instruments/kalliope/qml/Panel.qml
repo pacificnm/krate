@@ -24,7 +24,7 @@ Item {
     // Sound sections, left to right. Width in columns; each control sits at a
     // column inside its section. kind: slider, knob (selector or continuous), switch.
     readonly property real margin: 24
-    readonly property real columns: 33.5
+    readonly property real columns: 34.5
     readonly property real column: (width - 2 * margin) / columns
     readonly property real sectionTop: 250
     readonly property real sectionBottom: 540
@@ -69,11 +69,12 @@ Item {
             { key: "env1_d", label: "D", kind: "slider", col: 1 },
             { key: "env1_s", label: "S", kind: "slider", col: 2 },
             { key: "env1_r", label: "R", kind: "slider", col: 3 } ] },
-        { title: "ENV-2", columns: 4, controls: [
+        { title: "ENV-2", columns: 5, controls: [
             { key: "env2_a", label: "A", kind: "slider", col: 0 },
             { key: "env2_d", label: "D", kind: "slider", col: 1 },
             { key: "env2_s", label: "S", kind: "slider", col: 2 },
-            { key: "env2_r", label: "R", kind: "slider", col: 3 } ] }
+            { key: "env2_r", label: "R", kind: "slider", col: 3 },
+            { key: "env_key", label: "KEY\nFOLLOW", kind: "switch", col: 4 } ] }
     ]
 
     // ---- Controls bound to Kalliope's parameters by key; all MIDI-learnable.

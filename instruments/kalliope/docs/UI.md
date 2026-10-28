@@ -32,7 +32,7 @@ Upper deck (sound) 250–540, function deck 560–760, keyboard deck 780–1076.
 | --- | --- | --- |
 | Continuous parameters | `PanelSlider` (new shared control): vertical, 0–10 scale, drag or wheel, double-click resets; learnable | LFO, modulator amounts, cross mod, HPF, VCF, VCA, envelopes, fine tune, mix |
 | Range and waveform selectors | `Knob` with detents and the positions written around it (from the parameter's own display text) | VCO ranges and waveforms; the LFO waveform shows its position under the knob (the names don't fit around it); Mix and Fine Tune are continuous knobs |
-| Two- and three-position switches | `PanelSwitch` (new shared control): small vertical toggle, its position written under it | mod dest, PWM source, slope, env source, sync (Env Key Follow is on the parameter list and learnable; it gets a panel switch with the patches in P5) |
+| Two- and three-position switches | `PanelSwitch` (new shared control): small vertical toggle, its position written under it | mod dest, PWM source, slope, env source, sync, env key follow (in ENV-2: it shortens both envelopes) |
 | Function buttons | `PanelButton` with a `tint` (new property) and LED | Arp and Hold (on/off), Poly / Unison / Solo (one lit; they learn as one control), Chorus (cycles Off, I, II); banks, patches, Manual, Write in P5 |
 | Patch display | Red seven-segment readout (QML, our own drawing) | Bank and patch, a dot while edited; ▲▼ step through patches (P5; shows `--` until then) |
 | Arp, delay, play and master knobs | `Knob`, value under it | Arp mode/range/rate, delay level/time/feedback, velocity, bend range, Tempo (standalone), Volume |
