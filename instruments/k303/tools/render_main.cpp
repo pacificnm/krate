@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "core/MasterStage.h"
-#include "core/StandaloneTransport.h"
+#include "core/Transport.h"
 #include "tools/WavFile.h"
 #include "dsp/Engine.h"
 #include "dsp/Params.h"
@@ -75,7 +75,7 @@ int main(int argc, char **argv)
     constexpr std::uint32_t kBlock = 64;
     krate::IInstrument &instrument = engine; // everything below goes through the interface
     instrument.prepare(rate, kBlock);
-    krate::StandaloneTransport transport;
+    krate::Transport transport;
     krate::MasterStage master;
     transport.setBpm(k303::units::tempoBpm(params.get(k303::ParamId::Tempo)));
     transport.setPlaying(true);

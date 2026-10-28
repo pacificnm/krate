@@ -6,7 +6,7 @@
 
 #include "core/Denormals.h"
 #include "core/Instrument.h"
-#include "core/StandaloneTransport.h"
+#include "core/Transport.h"
 
 namespace krate {
 
@@ -17,7 +17,7 @@ void silentJackMessage(const char *) {}
 
 } // namespace
 
-JackHost::JackHost(IInstrument &instrument, StandaloneTransport &transport)
+JackHost::JackHost(IInstrument &instrument, Transport &transport)
     : m_instrument(instrument)
     , m_transport(transport)
     , m_channels(std::clamp(instrument.outputChannels(), 1, kMaxChannels))

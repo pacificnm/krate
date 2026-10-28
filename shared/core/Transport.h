@@ -7,13 +7,15 @@
 
 namespace krate {
 
-// The transport a standalone app (or the offline renderer) gives its one
-// instrument. The rack replaces it with a shared transport; instruments can't
-// tell the difference (docs/SHARED_FOUNDATIONS.MD#transport).
+// A transport controlled from the GUI (play/stop, tempo) and advanced by the
+// host once per block: a standalone app gives one to its single instrument,
+// the Krate rack shares one across all its devices, the offline renderers use
+// one too. Instruments only ever see the TransportState it produces
+// (docs/SHARED_FOUNDATIONS.MD#transport).
 //
 // Beat position is recomputed from an anchor (re-set at play and at every
 // tempo change) rather than summed per block, so it never drifts.
-class StandaloneTransport
+class Transport
 {
 public:
     // GUI thread.

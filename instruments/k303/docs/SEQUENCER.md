@@ -30,7 +30,7 @@ Time comes from the transport ([SHARED_FOUNDATIONS.MD](../../../docs/SHARED_FOUN
 - `krate::StepClock` turns beats into steps: `stepPosition = anchorPos + (beat − anchorBeat) · stepsPerBeat`; a step starts when `floor(stepPosition)` increases. Steps are 16ths by default (4 per beat; see Scale below).
 - Gate-off happens when the step's fractional position reaches `gateLength = 0.5` (*starting value*; constant, not a panel control).
 - Tempo changes need nothing special: the beat keeps moving, only faster or slower, so the current step's fraction is kept. Scale changes re-anchor the clock at the current position, which also keeps the fraction.
-- `krate::StandaloneTransport` computes beat position from the sample count since the last anchor (play, or a tempo change), not by summing per block, so it never drifts (tested over an hour at 133 BPM).
+- `krate::Transport` computes beat position from the sample count since the last anchor (play, or a tempo change), not by summing per block, so it never drifts (tested over an hour at 133 BPM).
 - Events land on their exact sample: the sequencer is ticked once per sample inside the block.
 - Two sequencers on one transport step together sample for sample (tested), which is what the Krate rack relies on.
 
@@ -87,7 +87,7 @@ All edits go through `Pattern` (singleton `PatternModel`): it updates its mirror
 
 Editing rules: setting a note on a rest step turns it into a Note. Octave stays within −1..+1. Edits are sent only when they change something.
 
-Transport and tempo don't use the queue: in the standalone app, `Synth.playing` and the Tempo knob set the `krate::StandaloneTransport` owned by `Synth`, which the JACK callback advances every block and passes to the engine. The engine never reads the Tempo parameter; the standalone app forwards it (including MIDI-mapped tempo changes) to its transport. The playhead is reported back through `Engine::currentStep()` → `Synth.currentStep`, polled at 60 Hz for display only.
+Transport and tempo don't use the queue: in the standalone app, `Synth.playing` and the Tempo knob set the `krate::Transport` owned by `Synth`, which the JACK callback advances every block and passes to the engine. The engine never reads the Tempo parameter; the standalone app forwards it (including MIDI-mapped tempo changes) to its transport. The playhead is reported back through `Engine::currentStep()` → `Synth.currentStep`, polled at 60 Hz for display only.
 
 Edits while playing apply from the next step boundary that reads that step. No locks, no double-buffer swap needed: the audio thread copies the step into its own pattern when it drains the queue.
 

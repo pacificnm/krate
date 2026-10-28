@@ -3,7 +3,7 @@
 #include <cmath>
 #include <vector>
 
-#include "core/StandaloneTransport.h"
+#include "core/Transport.h"
 #include "dsp/Sequencer.h"
 
 using namespace k303;
@@ -16,7 +16,7 @@ struct Driver
 {
     Sequencer &seq;
     double sampleRate = 48000.0;
-    krate::StandaloneTransport transport;
+    krate::Transport transport;
     long sample = 0;
 
     explicit Driver(Sequencer &s, double bpm = 120.0, double rate = 48000.0)
@@ -323,7 +323,7 @@ private slots:
         b.setPattern(p);
         a.start();
         b.start();
-        krate::StandaloneTransport transport;
+        krate::Transport transport;
         transport.setBpm(133.0);
         transport.setPlaying(true);
         long aSteps = 0, bSteps = 0;
@@ -343,7 +343,7 @@ private slots:
 
     void transportRestartsAtBeatZero()
     {
-        krate::StandaloneTransport t;
+        krate::Transport t;
         t.setBpm(120.0);
         auto s = t.advance(64, 48000.0);
         QVERIFY(!s.playing);
@@ -366,7 +366,7 @@ private slots:
     // A tempo change continues from the current beat, then moves at the new rate.
     void transportTempoChangeIsContinuous()
     {
-        krate::StandaloneTransport t;
+        krate::Transport t;
         t.setBpm(120.0);
         t.setPlaying(true);
         for (int i = 0; i < 375; ++i)
@@ -382,7 +382,7 @@ private slots:
     // Beat position comes from sample count, not a running sum: no drift over an hour.
     void transportDoesNotDrift()
     {
-        krate::StandaloneTransport t;
+        krate::Transport t;
         t.setBpm(133.0);
         t.setPlaying(true);
         const long blocks = 48000L * 3600 / 64;

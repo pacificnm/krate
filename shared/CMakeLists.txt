@@ -12,7 +12,7 @@ add_library(krate_core STATIC
     core/ParamDescriptor.h
     core/ParamValues.h
     core/SpscQueue.h
-    core/StandaloneTransport.h
+    core/Transport.h
     core/StepClock.h
     core/StepClock.cpp
     tools/WavFile.h
@@ -22,6 +22,7 @@ target_compile_options(krate_core PRIVATE ${KRATE_WARNINGS})
 
 # --- krate_host: standalone JACK host; no Qt
 add_library(krate_host STATIC
+    host/AudioHost.h
     host/JackHost.h
     host/JackHost.cpp
 )
@@ -57,6 +58,9 @@ qt_add_qml_module(krate_qml
     URI Krate
     VERSION 1.0
     SOURCES
+        app/HostController.h
+        app/HostController.cpp
+        app/InstrumentRegistry.h
         app/MidiLearnController.h
         app/MidiLearnController.cpp
     QML_FILES

@@ -6,7 +6,7 @@ k303 is two halves joined by lock-free primitives: a Qt GUI that never touches a
 
 | Module | Kind | Depends on | Responsibility |
 | --- | --- | --- | --- |
-| `krate_core` (`shared/core`) | static lib, C++20 | std only | Shared Krate pieces: `krate::IInstrument`, `AudioBlock`, `MidiEvent`, `TransportState`, `ParamDescriptor`, `StandaloneTransport`, `StepClock`, `SpscQueue`, `decode()`, `MidiLearnMap`, `MasterStage` |
+| `krate_core` (`shared/core`) | static lib, C++20 | std only | Shared Krate pieces: `krate::IInstrument`, `AudioBlock`, `MidiEvent`, `TransportState`, `ParamDescriptor`, `Transport`, `StepClock`, `SpscQueue`, `decode()`, `MidiLearnMap`, `MasterStage` |
 | `krate_app`, `krate_qml` (`shared/app`, `shared/qml`) | static libs | Qt | File helpers (JSON, MIDI map, panel), screenshot hook; QML module `Krate` (controls, `Theme`, `MidiLearn`) |
 | `k303_dsp` | static lib, C++20 | std only | Oscillator, diode ladder, envelopes, voice, sequencer, parameter store, SPSC queue; `Engine` implements `krate::IInstrument`. Pure, allocation-free in `process()` |
 | `krate_host` | static lib | `krate_core`, libjack | Standalone host (`krate::JackHost`): ports from `outputChannels()`, MIDI in, transport, master stage (soft clip + meter). Knows no instrument |
@@ -54,7 +54,7 @@ Every channel is single-producer / single-consumer and fixed size. Nothing alloc
 | CC map | GUI → audio | `krate::MidiLearnMap`: atomic CC → parameter index, −1 = unmapped | MIDI Learn bindings |
 | Learn arm | GUI → audio | `MidiLearnMap::setLearnTarget` (atomic, −1 = off) | Param waiting for a CC |
 | Commands | GUI → audio | `SpscQueue<Command, 256>` (`Engine::post`), drained at the start of each block | `SetStep`, `SetLength`, `LoadPattern` |
-| Transport | GUI → audio | `krate::StandaloneTransport` atomics (playing, BPM), advanced by the JACK callback each block and passed in `AudioBlock::transport` | Run/stop, tempo, beat position |
+| Transport | GUI → audio | `krate::Transport` atomics (playing, BPM), advanced by the JACK callback each block and passed in `AudioBlock::transport` | Run/stop, tempo, beat position |
 | Learned CCs | audio → GUI | `krate::MidiLearnMap` queue (`popLearned`), drained by `MidiLearn` at 60 Hz | `{cc, param index}` |
 | Events | audio → GUI | `SpscQueue<EngineEvent, 256>` (`Engine::popEvent`), drained by `Synth` at 60 Hz | `NoteOn{note, velocity}` → `Synth.notePressed` (for step record). Xruns are counted by the JACK client instead |
 | Playhead | audio → GUI | `std::atomic<int8_t> currentStep` (−1 = stopped) | LED playhead |
@@ -73,13 +73,14 @@ Registered in the `K303` QML module with `QML_ELEMENT` / `QML_SINGLETON`:
 
 | Type | Exposes |
 | --- | --- |
-| `Synth` (singleton) | One `Q_PROPERTY(qreal …)` per parameter (normalized), `playing`, `tempo`, `currentStep`, `xrunCount`, `audioConnected` |
+| `Synth` (singleton, `SynthController`) | One `Q_PROPERTY(qreal …)` per parameter (normalized), `playing`, `ownsTransport`, `currentStep`, `beat`, `displayText()`; owns the engine and `panel.json`; given a `krate::Transport` (none in the rack) |
+| `Host` (singleton, shared `krate::HostController`) | `audioConnected`, `audioStatus`, `sampleRate`, `bufferSize`, `xrunCount`, `midiConnected`, `outputLevel`, `connectAudio()`; works over any `krate::AudioHost` (standalone `JackHost`, later the rack's host) |
 | `Pattern` (singleton, `PatternModel`) | `QAbstractListModel` of 16 steps (roles: `note`, `octave`, `accent`, `slide`, `gate`, `active`, `label`); `index` (pattern 0..7), `length`, `selectedStep`, `selected*` properties for the selected step, `keyboardMode`, `timeMode`; invokables: `setNote`, `octaveUp/Down`, `toggleAccent/Slide`, `setGate`, `selectNext/Previous`, `clear`, `auditionOn/Off`, `save` |
-| `MidiLearn` (singleton, `MidiLearnController`) | `active`, `armedParam`, `revision`, `arm(key)`, `mappingFor(key)`, `clear(key)`, `clearAll()`; instrument-neutral (built from any `krate::IInstrument&`, works by parameter key); owns the GUI copy of the CC map (saved to `midimap.json`) and drains the instrument's `MidiLearnMap` learned queue |
+| `MidiLearn` (singleton, `MidiLearnController`) | `active`, `armedParam`, `revision`, `arm(key)`, `mappingFor(key)`, `clear(key)`, `clearAll()`, `actionTriggered(key)` for learnable buttons; instrument-neutral (built from any `krate::IInstrument&`, works by parameter key); owns the GUI copy of the CC map (saved to `midimap.json`) and drains the instrument's `MidiLearnMap` learned queue |
 
 QML holds no audio state and runs no timing logic.
 
-Singleton instances: `main()` creates each controller before the QML engine, and the class's static `create(QQmlEngine*, QJSEngine*)` hands QML that instance. The controller must **not** be default-constructible (no `parent = nullptr` default): Qt 6.8 prefers a default constructor over `create()` and would silently build a second instance, which for `Synth` means a second JACK client.
+Singleton instances: `main()` builds k303 through `k303::registryEntry()` (which creates `Synth` and `Pattern`), then `MidiLearn` and `Host`, all before the QML engine, and the class's static `create(QQmlEngine*, QJSEngine*)` hands QML that instance. The controller must **not** be default-constructible (no `parent = nullptr` default): Qt 6.8 prefers a default constructor over `create()` and would silently build a second instance, which for `Synth` means a second JACK client.
 
 ## Startup and shutdown
 

@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "core/StandaloneTransport.h"
+#include "core/Transport.h"
 #include "dsp/Engine.h"
 #include "dsp/Klick.h"
 #include "rack/Rack.h"
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     rack.setMute(klickIndex, muteKlick);
     rack.setSolo(klickIndex, soloKlick);
 
-    krate::StandaloneTransport transport;
+    krate::Transport transport;
     transport.setBpm(bpm);
     transport.setPlaying(true);
 

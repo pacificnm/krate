@@ -30,6 +30,8 @@ qt_add_qml_module(k303_ui
     VERSION 1.0
     IMPORTS Krate
     SOURCES
+        app/K303Instrument.h
+        app/K303Instrument.cpp
         app/PatternFile.h
         app/PatternFile.cpp
         app/PatternModel.h
@@ -83,3 +85,20 @@ add_executable(tst_midi
 target_compile_options(tst_midi PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_midi PRIVATE k303_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
 add_test(NAME tst_midi COMMAND tst_midi)
+
+# k303 built through its registry entry, as the standalone app and the rack do.
+add_executable(tst_instance
+    tests/tst_instance.cpp
+    app/K303Instrument.h
+    app/K303Instrument.cpp
+    app/PatternFile.h
+    app/PatternFile.cpp
+    app/PatternModel.h
+    app/PatternModel.cpp
+    app/SynthController.h
+    app/SynthController.cpp
+)
+target_include_directories(tst_instance PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_instance PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_instance PRIVATE k303_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
+add_test(NAME tst_instance COMMAND tst_instance)

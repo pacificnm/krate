@@ -32,7 +32,7 @@ k303 lives inside the Krate monorepo (../../../docs/SHARED_FOUNDATIONS.MD#shared
 CMakeLists.txt                 # Krate project: adds shared/, instruments/k303/, apps/k303/
 shared/                        # instrument-neutral
   core/      krate_core        IInstrument, AudioBlock, TransportState, ParamDescriptor,
-                               StandaloneTransport, StepClock, Midi (decode, MidiLearnMap),
+                               Transport, StepClock, Midi (decode, MidiLearnMap),
                                MasterStage, SpscQueue, Denormals            -- no Qt, no JACK
   host/      krate_host        JackHost                                     -- JACK, no Qt
   app/       krate_app         JsonFile, MidiMapFile, PanelFile, ScreenshotHook   -- Qt

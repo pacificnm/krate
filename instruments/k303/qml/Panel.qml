@@ -16,7 +16,7 @@ Item {
     // Space toggles run/stop from anywhere: no control accepts Space, so the key
     // propagates up from whatever has focus.
     focus: true
-    Keys.onSpacePressed: Synth.playing = !Synth.playing
+    Keys.onSpacePressed: Synth.playing = !Synth.playing // no-op in the rack (no transport of its own)
 
     // Editing shortcuts (docs/UI.md#keyboard-shortcuts)
     Keys.onPressed: event => {
@@ -186,10 +186,10 @@ Item {
                 height: 24
                 text: isAudio ? "Audio: reconnect" : utility.modelData.name
                 hasLed: isAudio
-                ledOn: isAudio && Synth.audioConnected
+                ledOn: isAudio && Host.audioConnected
                 onClicked: {
                     if (isAudio)
-                        Synth.connectAudio()
+                        Host.connectAudio()
                     else if (utility.modelData.name === "UNMAP")
                         MidiLearn.clearAll()
                 }
@@ -200,8 +200,8 @@ Item {
     PanelLabel { // audio status: rate, buffer, xruns, or AUDIO OFFLINE
         x: 30
         y: 306
-        text: Synth.audioStatus
-        color: Synth.audioConnected ? Theme.ink : Theme.ledOn
+        text: Host.audioStatus
+        color: Host.audioConnected ? Theme.ink : Theme.ledOn
         font.pixelSize: 12
     }
 
@@ -211,7 +211,7 @@ Item {
         width: 40
         height: 26
         radius: 3
-        on: Synth.beat // lit for the first step of each beat, at any Scale
+        on: Host.audioConnected && Synth.beat // lit for the first step of each beat, at any Scale
     }
 
     Grid {
@@ -242,9 +242,11 @@ Item {
         }
     }
 
-    // Tempo
-    PanelLabel { centerX: 358; y: 150; text: "TEMPO" }
+    // Tempo: only when k303 has its own transport (standalone); the rack's
+    // transport bar owns tempo.
+    PanelLabel { centerX: 358; y: 150; text: "TEMPO"; visible: Synth.ownsTransport }
     Knob {
+        visible: Synth.ownsTransport
         x: 358 - width / 2
         y: 188
         width: 116
@@ -374,7 +376,7 @@ Item {
         color: Theme.ledOff
 
         Rectangle {
-            width: parent.width * Synth.outputLevel
+            width: parent.width * Host.outputLevel
             height: parent.height
             radius: 2
             color: Theme.ledOn
@@ -478,6 +480,7 @@ Item {
 
     PanelButton {
         id: runStop
+        visible: Synth.ownsTransport // the rack's transport bar has its own
         x: 32
         y: 506
         width: 142
@@ -493,7 +496,7 @@ Item {
             round: false
         }
     }
-    PanelLabel { centerX: 103; y: 650; text: "RUN / STOP" }
+    PanelLabel { centerX: 103; y: 650; text: "RUN / STOP"; visible: Synth.ownsTransport }
 
     // Keyboard and time-mode buttons
     PanelButton {
@@ -533,7 +536,7 @@ Item {
         x: 362
         y: 360
         selectedStep: Pattern.selectedStep
-        playStep: Synth.currentStep
+        playStep: Host.audioConnected ? Synth.currentStep : -1
         onStepClicked: step => Pattern.selectedStep = step
     }
 

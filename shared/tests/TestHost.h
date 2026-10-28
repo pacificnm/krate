@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "core/Instrument.h"
-#include "core/StandaloneTransport.h"
+#include "core/Transport.h"
 
 // Drives an instrument with a standalone transport, the way the app's JACK
 // callback does. Output of the last run() is in left/right.
@@ -12,7 +12,7 @@ struct TestHost
 {
     krate::IInstrument &instrument;
     double sampleRate;
-    krate::StandaloneTransport transport;
+    krate::Transport transport;
     std::vector<float> left;
     std::vector<float> right;
 

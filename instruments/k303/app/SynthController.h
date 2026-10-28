@@ -4,30 +4,26 @@
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
-#include "core/StandaloneTransport.h"
+#include "core/Transport.h"
 #include "dsp/Engine.h"
-#include "host/JackHost.h"
 
 class QQmlEngine;
 class QJSEngine;
 
-// QML singleton "Synth": the GUI's view of the engine and the audio connection.
-// Owns the Engine and the JACK client. Polls engine state at 60 Hz and retries
-// the JACK connection every 2 s while offline.
+// QML singleton "Synth": the GUI's view of k303's engine. Owns the Engine and
+// saves its knob positions; polls the playhead and MIDI-changed knobs at 60 Hz.
+// Knows nothing about the audio host (that's krate::HostController, "Host").
+// RUN/STOP and the Tempo knob drive the transport it is given; in the Krate rack
+// it is given none, because the rack's transport bar owns play and tempo.
 class SynthController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Synth)
     QML_SINGLETON
 
-    Q_PROPERTY(bool audioConnected READ audioConnected NOTIFY audioStatusChanged)
-    Q_PROPERTY(QString audioStatus READ audioStatus NOTIFY audioStatusChanged)
-    Q_PROPERTY(int sampleRate READ sampleRate NOTIFY audioStatusChanged)
-    Q_PROPERTY(int bufferSize READ bufferSize NOTIFY audioStatusChanged)
-    Q_PROPERTY(int xrunCount READ xrunCount NOTIFY audioStatusChanged)
-    Q_PROPERTY(qreal outputLevel READ outputLevel NOTIFY outputLevelChanged)
-    Q_PROPERTY(bool midiConnected READ midiConnected NOTIFY audioStatusChanged)
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
+    // False in the rack: the panel hides RUN/STOP and Tempo then.
+    Q_PROPERTY(bool ownsTransport READ ownsTransport CONSTANT)
     // Playing step 0..15, or -1 when stopped. Display only: polled at 60 Hz.
     Q_PROPERTY(int currentStep READ currentStep NOTIFY currentStepChanged)
 
@@ -49,9 +45,10 @@ class SynthController : public QObject
 
 public:
     // Deliberately not default-constructible: Qt prefers a default constructor
-    // over create(), which would give QML a second instance (and JACK client).
+    // over create(), which would give QML a second instance.
     // panelFilePath: where knob positions are saved (docs/ARCHITECTURE.md).
-    SynthController(const QString &panelFilePath, QObject *parent);
+    // transport: driven by RUN/STOP and Tempo; nullptr in the rack.
+    SynthController(const QString &panelFilePath, krate::Transport *transport, QObject *parent);
     ~SynthController() override;
 
     // The instance main() created; QML gets this one rather than a new object.
@@ -60,19 +57,8 @@ public:
     // C++ only: for the other controllers that send commands to the engine.
     k303::Engine &engine() { return m_engine; }
 
-    bool audioConnected() const { return m_client.isOpen(); }
-    QString audioStatus() const { return m_audioStatus; }
-    int sampleRate() const { return int(m_client.sampleRate()); }
-    int bufferSize() const { return int(m_client.bufferSize()); }
-    int xrunCount() const { return int(m_client.xrunCount()); }
-    qreal outputLevel() const { return m_outputLevel; }
-    bool midiConnected() const { return m_midiConnected; }
-
-    // Regular expression (case-insensitive) for the MIDI source to auto-connect
-    // to midi_in, from midimap.json. Retried whenever ports appear.
-    void setMidiInputMatch(const QString &pattern);
-
-    bool playing() const { return m_transport.playing(); }
+    bool ownsTransport() const { return m_transport != nullptr; }
+    bool playing() const { return m_transport && m_transport->playing(); }
     int currentStep() const { return m_currentStep; }
     void setPlaying(bool playing);
 
@@ -106,13 +92,7 @@ public:
     // Human-readable value, e.g. "1.2 kHz"; pass the value so bindings update with it.
     Q_INVOKABLE QString displayText(const QString &key, qreal value) const;
 
-public slots:
-    void connectAudio();
-    void disconnectAudio();
-
 signals:
-    void audioStatusChanged();
-    void outputLevelChanged();
     void playingChanged();
     void paramsChanged();
     void currentStepChanged();
@@ -122,29 +102,18 @@ signals:
 private:
     qreal param(k303::ParamId id) const { return m_engine.params().get(id); }
     void setParam(k303::ParamId id, qreal value);
-    void syncTempo(); // the Tempo knob drives the standalone transport
+    void syncTempo(); // the Tempo knob drives the transport, if we have one
     void poll();
-    void setAudioStatus(const QString &status);
-    void connectMidiInput();
     void savePanel();
 
     static inline SynthController *s_instance = nullptr;
 
     mutable k303::Engine m_engine; // mutable: ParamStore reads are const in spirit
-    krate::StandaloneTransport m_transport; // run/stop and tempo for the standalone app
-    krate::JackHost m_client{m_engine, m_transport};
+    krate::Transport *m_transport = nullptr;
 
     QTimer m_pollTimer;
-    QTimer m_retryTimer;
-    QString m_audioStatus;
-    qreal m_outputLevel = 0.0;
     int m_currentStep = -1;
     bool m_beat = false;
     QString m_panelFilePath;
     QTimer m_saveTimer;
-    QString m_midiMatch;
-    bool m_midiConnected = false;
-    int m_lastXruns = 0;
-    int m_lastSampleRate = 0;
-    int m_lastBufferSize = 0;
 };
