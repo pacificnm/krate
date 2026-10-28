@@ -30,8 +30,11 @@ constexpr int stepMidiNote(const Step &step)
     return 24 + 12 * (step.octave + 1) + step.note;
 }
 
-// A short riff for the demo pattern and the offline renderer.
-Pattern demoPattern();
+// Built-in riffs that fill the first pattern slots of a new install.
+// Factory pattern 0 is also the demo pattern used by the offline renderer.
+inline constexpr int kFactoryPatternCount = 4;
+Pattern factoryPattern(int index); // 0..kFactoryPatternCount-1
+inline Pattern demoPattern() { return factoryPattern(0); }
 
 struct SequencerEvent
 {

@@ -43,10 +43,10 @@ A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and sca
 | Run/Stop | Start / stop the sequencer | M4 |
 | Keyboard | On = note keys play the voice; off = note keys edit the selected step | M5 |
 | Time | On = time mode: DOWN = Note, UP = Tie, ACCENT = Rest (labels above the buttons), the classic step-entry convention | M5 |
-| 16-step LED row | Click selects the step to edit; playhead LED moves while running | M4, M5 |
+| 16-step LED row | Click selects the step to edit; playhead LED moves while running. Each button shows its step: note name, ↑/↓ for octave up/down, – for a tie, blank for a rest; dimmed past the pattern length | M4, M5 |
 | 13 note keys with LEDs | The lit key is the selected step's note | M5 |
 | Accent / Slide / Down / Up + Octave | LEDs show the selected step's accent, slide and octave | M5 |
-| Randomize | Randomize pattern | Later |
+| Randomize | New random riff in the current pattern (rules in SEQUENCER.md) | M5 |
 | Clear | Clear pattern | M5 |
 
 Controls marked "drawn" render and move but do nothing until their milestone. Until M2/M5, panel state lives in local QML properties on `Panel.qml`; those move to the C++ singletons and QML then holds none.

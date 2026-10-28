@@ -59,7 +59,7 @@ private slots:
     {
         Engine engine;
         PatternModel model(engine, m_path, nullptr);
-        model.setPatternIndex(1); // empty pattern: all rests
+        model.setPatternIndex(5); // empty pattern: all rests
         model.setSelectedStep(3);
         QCOMPARE(model.selectedNote(), -1);
 
@@ -70,7 +70,7 @@ private slots:
         model.toggleSlide();
         QCOMPARE(changed.count(), 4);
         QCOMPARE(model.selectedNote(), 5);
-        QCOMPARE(model.data(model.index(3), PatternModel::LabelRole).toString(), QStringLiteral("F"));
+        QCOMPARE(model.data(model.index(3), PatternModel::LabelRole).toString(), QStringLiteral("F↑")); // octave up
 
         pump(engine);
         const Step &s = engine.sequencer().pattern().steps[3];
@@ -124,7 +124,7 @@ private slots:
         PatternModel model(engine, m_path, nullptr);
         model.setSelectedStep(0);
         model.setNote(7);          // edit pattern 1
-        model.setPatternIndex(2);  // switch away
+        model.setPatternIndex(4);  // switch to an empty one
         pump(engine);
         QCOMPARE(int(engine.sequencer().pattern().steps[0].gate), int(Gate::Rest));
         model.setPatternIndex(0);
@@ -193,7 +193,8 @@ private slots:
         QCOMPARE(int(bank.patterns[0].length), 16);
         QCOMPARE(bank.patterns[0].steps[0], (Step{12, -1, true, false, Gate::Tie}));
         QCOMPARE(int(bank.patterns[0].steps[1].gate), int(Gate::Rest)); // missing steps are rests
-        QCOMPARE(int(bank.patterns[3].steps[0].gate), int(Gate::Rest)); // missing patterns are empty
+        // Missing patterns are empty (slots 1..3 get the v2 factory riffs: this is a v1 file).
+        QCOMPARE(int(bank.patterns[5].steps[0].gate), int(Gate::Rest));
     }
 
     void newerVersionIsNotOverwritten()
@@ -210,6 +211,90 @@ private slots:
         QVERIFY(original.open(QIODevice::ReadOnly));
         QCOMPARE(original.readAll(), newer);
         QVERIFY(QFile::exists(m_path + QStringLiteral(".v1")));
+    }
+
+    void newInstallHasFourFactoryRiffs()
+    {
+        const kp::PatternBank bank = kp::defaultBank();
+        for (int i = 0; i < kFactoryPatternCount; ++i)
+            QVERIFY(bank.patterns[i].steps == factoryPattern(i).steps);
+        for (int i = kFactoryPatternCount; i < kp::kPatternCount; ++i)
+            QVERIFY(kp::isEmpty(bank.patterns[i]));
+        for (int i = 0; i < kFactoryPatternCount; ++i) {
+            QVERIFY(!kp::isEmpty(factoryPattern(i)));
+            for (const auto &s : factoryPattern(i).steps) {
+                QVERIFY(s.note <= 12);
+                QVERIFY(s.octave >= -1 && s.octave <= 1);
+            }
+        }
+    }
+
+    // A v1 file gains riffs 1..3 in its first empty slots; user patterns are kept.
+    void upgradeFromV1FillsEmptySlotsOnly()
+    {
+        kp::PatternBank v1 = kp::defaultBank();
+        for (int i = 1; i < kp::kPatternCount; ++i)
+            v1.patterns[i] = kp::fromJson({}).patterns[i]; // empty
+        v1.patterns[1].steps[0] = Step{9, 0, false, false, Gate::Note}; // the user's own pattern
+        QJsonObject json = kp::toJson(v1);
+        json[QStringLiteral("version")] = 1;
+        writeFile(m_path, QJsonDocument(json).toJson());
+
+        kp::PatternBank bank;
+        QCOMPARE(kp::loadPatterns(m_path, &bank), kp::LoadResult::Loaded);
+        QVERIFY(bank.patterns[0].steps == factoryPattern(0).steps);
+        QCOMPARE(int(bank.patterns[1].steps[0].note), 9); // untouched
+        QVERIFY(bank.patterns[2].steps == factoryPattern(1).steps);
+        QVERIFY(bank.patterns[3].steps == factoryPattern(2).steps);
+        QVERIFY(bank.patterns[4].steps == factoryPattern(3).steps);
+        QVERIFY(kp::isEmpty(bank.patterns[5]));
+
+        // Saved files are v2, so the upgrade runs only once.
+        QVERIFY(kp::savePatterns(m_path, bank));
+        QFile f(m_path);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QCOMPARE(QJsonDocument::fromJson(f.readAll()).object().value(u"version").toInt(), 2);
+    }
+
+    void randomizeMakesAValidRiff()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        model.setPatternIndex(6); // empty
+        model.setLength(12);
+        model.randomize();
+        QCOMPARE(model.length(), 12); // kept
+        pump(engine);
+        const Pattern &p = engine.sequencer().pattern();
+        QCOMPARE(int(p.steps[0].gate), int(Gate::Note));
+        int notes = 0;
+        for (const auto &s : p.steps) {
+            QVERIFY(s.note <= 12);
+            QVERIFY(s.octave >= -1 && s.octave <= 1);
+            notes += s.gate == Gate::Note;
+        }
+        QVERIFY(notes >= 4);
+
+        // Two rolls differ (16 steps of random choices: a collision is vanishingly unlikely).
+        const auto first = p.steps;
+        model.randomize();
+        pump(engine);
+        QVERIFY(engine.sequencer().pattern().steps != first);
+    }
+
+    void labelsShowOctave()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        model.setPatternIndex(7);
+        model.setSelectedStep(0);
+        model.setNote(3);
+        QCOMPARE(model.data(model.index(0), PatternModel::LabelRole).toString(), QStringLiteral("D#"));
+        model.octaveUp();
+        QCOMPARE(model.data(model.index(0), PatternModel::LabelRole).toString(), QStringLiteral("D#↑"));
+        model.octaveDown();
+        model.octaveDown();
+        QCOMPARE(model.data(model.index(0), PatternModel::LabelRole).toString(), QStringLiteral("D#↓"));
     }
 
     void jsonRoundTrip()

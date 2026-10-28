@@ -9,7 +9,8 @@
 
 namespace k303::persistence {
 
-inline constexpr int kPatternFileVersion = 1;
+// v2: same format as v1; loading a v1 file adds the factory riffs added in v2.
+inline constexpr int kPatternFileVersion = 2;
 inline constexpr int kPatternCount = 8;
 
 struct PatternBank
@@ -18,8 +19,10 @@ struct PatternBank
     int current = 0;
 };
 
-// Pattern 0 is the demo riff; the others are empty (all rests, length 16).
+// Patterns 0..3 are the factory riffs; the others are empty (all rests, length 16).
 PatternBank defaultBank();
+
+bool isEmpty(const Pattern &pattern); // every step a rest
 
 enum class LoadResult {
     Loaded,

@@ -603,7 +603,8 @@ Item {
         y: 390
         width: 58
         height: 36
-        text: "Randomize"
+        text: "Randomize pattern"
+        onClicked: Pattern.randomize()
     }
 
     PanelButton {

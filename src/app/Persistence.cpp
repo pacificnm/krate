@@ -68,9 +68,34 @@ PatternBank defaultBank()
 {
     PatternBank bank;
     bank.patterns.fill(emptyPattern());
-    bank.patterns[0] = demoPattern();
+    for (int i = 0; i < kFactoryPatternCount; ++i)
+        bank.patterns[std::size_t(i)] = factoryPattern(i);
     return bank;
 }
+
+bool isEmpty(const Pattern &pattern)
+{
+    return std::all_of(pattern.steps.begin(), pattern.steps.end(),
+                       [](const Step &s) { return s.gate == Gate::Rest; });
+}
+
+namespace {
+
+// v1 -> v2: v1 shipped only factory riff 0. Put riffs 1..3 into the first
+// empty slots; never touch a slot that has notes in it.
+void addV2FactoryPatterns(PatternBank *bank)
+{
+    std::size_t slot = 1;
+    for (int riff = 1; riff < kFactoryPatternCount; ++riff) {
+        while (slot < bank->patterns.size() && !isEmpty(bank->patterns[slot]))
+            ++slot;
+        if (slot == bank->patterns.size())
+            return;
+        bank->patterns[slot++] = factoryPattern(riff);
+    }
+}
+
+} // namespace
 
 QJsonObject toJson(const PatternBank &bank)
 {
@@ -129,6 +154,8 @@ LoadResult loadPatterns(const QString &path, PatternBank *bank)
         return LoadResult::Invalid;
 
     *bank = fromJson(json);
+    if (version == 1)
+        addV2FactoryPatterns(bank);
     return LoadResult::Loaded;
 }
 

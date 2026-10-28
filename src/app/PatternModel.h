@@ -46,7 +46,7 @@ public:
         SlideRole,
         GateRole,
         ActiveRole,   // step index < length
-        LabelRole,    // short text for the step button: "C", "D#", "–" (tie), "" (rest)
+        LabelRole,    // step button text: "C", "D#↑" (octave up), "G↓" (down), "–" (tie), "" (rest)
     };
     Q_ENUM(Role)
 
@@ -90,6 +90,7 @@ public:
     Q_INVOKABLE void selectNext();
     Q_INVOKABLE void selectPrevious();
     Q_INVOKABLE void clear();                 // all rests, length kept
+    Q_INVOKABLE void randomize();             // new random riff, length kept
 
     // Keyboard mode: play the voice directly while the sequencer is stopped.
     Q_INVOKABLE void auditionOn(int semitone);

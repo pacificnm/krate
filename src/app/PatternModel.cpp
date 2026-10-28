@@ -4,6 +4,7 @@
 
 #include <QJSEngine>
 #include <QLoggingCategory>
+#include <QRandomGenerator>
 
 #include "dsp/Engine.h"
 
@@ -92,7 +93,8 @@ QVariant PatternModel::data(const QModelIndex &index, int role) const
     case ActiveRole: return index.row() < current().length;
     case LabelRole:
         switch (s.gate) {
-        case Gate::Note: return noteName(s.note);
+        case Gate::Note:
+            return noteName(s.note) + (s.octave > 0 ? QStringLiteral("↑") : s.octave < 0 ? QStringLiteral("↓") : QString());
         case Gate::Tie: return QStringLiteral("–");
         case Gate::Rest: return QString();
         }
@@ -251,6 +253,31 @@ void PatternModel::clear()
     beginResetModel();
     for (auto &s : current().steps)
         s = Step{0, 0, false, false, Gate::Rest};
+    endResetModel();
+    sendCurrentPattern();
+    emit selectionChanged();
+    scheduleSave();
+}
+
+void PatternModel::randomize()
+{
+    // Minor pentatonic plus the octave: always sounds like an acid line.
+    static constexpr std::uint8_t kScale[] = {0, 3, 5, 7, 10, 12};
+    auto *rng = QRandomGenerator::global();
+    const auto chance = [rng](double p) { return rng->generateDouble() < p; };
+
+    beginResetModel();
+    for (std::size_t i = 0; i < current().steps.size(); ++i) {
+        Step &s = current().steps[i];
+        const double g = rng->generateDouble();
+        s.gate = i == 0 ? Gate::Note : g < 0.12 ? Gate::Rest : g < 0.22 ? Gate::Tie : Gate::Note;
+        s.note = kScale[rng->bounded(int(std::size(kScale)))];
+        // Mostly the middle octave; the root note likes to jump.
+        const double o = rng->generateDouble();
+        s.octave = std::int8_t(o < 0.12 ? -1 : o < (s.note == 0 ? 0.45 : 0.25) ? 1 : 0);
+        s.accent = chance(0.25);
+        s.slide = chance(0.2);
+    }
     endResetModel();
     sendCurrentPattern();
     emit selectionChanged();

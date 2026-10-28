@@ -4,30 +4,98 @@
 
 namespace k303 {
 
-Pattern demoPattern()
+Pattern factoryPattern(int index)
 {
-    // note (0..12), octave, accent, slide, gate
-    constexpr Step N{0, 0, false, false, Gate::Note};
+    // {note 0..12, octave, accent, slide, gate}
+    constexpr Step N{0, 0, false, false, Gate::Note};    // plain C2
+    constexpr Step tie{0, 0, false, false, Gate::Tie};
+    constexpr Step rest{0, 0, false, false, Gate::Rest};
+
     Pattern p;
-    p.steps = {{
-        {0, 0, true, false, Gate::Note},   // C2  accent
-        N,                                 // C2
-        {0, 1, false, true, Gate::Note},   // C3  slide ->
-        {0, 0, false, false, Gate::Note},  // C2
-        {3, 0, true, false, Gate::Note},   // D#2 accent
-        {0, 0, false, false, Gate::Rest},
-        N,                                 // C2
-        {7, 0, false, true, Gate::Note},   // G2  slide ->
-        {10, 0, false, false, Gate::Note}, // A#2
-        {0, 0, true, false, Gate::Note},   // C2  accent
-        {0, 1, false, false, Gate::Note},  // C3
-        {0, 0, false, false, Gate::Tie},
-        {5, 0, false, true, Gate::Note},   // F2  slide ->
-        {7, 0, true, false, Gate::Note},   // G2  accent
-        N,                                 // C2
-        {3, 1, true, true, Gate::Note},    // D#3 accent, slide -> (wraps to step 1)
-    }};
-    p.length = 16;
+    switch (index) {
+    default:
+    case 0: // Demo: busy root-note line with octave jumps and slides
+        p.steps = {{
+            {0, 0, true, false, Gate::Note},   // C2  accent
+            N,                                 // C2
+            {0, 1, false, true, Gate::Note},   // C3  slide ->
+            N,                                 // C2
+            {3, 0, true, false, Gate::Note},   // D#2 accent
+            rest,
+            N,                                 // C2
+            {7, 0, false, true, Gate::Note},   // G2  slide ->
+            {10, 0, false, false, Gate::Note}, // A#2
+            {0, 0, true, false, Gate::Note},   // C2  accent
+            {0, 1, false, false, Gate::Note},  // C3
+            tie,
+            {5, 0, false, true, Gate::Note},   // F2  slide ->
+            {7, 0, true, false, Gate::Note},   // G2  accent
+            N,                                 // C2
+            {3, 1, true, true, Gate::Note},    // D#3 accent, slide -> (wraps to step 1)
+        }};
+        p.length = 16;
+        break;
+    case 1: // Rolling: steady 16ths climbing through the minor scale
+        p.steps = {{
+            {0, 0, true, false, Gate::Note},   // C2  accent
+            {0, 1, false, false, Gate::Note},  // C3
+            N,                                 // C2
+            {3, 0, false, true, Gate::Note},   // D#2 slide ->
+            {5, 0, false, false, Gate::Note},  // F2
+            {0, 0, true, false, Gate::Note},   // C2  accent
+            rest,
+            {7, 0, false, true, Gate::Note},   // G2  slide ->
+            {8, 0, false, false, Gate::Note},  // G#2
+            N,                                 // C2
+            {0, 1, true, true, Gate::Note},    // C3  accent, slide ->
+            {10, 0, false, false, Gate::Note}, // A#2
+            N,                                 // C2
+            tie,
+            {3, 1, true, false, Gate::Note},   // D#3 accent
+            {0, 0, false, true, Gate::Note},   // C2  slide -> (wraps)
+        }};
+        p.length = 16;
+        break;
+    case 2: // Twelve: a 12-step loop that drifts against the 4/4 beat
+        p.steps = {{
+            {0, 0, true, false, Gate::Note},   // C2  accent
+            rest,
+            N,                                 // C2
+            {0, 1, false, true, Gate::Note},   // C3  slide ->
+            {10, 0, false, false, Gate::Note}, // A#2
+            {7, 0, true, false, Gate::Note},   // G2  accent
+            rest,
+            {5, 0, false, true, Gate::Note},   // F2  slide ->
+            {7, 0, false, false, Gate::Note},  // G2
+            {0, 0, true, false, Gate::Note},   // C2  accent
+            tie,
+            {3, 0, false, true, Gate::Note},   // D#2 slide -> (wraps)
+            rest, rest, rest, rest,
+        }};
+        p.length = 12;
+        break;
+    case 3: // High: squelchy upper-octave line, slide-heavy
+        p.steps = {{
+            {0, 1, true, true, Gate::Note},    // C3  accent, slide ->
+            {7, 0, false, false, Gate::Note},  // G2
+            {10, 0, false, true, Gate::Note},  // A#2 slide ->
+            {0, 1, false, false, Gate::Note},  // C3
+            {3, 1, true, false, Gate::Note},   // D#3 accent
+            {0, 1, false, true, Gate::Note},   // C3  slide ->
+            {10, 0, false, false, Gate::Note}, // A#2
+            {7, 0, false, false, Gate::Note},  // G2
+            {5, 0, true, true, Gate::Note},    // F2  accent, slide ->
+            {7, 0, false, false, Gate::Note},  // G2
+            tie,
+            N,                                 // C2
+            {0, 1, true, false, Gate::Note},   // C3  accent
+            rest,
+            {7, 0, false, true, Gate::Note},   // G2  slide ->
+            {10, 0, false, false, Gate::Note}, // A#2
+        }};
+        p.length = 16;
+        break;
+    }
     return p;
 }
 

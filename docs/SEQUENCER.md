@@ -85,7 +85,7 @@ Edits while playing apply from the next step boundary that reads that step. No l
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "current": 0,
   "patterns": [
     {
@@ -98,4 +98,8 @@ Edits while playing apply from the next step boundary that reads that step. No l
 }
 ```
 
-8 patterns. Unknown keys are ignored; a missing or unreadable file loads 8 default patterns (pattern 0 is a short demo riff, others empty: all `Rest`). A newer `version` than supported is not overwritten: the app warns and saves to `patterns.json.v1` instead.
+8 patterns. Unknown keys are ignored and values are clamped; a missing or unreadable file loads the defaults: four factory riffs in patterns 1–4 (Demo, Rolling, Twelve — a 12-step loop — and High), the rest empty (all `Rest`). A newer `version` than supported is not overwritten: the app warns and saves to `patterns.json.v1` instead.
+
+Versions: v2 has the same format as v1. Loading a v1 file adds factory riffs 2–4 to its first empty slots (a slot with any note in it is never touched); the next save writes v2, so this happens once.
+
+**Randomize** replaces the current pattern with a random riff in C minor pentatonic (plus the top C): the first step is always a note, ~12% rests and ~10% ties, mostly the middle octave, ~25% accents, ~20% slides. Length is kept.
