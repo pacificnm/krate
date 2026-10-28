@@ -184,7 +184,7 @@ PanelValues defaultPanel()
 {
     PanelValues values{};
     for (const auto &info : kParams)
-        values[std::size_t(info.id)] = info.defaultValue;
+        values[std::size_t(&info - kParams.data())] = info.defaultValue;
     return values;
 }
 
@@ -213,7 +213,7 @@ LoadResult loadPanel(const QString &path, PanelValues *values)
     for (const auto &info : kParams) {
         const QJsonValue v = params.value(QString::fromLatin1(info.key.data(), qsizetype(info.key.size())));
         if (v.isDouble())
-            (*values)[std::size_t(info.id)] = float(std::clamp(v.toDouble(), 0.0, 1.0));
+            (*values)[std::size_t(&info - kParams.data())] = float(std::clamp(v.toDouble(), 0.0, 1.0));
     }
     return LoadResult::Loaded;
 }
@@ -223,7 +223,7 @@ bool savePanel(const QString &path, const PanelValues &values)
     QJsonObject params;
     for (const auto &info : kParams)
         params.insert(QString::fromLatin1(info.key.data(), qsizetype(info.key.size())),
-                      double(values[std::size_t(info.id)]));
+                      double(values[std::size_t(&info - kParams.data())]));
     return writeJson(path, {{QStringLiteral("version"), kPanelFileVersion}, {QStringLiteral("params"), params}});
 }
 

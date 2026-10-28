@@ -20,8 +20,8 @@ public:
 
     ParamStore() noexcept
     {
-        for (const auto &info : kParams)
-            m_values[index(info.id)].store(info.defaultValue, std::memory_order_relaxed);
+        for (std::size_t i = 0; i < kParams.size(); ++i)
+            m_values[i].store(kParams[i].defaultValue, std::memory_order_relaxed);
     }
 
     float get(ParamId id) const noexcept

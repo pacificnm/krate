@@ -6,7 +6,8 @@ k303 is two halves joined by lock-free primitives: a Qt GUI that never touches a
 
 | Module | Kind | Depends on | Responsibility |
 | --- | --- | --- | --- |
-| `k303_dsp` | static lib, C++20 | std only | Oscillator, diode ladder, envelopes, voice, sequencer, parameter store, SPSC queue. Pure, allocation-free in `process()` |
+| `src/core` | headers, C++20 | std only | Shared Krate interfaces: `krate::IInstrument`, `AudioBlock`, `MidiEvent`, `TransportState`, `ParamDescriptor` (moves to `shared/core` in R6) |
+| `k303_dsp` | static lib, C++20 | std only | Oscillator, diode ladder, envelopes, voice, sequencer, parameter store, SPSC queue; `Engine` implements `krate::IInstrument`. Pure, allocation-free in `process()` |
 | `k303_jack` | static lib | `k303_dsp`, libjack | JACK client: ports, process callback, MIDI event dispatch, transport |
 | `k303_app` | part of executable | Qt 6 Core/Gui/Qml/Quick, `k303_jack` | QML-facing controllers, persistence, MIDI Learn UI state |
 | `k303` | executable | all above | `main.cpp`, QML module `K303` |

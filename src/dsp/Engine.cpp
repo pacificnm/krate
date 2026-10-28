@@ -15,10 +15,21 @@ Engine::Engine()
     for (auto &m : m_ccMap)
         m.store(-1, std::memory_order_relaxed);
     m_volume = static_cast<float>(units::volumeGain(m_params.get(ParamId::Volume)));
-    setSampleRate(m_sampleRate);
+    prepare(m_sampleRate, 0);
 }
 
-void Engine::setSampleRate(double sampleRate) noexcept
+float Engine::param(int index) const noexcept
+{
+    return (index >= 0 && index < ParamCount) ? m_params.get(ParamId(index)) : 0.0f;
+}
+
+void Engine::setParam(int index, float normalized) noexcept
+{
+    if (index >= 0 && index < ParamCount)
+        m_params.set(ParamId(index), normalized);
+}
+
+void Engine::prepare(double sampleRate, std::uint32_t /*maxFrames: k303 renders per sample*/) noexcept
 {
     m_sampleRate = sampleRate;
     m_sequencer.setSampleRate(sampleRate);
@@ -75,8 +86,7 @@ void Engine::handleMidi(const MidiEvent &event) noexcept
         }
         if (param >= 0 && param < ParamCount) {
             // Switches and selectors snap to their positions; knobs follow the value.
-            const auto &descriptor = paramDescriptor(ParamId(param));
-            m_params.setFromAudio(descriptor.id, snapToDetent(descriptor, float(d2) / 127.0f));
+            m_params.setFromAudio(ParamId(param), snapToDetent(paramDescriptor(ParamId(param)), float(d2) / 127.0f));
         }
         break;
     }
@@ -167,9 +177,14 @@ void Engine::applyCommands() noexcept
     }
 }
 
-void Engine::process(float *outL, float *outR, std::uint32_t frames,
-                     const MidiEvent *events, std::uint32_t eventCount) noexcept
+void Engine::process(const krate::AudioBlock &block) noexcept
 {
+    float *outL = block.outputs[0];
+    float *outR = block.outputs[1];
+    const std::uint32_t frames = block.frames;
+    const MidiEvent *events = block.midi;
+    const std::uint32_t eventCount = block.midiCount;
+
     applyCommands();
 
     const ParamStore &p = m_params;

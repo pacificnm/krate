@@ -2,8 +2,8 @@
 
 #include <jack/midiport.h>
 
+#include "core/Instrument.h"
 #include "dsp/Denormals.h"
-#include "dsp/Engine.h"
 
 namespace k303 {
 
@@ -14,8 +14,8 @@ void silentJackMessage(const char *) {}
 
 } // namespace
 
-JackClient::JackClient(Engine &engine)
-    : m_engine(engine)
+JackClient::JackClient(krate::IInstrument &instrument)
+    : m_instrument(instrument)
 {
     jack_set_error_function(silentJackMessage);
     jack_set_info_function(silentJackMessage);
@@ -55,7 +55,7 @@ bool JackClient::open(const char *clientName, std::string *error)
     const jack_nframes_t rate = jack_get_sample_rate(m_client);
     m_sampleRate.store(rate, std::memory_order_relaxed);
     m_bufferSize.store(jack_get_buffer_size(m_client), std::memory_order_relaxed);
-    m_engine.setSampleRate(rate);
+    m_instrument.prepare(rate, jack_get_buffer_size(m_client));
     m_engineRate = rate;
 
     jack_set_process_callback(m_client, &JackClient::onProcess, this);
@@ -145,7 +145,7 @@ int JackClient::onProcess(jack_nframes_t frames, void *arg)
 
     const std::uint32_t rate = self->m_sampleRate.load(std::memory_order_relaxed);
     if (rate != self->m_engineRate) {
-        self->m_engine.setSampleRate(rate);
+        self->m_instrument.prepare(rate, frames);
         self->m_engineRate = rate;
     }
 
@@ -154,7 +154,7 @@ int JackClient::onProcess(jack_nframes_t frames, void *arg)
 
     // Copy this block's MIDI into a fixed array; the engine applies each at its frame.
     constexpr std::uint32_t kMaxEvents = 256;
-    MidiEvent events[kMaxEvents];
+    krate::MidiEvent events[kMaxEvents];
     std::uint32_t count = 0;
     void *midi = jack_port_get_buffer(self->m_midiIn, frames);
     const std::uint32_t available = jack_midi_get_event_count(midi);
@@ -162,14 +162,14 @@ int JackClient::onProcess(jack_nframes_t frames, void *arg)
         jack_midi_event_t ev;
         if (jack_midi_event_get(&ev, midi, i) != 0 || ev.size < 1 || ev.size > 3 || ev.time >= frames)
             continue; // SysEx and malformed events are ignored
-        MidiEvent &out = events[count++];
+        krate::MidiEvent &out = events[count++];
         out.frame = ev.time;
         out.size = std::uint8_t(ev.size);
         for (std::size_t b = 0; b < ev.size; ++b)
             out.data[b] = ev.buffer[b];
     }
 
-    self->m_engine.process(outL, outR, frames, events, count);
+    krate::processStereo(self->m_instrument, outL, outR, frames, events, count);
     return 0;
 }
 

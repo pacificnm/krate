@@ -100,7 +100,8 @@ int main(int argc, char **argv)
         return 2;
     }
 
-    engine.setSampleRate(rate);
+    krate::IInstrument &instrument = engine; // everything below goes through the interface
+    instrument.prepare(rate, 64);
     engine.setRunning(true);
     constexpr std::uint32_t kBlock = 64;
     std::vector<float> l(kBlock), r(kBlock);
@@ -109,7 +110,7 @@ int main(int argc, char **argv)
         const std::uint64_t frames = std::uint64_t(rate) * 60; // one minute of audio
         const auto t0 = std::chrono::steady_clock::now();
         for (std::uint64_t done = 0; done < frames; done += kBlock)
-            engine.process(l.data(), r.data(), kBlock);
+            krate::processStereo(instrument, l.data(), r.data(), kBlock);
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         std::printf("rendered 60 s at %d Hz in %.3f s: %.2f%% of one core\n", rate, seconds, seconds / 60.0 * 100.0);
         return 0;
@@ -122,7 +123,7 @@ int main(int argc, char **argv)
     for (std::uint64_t done = 0; done < frames; done += kBlock) {
         if (done + kBlock >= frames - std::uint64_t(rate / 2))
             engine.setRunning(false); // last half second: let the release ring out
-        engine.process(l.data(), r.data(), kBlock);
+        krate::processStereo(instrument, l.data(), r.data(), kBlock);
         for (std::uint32_t i = 0; i < kBlock; ++i) {
             interleaved.push_back(l[i]);
             interleaved.push_back(r[i]);

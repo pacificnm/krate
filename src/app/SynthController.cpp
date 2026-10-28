@@ -27,8 +27,8 @@ SynthController::SynthController(const QString &panelFilePath, QObject *parent)
     k303::persistence::PanelValues values;
     if (k303::persistence::loadPanel(m_panelFilePath, &values) == k303::persistence::LoadResult::NewerVersion)
         m_panelFilePath += QStringLiteral(".v1"); // leave a newer file alone
-    for (const auto &info : k303::kParams)
-        m_engine.params().set(info.id, values[std::size_t(info.id)]);
+    for (int i = 0; i < k303::ParamCount; ++i)
+        m_engine.setParam(i, values[std::size_t(i)]);
 
     // Save 2 s after the last change, from the panel or from MIDI.
     m_saveTimer.setSingleShot(true);
@@ -132,8 +132,8 @@ void SynthController::savePanel()
 {
     m_saveTimer.stop();
     k303::persistence::PanelValues values{};
-    for (const auto &info : k303::kParams)
-        values[std::size_t(info.id)] = m_engine.params().get(info.id);
+    for (int i = 0; i < k303::ParamCount; ++i)
+        values[std::size_t(i)] = m_engine.param(i);
     if (!k303::persistence::savePanel(m_panelFilePath, values))
         qCWarning(lcAudio) << "could not save panel settings to" << m_panelFilePath;
 }

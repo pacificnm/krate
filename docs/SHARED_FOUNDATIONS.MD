@@ -71,18 +71,23 @@ class IInstrument {
 public:
     virtual ~IInstrument() = default;
 
-    // Non-realtime (before processing, or while stopped).
-    virtual void prepare(double sampleRate, std::uint32_t maxFrames) = 0;
-    virtual std::span<const ParamDescriptor> parameters() const = 0;
-    virtual int outputChannels() const { return 2; }  // stereo; a drum machine may expose more
+    // From the processing thread, between blocks, never concurrently with process();
+    // must not allocate (size buffers for maxFrames in the constructor).
+    virtual void prepare(double sampleRate, std::uint32_t maxFrames) noexcept = 0;
+    virtual std::span<const ParamDescriptor> parameters() const noexcept = 0;
+    virtual int outputChannels() const noexcept { return 2; }  // a drum machine may expose more
 
-    // Any thread.
-    virtual ParamStore &params() = 0;
+    // Any thread: parameters by index into parameters(), normalized 0..1.
+    virtual float param(int index) const noexcept = 0;
+    virtual void setParam(int index, float normalized) noexcept = 0;
+    virtual std::uint64_t takeParamsChangedByAudio() noexcept = 0;  // bit = index
 
     // Realtime.
     virtual void process(const AudioBlock &block) noexcept = 0;
 };
 ```
+
+As built in R2 (`src/core/Instrument.h`): parameters are reached by index rather than through a shared `ParamStore` type, so the interface does not depend on any instrument's parameter enum; `ParamStore` stays an implementation detail. A `processStereo()` helper wraps two buffers into an `AudioBlock` for stereo hosts and tests.
 
 Instrument-specific data (k303 patterns, K909 drum tracks, Kalliope programs) does not go through this interface. Each instrument has its own command queue (GUI → audio) and event queue (audio → GUI) between its controller and its core, as k303 already does with `Engine::post()` and `popEvent()`.
 
@@ -214,10 +219,10 @@ Each step keeps every test green and k303 behaving the same; commit after each.
 | # | Step | Done when |
 | --- | --- | --- |
 | R1 ✅ | **Parameter descriptors.** Replace the `ParamId`-only table with `ParamDescriptor` (add detents and `format`); move display text from `SynthController` into the core | `Synth.displayText` reads `format`; tests cover every parameter's text |
-| R2 | **`IInstrument` and `AudioBlock`.** `Engine` implements it; `k303-render` and tests drive it through the interface | Renderer output identical before and after (sample compare) |
+| R2 ✅ | **`IInstrument` and `AudioBlock`.** `Engine` implements it; `k303-render` and tests drive it through the interface | Renderer output identical before and after (sample compare) |
 | R3 | **Transport.** Add `TransportState` and a `StandaloneTransport`; Tempo and run/stop move out of the instrument into the transport; extract `StepClock` from `Sequencer` and drive it from beat position | Existing timing tests pass against the transport; the Tempo knob still works (it drives the standalone transport) |
 | R4 | **Generic MIDI.** Extract `MidiEvent` decoding and `MidiLearnMap` into shared core; make `MidiLearnController` and `LearnOverlay` work from descriptor keys | `tst_midi` passes unchanged plus tests for the shared pieces |
-| R5 | **Host decoupling.** `JackHost` takes an `IInstrument&` and a transport and owns the master limiter; no k303 types in the host | Host compiles without any k303 header |
+| R5 | **Host decoupling.** `JackHost` takes an `IInstrument&` (done in R2: `JackClient` already talks only to `IInstrument`) and a transport, and owns the master limiter; no k303 types in the host | Host compiles without any k303 header |
 | R6 | **Repo layout.** Move to `shared/`, `instruments/k303/`, `apps/k303/`; shared QML components become their own module | Clean build from scratch; the k303 app and all tests run as before |
 
 After R6, starting K909 means adding `instruments/k909/` and `apps/k909/` and nothing in `shared/` should need to change except genuinely new shared pieces.

@@ -35,7 +35,7 @@ float block(Engine &engine, std::vector<MidiEvent> events = {}, std::uint32_t fr
 {
     std::vector<float> l(frames), r(frames);
     engine.takePeak();
-    engine.process(l.data(), r.data(), frames, events.data(), std::uint32_t(events.size()));
+    krate::processStereo(engine, l.data(), r.data(), frames, events.data(), std::uint32_t(events.size()));
     return engine.takePeak();
 }
 
@@ -190,7 +190,7 @@ private slots:
         Engine engine;
         std::vector<float> l(256), r(256);
         const MidiEvent ev = noteOn(48, 80, 200);
-        engine.process(l.data(), r.data(), 256, &ev, 1);
+        krate::processStereo(engine, l.data(), r.data(), 256, &ev, 1);
         for (int i = 0; i < 200; ++i)
             QCOMPARE(l[i], 0.0f);       // silent before the event
         float after = 0.0f;

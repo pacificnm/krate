@@ -75,9 +75,9 @@ private slots:
     void engineSilentWhenStopped()
     {
         Engine engine;
-        engine.setSampleRate(48000.0);
+        engine.prepare(48000.0, 0);
         std::vector<float> l(512), r(512);
-        engine.process(l.data(), r.data(), 512);
+        krate::processStereo(engine, l.data(), r.data(), 512);
         for (std::size_t i = 0; i < l.size(); ++i) {
             QCOMPARE(l[i], 0.0f);
             QCOMPARE(r[i], 0.0f);
@@ -88,10 +88,10 @@ private slots:
     void engineProducesSoundWhenRunning()
     {
         Engine engine;
-        engine.setSampleRate(48000.0);
+        engine.prepare(48000.0, 0);
         engine.setRunning(true);
         std::vector<float> l(24000), r(24000);
-        engine.process(l.data(), r.data(), 24000);
+        krate::processStereo(engine, l.data(), r.data(), 24000);
         const float peak = engine.takePeak();
         QVERIFY(peak > 0.05f);
         QVERIFY(peak < 1.0f); // soft clip
@@ -103,7 +103,7 @@ private slots:
     void engineAppliesCommands()
     {
         Engine engine;
-        engine.setSampleRate(48000.0);
+        engine.prepare(48000.0, 0);
         std::vector<float> l(64), r(64);
 
         Command len;
@@ -117,7 +117,7 @@ private slots:
         step.step = Step{5, 1, true, false, Gate::Tie};
         QVERIFY(engine.post(step));
 
-        engine.process(l.data(), r.data(), 64);
+        krate::processStereo(engine, l.data(), r.data(), 64);
         QCOMPARE(int(engine.sequencer().pattern().length), 4);
         const Step &s = engine.sequencer().pattern().steps[2];
         QCOMPARE(int(s.note), 5);
@@ -130,7 +130,7 @@ private slots:
         load.pattern.length = 7;
         load.pattern.steps[0].note = 9;
         QVERIFY(engine.post(load));
-        engine.process(l.data(), r.data(), 64);
+        krate::processStereo(engine, l.data(), r.data(), 64);
         QCOMPARE(int(engine.sequencer().pattern().length), 7);
         QCOMPARE(int(engine.sequencer().pattern().steps[0].note), 9);
     }
@@ -138,15 +138,15 @@ private slots:
     void engineReportsCurrentStep()
     {
         Engine engine;
-        engine.setSampleRate(48000.0);
+        engine.prepare(48000.0, 0);
         std::vector<float> l(64), r(64);
-        engine.process(l.data(), r.data(), 64);
+        krate::processStereo(engine, l.data(), r.data(), 64);
         QCOMPARE(engine.currentStep(), -1); // stopped
         engine.setRunning(true);
-        engine.process(l.data(), r.data(), 64);
+        krate::processStereo(engine, l.data(), r.data(), 64);
         QCOMPARE(engine.currentStep(), 0);
         engine.setRunning(false);
-        engine.process(l.data(), r.data(), 64);
+        krate::processStereo(engine, l.data(), r.data(), 64);
         QCOMPARE(engine.currentStep(), -1);
     }
 
@@ -154,21 +154,21 @@ private slots:
     void volumeIsSmoothed()
     {
         Engine loud;
-        loud.setSampleRate(48000.0);
+        loud.prepare(48000.0, 0);
         loud.params().set(ParamId::Volume, 1.0f);
         loud.setRunning(true);
         std::vector<float> l(4800), r(4800);
-        loud.process(l.data(), r.data(), 4800);
+        krate::processStereo(loud, l.data(), r.data(), 4800);
         const float steadyPeak = loud.takePeak();
 
         Engine engine;
-        engine.setSampleRate(48000.0);
+        engine.prepare(48000.0, 0);
         engine.params().set(ParamId::Volume, 0.0f);
         engine.setRunning(true);
-        engine.process(l.data(), r.data(), 4800);
+        krate::processStereo(engine, l.data(), r.data(), 4800);
         engine.takePeak();
         engine.params().set(ParamId::Volume, 1.0f);
-        engine.process(l.data(), r.data(), 32);
+        krate::processStereo(engine, l.data(), r.data(), 32);
         // 32 samples into a 480-sample one-pole: ~6% of the way.
         QVERIFY(engine.takePeak() < 0.2f * steadyPeak);
     }

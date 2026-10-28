@@ -6,6 +6,8 @@
 #include <string>
 #include <string_view>
 
+#include "core/ParamDescriptor.h"
+
 namespace k303 {
 
 // Order is the ParamStore index. Keys are stable: they are the ids written to
@@ -27,17 +29,7 @@ enum class ParamId : int {
 
 inline constexpr int ParamCount = static_cast<int>(ParamId::Count);
 
-// Everything a host, MIDI Learn, a generic panel or a session file needs to
-// know about a parameter without knowing the instrument
-// (docs/SHARED_FOUNDATIONS.MD#parameters).
-struct ParamDescriptor {
-    ParamId id;
-    std::string_view key;     // stable: saved in panel.json / midimap.json; never rename
-    std::string_view label;   // panel label
-    float defaultValue;       // normalized 0..1
-    int detents;              // 0 = continuous; N = selector or switch with N positions
-    std::string (*format)(float normalized); // display text, e.g. "1.25 kHz"; not realtime-safe
-};
+using krate::ParamDescriptor;
 
 namespace format {
 std::string tuning(float v);
@@ -52,18 +44,19 @@ std::string scale(float v);
 std::string playMode(float v);
 } // namespace format
 
+// Indexed by ParamId: kParams[int(id)] describes id.
 inline constexpr std::array<ParamDescriptor, ParamCount> kParams{{
-    {ParamId::Tuning,    "tuning",    "Tuning",       0.5f, 0, &format::tuning},
-    {ParamId::Cutoff,    "cutoff",    "Cut Off Freq", 0.5f, 0, &format::cutoff},
-    {ParamId::Resonance, "resonance", "Resonance",    0.5f, 0, &format::percent},
-    {ParamId::EnvMod,    "envmod",    "Env Mod",      0.5f, 0, &format::envMod},
-    {ParamId::Decay,     "decay",     "Decay",        0.5f, 0, &format::decay},
-    {ParamId::Accent,    "accent",    "Accent",       0.5f, 0, &format::percent},
-    {ParamId::Waveform,  "waveform",  "Waveform",     0.0f, 2, &format::waveform}, // 0 = saw
-    {ParamId::Volume,    "volume",    "Volume",       0.8f, 0, &format::volume},
-    {ParamId::Tempo,     "tempo",     "Tempo",        0.4f, 0, &format::tempo},    // 120 BPM in 40..240
-    {ParamId::Scale,     "scale",     "Scale",        0.0f, 3, &format::scale},    // 1/16
-    {ParamId::PlayMode,  "playmode",  "Play Mode",    0.0f, 5, &format::playMode}, // Forward
+    {"tuning",    "Tuning",       0.5f, 0, &format::tuning},
+    {"cutoff",    "Cut Off Freq", 0.5f, 0, &format::cutoff},
+    {"resonance", "Resonance",    0.5f, 0, &format::percent},
+    {"envmod",    "Env Mod",      0.5f, 0, &format::envMod},
+    {"decay",     "Decay",        0.5f, 0, &format::decay},
+    {"accent",    "Accent",       0.5f, 0, &format::percent},
+    {"waveform",  "Waveform",     0.0f, 2, &format::waveform}, // 0 = saw
+    {"volume",    "Volume",       0.8f, 0, &format::volume},
+    {"tempo",     "Tempo",        0.4f, 0, &format::tempo},    // 120 BPM in 40..240
+    {"scale",     "Scale",        0.0f, 3, &format::scale},    // 1/16
+    {"playmode",  "Play Mode",    0.0f, 5, &format::playMode}, // Forward
 }};
 
 constexpr const ParamDescriptor &paramDescriptor(ParamId id)

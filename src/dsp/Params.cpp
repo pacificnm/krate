@@ -7,9 +7,9 @@ namespace k303 {
 
 std::optional<ParamId> paramFromKey(std::string_view key)
 {
-    for (const auto &param : kParams) {
-        if (param.key == key)
-            return param.id;
+    for (int i = 0; i < ParamCount; ++i) {
+        if (kParams[std::size_t(i)].key == key)
+            return ParamId(i);
     }
     return std::nullopt;
 }

@@ -21,7 +21,7 @@ namespace {
 void pump(Engine &engine)
 {
     std::vector<float> l(64), r(64);
-    engine.process(l.data(), r.data(), 64);
+    krate::processStereo(engine, l.data(), r.data(), 64);
 }
 
 void writeFile(const QString &path, const QByteArray &bytes)
@@ -335,12 +335,12 @@ private slots:
         engine.takePeak();
         model.auditionOn(0);
         std::vector<float> l(4800), r(4800);
-        engine.process(l.data(), r.data(), 4800);
+        krate::processStereo(engine, l.data(), r.data(), 4800);
         QVERIFY(engine.takePeak() > 0.01f);
         model.auditionOff();
-        engine.process(l.data(), r.data(), 4800); // 100 ms: release is ~9 ms
+        krate::processStereo(engine, l.data(), r.data(), 4800); // 100 ms: release is ~9 ms
         engine.takePeak();                        // discard the release itself
-        engine.process(l.data(), r.data(), 480);
+        krate::processStereo(engine, l.data(), r.data(), 480);
         QVERIFY(engine.takePeak() < 0.001f);
 
         // While the sequencer runs, live notes are ignored (no restart of the voice).

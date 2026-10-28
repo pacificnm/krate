@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 
+#include "core/Instrument.h"
 #include "dsp/ParamStore.h"
 #include "dsp/Sequencer.h"
 #include "dsp/SpscQueue.h"
@@ -30,13 +31,7 @@ struct Command
     Pattern pattern{};         // LoadPattern
 };
 
-// A raw MIDI message (1..3 bytes) at a frame offset inside the current block.
-struct MidiEvent
-{
-    std::uint32_t frame = 0;
-    std::uint8_t size = 0;
-    std::uint8_t data[3] = {0, 0, 0};
-};
+using krate::MidiEvent;
 
 // Audio -> GUI notification.
 struct EngineEvent
@@ -54,18 +49,20 @@ struct EngineEvent
 // Sequencer -> Voice -> volume -> soft clip. While running, the sequencer
 // plays its pattern; while stopped, MIDI keys play the voice. MIDI CCs move
 // mapped parameters (docs/MIDI.md).
-class Engine
+class Engine final : public krate::IInstrument
 {
 public:
     Engine();
 
-    // Realtime thread (or before processing starts).
-    void setSampleRate(double sampleRate) noexcept;
-    // events: sorted by frame, each frame < frames.
-    void process(float *outL, float *outR, std::uint32_t frames,
-                 const MidiEvent *events = nullptr, std::uint32_t eventCount = 0) noexcept;
+    // krate::IInstrument
+    void prepare(double sampleRate, std::uint32_t maxFrames) noexcept override;
+    std::span<const krate::ParamDescriptor> parameters() const noexcept override { return kParams; }
+    float param(int index) const noexcept override;
+    void setParam(int index, float normalized) noexcept override;
+    std::uint64_t takeParamsChangedByAudio() noexcept override { return m_params.takeChangedByAudio(); }
+    void process(const krate::AudioBlock &block) noexcept override;
 
-    // Any thread.
+    // k303-specific, any thread.
     ParamStore &params() noexcept { return m_params; }
     void setRunning(bool running) noexcept { m_running.store(running, std::memory_order_relaxed); }
     bool isRunning() const noexcept { return m_running.load(std::memory_order_relaxed); }

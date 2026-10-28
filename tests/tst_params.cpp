@@ -13,10 +13,15 @@ class TestParams : public QObject
     Q_OBJECT
 
 private slots:
+    // kParams is indexed by ParamId: each enum value finds its own entry.
     void tableOrderMatchesEnum()
     {
-        for (int i = 0; i < ParamCount; ++i)
-            QCOMPARE(static_cast<int>(kParams[i].id), i);
+        QCOMPARE(int(kParams.size()), ParamCount);
+        QCOMPARE(paramDescriptor(ParamId::Tuning).key, std::string_view("tuning"));
+        QCOMPARE(paramDescriptor(ParamId::Cutoff).key, std::string_view("cutoff"));
+        QCOMPARE(paramDescriptor(ParamId::Waveform).key, std::string_view("waveform"));
+        QCOMPARE(paramDescriptor(ParamId::Tempo).key, std::string_view("tempo"));
+        QCOMPARE(paramDescriptor(ParamId::PlayMode).key, std::string_view("playmode"));
     }
 
     void keysAreUnique()
@@ -28,10 +33,10 @@ private slots:
 
     void keyRoundTrip()
     {
-        for (const auto &info : kParams) {
-            const auto id = paramFromKey(info.key);
+        for (int i = 0; i < ParamCount; ++i) {
+            const auto id = paramFromKey(kParams[std::size_t(i)].key);
             QVERIFY(id.has_value());
-            QCOMPARE(static_cast<int>(*id), static_cast<int>(info.id));
+            QCOMPARE(static_cast<int>(*id), i);
         }
         QVERIFY(!paramFromKey("nonexistent").has_value());
     }
@@ -71,8 +76,8 @@ private slots:
     void storeDefaultsAndClamp()
     {
         ParamStore store;
-        for (const auto &info : kParams)
-            QCOMPARE(store.get(info.id), info.defaultValue);
+        for (int i = 0; i < ParamCount; ++i)
+            QCOMPARE(store.get(ParamId(i)), kParams[std::size_t(i)].defaultValue);
         store.set(ParamId::Cutoff, 2.0f);
         QCOMPARE(store.get(ParamId::Cutoff), 1.0f);
         store.set(ParamId::Cutoff, -1.0f);
