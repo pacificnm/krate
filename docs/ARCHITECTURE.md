@@ -71,7 +71,7 @@ Registered in the `K303` QML module with `QML_ELEMENT` / `QML_SINGLETON`:
 | Type | Exposes |
 | --- | --- |
 | `Synth` (singleton) | One `Q_PROPERTY(qreal …)` per parameter (normalized), `playing`, `tempo`, `currentStep`, `xrunCount`, `audioConnected` |
-| `Pattern` (singleton) | `QAbstractListModel` of 16 steps (roles: `note`, `octave`, `accent`, `slide`, `gate`), `length`, `index`, `selectedStep`; invokables to edit |
+| `Pattern` (singleton, `PatternModel`) | `QAbstractListModel` of 16 steps (roles: `note`, `octave`, `accent`, `slide`, `gate`, `active`, `label`); `index` (pattern 0..7), `length`, `selectedStep`, `selected*` properties for the selected step, `keyboardMode`, `timeMode`; invokables: `setNote`, `octaveUp/Down`, `toggleAccent/Slide`, `setGate`, `selectNext/Previous`, `clear`, `auditionOn/Off`, `save` |
 | `MidiLearn` (singleton) | `active`, `armedParam`, `mappingFor(paramId)`, `clear(paramId)`, `clearAll()` |
 
 QML holds no audio state and runs no timing logic.

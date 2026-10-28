@@ -14,6 +14,8 @@ struct Step
     bool accent = false;
     bool slide = false;        // slide FROM this step INTO the next
     Gate gate = Gate::Note;
+
+    bool operator==(const Step &) const = default;
 };
 
 struct Pattern

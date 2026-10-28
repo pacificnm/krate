@@ -2,8 +2,10 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QStandardPaths>
 #include <QTimer>
 
+#include "app/PatternModel.h"
 #include "app/SynthController.h"
 
 int main(int argc, char *argv[])
@@ -18,6 +20,11 @@ int main(int argc, char *argv[])
     // Created before the QML engine (which looks it up as the Synth singleton)
     // and destroyed after it, so audio outlives every binding to it.
     SynthController synth(nullptr);
+    // ~/.local/share/k303/patterns.json (docs/SEQUENCER.md#pattern-storage)
+    PatternModel pattern(synth.engine(),
+                         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                             + QStringLiteral("/patterns.json"),
+                         nullptr);
 
     QQmlApplicationEngine engine;
     QObject::connect(

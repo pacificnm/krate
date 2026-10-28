@@ -53,6 +53,14 @@ void Engine::applyCommands() noexcept
         case Command::Kind::LoadPattern:
             m_sequencer.setPattern(command->pattern);
             break;
+        case Command::Kind::LiveNoteOn:
+            if (!m_sequencer.running())
+                m_voice.noteOn(command->index, false);
+            break;
+        case Command::Kind::LiveNoteOff:
+            if (!m_sequencer.running())
+                m_voice.gateOff();
+            break;
         }
     }
 }

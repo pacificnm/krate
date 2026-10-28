@@ -2,8 +2,10 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// The 16 step buttons with LEDs. The selected step's LED is steady; the
-// playhead's LED flashes bright as it enters a step and settles dimmer.
+// The 16 step buttons with LEDs, one per row of the Pattern model. The selected
+// step's LED is steady; the playhead's LED flashes bright as it enters a step
+// and settles dimmer. Each button shows its step's note; steps past the
+// pattern length are dimmed.
 Item {
     id: row
 
@@ -18,12 +20,15 @@ Item {
     readonly property real pitch: width / 16
 
     Repeater {
-        model: 16
+        model: Pattern
 
         Item {
             id: cell
 
             required property int index
+            required property string label
+            required property bool active
+            required property bool accent
             readonly property bool isPlayhead: index === row.playStep
 
             x: index * row.pitch
@@ -56,9 +61,12 @@ Item {
             PanelButton {
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: 22
-                width: 34
+                width: 38
                 height: 32
-                text: "Step " + (cell.index + 1)
+                opacity: cell.active ? 1.0 : 0.35
+                faceText: cell.label
+                text: "Step " + (cell.index + 1) + (cell.label ? " " + cell.label : " rest")
+                      + (cell.accent ? " accent" : "")
                 onClicked: row.stepClicked(cell.index)
             }
 

@@ -64,6 +64,10 @@ qt_add_qml_module(k303
     # warns that plugin link targets don't exist.
     NO_IMPORT_SCAN
     SOURCES
+        src/app/PatternModel.h
+        src/app/PatternModel.cpp
+        src/app/Persistence.h
+        src/app/Persistence.cpp
         src/app/SynthController.h
         src/app/SynthController.cpp
     QML_FILES
@@ -117,3 +121,16 @@ qt_add_executable(tst_queue tests/tst_queue.cpp)
 target_compile_options(tst_queue PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_queue PRIVATE k303_dsp Qt6::Test)
 add_test(NAME tst_queue COMMAND tst_queue)
+
+# Plain add_executable: qt_add_executable would run QML import scanning for a
+# target linking Qt6::Qml and warn about plugin targets (see NO_IMPORT_SCAN above).
+add_executable(tst_pattern
+    tests/tst_pattern.cpp
+    src/app/PatternModel.h
+    src/app/PatternModel.cpp
+    src/app/Persistence.h
+    src/app/Persistence.cpp
+)
+target_compile_options(tst_pattern PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_pattern PRIVATE k303_dsp Qt6::Qml Qt6::Test)
+add_test(NAME tst_pattern COMMAND tst_pattern)

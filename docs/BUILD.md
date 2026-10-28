@@ -53,7 +53,7 @@ qml/
 tools/
   render_main.cpp      # k303-render
 tests/
-  tst_sequencer.cpp tst_dsp.cpp tst_persistence.cpp tst_ccmap.cpp
+  tst_params.cpp tst_dsp.cpp tst_sequencer.cpp tst_queue.cpp tst_pattern.cpp  (tst_midi.cpp in M6)
 docs/
 ```
 
@@ -120,6 +120,7 @@ Without Ninja installed, drop `-G Ninja`; CMake's default Makefile generator wor
 | --- | --- |
 | `tst_sequencer` | Step start positions exact over 100 000 steps at fractional samples-per-step; slide/tie/rest/accent rules table from SEQUENCER.md; tempo change mid-step; wrap-around |
 | `tst_dsp` | No NaN/Inf over long renders at max resonance, all cutoffs, 44.1/48/96 kHz; output peak bounds; oscillator alias level below a threshold at high pitch |
-| `tst_persistence` | JSON round-trip for patterns and mappings; unknown keys ignored; bad files fall back to defaults; newer `version` not overwritten |
+| `tst_queue` | SPSC queue order, full/wrap, two-thread stress |
+| `tst_pattern` | Pattern model edits reach the engine; pattern switch, length, clear; JSON round-trip; unknown keys ignored; bad files fall back to defaults; newer `version` not overwritten; debounced and on-quit saves; audition |
 | `tst_ccmap` | Learn binds the first CC; rebinding moves a CC; switch threshold at 64 |
 | RT allocation guard | Debug build: running `Engine::process` under `RtGuard` with a full pattern and MIDI input triggers no allocation |

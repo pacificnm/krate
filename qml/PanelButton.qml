@@ -15,6 +15,8 @@ Item {
     property bool indicatorBar: false
 
     signal clicked()
+    signal pressed()
+    signal released()
 
     width: 56
     height: 34
@@ -91,6 +93,9 @@ Item {
     MouseArea {
         id: mouse
         anchors.fill: parent
+        onPressed: btn.pressed()
+        onReleased: btn.released()
+        onCanceled: btn.released()
         onClicked: {
             btn.forceActiveFocus()
             btn.activate()

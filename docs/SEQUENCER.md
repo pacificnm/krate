@@ -70,7 +70,10 @@ All edits go through `Pattern` (singleton `PatternModel`): it updates its mirror
 | --- | --- |
 | `SetStep` | step index, full `Step` |
 | `SetLength` | 1..16 |
-| `LoadPattern` | full `Pattern` (used on pattern switch and on load) |
+| `LoadPattern` | full `Pattern` (used on pattern switch, clear and startup) |
+| `LiveNoteOn` / `LiveNoteOff` | MIDI note: Keyboard mode plays the voice directly; ignored while the sequencer runs |
+
+Editing rules: setting a note on a rest step turns it into a Note. Octave stays within −1..+1. Edits are sent only when they change something.
 
 Transport and tempo don't use the queue: run/stop is an atomic flag (`Synth.playing` → `Engine::setRunning`) and tempo is the `tempo` parameter in `ParamStore`, both read at the start of each audio block. The playhead is reported back through `Engine::currentStep()` → `Synth.currentStep`, polled at 60 Hz for display only.
 

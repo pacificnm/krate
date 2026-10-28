@@ -50,6 +50,9 @@ public:
     // The instance main() created; QML gets this one rather than a new object.
     static SynthController *create(QQmlEngine *, QJSEngine *);
 
+    // C++ only: for the other controllers that send commands to the engine.
+    k303::Engine &engine() { return m_engine; }
+
     bool audioConnected() const { return m_client.isOpen(); }
     QString audioStatus() const { return m_audioStatus; }
     int sampleRate() const { return int(m_client.sampleRate()); }

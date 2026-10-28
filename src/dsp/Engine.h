@@ -14,10 +14,16 @@ namespace k303 {
 // Edits to the playing pattern take effect when the sequencer next reads that step.
 struct Command
 {
-    enum class Kind : std::uint8_t { SetStep, SetLength, LoadPattern };
+    enum class Kind : std::uint8_t {
+        SetStep,
+        SetLength,
+        LoadPattern,
+        LiveNoteOn,   // play the voice directly; ignored while the sequencer runs
+        LiveNoteOff,
+    };
 
     Kind kind = Kind::SetStep;
-    std::uint8_t index = 0;    // SetStep: step 0..15; SetLength: 1..16
+    std::uint8_t index = 0;    // SetStep: step 0..15; SetLength: 1..16; LiveNoteOn: MIDI note
     Step step{};               // SetStep
     Pattern pattern{};         // LoadPattern
 };

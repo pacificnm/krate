@@ -2,23 +2,12 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// The whole instrument at design resolution (1600 x 692), laid out after the
-// reference panel in docs/UI.md. Upper deck 0-340: sound knobs, tempo, pattern
-// display, volume. Lower deck 340-692: run/stop, step row, note keys, step
-// function buttons.
-//
-// Control state below is local placeholder state for the layout milestone; it
-// moves to the C++ singletons in M2 (knobs) and M5 (pattern editing).
+// The whole instrument at design resolution (1600 x 692); layout in docs/UI.md.
+// Upper deck 0-340: sound knobs, tempo, pattern display, volume. Lower deck
+// 340-692: run/stop, step row, note keys, step function buttons. All state
+// lives in the Synth and Pattern singletons.
 Item {
     id: panel
-
-    property int selectedStep: 0
-    property int selectedPattern: 0
-    property int patternLength: 16
-    property int litKey: 0
-    property int octave: 0
-    property bool accent: false
-    property bool slide: false
 
     width: Theme.designWidth
     height: Theme.designHeight
@@ -27,6 +16,27 @@ Item {
     // propagates up from whatever has focus.
     focus: true
     Keys.onSpacePressed: Synth.playing = !Synth.playing
+
+    // Editing shortcuts (docs/UI.md#keyboard-shortcuts)
+    Keys.onPressed: event => {
+        if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))
+            return
+        switch (event.key) {
+        case Qt.Key_Left: Pattern.selectPrevious(); break
+        case Qt.Key_Right: Pattern.selectNext(); break
+        case Qt.Key_A: Pattern.toggleAccent(); break
+        case Qt.Key_S: Pattern.toggleSlide(); break
+        case Qt.Key_N: Pattern.setGate(0); break
+        case Qt.Key_T: Pattern.setGate(1); break
+        case Qt.Key_R: Pattern.setGate(2); break
+        default:
+            if (event.key >= Qt.Key_1 && event.key <= Qt.Key_8)
+                Pattern.index = event.key - Qt.Key_1
+            else
+                return
+        }
+        event.accepted = true
+    }
 
     // ---- Upper deck ---------------------------------------------------------
 
@@ -199,9 +209,8 @@ Item {
                 height: 30
                 faceText: index + 1
                 text: "Pattern " + (index + 1)
-                checked: panel.selectedPattern === index
-                dark: panel.selectedPattern === index
-                onClicked: panel.selectedPattern = index
+                dark: Pattern.index === index
+                onClicked: Pattern.index = index
             }
         }
     }
@@ -299,18 +308,18 @@ Item {
         x: 752
         y: 170
         width: 352
-        text: "Pattern " + (panel.selectedPattern + 1)
-        onUp: panel.selectedPattern = Math.min(7, panel.selectedPattern + 1)
-        onDown: panel.selectedPattern = Math.max(0, panel.selectedPattern - 1)
+        text: "Pattern " + (Pattern.index + 1)
+        onUp: Pattern.index = Math.min(7, Pattern.index + 1)
+        onDown: Pattern.index = Math.max(0, Pattern.index - 1)
     }
     PanelLabel { x: 752; y: 222; text: "LENGTH" }
     LcdField {
         x: 752
         y: 242
         width: 352
-        text: panel.patternLength + " steps"
-        onUp: panel.patternLength = Math.min(16, panel.patternLength + 1)
-        onDown: panel.patternLength = Math.max(1, panel.patternLength - 1)
+        text: Pattern.length + (Pattern.length === 1 ? " step" : " steps")
+        onUp: Pattern.length = Pattern.length + 1
+        onDown: Pattern.length = Pattern.length - 1
     }
     Rectangle { // output level meter
         x: 752
@@ -438,9 +447,10 @@ Item {
         width: 140
         height: 86
         dark: true
-        checkable: true
         hasLed: true
-        text: "Keyboard"
+        ledOn: Pattern.keyboardMode
+        text: "Keyboard: note keys play"
+        onClicked: Pattern.keyboardMode = !Pattern.keyboardMode
     }
     PanelLabel {
         centerX: 281
@@ -457,24 +467,36 @@ Item {
         width: 58
         height: 80
         text: "Time mode"
-        checkable: true
         hasLed: true
+        ledOn: Pattern.timeMode
+        onClicked: Pattern.timeMode = !Pattern.timeMode
     }
 
     // Steps and note keys
     StepRow {
         x: 362
         y: 360
-        selectedStep: panel.selectedStep
+        selectedStep: Pattern.selectedStep
         playStep: Synth.currentStep
-        onStepClicked: step => panel.selectedStep = step
+        onStepClicked: step => Pattern.selectedStep = step
     }
 
     PianoKeys {
         x: 362
         y: 458
-        litKey: panel.litKey
-        onKeyClicked: semitone => panel.litKey = semitone
+        litKey: Pattern.keyboardMode ? -1 : Pattern.selectedNote
+        onKeyClicked: semitone => {
+            if (!Pattern.keyboardMode)
+                Pattern.setNote(semitone)
+        }
+        onKeyPressed: semitone => {
+            if (Pattern.keyboardMode)
+                Pattern.auditionOn(semitone)
+        }
+        onKeyReleased: () => {
+            if (Pattern.keyboardMode)
+                Pattern.auditionOff()
+        }
     }
 
     // Step function buttons
@@ -509,10 +531,12 @@ Item {
             required property var modelData
             required property int index
 
-            readonly property bool lit: index === 0 ? panel.accent
-                                      : index === 1 ? panel.slide
-                                      : index === 2 ? panel.octave < 0
-                                      : panel.octave > 0
+            // Time mode shows the gate on ACCENT (rest), DOWN (note) and UP (tie).
+            readonly property bool lit: index === 1 ? Pattern.selectedSlide
+                                      : Pattern.timeMode ? Pattern.selectedGate === [2, -1, 0, 1][index]
+                                      : index === 0 ? Pattern.selectedAccent
+                                      : index === 2 ? Pattern.selectedOctave < 0
+                                      : Pattern.selectedOctave > 0
 
             PanelLabel {
                 centerX: fn.modelData.cx
@@ -542,10 +566,16 @@ Item {
                 height: 80
                 text: fn.modelData.name
                 onClicked: {
-                    if (fn.index === 0) panel.accent = !panel.accent
-                    else if (fn.index === 1) panel.slide = !panel.slide
-                    else if (fn.index === 2) panel.octave = Math.max(-1, panel.octave - 1)
-                    else panel.octave = Math.min(1, panel.octave + 1)
+                    if (fn.index === 1)
+                        Pattern.toggleSlide()
+                    else if (Pattern.timeMode)
+                        Pattern.setGate([2, -1, 0, 1][fn.index]) // Rest, -, Note, Tie
+                    else if (fn.index === 0)
+                        Pattern.toggleAccent()
+                    else if (fn.index === 2)
+                        Pattern.octaveDown()
+                    else
+                        Pattern.octaveUp()
                 }
             }
         }
@@ -582,6 +612,7 @@ Item {
         width: 142
         height: 132
         text: "Clear pattern"
+        onClicked: Pattern.clear()
     }
     PanelLabel { centerX: 1503; y: 650; text: "CLEAR" }
 }

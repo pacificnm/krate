@@ -10,6 +10,8 @@ Item {
     property int litKey: -1
 
     signal keyClicked(int semitone)
+    signal keyPressed(int semitone)
+    signal keyReleased(int semitone)
 
     width: 710
     height: 210
@@ -65,6 +67,8 @@ Item {
                 dark: key.black
                 text: keys.names[key.index]
                 onClicked: keys.keyClicked(key.index)
+                onPressed: keys.keyPressed(key.index)
+                onReleased: keys.keyReleased(key.index)
             }
         }
     }
