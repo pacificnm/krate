@@ -31,7 +31,7 @@ UI and MIDI values are normalized 0–1. Each parameter maps to engine units wit
 | `scale` | Scale | 1/16, 1/32, 1/16T (4, 8, 6 steps per beat) | 3 detents | 1/16 |
 | `playmode` | Play Mode | Forward, Reverse, Fwd+Rev, Invert, Random | 5 detents | Forward |
 
-Ids are stable strings: they are the keys in `midimap.json` and `panel.json`. All positions are saved to `~/.config/k303/panel.json` 2 s after a change and on quit, and restored at startup. The mappings live in `src/dsp/Params.h` (`k303::units`); keep that file and this table in step.
+Ids are stable strings: they are the keys in `midimap.json` and `panel.json`. All positions are saved to `~/.config/k303/panel.json` 2 s after a change and on quit, and restored at startup. The mappings live in `src/dsp/Params.h` (`k303::units`), and each parameter's `ParamDescriptor` there carries its key, label, default, detent count and display-text function (`src/dsp/Params.cpp`, `k303::format`); keep that file and this table in step. MIDI CCs snap multi-position controls (Waveform, Scale, Play Mode) to their positions.
 
 ## Oscillator
 

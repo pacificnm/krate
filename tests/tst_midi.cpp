@@ -69,7 +69,7 @@ private slots:
         QVERIFY(engine.params().takeChangedByAudio() & (1u << int(ParamId::Cutoff)));
 
         block(engine, {cc(22, 127)}); // unmapped: no effect
-        QCOMPARE(engine.params().get(ParamId::Resonance), paramInfo(ParamId::Resonance).defaultValue);
+        QCOMPARE(engine.params().get(ParamId::Resonance), paramDescriptor(ParamId::Resonance).defaultValue);
     }
 
     void anyChannelIsAccepted()
@@ -90,6 +90,18 @@ private slots:
         QCOMPARE(engine.params().get(ParamId::Waveform), 0.0f);
         block(engine, {cc(30, 64)});
         QCOMPARE(engine.params().get(ParamId::Waveform), 1.0f);
+    }
+
+    // Every multi-position control snaps to a position, not just Waveform.
+    void selectorsSnapToPositions()
+    {
+        Engine engine;
+        engine.setCcMapping(31, int(ParamId::PlayMode));
+        block(engine, {cc(31, 70)});  // 70/127 = 0.55 -> position 2 of 0..4
+        QCOMPARE(engine.params().get(ParamId::PlayMode), 0.5f);
+        engine.setCcMapping(32, int(ParamId::Scale));
+        block(engine, {cc(32, 127)});
+        QCOMPARE(engine.params().get(ParamId::Scale), 1.0f);
     }
 
     void learnBindsFirstCcAndAppliesIt()

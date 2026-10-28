@@ -14,7 +14,7 @@ constexpr int kPollIntervalMs = 16;
 
 QString keyOf(int param)
 {
-    const auto key = k303::paramInfo(k303::ParamId(param)).key;
+    const auto key = k303::paramDescriptor(k303::ParamId(param)).key;
     return QString::fromLatin1(key.data(), qsizetype(key.size()));
 }
 

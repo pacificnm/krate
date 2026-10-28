@@ -74,10 +74,9 @@ void Engine::handleMidi(const MidiEvent &event) noexcept
             param = m_ccMap[std::size_t(d1)].load(std::memory_order_relaxed);
         }
         if (param >= 0 && param < ParamCount) {
-            const auto id = ParamId(param);
-            // Switches flip at the halfway point; knobs follow the value.
-            const float v = id == ParamId::Waveform ? (d2 >= 64 ? 1.0f : 0.0f) : float(d2) / 127.0f;
-            m_params.setFromAudio(id, v);
+            // Switches and selectors snap to their positions; knobs follow the value.
+            const auto &descriptor = paramDescriptor(ParamId(param));
+            m_params.setFromAudio(descriptor.id, snapToDetent(descriptor, float(d2) / 127.0f));
         }
         break;
     }

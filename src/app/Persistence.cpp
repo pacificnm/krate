@@ -267,8 +267,8 @@ bool saveMidiMap(const QString &path, const MidiMap &map)
         if (param >= 0 && param < ParamCount)
             mappings.append(QJsonObject{
                 {QStringLiteral("cc"), cc},
-                {QStringLiteral("param"), QString::fromLatin1(paramInfo(ParamId(param)).key.data(),
-                                                              qsizetype(paramInfo(ParamId(param)).key.size()))},
+                {QStringLiteral("param"), QString::fromLatin1(paramDescriptor(ParamId(param)).key.data(),
+                                                              qsizetype(paramDescriptor(ParamId(param)).key.size()))},
             });
     }
     return writeJson(path, {

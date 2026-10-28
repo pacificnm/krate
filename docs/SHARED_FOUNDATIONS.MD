@@ -213,7 +213,7 @@ Each step keeps every test green and k303 behaving the same; commit after each.
 
 | # | Step | Done when |
 | --- | --- | --- |
-| R1 | **Parameter descriptors.** Replace the `ParamId`-only table with `ParamDescriptor` (add detents and `format`); move display text from `SynthController` into the core | `Synth.displayText` reads `format`; tests cover every parameter's text |
+| R1 ✅ | **Parameter descriptors.** Replace the `ParamId`-only table with `ParamDescriptor` (add detents and `format`); move display text from `SynthController` into the core | `Synth.displayText` reads `format`; tests cover every parameter's text |
 | R2 | **`IInstrument` and `AudioBlock`.** `Engine` implements it; `k303-render` and tests drive it through the interface | Renderer output identical before and after (sample compare) |
 | R3 | **Transport.** Add `TransportState` and a `StandaloneTransport`; Tempo and run/stop move out of the instrument into the transport; extract `StepClock` from `Sequencer` and drive it from beat position | Existing timing tests pass against the transport; the Tempo knob still works (it drives the standalone transport) |
 | R4 | **Generic MIDI.** Extract `MidiEvent` decoding and `MidiLearnMap` into shared core; make `MidiLearnController` and `LearnOverlay` work from descriptor keys | `tst_midi` passes unchanged plus tests for the shared pieces |

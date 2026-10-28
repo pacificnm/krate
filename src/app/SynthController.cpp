@@ -90,60 +90,15 @@ void SynthController::setParamByKey(const QString &key, qreal value)
 qreal SynthController::defaultValue(const QString &key) const
 {
     const auto id = k303::paramFromKey(key.toStdString());
-    return id ? k303::paramInfo(*id).defaultValue : 0.0;
+    return id ? k303::paramDescriptor(*id).defaultValue : 0.0;
 }
 
 QString SynthController::displayText(const QString &key, qreal value) const
 {
-    namespace u = k303::units;
     const auto id = k303::paramFromKey(key.toStdString());
     if (!id)
         return {};
-    const float v = float(qBound(0.0, value, 1.0));
-
-    switch (*id) {
-    case k303::ParamId::Tuning: {
-        const double st = u::tuningSemitones(v);
-        QString text = QString::number(st, 'f', 1);
-        if (st >= 0.05)
-            text.prepend(u'+');
-        return text + QStringLiteral(" st");
-    }
-    case k303::ParamId::Cutoff: {
-        const double hz = u::cutoffHz(v);
-        return hz >= 1000.0 ? QStringLiteral("%1 kHz").arg(hz / 1000.0, 0, 'f', 2)
-                            : QStringLiteral("%1 Hz").arg(qRound(hz));
-    }
-    case k303::ParamId::EnvMod:
-        return QStringLiteral("%1 oct").arg(u::envModOctaves(v), 0, 'f', 1);
-    case k303::ParamId::Decay: {
-        const double s = u::decaySeconds(v);
-        return s >= 1.0 ? QStringLiteral("%1 s").arg(s, 0, 'f', 2)
-                        : QStringLiteral("%1 ms").arg(qRound(s * 1000.0));
-    }
-    case k303::ParamId::Waveform:
-        return u::waveformIsSquare(v) ? QStringLiteral("Square") : QStringLiteral("Saw");
-    case k303::ParamId::Volume: {
-        const double gain = u::volumeGain(v);
-        return gain <= 0.0 ? QStringLiteral("-inf dB")
-                           : QStringLiteral("%1 dB").arg(20.0 * std::log10(gain), 0, 'f', 1);
-    }
-    case k303::ParamId::Tempo:
-        return QStringLiteral("%1 BPM").arg(qRound(u::tempoBpm(v)));
-    case k303::ParamId::Scale: {
-        static const char *names[] = {"1/16", "1/32", "1/16T"};
-        return QString::fromLatin1(names[u::detent(v, u::kScalePositions)]);
-    }
-    case k303::ParamId::PlayMode: {
-        static const char *names[] = {"Forward", "Reverse", "Fwd+Rev", "Invert", "Random"};
-        return QString::fromLatin1(names[u::detent(v, u::kPlayModePositions)]);
-    }
-    case k303::ParamId::Resonance:
-    case k303::ParamId::Accent:
-    case k303::ParamId::Count:
-        break;
-    }
-    return QStringLiteral("%1%").arg(qRound(v * 100.0f));
+    return QString::fromStdString(k303::paramDescriptor(*id).format(float(qBound(0.0, value, 1.0))));
 }
 
 void SynthController::connectAudio()

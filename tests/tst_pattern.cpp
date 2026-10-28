@@ -310,7 +310,7 @@ private slots:
         writeFile(m_path, R"({ "version": 1, "params": { "cutoff": 7, "warp": 0.5 } })");
         QCOMPARE(kp::loadPanel(m_path, &back), kp::LoadResult::Loaded);
         QCOMPARE(back[std::size_t(ParamId::Cutoff)], 1.0f);  // clamped
-        QCOMPARE(back[std::size_t(ParamId::Volume)], paramInfo(ParamId::Volume).defaultValue); // missing: default
+        QCOMPARE(back[std::size_t(ParamId::Volume)], paramDescriptor(ParamId::Volume).defaultValue); // missing: default
     }
 
     void jsonRoundTrip()
