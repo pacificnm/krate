@@ -1,22 +1,53 @@
 #include "app/DrumsController.h"
 
 #include <algorithm>
+#include <array>
 
 #include <QJSEngine>
+#include <QLoggingCategory>
 
 #include "core/Transport.h"
 #include "dsp/Engine.h"
 #include "dsp/Params.h"
 
+Q_LOGGING_CATEGORY(lcPatterns, "k909.patterns")
+
+namespace {
+constexpr int kSaveDelayMs = 2000;
+constexpr std::array<int, 4> kScaleSteps{4, 8, 3, 6}; // in scaleNames() order
+} // namespace
+
 DrumsController::DrumsController(k909::Engine &engine, const QString &panelFilePath,
-                                 krate::Transport *transport, QObject *parent)
+                                 const QString &patternsFilePath, krate::Transport *transport, QObject *parent)
     : krate::ParamController(engine, panelFilePath, parent)
     , m_engine(engine)
     , m_transport(transport)
-    , m_pattern(engine.pattern()) // read before processing starts
+    , m_patternsFilePath(patternsFilePath)
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
+
+    using k909::persistence::LoadResult;
+    switch (k909::persistence::loadPatterns(m_patternsFilePath, &m_bank)) {
+    case LoadResult::Loaded:
+        qCInfo(lcPatterns) << "loaded patterns from" << m_patternsFilePath;
+        break;
+    case LoadResult::Missing:
+        break; // first run: the factory patterns
+    case LoadResult::Invalid:
+        qCWarning(lcPatterns) << "could not read" << m_patternsFilePath << "- starting with the factory patterns";
+        break;
+    case LoadResult::NewerVersion:
+        qCWarning(lcPatterns) << m_patternsFilePath << "was written by a newer version; saving to .v1 instead";
+        m_patternsFilePath += QStringLiteral(".v1");
+        break;
+    }
+    m_engine.setPattern(current(), m_bank.current); // before processing starts
+    m_playingPattern = m_bank.current;
+
+    m_saveTimer.setSingleShot(true);
+    m_saveTimer.setInterval(kSaveDelayMs);
+    connect(&m_saveTimer, &QTimer::timeout, this, &DrumsController::save);
 
     m_pollTimer.setInterval(16); // ~60 Hz
     connect(&m_pollTimer, &QTimer::timeout, this, &DrumsController::poll);
@@ -28,6 +59,8 @@ DrumsController::DrumsController(k909::Engine &engine, const QString &panelFileP
 
 DrumsController::~DrumsController()
 {
+    if (m_saveTimer.isActive())
+        save();
     s_instance = nullptr;
 }
 
@@ -36,6 +69,13 @@ DrumsController *DrumsController::create(QQmlEngine *, QJSEngine *)
     Q_ASSERT(s_instance);
     QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
     return s_instance;
+}
+
+void DrumsController::save()
+{
+    m_saveTimer.stop();
+    if (!k909::persistence::savePatterns(m_patternsFilePath, m_bank))
+        qCWarning(lcPatterns) << "could not save patterns to" << m_patternsFilePath;
 }
 
 bool DrumsController::playing() const
@@ -59,6 +99,13 @@ void DrumsController::poll()
         m_currentStep = step;
         emit currentStepChanged();
     }
+    const int playingPattern = m_engine.playingSlot();
+    const int queuedPattern = m_engine.queuedSlot();
+    if (playingPattern != m_playingPattern || queuedPattern != m_queuedPattern) {
+        m_playingPattern = playingPattern;
+        m_queuedPattern = queuedPattern;
+        emit playingPatternChanged();
+    }
     // The transport can also be started by a MIDI button, Space, or the rack.
     if (playing() != m_playing) {
         m_playing = playing();
@@ -75,18 +122,97 @@ void DrumsController::setSelectedTrack(int track)
     emit selectedTrackChanged();
 }
 
+void DrumsController::setPatternIndex(int index)
+{
+    index = std::clamp(index, 0, k909::persistence::kPatternCount - 1);
+    if (index == m_bank.current)
+        return;
+    m_bank.current = index;
+    m_engine.postPattern(current(), index);
+    edited();
+}
+
+void DrumsController::post(k909::Command &command)
+{
+    command.slot = std::uint8_t(m_bank.current);
+    m_engine.post(command);
+}
+
+void DrumsController::edited()
+{
+    ++m_patternRevision;
+    emit patternChanged();
+    m_saveTimer.start(); // restarts: saves 2 s after the last edit
+}
+
+void DrumsController::setLength(int length)
+{
+    length = std::clamp(length, 1, 16);
+    if (length == current().length)
+        return;
+    current().length = std::uint8_t(length);
+    k909::Command command;
+    command.kind = k909::Command::Kind::SetLength;
+    command.value = std::uint8_t(length);
+    post(command);
+    edited();
+}
+
+int DrumsController::scaleIndex() const
+{
+    const auto it = std::find(kScaleSteps.begin(), kScaleSteps.end(), int(current().stepsPerBeat));
+    return it == kScaleSteps.end() ? 0 : int(it - kScaleSteps.begin());
+}
+
+void DrumsController::setScaleIndex(int index)
+{
+    index = std::clamp(index, 0, int(kScaleSteps.size()) - 1);
+    if (index == scaleIndex())
+        return;
+    current().stepsPerBeat = std::uint8_t(kScaleSteps[std::size_t(index)]);
+    k909::Command command;
+    command.kind = k909::Command::Kind::SetStepsPerBeat;
+    command.value = current().stepsPerBeat;
+    post(command);
+    edited();
+}
+
+void DrumsController::setOrderIndex(int index)
+{
+    index = std::clamp(index, 0, 3);
+    if (index == current().order)
+        return;
+    current().order = std::uint8_t(index);
+    k909::Command command;
+    command.kind = k909::Command::Kind::SetOrder;
+    command.value = std::uint8_t(index);
+    post(command);
+    edited();
+}
+
+QStringList DrumsController::scaleNames() const
+{
+    return {QStringLiteral("1/16"), QStringLiteral("1/32"), QStringLiteral("1/8 triplet"),
+            QStringLiteral("1/16 triplet")};
+}
+
+QStringList DrumsController::orderNames() const
+{
+    return {QStringLiteral("Forward"), QStringLiteral("Reverse"), QStringLiteral("Fwd+Rev"), QStringLiteral("Random")};
+}
+
 int DrumsController::stepState(int track, int step) const
 {
     if (track < 0 || track >= k909::DrumCount || step < 0 || step >= 16)
         return 0;
-    return int(m_pattern.tracks[std::size_t(track)][std::size_t(step)]);
+    return int(current().tracks[std::size_t(track)][std::size_t(step)]);
 }
 
 void DrumsController::setStepState(int track, int step, int state)
 {
     if (track < 0 || track >= k909::DrumCount || step < 0 || step >= 16 || state < 0 || state > 2)
         return;
-    auto &slot = m_pattern.tracks[std::size_t(track)][std::size_t(step)];
+    auto &slot = current().tracks[std::size_t(track)][std::size_t(step)];
     if (int(slot) == state)
         return;
     slot = k909::StepState(state);
@@ -95,9 +221,8 @@ void DrumsController::setStepState(int track, int step, int state)
     command.drum = std::uint8_t(track);
     command.step = std::uint8_t(step);
     command.state = slot;
-    m_engine.post(command);
-    ++m_patternRevision;
-    emit patternChanged();
+    post(command);
+    edited();
 }
 
 void DrumsController::cycleStep(int step)
@@ -107,14 +232,19 @@ void DrumsController::cycleStep(int step)
 
 void DrumsController::clearTrack(int track)
 {
-    for (int step = 0; step < 16; ++step)
-        setStepState(track, step, 0);
+    if (track < 0 || track >= k909::DrumCount)
+        return;
+    current().tracks[std::size_t(track)].fill(k909::StepState::Off);
+    m_engine.postReplace(current(), m_bank.current);
+    edited();
 }
 
 void DrumsController::clearPattern()
 {
-    for (int track = 0; track < k909::DrumCount; ++track)
-        clearTrack(track);
+    for (auto &track : current().tracks)
+        track.fill(k909::StepState::Off);
+    m_engine.postReplace(current(), m_bank.current);
+    edited();
 }
 
 void DrumsController::audition(int track)

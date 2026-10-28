@@ -76,6 +76,15 @@ StepClock::Tick StepClock::tick(double beat) noexcept
     return t;
 }
 
+void StepClock::restartPass() noexcept
+{
+    if (!m_running || m_step < 0)
+        return;
+    m_direction = m_nextDirection = 1;
+    m_step = firstStep();
+    chooseNext();
+}
+
 int StepClock::firstStep() noexcept
 {
     switch (m_order) {

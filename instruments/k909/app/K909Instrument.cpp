@@ -3,7 +3,8 @@
 namespace k909 {
 
 Instance::Instance(const krate::InstrumentContext &context)
-    : drums(engine, context.configDir + QStringLiteral("/panel.json"), context.transport, nullptr)
+    : drums(engine, context.configDir + QStringLiteral("/panel.json"), context.dataDir + QStringLiteral("/patterns.json"),
+            context.transport, nullptr)
 {
 }
 
@@ -11,7 +12,8 @@ void Instance::triggerAction(const QString &action)
 {
     if (action == u"startstop")
         drums.setPlaying(!drums.playing());
-    // patternA..patternH select patterns from D4.
+    else if (action.size() == 8 && action.startsWith(u"pattern")) // patternA..patternH
+        drums.setPatternIndex(action.at(7).unicode() - u'A');
 }
 
 krate::InstrumentEntry registryEntry()

@@ -4,8 +4,8 @@ import QtQuick
 import Krate
 
 // K909's panel at design size 1600 x 940 (docs/UI.md): knob sections, the
-// sequencer's step buttons and track strip, START/STOP/CLEAR. Pattern
-// selection arrives in D4, the MIDI Learn controls in D5.
+// sequencer's step buttons and track strip, START/STOP/CLEAR, patterns A-H
+// and the LCD block. The MIDI Learn controls arrive in D5.
 Item {
     id: panel
 
@@ -206,7 +206,108 @@ Item {
     }
 
     // Middle deck labels (controls arrive in D2-D4)
-    PanelLabel { x: 70; y: 572; text: "PATTERN"; orange: true }
+    // Pattern buttons A-H: LED = the pattern playing (blinking: waiting for the
+    // end of the pass); the dark button is the one shown and edited.
+    readonly property string letters: "ABCDEFGH"
+    property bool blink: false
+    Timer {
+        interval: 220
+        repeat: true
+        running: Drums.queuedPattern >= 0
+        onTriggered: panel.blink = !panel.blink
+        onRunningChanged: panel.blink = false
+    }
+
+    PanelLabel { x: 64; y: 568; text: "PATTERN"; orange: true }
+    Repeater {
+        model: 8
+
+        PanelButton {
+            id: patternButton
+            required property int index
+            x: 64 + (index % 4) * 78
+            y: index < 4 ? 596 : 656
+            width: 64
+            height: 50
+            faceText: panel.letters[index]
+            text: "Pattern " + panel.letters[index]
+            dark: Drums.patternIndex === index
+            hasLed: true
+            ledOn: Drums.queuedPattern === index ? panel.blink : Drums.playingPattern === index
+            onClicked: Drums.patternIndex = index
+
+            LearnOverlay {
+                anchors.fill: parent
+                paramKey: "pattern" + panel.letters[patternButton.index]
+                round: false
+            }
+        }
+    }
+
+    // LCD block: the shown pattern, its length, step size and play order.
+    Rectangle {
+        x: 400
+        y: 566
+        width: 520
+        height: 150
+        radius: 4
+        color: "transparent"
+        border.color: Theme.deckLine
+        border.width: 2
+    }
+    Repeater {
+        model: [
+            { label: "PATTERN", row: 0 }, { label: "LENGTH", row: 1 },
+            { label: "SCALE", row: 2 }, { label: "ORDER", row: 3 }
+        ]
+
+        PanelLabel {
+            required property var modelData
+            x: 418
+            y: 580 + modelData.row * 34
+            text: modelData.label
+            font.pixelSize: 13
+        }
+    }
+    LcdField {
+        x: 520
+        y: 574
+        width: 384
+        height: 30
+        text: "Pattern " + panel.letters[Drums.patternIndex]
+              + (Drums.queuedPattern === Drums.patternIndex ? "  (next)"
+                 : Drums.playing && Drums.playingPattern !== Drums.patternIndex
+                   ? "  (" + panel.letters[Drums.playingPattern] + " playing)" : "")
+        onUp: Drums.patternIndex = Math.min(7, Drums.patternIndex + 1)
+        onDown: Drums.patternIndex = Math.max(0, Drums.patternIndex - 1)
+    }
+    LcdField {
+        x: 520
+        y: 608
+        width: 384
+        height: 30
+        text: Drums.length + (Drums.length === 1 ? " step" : " steps")
+        onUp: Drums.length = Drums.length + 1
+        onDown: Drums.length = Drums.length - 1
+    }
+    LcdField {
+        x: 520
+        y: 642
+        width: 384
+        height: 30
+        text: Drums.scaleNames[Drums.scaleIndex]
+        onUp: Drums.scaleIndex = Math.min(Drums.scaleNames.length - 1, Drums.scaleIndex + 1)
+        onDown: Drums.scaleIndex = Math.max(0, Drums.scaleIndex - 1)
+    }
+    LcdField {
+        x: 520
+        y: 676
+        width: 384
+        height: 30
+        text: Drums.orderNames[Drums.orderIndex]
+        onUp: Drums.orderIndex = Math.min(Drums.orderNames.length - 1, Drums.orderIndex + 1)
+        onDown: Drums.orderIndex = Math.max(0, Drums.orderIndex - 1)
+    }
     PanelLabel { centerX: 1060; y: 572; text: "TEMPO"; visible: Drums.ownsTransport }
     PanelLabel { centerX: 1190; y: 572; text: "VOLUME" }
     PanelLabel { centerX: 1320; y: 572; text: "SHUFFLE" }
@@ -390,6 +491,13 @@ Item {
     Keys.onSpacePressed: Drums.playing = !Drums.playing // no-op in the rack (no transport of its own)
     Keys.onUpPressed: Drums.selectedTrack = Drums.selectedTrack - 1
     Keys.onDownPressed: Drums.selectedTrack = Drums.selectedTrack + 1
-    Keys.onPressed: event => panelKeys.shift = (event.modifiers & Qt.ShiftModifier) !== 0
+    Keys.onPressed: event => {
+        panelKeys.shift = (event.modifiers & Qt.ShiftModifier) !== 0
+        // A-H select a pattern (no modifiers, so shortcuts elsewhere stay free).
+        if (event.key >= Qt.Key_A && event.key <= Qt.Key_H && event.modifiers === Qt.NoModifier) {
+            Drums.patternIndex = event.key - Qt.Key_A
+            event.accepted = true
+        }
+    }
     Keys.onReleased: event => panelKeys.shift = (event.modifiers & Qt.ShiftModifier) !== 0
 }

@@ -148,7 +148,7 @@ private slots:
         seq.start();
         for (int i = 0; i < kFramesPerStep / 2; ++i)
             QVERIFY(!seq.tick(double(i) * kBpm / 60.0 / kRate).on);
-        seq.setStep(int(DrumId::Sd), 1, StepState::On);
+        seq.setStep(0, int(DrumId::Sd), 1, StepState::On);
         bool played = false;
         for (int i = kFramesPerStep / 2; i < 2 * kFramesPerStep; ++i)
             if (seq.tick(double(i) * kBpm / 60.0 / kRate).on) {
@@ -156,6 +156,99 @@ private slots:
                 played = true;
             }
         QVERIFY(played);
+    }
+
+    // A pattern chosen while playing takes over when the next pass begins.
+    void patternChangeWaitsForThePass()
+    {
+        Pattern a = everyStep(DrumId::Bd);
+        a.length = 4;
+        Pattern b = everyStep(DrumId::Sd);
+        Sequencer seq;
+        seq.setPattern(a, 0);
+        seq.start();
+        std::vector<std::pair<int, std::uint16_t>> fired;
+        for (int i = 0; i < 6 * kFramesPerStep; ++i) {
+            if (i == kFramesPerStep + 10) {
+                seq.queuePattern(b, 1);
+                QCOMPARE(seq.queuedSlot(), 1);
+                QCOMPARE(seq.slot(), 0);
+            }
+            const Hits h = seq.tick(double(i) * kBpm / 60.0 / kRate);
+            if (h.on)
+                fired.push_back({seq.currentStep(), h.on});
+        }
+        // Steps 0..3 of A (bass drum), then B from its first step (snare).
+        QCOMPARE(int(fired.size()), 6);
+        for (int i = 0; i < 4; ++i)
+            QCOMPARE(fired[std::size_t(i)].second, bit(DrumId::Bd));
+        QCOMPARE(fired[4], (std::pair<int, std::uint16_t>{0, bit(DrumId::Sd)}));
+        QCOMPARE(fired[5], (std::pair<int, std::uint16_t>{1, bit(DrumId::Sd)}));
+        QCOMPARE(seq.slot(), 1);
+        QCOMPARE(seq.queuedSlot(), -1);
+    }
+
+    // Edits name their slot: the waiting pattern can be edited before it plays.
+    void editsReachTheQueuedPattern()
+    {
+        Sequencer seq;
+        seq.setPattern(Pattern{}, 0);
+        seq.start();
+        seq.tick(0.0);
+        seq.queuePattern(Pattern{}, 3);
+        seq.setStep(3, int(DrumId::Cp), 0, StepState::Accent);
+        seq.setStep(5, int(DrumId::Bd), 0, StepState::On); // neither playing nor queued: ignored
+        QVERIFY(seq.pattern() == Pattern{});
+        Hits first;
+        for (int i = 1; i <= 16 * kFramesPerStep; ++i)
+            if (const Hits h = seq.tick(double(i) * kBpm / 60.0 / kRate); h.on) {
+                first = h;
+                break;
+            }
+        QCOMPARE(first.accent, bit(DrumId::Cp));
+        QCOMPARE(seq.slot(), 3);
+    }
+
+    // Choosing the playing pattern again cancels a waiting change.
+    void reselectingCancelsTheChange()
+    {
+        Sequencer seq;
+        seq.setPattern(Pattern{}, 0);
+        seq.start();
+        seq.tick(0.0);
+        seq.queuePattern(everyStep(DrumId::Bd), 2);
+        seq.queuePattern(Pattern{}, 0);
+        QCOMPARE(seq.queuedSlot(), -1);
+        QCOMPARE(seq.slot(), 0);
+    }
+
+    // A new pattern in another play order starts from that order's first step.
+    void newOrderStartsFromItsFirstStep()
+    {
+        Pattern a = everyStep(DrumId::Bd);
+        a.length = 2;
+        Pattern b = everyStep(DrumId::Sd);
+        b.length = 4;
+        b.order = std::uint8_t(krate::StepClock::Order::Reverse);
+        Sequencer seq;
+        seq.setPattern(a, 0);
+        seq.start();
+        std::vector<int> steps;
+        for (int i = 0; i < 6 * kFramesPerStep; ++i) {
+            if (i == 10)
+                seq.queuePattern(b, 1);
+            if (seq.tick(double(i) * kBpm / 60.0 / kRate).on)
+                steps.push_back(seq.currentStep());
+        }
+        QCOMPARE(steps, (std::vector<int>{0, 1, 3, 2, 1, 0}));
+    }
+
+    void stoppedChangeIsImmediate()
+    {
+        Sequencer seq;
+        seq.queuePattern(everyStep(DrumId::Rd), 6);
+        QCOMPARE(seq.slot(), 6);
+        QCOMPARE(seq.queuedSlot(), -1);
     }
 
     void factoryPatternsAreDistinctAndValid()

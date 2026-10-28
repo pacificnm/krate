@@ -81,35 +81,95 @@ Pattern factoryPattern(int index)
 
 Sequencer::Sequencer()
 {
+    applyTimings();
+}
+
+void Sequencer::applyTimings() noexcept
+{
+    m_pattern.length = std::uint8_t(std::clamp<int>(m_pattern.length, 1, 16));
+    const int steps = m_pattern.stepsPerBeat;
+    if (steps != 3 && steps != 4 && steps != 6 && steps != 8)
+        m_pattern.stepsPerBeat = 4;
+    m_pattern.order = std::uint8_t(std::min<int>(m_pattern.order, 3));
     m_clock.setLength(m_pattern.length);
     m_clock.setStepsPerBeat(m_pattern.stepsPerBeat);
+    m_clock.setOrder(krate::StepClock::Order(m_pattern.order));
 }
 
-void Sequencer::setPattern(const Pattern &pattern) noexcept
+void Sequencer::setPattern(const Pattern &pattern, int slot) noexcept
 {
     m_pattern = pattern;
-    setLength(pattern.length);
-    setStepsPerBeat(pattern.stepsPerBeat);
+    m_slot = slot;
+    m_queuedSlot = -1;
+    applyTimings();
 }
 
-void Sequencer::setStep(int track, int step, StepState state) noexcept
+void Sequencer::queuePattern(const Pattern &pattern, int slot) noexcept
 {
-    if (track >= 0 && track < DrumCount && step >= 0 && step < 16)
-        m_pattern.tracks[std::size_t(track)][std::size_t(step)] = state;
+    if (!running()) {
+        setPattern(pattern, slot);
+        return;
+    }
+    if (slot == m_slot) { // back to the playing one: just cancel the change
+        m_queuedSlot = -1;
+        return;
+    }
+    m_queued = pattern;
+    m_queuedSlot = slot;
 }
 
-void Sequencer::setLength(int length) noexcept
+void Sequencer::replacePattern(const Pattern &pattern, int slot) noexcept
 {
-    m_pattern.length = std::uint8_t(std::clamp(length, 1, 16));
-    m_clock.setLength(m_pattern.length);
+    if (Pattern *p = target(slot)) {
+        *p = pattern;
+        if (p == &m_pattern)
+            applyTimings();
+    }
 }
 
-void Sequencer::setStepsPerBeat(int steps) noexcept
+Pattern *Sequencer::target(int slot) noexcept
+{
+    if (slot == m_slot)
+        return &m_pattern;
+    if (slot == m_queuedSlot)
+        return &m_queued;
+    return nullptr;
+}
+
+void Sequencer::setStep(int slot, int track, int step, StepState state) noexcept
+{
+    Pattern *p = target(slot);
+    if (p && track >= 0 && track < DrumCount && step >= 0 && step < 16)
+        p->tracks[std::size_t(track)][std::size_t(step)] = state;
+}
+
+void Sequencer::setLength(int slot, int length) noexcept
+{
+    if (Pattern *p = target(slot)) {
+        p->length = std::uint8_t(std::clamp(length, 1, 16));
+        if (p == &m_pattern)
+            applyTimings();
+    }
+}
+
+void Sequencer::setStepsPerBeat(int slot, int steps) noexcept
 {
     if (steps != 3 && steps != 4 && steps != 6 && steps != 8)
-        steps = 4;
-    m_pattern.stepsPerBeat = std::uint8_t(steps);
-    m_clock.setStepsPerBeat(steps);
+        return;
+    if (Pattern *p = target(slot)) {
+        p->stepsPerBeat = std::uint8_t(steps);
+        if (p == &m_pattern)
+            applyTimings();
+    }
+}
+
+void Sequencer::setOrder(int slot, int order) noexcept
+{
+    if (Pattern *p = target(slot)) {
+        p->order = std::uint8_t(std::clamp(order, 0, 3));
+        if (p == &m_pattern)
+            applyTimings();
+    }
 }
 
 void Sequencer::setShuffle(int amount) noexcept
@@ -157,6 +217,14 @@ Hits Sequencer::tick(double beat) noexcept
 {
     const auto t = m_clock.tick(beat);
     if (t.stepStarted) {
+        // A new pass: a queued pattern takes over from its first step.
+        if (m_queuedSlot >= 0 && m_clock.stepCount() % m_pattern.length == 0) {
+            m_pattern = m_queued;
+            m_slot = m_queuedSlot;
+            m_queuedSlot = -1;
+            applyTimings();
+            m_clock.restartPass();
+        }
         // A shuffled step that never reached its delay (tempo jump) still plays.
         Hits late = m_pendingStep >= 0 ? hitsFor(m_pendingStep) : Hits{};
         m_pendingStep = -1;

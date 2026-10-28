@@ -7,9 +7,12 @@
 #include <string_view>
 
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QTemporaryDir>
 
 #include "app/K909Instrument.h"
+#include "app/PatternFile.h"
 #include "core/Transport.h"
 #include "dsp/Params.h"
 
@@ -73,6 +76,90 @@ private slots:
             QVERIFY(!transport.playing());
         }
         QVERIFY(QFile::exists(dir.filePath("config/panel.json")));
+    }
+
+    void defaultBankHasTheFactoryPatterns()
+    {
+        const auto bank = persistence::defaultBank();
+        for (int i = 0; i < kFactoryPatternCount; ++i)
+            QVERIFY(bank.patterns[std::size_t(i)] == factoryPattern(i));
+        for (int i = kFactoryPatternCount; i < persistence::kPatternCount; ++i)
+            QVERIFY(bank.patterns[std::size_t(i)] == Pattern{});
+        QCOMPARE(bank.current, 0);
+    }
+
+    void patternJsonRoundTrip()
+    {
+        persistence::PatternBank bank = persistence::defaultBank();
+        bank.current = 5;
+        Pattern &p = bank.patterns[5];
+        p.length = 12;
+        p.stepsPerBeat = 6;
+        p.order = 3;
+        p.tracks[std::size_t(DrumId::Rd)][15] = StepState::Accent;
+        p.tracks[std::size_t(DrumId::Lt)][0] = StepState::On;
+        QVERIFY(persistence::fromJson(persistence::toJson(bank)) == bank);
+
+        // The format in docs/SEQUENCER.md#storage: tracks as strings, empty ones left out.
+        const QJsonObject json = persistence::toJson(bank);
+        const QJsonObject five = json.value(u"patterns").toArray().at(5).toObject();
+        QCOMPARE(five.value(u"tracks").toObject().value(u"rd").toString(), QStringLiteral("0000000000000002"));
+        QVERIFY(!five.value(u"tracks").toObject().contains(u"bd"));
+    }
+
+    void badPatternJsonIsClamped()
+    {
+        const QJsonObject json{
+            {"version", 1},
+            {"current", 42},
+            {"patterns", QJsonArray{QJsonObject{{"length", 99}, {"scale", 5}, {"order", -3},
+                                                {"tracks", QJsonObject{{"bd", "21x9"}, {"zz", "1111"}}}}}},
+        };
+        const auto bank = persistence::fromJson(json);
+        QCOMPARE(bank.current, 7);
+        const Pattern &p = bank.patterns[0];
+        QCOMPARE(int(p.length), 16);
+        QCOMPARE(int(p.stepsPerBeat), 4);
+        QCOMPARE(int(p.order), 0);
+        QCOMPARE(p.tracks[0][0], StepState::Accent);
+        QCOMPARE(p.tracks[0][1], StepState::On);
+        QCOMPARE(p.tracks[0][2], StepState::Off);
+        QCOMPARE(p.tracks[0][3], StepState::Off);
+    }
+
+    // Edits are saved (here: on destruction) and come back on the next start.
+    void controllerSavesAndRestoresTheBank()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        {
+            const auto instance = registryEntry().create(context);
+            auto &k = static_cast<Instance &>(*instance);
+            QCOMPARE(k.drums.patternIndex(), 0);
+            instance->triggerAction(QStringLiteral("patternC"));
+            QCOMPARE(k.drums.patternIndex(), 2);
+            k.drums.setSelectedTrack(int(DrumId::Cp));
+            k.drums.clearPattern();
+            k.drums.cycleStep(3);
+            k.drums.cycleStep(3); // accent
+            k.drums.setLength(7);
+            k.drums.setScaleIndex(2); // 1/8 triplet
+            k.drums.setOrderIndex(1); // reverse
+            QCOMPARE(k.drums.stepState(int(DrumId::Cp), 3), 2);
+        }
+        QVERIFY(QFile::exists(dir.filePath("data/patterns.json")));
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        QCOMPARE(k.drums.patternIndex(), 2);
+        QCOMPARE(k.drums.stepState(int(DrumId::Cp), 3), 2);
+        QCOMPARE(k.drums.stepState(int(DrumId::Bd), 0), 0);
+        QCOMPARE(k.drums.length(), 7);
+        QCOMPARE(k.drums.scaleIndex(), 2);
+        QCOMPARE(k.drums.orderIndex(), 1);
+        // The engine starts on the saved pattern.
+        QCOMPARE(k.engine.playingSlot(), 2);
+        QVERIFY(k.engine.pattern() == k.drums.bank().patterns[2]);
+        QCOMPARE(int(k.engine.pattern().stepsPerBeat), 3);
     }
 
     // In the rack: no transport of its own.

@@ -18,11 +18,13 @@ struct Command
 {
     enum class Kind : std::uint8_t {
         Trigger,        // play `drum` now (audition)
-        SetStep,        // drum's track, `step` = `state`
-        SetLength,      // `value` steps
-        SetStepsPerBeat // `value`
+        SetStep,         // pattern `slot`: drum's track, `step` = `state`
+        SetLength,       // pattern `slot`: `value` steps
+        SetStepsPerBeat, // pattern `slot`: `value`
+        SetOrder,        // pattern `slot`: `value` (krate::StepClock::Order)
     };
     Kind kind = Kind::Trigger;
+    std::uint8_t slot = 0;     // pattern bank slot 0..7 (A..H)
     std::uint8_t drum = 0;     // DrumId
     bool accent = false;
     float velocity = 1.0f;
@@ -55,13 +57,22 @@ public:
     void trigger(DrumId drum, float velocity, bool accent) noexcept;
     bool sounding(DrumId drum) const noexcept { return m_voices.sounding(drum); }
 
-    // Any thread: the playing step 0..15, or -1 when stopped (step LEDs).
+    // Any thread: the playing step 0..15, or -1 when stopped (step LEDs); the
+    // bank slot playing, and the one waiting for the next pass (-1 = none).
     int currentStep() const noexcept { return m_currentStep.load(std::memory_order_relaxed); }
+    int playingSlot() const noexcept { return m_playingSlot.load(std::memory_order_relaxed); }
+    int queuedSlot() const noexcept { return m_queuedSlot.load(std::memory_order_relaxed); }
 
     // Setup, before processing starts (and offline tools): the starting pattern.
-    // While running, edit through post().
-    void setPattern(const Pattern &pattern) noexcept { m_sequencer.setPattern(pattern); }
+    // While running, use postPattern() and post().
+    void setPattern(const Pattern &pattern, int slot = 0) noexcept;
     const Pattern &pattern() const noexcept { return m_sequencer.pattern(); }
+
+    // GUI thread: play bank slot `slot` (its whole pattern) from the next pass,
+    // or at once while stopped. False if the queue is full.
+    bool postPattern(const Pattern &pattern, int slot) noexcept { return m_patternLoads.push({pattern, slot, false}); }
+    // GUI thread: new contents for slot `slot` if it is playing or queued (Clear).
+    bool postReplace(const Pattern &pattern, int slot) noexcept { return m_patternLoads.push({pattern, slot, true}); }
 
     // GUI thread: queue a command for the next block. False if the queue is full.
     bool post(const Command &command) noexcept { return m_commands.push(command); }
@@ -77,9 +88,18 @@ private:
     krate::ParamValues<ParamCount> m_params{kParams};
     krate::MidiLearnMap m_learn{kParams}; // parameters are ParamId values
     Voices m_voices;
+    struct PatternLoad
+    {
+        Pattern pattern;
+        int slot;
+        bool replace; // contents only; false = select (queuePattern)
+    };
     krate::SpscQueue<Command, 256> m_commands;
+    krate::SpscQueue<PatternLoad, 16> m_patternLoads;
     Sequencer m_sequencer;
     std::atomic<int> m_currentStep{-1};
+    std::atomic<int> m_playingSlot{0};
+    std::atomic<int> m_queuedSlot{-1};
     double m_sampleRate = 48000.0;
     double m_volume = -1.0;          // smoothed output gain; < 0 = not yet primed
     double m_volumeSmoothing = 0.0;  // per-sample one-pole coefficient

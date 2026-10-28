@@ -5,10 +5,10 @@ Runs on the audio thread, sample-accurately, on the shared `krate::StepClock` (a
 ## Pattern data
 
 ```
-Pattern
-  name         "Pattern A"
+Pattern (one of 8 bank slots, A..H)
   length       1..16 steps
   scale        steps per beat: 4 (1/16, default), 8 (1/32), 3 (1/8T), 6 (1/16T)
+  order        Forward, Reverse, Fwd+Rev, Random (krate::StepClock::Order)
   tracks[11]   one per voice, in panel order: BD SD LT MT HT RS CP CH OH CR RD
     steps[16]  0 = off, 1 = on, 2 = accent
 ```
@@ -23,36 +23,36 @@ On each step start, every track whose step is on triggers its voice on that exac
 
 **Velocities.** A sequenced step plays at velocity 0.8; an accented step at 1.0 plus Total Accent (docs/DSP.md#accent-and-velocity).
 
-**Play order and scale** come from `StepClock` (Forward, Reverse, Fwd+Rev, Random), the same as k303's.
+**Play order and scale** are stored per pattern and run on `StepClock` (Forward, Reverse, Fwd+Rev, Random), the same clock as k303's.
 
-**Pattern change while playing** takes effect at the end of the current pattern pass (the next time step 1 comes round), so a change never cuts a bar short. While stopped, it is immediate.
+**Pattern change while playing** waits for the end of the current pass (every `length` steps since START), so a change never cuts a bar short; the new pattern starts from its own first step (`StepClock::restartPass`). Choosing the playing pattern again cancels the change. While stopped, a change is immediate. The waiting pattern can be edited before it starts: every edit names its bank slot, and the engine applies it to the playing or the waiting pattern, whichever that is.
 
 ## Editing (GUI → audio)
 
-The controller (`Drums`) keeps the GUI's copy of the pattern and sends every edit to the engine through the lock-free command queue (`Engine::post`: `SetStep`, `SetLength`, `SetStepsPerBeat`, and `Trigger` for audition; whole-pattern loads arrive with A–H in D4). The engine publishes the playing step in an atomic that the controller polls at 60 Hz for the step LEDs. QML never owns timing.
+The controller (`Drums`) keeps the GUI's copy of the bank and sends every edit to the engine through lock-free queues: `Engine::post` for commands (`SetStep`, `SetLength`, `SetStepsPerBeat`, `SetOrder`, each naming its slot, and `Trigger` for audition) and `Engine::postPattern` / `postReplace` for whole patterns (A–H, Clear). The engine publishes the playing step and the playing and waiting slots in atomics that the controller polls at 60 Hz (step LEDs, pattern LEDs). QML never owns timing.
 
 | Action | How |
 | --- | --- |
-| Select track | Click a voice name in the track strip under the step buttons (or press that voice's MIDI note while EDIT is on) |
+| Select track | Click a voice name in the track strip under the step buttons, or ↑ ↓ |
 | Toggle a step | Click step 1–16: off → on → accent → off |
-| Pattern | A–H buttons; LCD shows the name |
-| Length | LCD ▲▼ |
+| Pattern | A–H buttons, keys A–H, or the PATTERN LCD ▲▼. The dark button is the pattern shown; its LED is the one playing, blinking while it waits for the end of the pass |
+| Length, scale, order | LCD ▲▼ |
 | Clear | Clears the selected track; Shift+Clear clears the whole pattern |
 | Run/stop | START and STOP buttons (standalone; in the rack they follow the rack's transport, as k303's are hidden) |
 
 ## Storage
 
-`~/.local/share/k909/patterns.json`, saved 2 s after the last edit and on quit, through `krate::JsonFile` (as k303's `PatternFile`). The first run seeds A–H with a few demo patterns (four-on-the-floor, a broken beat, a shuffle groove and so on).
+`~/.local/share/k909/patterns.json`, saved 2 s after the last edit and on quit, through `krate::JsonFile` (`app/PatternFile`, as k303's). The first run seeds A–D with the factory patterns (Floor, Broken, Groove, Fill); E–H start empty. `current` is the pattern shown when K909 starts.
 
 ```json
 {
   "version": 1,
   "current": 0,
   "patterns": [
-    { "name": "Pattern A", "length": 16, "scale": 4,
-      "tracks": { "bd": "2000100020001000", "sd": "0000100000001000", "ch": "1111111111111111" } }
+    { "length": 16, "scale": 4, "order": 0,
+      "tracks": { "bd": "2000100020001000", "cp": "0000200000002000", "ch": "1010101010101010" } }
   ]
 }
 ```
 
-Tracks are strings of `0`/`1`/`2`, one character per step; missing tracks are empty. Unknown keys are ignored so the format can grow (flam, parameter locks).
+Tracks are strings of `0`/`1`/`2`, one character per step, keyed `bd sd lt mt ht rs cp ch oh cr rd`; empty tracks are left out and missing ones are empty. Out-of-range values are clamped. Unknown keys are ignored so the format can grow (flam, parameter locks).

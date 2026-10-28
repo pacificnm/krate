@@ -28,6 +28,8 @@ qt_add_qml_module(k909_ui
         app/DrumsController.cpp
         app/K909Instrument.h
         app/K909Instrument.cpp
+        app/PatternFile.h
+        app/PatternFile.cpp
     QML_FILES
         qml/Main.qml
         qml/Panel.qml
@@ -59,6 +61,8 @@ add_executable(tst_k909
     app/DrumsController.cpp
     app/K909Instrument.h
     app/K909Instrument.cpp
+    app/PatternFile.h
+    app/PatternFile.cpp
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
 )

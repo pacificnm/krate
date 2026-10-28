@@ -32,6 +32,10 @@ public:
     // Once per sample while running, with that sample's beat position.
     Tick tick(double beat) noexcept;
 
+    // Right after a tick that started a step: make that step the first of the
+    // current order and length instead (a pattern change at a pass boundary).
+    void restartPass() noexcept;
+
     int step() const noexcept { return m_running ? m_step : -1; }  // pattern index
     int previousStep() const noexcept { return m_prevStep; }        // -1 at the start
     int nextStep() const noexcept { return m_next < m_length ? m_next : 0; } // already chosen

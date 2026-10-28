@@ -43,6 +43,13 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
     m_volume = -1.0;
 }
 
+void Engine::setPattern(const Pattern &pattern, int slot) noexcept
+{
+    m_sequencer.setPattern(pattern, slot);
+    m_playingSlot.store(slot, std::memory_order_relaxed);
+    m_queuedSlot.store(-1, std::memory_order_relaxed);
+}
+
 DrumId Engine::drumForNote(int note) noexcept
 {
     switch (note) {
@@ -85,13 +92,16 @@ void Engine::apply(const Command &command) noexcept
         trigger(DrumId(command.drum), command.velocity, command.accent);
         break;
     case Command::Kind::SetStep:
-        m_sequencer.setStep(command.drum, command.step, command.state);
+        m_sequencer.setStep(command.slot, command.drum, command.step, command.state);
         break;
     case Command::Kind::SetLength:
-        m_sequencer.setLength(command.value);
+        m_sequencer.setLength(command.slot, command.value);
         break;
     case Command::Kind::SetStepsPerBeat:
-        m_sequencer.setStepsPerBeat(command.value);
+        m_sequencer.setStepsPerBeat(command.slot, command.value);
+        break;
+    case Command::Kind::SetOrder:
+        m_sequencer.setOrder(command.slot, command.value);
         break;
     }
 }
@@ -133,6 +143,13 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     std::fill_n(left, block.frames, 0.0f);
     std::fill_n(right, block.frames, 0.0f);
 
+    // Whole patterns first, so edits that follow them in time land on them.
+    while (const auto load = m_patternLoads.pop()) {
+        if (load->replace)
+            m_sequencer.replacePattern(load->pattern, load->slot);
+        else
+            m_sequencer.queuePattern(load->pattern, load->slot);
+    }
     while (const auto command = m_commands.pop())
         apply(*command);
 
@@ -173,6 +190,8 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         handleMidi(block.midi[nextEvent++]);
     renderTo(block.frames);
     m_currentStep.store(m_sequencer.currentStep(), std::memory_order_relaxed);
+    m_playingSlot.store(m_sequencer.slot(), std::memory_order_relaxed);
+    m_queuedSlot.store(m_sequencer.queuedSlot(), std::memory_order_relaxed);
 
     const double target = units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)

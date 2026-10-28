@@ -21,6 +21,7 @@ Branding: "Krate" wordmark top left, **K909** large, **Drum Machine** on the rig
 │ [E][F][G][H]   │ PATTERN [Pattern A      ]▲▼  │   (◯)      ( ◯ )     (◯)      [ ]   [●]   [●]   [ ] │
 │                │ LENGTH  [16 steps       ]▲▼  │                                                   │
 │                │ SCALE   [1/16           ]▲▼  │   ▬▬▬▬▬▬ level meter ▬▬▬▬▬▬                       │
+│                │ ORDER   [Forward        ]▲▼  │                                                   │
 │                └──────────────────────────────┘                                                   │
 ├────────┬────────────────────────────────────────────────────────────────────────────────────────┤
 │        │  ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ●   step LEDs: playhead, and the selected track's steps   │
@@ -37,15 +38,15 @@ The reference layout's timing-scale strip above the step buttons (note symbols) 
 | Control | Function |
 | --- | --- |
 | Voice knobs | The parameters in [BRIEF.md](BRIEF.md#parameters); each knob is MIDI-learnable; drag vertically (Shift = fine), wheel steps, double-click resets it to its default. Black cap, orange pointer |
-| A–H | Select pattern (learnable as actions `patternA`…`patternH`) |
-| PATTERN / LENGTH / SCALE displays | Current pattern name, its length 1–16, steps per beat; ▲▼ to change |
+| A–H | Select pattern (learnable as actions `patternA`…`patternH`). Dark = shown and edited; LED = playing, blinking while waiting for the end of the pass |
+| PATTERN / LENGTH / SCALE / ORDER displays | The pattern shown (with "(next)" or "(X playing)" while a change waits), its length 1–16, steps per beat, play order; ▲▼ to change |
 | TEMPO | Standalone only; hidden in the rack (the transport bar owns tempo) |
 | VOLUME, SHUFFLE | Output level; swing amount |
 | UNMAP, AUDIO, LEARN, ABOUT | As k303: clear all mappings, audio status (click to reconnect), MIDI Learn mode, about box |
 | START / STOP | Run and stop the transport (standalone; hidden in the rack). Learnable as `startstop`. Space also toggles |
 | CLEAR | Clear the selected track; Shift+click clears the whole pattern |
 | Step buttons 1–16 | Toggle the selected track's step: off → on → accent. Lit steps show on, bright steps show accent |
-| Track strip | Click a voice name to select its track (it lights orange). Right-click a name to audition its voice (works now; left-click selection arrives with D4) |
+| Track strip | Click a voice name to select its track (it lights orange). Right-click a name to audition its voice |
 
 Keyboard (standalone window): Space run/stop; A–H select a pattern; ↑ ↓ change the selected track; L toggles learn; Esc leaves learn. In the rack, Space, L and Esc belong to the rack window, so only ↑ ↓ and A–H apply.
 
