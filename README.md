@@ -2,7 +2,7 @@
 
 A standalone acid bass synthesizer for Linux/KDE, inspired by classic 1980s analog bass synths. Qt 6 / QML hardware-style front panel, a C++ realtime DSP engine with a modeled diode-ladder filter, a built-in 16-step sequencer, and MIDI Learn for hardware controllers (developed against a Nektar Impact LX49 mk3).
 
-Status: M0–M2 built (panel, JACK audio out, parameters end to end); M1/M2 listening checks pending. Next: M3, voice DSP. See [docs/ROADMAP.md](docs/ROADMAP.md).
+Status: M0–M3 built (panel, JACK audio out, parameters, voice DSP with diode-ladder filter and the sequencer core playing a demo riff). Next: M4, sequencer UI. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Documentation
 

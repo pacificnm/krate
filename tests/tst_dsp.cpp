@@ -3,9 +3,12 @@
 #include <cmath>
 #include <vector>
 
+#include "dsp/DiodeLadder.h"
 #include "dsp/Engine.h"
+#include "dsp/HalfbandDecimator.h"
 #include "dsp/Oscillator.h"
 #include "dsp/Params.h"
+#include "dsp/Voice.h"
 
 using namespace k303;
 
@@ -82,82 +85,256 @@ private slots:
         QCOMPARE(engine.takePeak(), 0.0f);
     }
 
-    void engineRampsUpWhenRunning()
+    void engineProducesSoundWhenRunning()
     {
         Engine engine;
         engine.setSampleRate(48000.0);
         engine.setRunning(true);
-        std::vector<float> l(4800), r(4800);
-        engine.process(l.data(), r.data(), 4800);
-
-        // No click: the first samples are tiny, the tail is at the test-tone level.
-        QVERIFY(std::abs(l[0]) < 0.01f);
-        const float expected = 0.125f * float(units::volumeGain(paramInfo(ParamId::Volume).defaultValue));
+        std::vector<float> l(24000), r(24000);
+        engine.process(l.data(), r.data(), 24000);
         const float peak = engine.takePeak();
-        QVERIFY(peak > 0.8f * expected && peak <= 1.05f * expected);
+        QVERIFY(peak > 0.05f);
+        QVERIFY(peak < 1.0f); // soft clip
         QCOMPARE(l, r);
+        QCOMPARE(engine.currentStep(), 3); // 0.5 s at 120 BPM = 4 steps of 125 ms
     }
 
-    // Count downward zero crossings (one per saw period) over `frames`.
-    static int periods(Engine &engine, int frames)
-    {
-        std::vector<float> l(frames), r(frames);
-        engine.process(l.data(), r.data(), frames);
-        int n = 0;
-        for (int i = 1; i < frames; ++i)
-            if (l[i - 1] > 0.0f && l[i] <= 0.0f)
-                ++n;
-        return n;
-    }
-
-    void tuningMovesPitch()
-    {
-        Engine engine;
-        engine.setSampleRate(48000.0);
-        engine.setRunning(true);
-        QVERIFY(std::abs(periods(engine, 48000) - 220) <= 1);
-
-        engine.params().set(ParamId::Tuning, 1.0f); // +12 semitones
-        periods(engine, 4800);                      // let the 10 ms glide settle
-        QVERIFY(std::abs(periods(engine, 48000) - 440) <= 1);
-    }
-
-    // A volume jump is smoothed: no sample-to-sample step bigger than the
-    // waveform itself produces (the saw's own reset is the largest).
+    // A volume jump is smoothed over ~10 ms instead of landing on one sample.
     void volumeIsSmoothed()
     {
+        Engine loud;
+        loud.setSampleRate(48000.0);
+        loud.params().set(ParamId::Volume, 1.0f);
+        loud.setRunning(true);
+        std::vector<float> l(4800), r(4800);
+        loud.process(l.data(), r.data(), 4800);
+        const float steadyPeak = loud.takePeak();
+
         Engine engine;
         engine.setSampleRate(48000.0);
-        engine.setRunning(true);
         engine.params().set(ParamId::Volume, 0.0f);
-        std::vector<float> l(9600), r(9600);
-        engine.process(l.data(), r.data(), 9600); // settle at silence (after run ramp)
-
+        engine.setRunning(true);
+        engine.process(l.data(), r.data(), 4800);
+        engine.takePeak();
         engine.params().set(ParamId::Volume, 1.0f);
-        engine.process(l.data(), r.data(), 64);
-        // 64 samples into a 10 ms (480-sample) one-pole: ~12% of the way, not 100%.
-        float maxAbs = 0.0f;
-        for (int i = 0; i < 64; ++i)
-            maxAbs = std::max(maxAbs, std::abs(l[i]));
-        QVERIFY(maxAbs < 0.125f * 0.2f);
+        engine.process(l.data(), r.data(), 32);
+        // 32 samples into a 480-sample one-pole: ~6% of the way.
+        QVERIFY(engine.takePeak() < 0.2f * steadyPeak);
     }
 
-    void waveformSwitchesShape()
-    {
-        Engine engine;
-        engine.setSampleRate(48000.0);
-        engine.setRunning(true);
-        engine.params().set(ParamId::Waveform, 1.0f); // square
-        std::vector<float> l(9600), r(9600);
-        engine.process(l.data(), r.data(), 9600);
+    // --- Diode ladder ---------------------------------------------------------
 
-        // A settled square sits near +/- its peak almost all the time; a saw doesn't.
-        const float peak = engine.takePeak();
-        int nearPeak = 0;
-        for (int i = 4800; i < 9600; ++i)
-            if (std::abs(l[i]) > 0.9f * peak)
-                ++nearPeak;
-        QVERIFY(nearPeak > 4800 * 0.9);
+    static double runSine(DiodeLadder &f, double hz, double rate, int frames)
+    {
+        double peak = 0.0;
+        for (int i = 0; i < frames; ++i) {
+            const double y = f.process(std::sin(2.0 * M_PI * hz * i / rate));
+            if (i > frames / 2)
+                peak = std::max(peak, std::abs(y));
+        }
+        return peak;
+    }
+
+    void ladderIsLowpass()
+    {
+        constexpr double rate = 192000.0;
+        DiodeLadder f;
+        f.setCoefficients(1000.0, rate, 0.0);
+        const double pass = runSine(f, 100.0, rate, 96000);
+        f.reset();
+        const double stop = runSine(f, 16000.0, rate, 96000);
+        QVERIFY2(pass > 0.3 && pass < 3.0, qPrintable(QString::number(pass)));
+        QVERIFY2(stop < pass * 0.01, qPrintable(QString::number(stop / pass))); // > 40 dB down
+    }
+
+    // The resonant peak sits near 0.67 x the coefficient frequency; there,
+    // high feedback must lift the response well above the no-feedback curve.
+    void ladderResonancePeaks()
+    {
+        constexpr double rate = 192000.0;
+        constexpr double peakHz = 670.0;
+        DiodeLadder f;
+        f.setCoefficients(1000.0, rate, 0.0);
+        const double flat = runSine(f, peakHz, rate, 96000);
+        f.reset();
+        f.setCoefficients(1000.0, rate, 15.0);
+        const double resonant = runSine(f, peakHz, rate, 96000);
+        QVERIFY2(resonant > 4.0 * flat, qPrintable(QString("%1 vs %2").arg(resonant).arg(flat)));
+    }
+
+    // Passband (DC) gain is 1 / (1 + k): Voice's makeup gain relies on this.
+    void ladderPassbandGain()
+    {
+        for (double k : {0.0, 5.0, 15.0}) {
+            DiodeLadder f;
+            f.setCoefficients(1000.0, 192000.0, k);
+            double y = 0.0;
+            for (int i = 0; i < 192000; ++i)
+                y = f.process(1.0);
+            QVERIFY2(std::abs(y * (1.0 + k) - 1.0) < 0.02, qPrintable(QString("k=%1 dc=%2").arg(k).arg(y)));
+        }
+    }
+
+    void ladderStable_data()
+    {
+        QTest::addColumn<double>("rate");
+        QTest::newRow("44.1k x4") << 44100.0 * 4;
+        QTest::newRow("48k x4") << 48000.0 * 4;
+        QTest::newRow("96k x4") << 96000.0 * 4;
+    }
+
+    // Full feedback, cutoff swept across the whole range, loud saw input.
+    void ladderStable()
+    {
+        QFETCH(double, rate);
+        DiodeLadder f;
+        Oscillator osc;
+        osc.setSampleRate(rate);
+        osc.setFrequency(55.0);
+        const int frames = int(rate * 2);
+        for (int i = 0; i < frames; ++i) {
+            const double t = double(i) / frames;
+            const double cutoff = 20.0 * std::pow(0.45 * rate / 4 / 20.0, std::abs(std::sin(7.0 * M_PI * t)));
+            f.setCoefficients(cutoff, rate, 15.0);
+            const double y = f.process(std::tanh(3.0 * osc.next()));
+            QVERIFY(std::isfinite(y));
+            QVERIFY(std::abs(y) < 10.0);
+        }
+    }
+
+    // --- Decimator ------------------------------------------------------------
+
+    void decimatorPassesDcAndRejectsHighBand()
+    {
+        HalfbandDecimator<31> d;
+        float y = 0.0f;
+        for (int i = 0; i < 100; ++i)
+            y = d.process(1.0f, 1.0f);
+        QVERIFY(std::abs(y - 1.0f) < 1e-4f);
+
+        // 0.42 of the input rate is above the output Nyquist: must be removed, not folded back.
+        d.reset();
+        float peak = 0.0f;
+        for (int i = 0; i < 4000; ++i) {
+            const float a = float(std::sin(2.0 * M_PI * 0.42 * (2 * i)));
+            const float b = float(std::sin(2.0 * M_PI * 0.42 * (2 * i + 1)));
+            const float out = d.process(a, b);
+            if (i > 100)
+                peak = std::max(peak, std::abs(out));
+        }
+        QVERIFY2(peak < 0.003f, qPrintable(QString::number(peak))); // > 50 dB down
+    }
+
+    // --- Voice ----------------------------------------------------------------
+
+    static VoiceParams openFilter()
+    {
+        VoiceParams p;
+        p.cutoffHz = 5000.0;
+        p.resonance = 0.0;
+        p.envModOctaves = 0.0;
+        return p;
+    }
+
+    void voicePitch()
+    {
+        Voice v;
+        v.setSampleRate(48000.0);
+        v.setParams(openFilter());
+        v.noteOn(57, false); // A3, 220 Hz
+        for (int i = 0; i < 4800; ++i)
+            v.next();
+        int periods = 0;
+        float prev = v.next();
+        for (int i = 0; i < 48000; ++i) {
+            const float s = v.next();
+            if (prev > 0.0f && s <= 0.0f)
+                ++periods;
+            prev = s;
+        }
+        QVERIFY2(std::abs(periods - 220) <= 2, qPrintable(QString::number(periods)));
+    }
+
+    void voiceTuningShiftsPitch()
+    {
+        Voice v;
+        v.setSampleRate(48000.0);
+        auto p = openFilter();
+        p.tuningSemitones = 12.0;
+        v.setParams(p);
+        v.noteOn(57, false);
+        for (int i = 0; i < 4800; ++i)
+            v.next();
+        int periods = 0;
+        float prev = v.next();
+        for (int i = 0; i < 48000; ++i) {
+            const float s = v.next();
+            if (prev > 0.0f && s <= 0.0f)
+                ++periods;
+            prev = s;
+        }
+        QVERIFY2(std::abs(periods - 440) <= 3, qPrintable(QString::number(periods)));
+    }
+
+    static float notePeak(bool accent)
+    {
+        Voice v;
+        v.setSampleRate(48000.0);
+        VoiceParams p;
+        p.accent = 1.0;
+        v.setParams(p);
+        v.noteOn(36, accent);
+        float peak = 0.0f;
+        for (int i = 0; i < 9600; ++i)
+            peak = std::max(peak, std::abs(v.next()));
+        return peak;
+    }
+
+    void voiceAccentIsLouder()
+    {
+        QVERIFY(notePeak(true) > 1.3f * notePeak(false));
+    }
+
+    void voiceReleasesAfterGateOff()
+    {
+        Voice v;
+        v.setSampleRate(48000.0);
+        v.noteOn(48, false);
+        for (int i = 0; i < 4800; ++i)
+            v.next();
+        v.gateOff();
+        for (int i = 0; i < 4800; ++i) // 100 ms: release is ~9 ms
+            v.next();
+        float peak = 0.0f;
+        for (int i = 0; i < 480; ++i)
+            peak = std::max(peak, std::abs(v.next()));
+        QVERIFY(peak < 1e-4f);
+    }
+
+    // Extreme settings at every rate: finite, bounded.
+    void voiceStableAtExtremes()
+    {
+        for (double rate : {44100.0, 48000.0, 96000.0}) {
+            Voice v;
+            v.setSampleRate(rate);
+            VoiceParams p;
+            p.cutoffHz = units::cutoffHz(1.0f);
+            p.resonance = 1.0;
+            p.envModOctaves = units::envModOctaves(1.0f);
+            p.decaySeconds = units::decaySeconds(0.0f);
+            p.accent = 1.0;
+            p.square = true;
+            p.tuningSemitones = 12.0;
+            v.setParams(p);
+            for (int n = 0; n < 40; ++n) {
+                v.noteOn(n % 2 ? 60 : 24, true);
+                for (int i = 0; i < int(rate / 20); ++i) {
+                    const float s = v.next();
+                    QVERIFY(std::isfinite(s));
+                    QVERIFY(std::abs(s) < 8.0f);
+                }
+            }
+        }
     }
 };
 

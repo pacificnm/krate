@@ -61,7 +61,7 @@ Ownership of pattern data: the audio thread owns the playing copy. `PatternModel
 
 ## Block processing
 
-`process(nframes)` renders in slices. A slice ends at the next of: a MIDI event's frame offset, a sequencer step/gate boundary, or the end of the block. Events take effect at their exact sample. This is what makes both the sequencer and MIDI input sample-accurate.
+`process(nframes)` runs a per-sample loop: `Sequencer::tick()` is called once per sample and returns at most one event, which the voice applies before rendering that sample. MIDI events (M6) are applied at their frame offset in the same loop. This makes both the sequencer and MIDI input sample-accurate without splitting blocks.
 
 ## C++ ↔ QML surface
 

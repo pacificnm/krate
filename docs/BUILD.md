@@ -106,7 +106,8 @@ Latency: choose the buffer size with `PIPEWIRE_LATENCY=64/48000 pw-jack ./build/
 
 ```sh
 ctest --test-dir build --output-on-failure
-./build/k303-render --pattern 0 --bars 8 --out /tmp/k303.wav   # listen to the DSP without JACK
+./build/k303-render --bars 8 --out /tmp/k303.wav               # listen to the DSP without JACK
+./build/k303-render --resonance 0.9 --envmod 0.8 --accent 1 --out /tmp/hot.wav   # any param key 0..1, --tempo BPM, --square
 ./build/k303-render --bench                                    # CPU cost per second of audio
 cmake --build build --target k303_qmllint                     # lints against the generated module (knows Theme is a singleton)
 ```

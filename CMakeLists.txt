@@ -23,12 +23,20 @@ qt_standard_project_setup(REQUIRES 6.8)
 # --- DSP core: no Qt, no JACK -------------------------------------------------
 add_library(k303_dsp STATIC
     src/dsp/Denormals.h
+    src/dsp/DiodeLadder.h
+    src/dsp/DiodeLadder.cpp
     src/dsp/Engine.h
     src/dsp/Engine.cpp
     src/dsp/Oscillator.h
+    src/dsp/HalfbandDecimator.h
     src/dsp/Oscillator.cpp
     src/dsp/Params.h
     src/dsp/Params.cpp
+    src/dsp/ParamStore.h
+    src/dsp/Sequencer.h
+    src/dsp/Sequencer.cpp
+    src/dsp/Voice.h
+    src/dsp/Voice.cpp
 )
 target_include_directories(k303_dsp PUBLIC src)
 target_compile_options(k303_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
@@ -81,6 +89,11 @@ target_link_libraries(k303 PRIVATE
     Qt6::QuickControls2
 )
 
+# --- Offline renderer ------------------------------------------------------------
+add_executable(k303-render tools/render_main.cpp)
+target_link_libraries(k303-render PRIVATE k303_dsp)
+target_compile_options(k303-render PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
 # --- Tests ---------------------------------------------------------------------
 enable_testing()
 
@@ -93,3 +106,8 @@ qt_add_executable(tst_dsp tests/tst_dsp.cpp)
 target_compile_options(tst_dsp PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_dsp PRIVATE k303_dsp Qt6::Test)
 add_test(NAME tst_dsp COMMAND tst_dsp)
+
+qt_add_executable(tst_sequencer tests/tst_sequencer.cpp)
+target_compile_options(tst_sequencer PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_sequencer PRIVATE k303_dsp Qt6::Test)
+add_test(NAME tst_sequencer COMMAND tst_sequencer)
