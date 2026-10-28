@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <thread>
 
-#include "dsp/SpscQueue.h"
+#include "core/SpscQueue.h"
 
-using namespace k303;
+using namespace krate;
 
 class TestQueue : public QObject
 {

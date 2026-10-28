@@ -3,8 +3,8 @@
 #include <QJSEngine>
 #include <QLoggingCategory>
 
-#include "dsp/Engine.h"
-#include "dsp/Params.h"
+#include "core/Instrument.h"
+#include "core/Midi.h"
 
 Q_LOGGING_CATEGORY(lcMidi, "k303.midi")
 
@@ -12,24 +12,19 @@ namespace {
 
 constexpr int kPollIntervalMs = 16;
 
-QString keyOf(int param)
-{
-    const auto key = k303::paramDescriptor(k303::ParamId(param)).key;
-    return QString::fromLatin1(key.data(), qsizetype(key.size()));
-}
-
 } // namespace
 
-MidiLearnController::MidiLearnController(k303::Engine &engine, const QString &filePath, QObject *parent)
+MidiLearnController::MidiLearnController(krate::IInstrument &instrument, const QString &filePath, QObject *parent)
     : QObject(parent)
-    , m_engine(engine)
+    , m_learnMap(*instrument.midiLearnMap())
+    , m_params(instrument.parameters())
     , m_filePath(filePath)
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
 
     using k303::persistence::LoadResult;
-    switch (k303::persistence::loadMidiMap(m_filePath, &m_map)) {
+    switch (k303::persistence::loadMidiMap(m_filePath, m_params, &m_map)) {
     case LoadResult::Loaded:
         qCInfo(lcMidi) << "loaded MIDI mappings from" << m_filePath;
         break;
@@ -44,7 +39,7 @@ MidiLearnController::MidiLearnController(k303::Engine &engine, const QString &fi
         break;
     }
     for (int cc = 0; cc < 128; ++cc)
-        m_engine.setCcMapping(cc, m_map.ccToParam[std::size_t(cc)]);
+        m_learnMap.setMapping(cc, m_map.ccToParam[std::size_t(cc)]);
 
     m_pollTimer.setInterval(kPollIntervalMs);
     connect(&m_pollTimer, &QTimer::timeout, this, &MidiLearnController::drainEvents);
@@ -53,7 +48,7 @@ MidiLearnController::MidiLearnController(k303::Engine &engine, const QString &fi
 
 MidiLearnController::~MidiLearnController()
 {
-    m_engine.setLearnTarget(-1);
+    m_learnMap.setLearnTarget(krate::MidiLearnMap::kUnmapped);
     s_instance = nullptr;
 }
 
@@ -74,11 +69,27 @@ void MidiLearnController::setActive(bool active)
     emit activeChanged();
 }
 
+int MidiLearnController::indexOf(const QString &paramKey) const
+{
+    for (std::size_t i = 0; i < m_params.size(); ++i)
+        if (paramKey == QLatin1StringView(m_params[i].key.data(), qsizetype(m_params[i].key.size())))
+            return int(i);
+    return -1;
+}
+
+QString MidiLearnController::keyOf(int index) const
+{
+    if (index < 0 || index >= int(m_params.size()))
+        return {};
+    const auto key = m_params[std::size_t(index)].key;
+    return QString::fromLatin1(key.data(), qsizetype(key.size()));
+}
+
 void MidiLearnController::setArmed(const QString &paramKey)
 {
-    const auto id = k303::paramFromKey(paramKey.toStdString());
-    const QString armed = id ? paramKey : QString();
-    m_engine.setLearnTarget(id ? int(*id) : -1);
+    const int index = indexOf(paramKey);
+    const QString armed = index >= 0 ? paramKey : QString();
+    m_learnMap.setLearnTarget(index >= 0 ? index : krate::MidiLearnMap::kUnmapped);
     if (armed == m_armed)
         return;
     m_armed = armed;
@@ -94,26 +105,26 @@ void MidiLearnController::arm(const QString &paramKey)
 
 QString MidiLearnController::mappingFor(const QString &paramKey) const
 {
-    const auto id = k303::paramFromKey(paramKey.toStdString());
-    if (!id)
+    const int index = indexOf(paramKey);
+    if (index < 0)
         return {};
     QStringList ccs;
     for (int cc = 0; cc < 128; ++cc)
-        if (m_map.ccToParam[std::size_t(cc)] == int(*id))
+        if (m_map.ccToParam[std::size_t(cc)] == index)
             ccs << QString::number(cc);
     return ccs.join(u' ');
 }
 
 void MidiLearnController::clear(const QString &paramKey)
 {
-    const auto id = k303::paramFromKey(paramKey.toStdString());
-    if (!id)
+    const int index = indexOf(paramKey);
+    if (index < 0)
         return;
     bool changed = false;
     for (int cc = 0; cc < 128; ++cc) {
-        if (m_map.ccToParam[std::size_t(cc)] == int(*id)) {
+        if (m_map.ccToParam[std::size_t(cc)] == index) {
             m_map.ccToParam[std::size_t(cc)] = -1;
-            m_engine.setCcMapping(cc, -1);
+            m_learnMap.setMapping(cc, krate::MidiLearnMap::kUnmapped);
             changed = true;
         }
     }
@@ -124,30 +135,23 @@ void MidiLearnController::clear(const QString &paramKey)
 void MidiLearnController::clearAll()
 {
     m_map.ccToParam.fill(-1);
-    for (int cc = 0; cc < 128; ++cc)
-        m_engine.setCcMapping(cc, -1);
+    m_learnMap.clearAll();
     setArmed({});
     mappingsEdited();
 }
 
 void MidiLearnController::drainEvents()
 {
-    while (const auto ev = m_engine.popEvent()) {
-        switch (ev->kind) {
-        case k303::EngineEvent::Kind::CcLearned:
-            // The engine already bound it; mirror it, save, and disarm.
-            m_map.ccToParam[ev->a & 0x7F] = ev->b;
-            qCInfo(lcMidi) << "CC" << ev->a << "->" << keyOf(ev->b);
-            if (m_armed == keyOf(ev->b)) {
-                m_armed.clear();
-                emit armedParamChanged();
-            }
-            mappingsEdited();
-            break;
-        case k303::EngineEvent::Kind::NoteOn:
-            emit notePressed(ev->a, ev->b);
-            break;
+    while (const auto learned = m_learnMap.popLearned()) {
+        // The audio thread already bound it; mirror it, save, and disarm.
+        const QString key = keyOf(learned->param);
+        m_map.ccToParam[learned->cc & 0x7F] = learned->param;
+        qCInfo(lcMidi) << "CC" << learned->cc << "->" << key;
+        if (m_armed == key) {
+            m_armed.clear();
+            emit armedParamChanged();
         }
+        mappingsEdited();
     }
 }
 
@@ -155,6 +159,6 @@ void MidiLearnController::mappingsEdited()
 {
     ++m_revision;
     emit mappingsChanged();
-    if (!k303::persistence::saveMidiMap(m_filePath, m_map))
+    if (!k303::persistence::saveMidiMap(m_filePath, m_params, m_map))
         qCWarning(lcMidi) << "could not save MIDI mappings to" << m_filePath;
 }

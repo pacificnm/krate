@@ -14,13 +14,6 @@ std::optional<ParamId> paramFromKey(std::string_view key)
     return std::nullopt;
 }
 
-float snapToDetent(const ParamDescriptor &param, float normalized)
-{
-    if (param.detents < 2)
-        return normalized;
-    return float(units::detent(normalized, param.detents)) / float(param.detents - 1);
-}
-
 namespace format {
 
 std::string tuning(float v)

@@ -23,7 +23,10 @@ qt_standard_project_setup(REQUIRES 6.8)
 # --- DSP core: no Qt, no JACK -------------------------------------------------
 add_library(k303_dsp STATIC
     src/core/Instrument.h
+    src/core/Midi.h
+    src/core/Midi.cpp
     src/core/ParamDescriptor.h
+    src/core/SpscQueue.h
     src/core/StandaloneTransport.h
     src/core/StepClock.h
     src/core/StepClock.cpp
@@ -40,7 +43,6 @@ add_library(k303_dsp STATIC
     src/dsp/ParamStore.h
     src/dsp/Sequencer.h
     src/dsp/Sequencer.cpp
-    src/dsp/SpscQueue.h
     src/dsp/Voice.h
     src/dsp/Voice.cpp
 )

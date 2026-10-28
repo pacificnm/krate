@@ -12,8 +12,6 @@ constexpr int kAccentVelocity = 100;              // MIDI notes at or above play
 
 Engine::Engine()
 {
-    for (auto &m : m_ccMap)
-        m.store(-1, std::memory_order_relaxed);
     m_volume = static_cast<float>(units::volumeGain(m_params.get(ParamId::Volume)));
     prepare(m_sampleRate, 0);
 }
@@ -53,52 +51,21 @@ void Engine::handle(const SequencerEvent &event) noexcept
     }
 }
 
-void Engine::setCcMapping(int cc, int param) noexcept
-{
-    if (cc >= 0 && cc < 128)
-        m_ccMap[std::size_t(cc)].store(std::int16_t(param), std::memory_order_relaxed);
-}
-
-int Engine::ccMapping(int cc) const noexcept
-{
-    return (cc >= 0 && cc < 128) ? m_ccMap[std::size_t(cc)].load(std::memory_order_relaxed) : -1;
-}
-
 void Engine::handleMidi(const MidiEvent &event) noexcept
 {
-    if (event.size < 1)
-        return;
-    const int status = event.data[0] & 0xF0; // all channels (omni)
-    const int d1 = event.size > 1 ? event.data[1] & 0x7F : 0;
-    const int d2 = event.size > 2 ? event.data[2] & 0x7F : 0;
-
-    switch (status) {
-    case 0xB0: { // Control Change
-        int param = m_learnTarget.load(std::memory_order_relaxed);
-        if (param >= 0 && param < ParamCount) {
-            // Bind here, so the rest of this same knob turn already moves the parameter.
-            m_ccMap[std::size_t(d1)].store(std::int16_t(param), std::memory_order_relaxed);
-            m_learnTarget.store(-1, std::memory_order_relaxed);
-            m_events.push({EngineEvent::Kind::CcLearned, std::uint8_t(d1), std::uint8_t(param)});
-        } else {
-            param = m_ccMap[std::size_t(d1)].load(std::memory_order_relaxed);
-        }
-        if (param >= 0 && param < ParamCount) {
-            // Switches and selectors snap to their positions; knobs follow the value.
-            m_params.setFromAudio(ParamId(param), snapToDetent(paramDescriptor(ParamId(param)), float(d2) / 127.0f));
-        }
+    const krate::MidiMessage m = krate::decode(event); // all channels (omni)
+    switch (m.type) {
+    case krate::MidiMessage::Type::ControlChange:
+        if (const auto r = m_learn.controlChange(m.data1, m.data2); r.param != krate::MidiLearnMap::kUnmapped)
+            m_params.setFromAudio(ParamId(r.param), r.value);
         break;
-    }
-    case 0x90:
-        if (d2 > 0) {
-            midiNoteOn(d1, d2);
-            break;
-        }
-        [[fallthrough]]; // note on with velocity 0 is a note off
-    case 0x80:
-        midiNoteOff(d1);
+    case krate::MidiMessage::Type::NoteOn:
+        midiNoteOn(m.data1, m.data2);
         break;
-    default:
+    case krate::MidiMessage::Type::NoteOff:
+        midiNoteOff(m.data1);
+        break;
+    case krate::MidiMessage::Type::Other:
         break; // clock and everything else: later milestones
     }
 }

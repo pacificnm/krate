@@ -227,7 +227,16 @@ bool savePanel(const QString &path, const PanelValues &values)
     return writeJson(path, {{QStringLiteral("version"), kPanelFileVersion}, {QStringLiteral("params"), params}});
 }
 
-LoadResult loadMidiMap(const QString &path, MidiMap *map)
+namespace {
+
+QString keyString(const krate::ParamDescriptor &param)
+{
+    return QString::fromLatin1(param.key.data(), qsizetype(param.key.size()));
+}
+
+} // namespace
+
+LoadResult loadMidiMap(const QString &path, std::span<const krate::ParamDescriptor> params, MidiMap *map)
 {
     *map = MidiMap{};
 
@@ -252,23 +261,28 @@ LoadResult loadMidiMap(const QString &path, MidiMap *map)
     for (const auto &entry : json.value(u"mappings").toArray()) {
         const QJsonObject o = entry.toObject();
         const int cc = o.value(u"cc").toInt(-1);
-        const auto param = paramFromKey(o.value(u"param").toString().toStdString());
-        if (cc >= 0 && cc < 128 && param)
-            map->ccToParam[std::size_t(cc)] = int(*param);
+        const QString key = o.value(u"param").toString();
+        if (cc < 0 || cc >= 128)
+            continue;
+        for (std::size_t i = 0; i < params.size(); ++i) {
+            if (keyString(params[i]) == key) {
+                map->ccToParam[std::size_t(cc)] = int(i);
+                break;
+            }
+        }
     }
     return LoadResult::Loaded;
 }
 
-bool saveMidiMap(const QString &path, const MidiMap &map)
+bool saveMidiMap(const QString &path, std::span<const krate::ParamDescriptor> params, const MidiMap &map)
 {
     QJsonArray mappings;
     for (int cc = 0; cc < 128; ++cc) {
         const int param = map.ccToParam[std::size_t(cc)];
-        if (param >= 0 && param < ParamCount)
+        if (param >= 0 && param < int(params.size()))
             mappings.append(QJsonObject{
                 {QStringLiteral("cc"), cc},
-                {QStringLiteral("param"), QString::fromLatin1(paramDescriptor(ParamId(param)).key.data(),
-                                                              qsizetype(paramDescriptor(ParamId(param)).key.size()))},
+                {QStringLiteral("param"), keyString(params[std::size_t(param)])},
             });
     }
     return writeJson(path, {

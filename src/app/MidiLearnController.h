@@ -1,21 +1,26 @@
 #pragma once
 
+#include <span>
+
 #include <QObject>
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
 #include "app/Persistence.h"
+#include "core/ParamDescriptor.h"
 
-namespace k303 {
-class Engine;
+namespace krate {
+class IInstrument;
+class MidiLearnMap;
 }
 class QQmlEngine;
 class QJSEngine;
 
-// QML singleton "MidiLearn" (docs/MIDI.md#midi-learn). In learn mode a click
-// arms a control; the next CC the engine sees binds to it (the binding itself
-// happens on the audio thread). Keeps the GUI copy of the CC map, which is the
-// one saved to midimap.json, and drains the engine's audio->GUI events.
+// QML singleton "MidiLearn" (docs/MIDI.md#midi-learn). Instrument-neutral:
+// works with any krate::IInstrument through its parameter descriptors and its
+// krate::MidiLearnMap, using parameter keys throughout (the keys QML passes).
+// In learn mode a click arms a control; the next CC binds to it on the audio
+// thread. Keeps the GUI copy of the CC map, which is saved to midimap.json.
 class MidiLearnController : public QObject
 {
     Q_OBJECT
@@ -28,8 +33,9 @@ class MidiLearnController : public QObject
     Q_PROPERTY(int revision READ revision NOTIFY mappingsChanged)
 
 public:
-    // Not default-constructible on purpose: see SynthController.
-    MidiLearnController(k303::Engine &engine, const QString &filePath, QObject *parent);
+    // Not default-constructible on purpose: see SynthController. The instrument
+    // must provide a MidiLearnMap.
+    MidiLearnController(krate::IInstrument &instrument, const QString &filePath, QObject *parent);
     ~MidiLearnController() override;
 
     static MidiLearnController *create(QQmlEngine *, QJSEngine *);
@@ -55,16 +61,17 @@ signals:
     void activeChanged();
     void armedParamChanged();
     void mappingsChanged();
-    // A MIDI key was pressed (for step record, later).
-    void notePressed(int note, int velocity);
 
 private:
+    int indexOf(const QString &paramKey) const; // -1 if unknown
+    QString keyOf(int index) const;
     void setArmed(const QString &paramKey);
     void mappingsEdited();
 
     static inline MidiLearnController *s_instance = nullptr;
 
-    k303::Engine &m_engine;
+    krate::MidiLearnMap &m_learnMap;
+    std::span<const krate::ParamDescriptor> m_params;
     QString m_filePath;
     k303::persistence::MidiMap m_map;
     bool m_active = false;

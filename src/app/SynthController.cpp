@@ -220,6 +220,10 @@ void SynthController::poll()
         emit currentStepChanged();
     }
 
+    // The engine's own audio->GUI events (MIDI keys).
+    while (const auto ev = m_engine.popEvent())
+        emit notePressed(ev->a, ev->b);
+
     // Values the audio thread changed (MIDI CCs, from M6) need the knobs to follow.
     if (const auto changed = m_engine.params().takeChangedByAudio(); changed != 0) {
         if (changed & (std::uint64_t(1) << int(k303::ParamId::Tempo)))

@@ -30,6 +30,7 @@ enum class ParamId : int {
 inline constexpr int ParamCount = static_cast<int>(ParamId::Count);
 
 using krate::ParamDescriptor;
+using krate::snapToDetent;
 
 namespace format {
 std::string tuning(float v);
@@ -64,8 +65,7 @@ constexpr const ParamDescriptor &paramDescriptor(ParamId id)
     return kParams[static_cast<std::size_t>(id)];
 }
 
-// Snap a normalized value to the nearest detent position (unchanged if continuous).
-float snapToDetent(const ParamDescriptor &param, float normalized);
+
 
 std::optional<ParamId> paramFromKey(std::string_view key);
 

@@ -6,7 +6,7 @@
 #include <optional>
 #include <type_traits>
 
-namespace k303 {
+namespace krate {
 
 // Fixed-size, lock-free single-producer / single-consumer queue. One thread
 // pushes, one thread pops; neither ever blocks or allocates. Capacity is
@@ -49,4 +49,4 @@ private:
     alignas(64) std::atomic<std::size_t> m_tail{0}; // written by the consumer
 };
 
-} // namespace k303
+} // namespace krate

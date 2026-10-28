@@ -7,6 +7,8 @@
 
 namespace krate {
 
+class MidiLearnMap;
+
 // A raw MIDI message (1..3 bytes) at a frame offset inside the current block.
 struct MidiEvent
 {
@@ -55,6 +57,9 @@ public:
     virtual void setParam(int index, float normalized) noexcept = 0;
     // Bitmask (bit = index) of parameters the audio thread changed (e.g. from MIDI) since the last call.
     virtual std::uint64_t takeParamsChangedByAudio() noexcept = 0;
+
+    // The instrument's CC map and MIDI Learn state, if it supports MIDI Learn.
+    virtual MidiLearnMap *midiLearnMap() noexcept { return nullptr; }
 
     // Realtime: no allocation, locks, I/O or blocking.
     virtual void process(const AudioBlock &block) noexcept = 0;

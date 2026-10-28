@@ -6,7 +6,7 @@ k303 is two halves joined by lock-free primitives: a Qt GUI that never touches a
 
 | Module | Kind | Depends on | Responsibility |
 | --- | --- | --- | --- |
-| `src/core` | headers, C++20 | std only | Shared Krate interfaces: `krate::IInstrument`, `AudioBlock`, `MidiEvent`, `TransportState`, `ParamDescriptor` (moves to `shared/core` in R6) |
+| `src/core` | C++20, built into `k303_dsp` for now | std only | Shared Krate pieces: `krate::IInstrument`, `AudioBlock`, `MidiEvent`, `TransportState`, `ParamDescriptor`, `StandaloneTransport`, `StepClock`, `SpscQueue`, `decode()`, `MidiLearnMap` (moves to `shared/core` in R6) |
 | `k303_dsp` | static lib, C++20 | std only | Oscillator, diode ladder, envelopes, voice, sequencer, parameter store, SPSC queue; `Engine` implements `krate::IInstrument`. Pure, allocation-free in `process()` |
 | `k303_jack` | static lib | `k303_dsp`, libjack | JACK client: ports, process callback, MIDI event dispatch, transport |
 | `k303_app` | part of executable | Qt 6 Core/Gui/Qml/Quick, `k303_jack` | QML-facing controllers, persistence, MIDI Learn UI state |
@@ -50,11 +50,12 @@ Every channel is single-producer / single-consumer and fixed size. Nothing alloc
 | --- | --- | --- | --- |
 | Parameters | GUI → audio, audio → GUI | `ParamStore`: `std::array<std::atomic<float>, ParamCount>`, normalized 0–1 | Knob values. GUI writes on drag; audio writes when a learned CC arrives. Audio smooths values per sample (see [DSP.md](DSP.md)) |
 | Param dirty bits | audio → GUI | `std::atomic<uint64_t>` bitmask | Which params the audio thread changed (from MIDI), so the GUI updates those knobs only |
-| CC map | GUI → audio | `std::array<std::atomic<int16_t>, 128>`: CC number → ParamId, −1 = unmapped | MIDI Learn bindings |
-| Learn arm | GUI → audio | `std::atomic<int16_t> learnTarget` (−1 = off) | Param waiting for a CC |
+| CC map | GUI → audio | `krate::MidiLearnMap`: atomic CC → parameter index, −1 = unmapped | MIDI Learn bindings |
+| Learn arm | GUI → audio | `MidiLearnMap::setLearnTarget` (atomic, −1 = off) | Param waiting for a CC |
 | Commands | GUI → audio | `SpscQueue<Command, 256>` (`Engine::post`), drained at the start of each block | `SetStep`, `SetLength`, `LoadPattern` |
 | Transport | GUI → audio | `krate::StandaloneTransport` atomics (playing, BPM), advanced by the JACK callback each block and passed in `AudioBlock::transport` | Run/stop, tempo, beat position |
-| Events | audio → GUI | `SpscQueue<EngineEvent, 256>` (`Engine::popEvent`), drained by `MidiLearn` at 60 Hz | `CcLearned{cc, param}`, `NoteOn{note, velocity}` (for step record). Xruns are counted by the JACK client instead |
+| Learned CCs | audio → GUI | `krate::MidiLearnMap` queue (`popLearned`), drained by `MidiLearn` at 60 Hz | `{cc, param index}` |
+| Events | audio → GUI | `SpscQueue<EngineEvent, 256>` (`Engine::popEvent`), drained by `Synth` at 60 Hz | `NoteOn{note, velocity}` → `Synth.notePressed` (for step record). Xruns are counted by the JACK client instead |
 | Playhead | audio → GUI | `std::atomic<int8_t> currentStep` (−1 = stopped) | LED playhead |
 
 The GUI polls atomics and drains the events queue from one `QTimer` at 60 Hz. UI timers are fine for *display*; they never drive timing.
@@ -73,7 +74,7 @@ Registered in the `K303` QML module with `QML_ELEMENT` / `QML_SINGLETON`:
 | --- | --- |
 | `Synth` (singleton) | One `Q_PROPERTY(qreal …)` per parameter (normalized), `playing`, `tempo`, `currentStep`, `xrunCount`, `audioConnected` |
 | `Pattern` (singleton, `PatternModel`) | `QAbstractListModel` of 16 steps (roles: `note`, `octave`, `accent`, `slide`, `gate`, `active`, `label`); `index` (pattern 0..7), `length`, `selectedStep`, `selected*` properties for the selected step, `keyboardMode`, `timeMode`; invokables: `setNote`, `octaveUp/Down`, `toggleAccent/Slide`, `setGate`, `selectNext/Previous`, `clear`, `auditionOn/Off`, `save` |
-| `MidiLearn` (singleton, `MidiLearnController`) | `active`, `armedParam`, `revision`, `arm(key)`, `mappingFor(key)`, `clear(key)`, `clearAll()`; owns the GUI copy of the CC map (saved to `midimap.json`) and is the single consumer of the engine's audio→GUI event queue |
+| `MidiLearn` (singleton, `MidiLearnController`) | `active`, `armedParam`, `revision`, `arm(key)`, `mappingFor(key)`, `clear(key)`, `clearAll()`; instrument-neutral (built from any `krate::IInstrument&`, works by parameter key); owns the GUI copy of the CC map (saved to `midimap.json`) and drains the instrument's `MidiLearnMap` learned queue |
 
 QML holds no audio state and runs no timing logic.
 

@@ -116,6 +116,8 @@ signals:
     void playingChanged();
     void paramsChanged();
     void currentStepChanged();
+    // A MIDI key was pressed (for step record, later).
+    void notePressed(int note, int velocity);
 
 private:
     qreal param(k303::ParamId id) const { return m_engine.params().get(id); }

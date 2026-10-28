@@ -82,6 +82,9 @@ public:
     virtual void setParam(int index, float normalized) noexcept = 0;
     virtual std::uint64_t takeParamsChangedByAudio() noexcept = 0;  // bit = index
 
+    // The instrument's CC map and MIDI Learn state (added in R4); nullptr if none.
+    virtual MidiLearnMap *midiLearnMap() noexcept { return nullptr; }
+
     // Realtime.
     virtual void process(const AudioBlock &block) noexcept = 0;
 };
@@ -97,10 +100,10 @@ Output level: each instrument keeps its output bounded (no hard overs) but does 
 
 | Piece | Shared? | Notes |
 | --- | --- | --- |
-| `MidiEvent`, status decoding (note on/off, CC, velocity-0 as note off, channel) | Shared | Plain functions; no queue |
-| `MidiLearnMap`: CC → parameter table, learn target, "CC learned" event | Shared, realtime-safe | Extracted from k303's `Engine::handleMidi`; each instrument owns one instance |
+| `MidiEvent`, status decoding (note on/off, CC, velocity-0 as note off, channel) | Shared | `krate::decode()` in `src/core/Midi.h`; no queue |
+| `MidiLearnMap`: CC → parameter table, learn target, detent snapping, "CC learned" queue to the GUI | Shared, realtime-safe | `krate::MidiLearnMap` in `src/core/Midi.h`; each instrument owns one and returns it from `IInstrument::midiLearnMap()` |
 | What notes do (mono with legato, drum triggers, poly voice allocation) | Per instrument | Inside each `process()` |
-| `MidiLearnController` (QML singleton), `LearnOverlay` (QML) | Shared, generic over `parameters()` | Today k303-specific only through `ParamId`; generalize to descriptor keys |
+| `MidiLearnController` (QML singleton), `LearnOverlay` (QML) | Shared, generic over `parameters()` | Constructed from any `IInstrument&`; works by parameter key; mapping file resolved through the descriptor table (R4) |
 | Mapping file | Per instrument | `~/.config/<instrument>/midimap.json`; in the rack, stored per device in the session |
 
 ## Threads: standalone and rack
@@ -221,7 +224,7 @@ Each step keeps every test green and k303 behaving the same; commit after each.
 | R1 ✅ | **Parameter descriptors.** Replace the `ParamId`-only table with `ParamDescriptor` (add detents and `format`); move display text from `SynthController` into the core | `Synth.displayText` reads `format`; tests cover every parameter's text |
 | R2 ✅ | **`IInstrument` and `AudioBlock`.** `Engine` implements it; `k303-render` and tests drive it through the interface | Renderer output identical before and after (sample compare) |
 | R3 ✅ | **Transport.** Add `TransportState` and a `StandaloneTransport`; Tempo and run/stop move out of the instrument into the transport; extract `StepClock` from `Sequencer` and drive it from beat position | Existing timing tests pass against the transport; the Tempo knob still works (it drives the standalone transport). Result: renders byte-identical; Tempo stays in k303's parameter table so the knob, `panel.json` and MIDI Learn keep working, but the engine ignores it and the standalone app forwards it to its transport |
-| R4 | **Generic MIDI.** Extract `MidiEvent` decoding and `MidiLearnMap` into shared core; make `MidiLearnController` and `LearnOverlay` work from descriptor keys | `tst_midi` passes unchanged plus tests for the shared pieces |
+| R4 ✅ | **Generic MIDI.** Extract `MidiEvent` decoding and `MidiLearnMap` into shared core; make `MidiLearnController` and `LearnOverlay` work from descriptor keys | `tst_midi` passes unchanged plus tests for the shared pieces |
 | R5 | **Host decoupling.** `JackHost` takes an `IInstrument&` (done in R2: `JackClient` already talks only to `IInstrument`) and a transport, and owns the master limiter; no k303 types in the host | Host compiles without any k303 header |
 | R6 | **Repo layout.** Move to `shared/`, `instruments/k303/`, `apps/k303/`; shared QML components become their own module | Clean build from scratch; the k303 app and all tests run as before |
 

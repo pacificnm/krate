@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
                          nullptr);
     // ~/.config/k303/midimap.json (docs/MIDI.md#mapping-file)
     MidiLearnController midiLearn(synth.engine(), configDir + QStringLiteral("/midimap.json"), nullptr);
+    Q_ASSERT(synth.engine().midiLearnMap());
     synth.setMidiInputMatch(midiLearn.inputPortMatch());
 
     QQmlApplicationEngine engine;

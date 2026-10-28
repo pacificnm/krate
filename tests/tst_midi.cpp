@@ -6,7 +6,11 @@
 
 #include <vector>
 
+#include <array>
+#include <string>
+
 #include "app/MidiLearnController.h"
+#include "core/Midi.h"
 #include "app/Persistence.h"
 #include "dsp/Engine.h"
 #include "TestHost.h"
@@ -45,6 +49,39 @@ float settle(Engine &engine, std::uint32_t frames)
     return block(engine, {}, frames);
 }
 
+// A minimal non-k303 instrument: three parameters, no sound. Proves the
+// shared MIDI pieces don't depend on k303.
+std::string fmtPlain(float v) { return std::to_string(v); }
+
+constexpr krate::ParamDescriptor kFakeParams[] = {
+    {"alpha", "Alpha", 0.25f, 0, &fmtPlain},
+    {"mode", "Mode", 0.0f, 3, &fmtPlain},
+    {"gate", "Gate", 0.0f, 2, &fmtPlain},
+};
+
+class FakeInstrument final : public krate::IInstrument
+{
+public:
+    void prepare(double, std::uint32_t) noexcept override {}
+    std::span<const krate::ParamDescriptor> parameters() const noexcept override { return kFakeParams; }
+    float param(int i) const noexcept override { return values[std::size_t(i)]; }
+    void setParam(int i, float v) noexcept override { values[std::size_t(i)] = v; }
+    std::uint64_t takeParamsChangedByAudio() noexcept override { return 0; }
+    krate::MidiLearnMap *midiLearnMap() noexcept override { return &learn; }
+    void process(const krate::AudioBlock &block) noexcept override
+    {
+        for (std::uint32_t i = 0; i < block.midiCount; ++i) {
+            const auto m = krate::decode(block.midi[i]);
+            if (m.type == krate::MidiMessage::Type::ControlChange)
+                if (const auto r = learn.controlChange(m.data1, m.data2); r.param >= 0)
+                    values[std::size_t(r.param)] = r.value;
+        }
+    }
+
+    std::array<float, 3> values{0.25f, 0.0f, 0.0f};
+    krate::MidiLearnMap learn{kFakeParams};
+};
+
 } // namespace
 
 class TestMidi : public QObject
@@ -61,7 +98,7 @@ private slots:
     void mappedCcMovesParameter()
     {
         Engine engine;
-        engine.setCcMapping(21, int(ParamId::Cutoff));
+        engine.midiLearnMap()->setMapping(21, int(ParamId::Cutoff));
         block(engine, {cc(21, 127)});
         QCOMPARE(engine.params().get(ParamId::Cutoff), 1.0f);
         block(engine, {cc(21, 0)});
@@ -76,7 +113,7 @@ private slots:
     void anyChannelIsAccepted()
     {
         Engine engine;
-        engine.setCcMapping(21, int(ParamId::Decay));
+        engine.midiLearnMap()->setMapping(21, int(ParamId::Decay));
         MidiEvent ch10 = cc(21, 127);
         ch10.data[0] = 0xB9;
         block(engine, {ch10});
@@ -86,7 +123,7 @@ private slots:
     void switchFlipsAtHalfway()
     {
         Engine engine;
-        engine.setCcMapping(30, int(ParamId::Waveform));
+        engine.midiLearnMap()->setMapping(30, int(ParamId::Waveform));
         block(engine, {cc(30, 63)});
         QCOMPARE(engine.params().get(ParamId::Waveform), 0.0f);
         block(engine, {cc(30, 64)});
@@ -97,10 +134,10 @@ private slots:
     void selectorsSnapToPositions()
     {
         Engine engine;
-        engine.setCcMapping(31, int(ParamId::PlayMode));
+        engine.midiLearnMap()->setMapping(31, int(ParamId::PlayMode));
         block(engine, {cc(31, 70)});  // 70/127 = 0.55 -> position 2 of 0..4
         QCOMPARE(engine.params().get(ParamId::PlayMode), 0.5f);
-        engine.setCcMapping(32, int(ParamId::Scale));
+        engine.midiLearnMap()->setMapping(32, int(ParamId::Scale));
         block(engine, {cc(32, 127)});
         QCOMPARE(engine.params().get(ParamId::Scale), 1.0f);
     }
@@ -108,27 +145,27 @@ private slots:
     void learnBindsFirstCcAndAppliesIt()
     {
         Engine engine;
-        engine.setLearnTarget(int(ParamId::Resonance));
+        engine.midiLearnMap()->setLearnTarget(int(ParamId::Resonance));
         block(engine, {cc(74, 100), cc(75, 10)});
-        QCOMPARE(engine.ccMapping(74), int(ParamId::Resonance));
-        QCOMPARE(engine.ccMapping(75), -1); // only the first CC binds
-        QCOMPARE(engine.learnTarget(), -1);
+        QCOMPARE(engine.midiLearnMap()->mapping(74), int(ParamId::Resonance));
+        QCOMPARE(engine.midiLearnMap()->mapping(75), -1); // only the first CC binds
+        QCOMPARE(engine.midiLearnMap()->learnTarget(), -1);
         QCOMPARE(engine.params().get(ParamId::Resonance), 100.0f / 127.0f);
 
-        const auto ev = engine.popEvent();
-        QVERIFY(ev.has_value());
-        QCOMPARE(int(ev->kind), int(EngineEvent::Kind::CcLearned));
-        QCOMPARE(int(ev->a), 74);
-        QCOMPARE(int(ev->b), int(ParamId::Resonance));
+        const auto learned = engine.midiLearnMap()->popLearned();
+        QVERIFY(learned.has_value());
+        QCOMPARE(int(learned->cc), 74);
+        QCOMPARE(int(learned->param), int(ParamId::Resonance));
+        QVERIFY(!engine.midiLearnMap()->popLearned().has_value());
     }
 
     void rebindingMovesTheCc()
     {
         Engine engine;
-        engine.setCcMapping(21, int(ParamId::Cutoff));
-        engine.setLearnTarget(int(ParamId::Accent));
+        engine.midiLearnMap()->setMapping(21, int(ParamId::Cutoff));
+        engine.midiLearnMap()->setLearnTarget(int(ParamId::Accent));
         block(engine, {cc(21, 64)});
-        QCOMPARE(engine.ccMapping(21), int(ParamId::Accent));
+        QCOMPARE(engine.midiLearnMap()->mapping(21), int(ParamId::Accent));
     }
 
     void keysPlayWhileStopped()
@@ -203,6 +240,75 @@ private slots:
         QVERIFY(after > 0.0f);
     }
 
+    // --- Shared pieces ---------------------------------------------------------
+
+    void decodeMessages()
+    {
+        using T = krate::MidiMessage::Type;
+        auto m = krate::decode(noteOn(60, 100));
+        QCOMPARE(int(m.type), int(T::NoteOn));
+        QCOMPARE(int(m.data1), 60);
+        QCOMPARE(int(m.data2), 100);
+        QCOMPARE(int(krate::decode(noteOn(60, 0)).type), int(T::NoteOff)); // velocity 0
+        QCOMPARE(int(krate::decode(noteOff(60)).type), int(T::NoteOff));
+        MidiEvent ch5 = cc(7, 99);
+        ch5.data[0] = 0xB4;
+        m = krate::decode(ch5);
+        QCOMPARE(int(m.type), int(T::ControlChange));
+        QCOMPARE(int(m.channel), 4);
+        QCOMPARE(int(krate::decode(MidiEvent{0, 1, {0xF8, 0, 0}}).type), int(T::Other)); // clock
+        QCOMPARE(int(krate::decode(MidiEvent{}).type), int(T::Other));                    // empty
+    }
+
+    void learnMapOnItsOwn()
+    {
+        krate::MidiLearnMap map(kFakeParams);
+        QCOMPARE(map.controlChange(10, 64).param, krate::MidiLearnMap::kUnmapped);
+
+        map.setLearnTarget(1); // "mode": 3 positions
+        auto r = map.controlChange(10, 80);
+        QCOMPARE(r.param, 1);
+        QCOMPARE(r.value, 0.5f);  // 80/127 snaps to the middle position
+        QCOMPARE(map.mapping(10), 1);
+        QCOMPARE(map.learnTarget(), krate::MidiLearnMap::kUnmapped);
+        QVERIFY(map.popLearned().has_value());
+
+        map.setMapping(11, 0); // "alpha": continuous
+        QCOMPARE(map.controlChange(11, 127).value, 1.0f);
+        map.setMapping(12, 99); // out of range: ignored
+        QCOMPARE(map.mapping(12), krate::MidiLearnMap::kUnmapped);
+        map.setLearnTarget(99);
+        QCOMPARE(map.learnTarget(), krate::MidiLearnMap::kUnmapped);
+        map.clearAll();
+        QCOMPARE(map.mapping(10), krate::MidiLearnMap::kUnmapped);
+    }
+
+    // The learn controller drives an instrument it knows nothing about.
+    void learnControllerWithAnotherInstrument()
+    {
+        {
+            FakeInstrument fake;
+            MidiLearnController learn(fake, m_path, nullptr);
+            learn.setActive(true);
+            learn.arm(QStringLiteral("gate"));
+            QCOMPARE(fake.learn.learnTarget(), 2);
+
+            std::vector<float> l(64), r(64);
+            const MidiEvent ev = cc(20, 100);
+            krate::processStereo(fake, l.data(), r.data(), 64, &ev, 1);
+            learn.drainEvents();
+            QCOMPARE(learn.mappingFor(QStringLiteral("gate")), QStringLiteral("20"));
+            QCOMPARE(fake.values[2], 1.0f); // switch: 100 >= half -> on
+        }
+        // Saved by key, reloaded into a fresh instrument.
+        FakeInstrument fresh;
+        MidiLearnController learn(fresh, m_path, nullptr);
+        QCOMPARE(fresh.learn.mapping(20), 2);
+        kp::MidiMap saved;
+        QCOMPARE(kp::loadMidiMap(m_path, kFakeParams, &saved), kp::LoadResult::Loaded);
+        QCOMPARE(saved.ccToParam[20], 2);
+    }
+
     // --- Mapping file ---------------------------------------------------------
 
     void mapRoundTrip()
@@ -212,10 +318,10 @@ private slots:
         map.ccToParam[21] = int(ParamId::Cutoff);
         map.ccToParam[22] = int(ParamId::Cutoff);
         map.ccToParam[127] = int(ParamId::Tempo);
-        QVERIFY(kp::saveMidiMap(m_path, map));
+        QVERIFY(kp::saveMidiMap(m_path, kParams, map));
 
         kp::MidiMap back;
-        QCOMPARE(kp::loadMidiMap(m_path, &back), kp::LoadResult::Loaded);
+        QCOMPARE(kp::loadMidiMap(m_path, kParams, &back), kp::LoadResult::Loaded);
         QCOMPARE(back.inputPortMatch, QStringLiteral("My Synth"));
         QVERIFY(back.ccToParam == map.ccToParam);
     }
@@ -229,7 +335,7 @@ private slots:
             { "cc": 5, "param": "warp-drive" }, { "cc": 6 } ] })");
         f.close();
         kp::MidiMap map;
-        QCOMPARE(kp::loadMidiMap(m_path, &map), kp::LoadResult::Loaded);
+        QCOMPARE(kp::loadMidiMap(m_path, kParams, &map), kp::LoadResult::Loaded);
         QCOMPARE(map.ccToParam[21], int(ParamId::Cutoff));
         QCOMPARE(map.ccToParam[5], -1);
         QCOMPARE(map.ccToParam[6], -1);
@@ -244,12 +350,12 @@ private slots:
         {
             MidiLearnController learn(engine, m_path, nullptr);
             learn.arm(QStringLiteral("cutoff"));
-            QCOMPARE(engine.learnTarget(), -1); // arming needs learn mode
+            QCOMPARE(engine.midiLearnMap()->learnTarget(), -1); // arming needs learn mode
 
             learn.setActive(true);
             learn.arm(QStringLiteral("cutoff"));
             QCOMPARE(learn.armedParam(), QStringLiteral("cutoff"));
-            QCOMPARE(engine.learnTarget(), int(ParamId::Cutoff));
+            QCOMPARE(engine.midiLearnMap()->learnTarget(), int(ParamId::Cutoff));
 
             QSignalSpy mappings(&learn, &MidiLearnController::mappingsChanged);
             block(engine, {cc(21, 90)});
@@ -264,7 +370,7 @@ private slots:
         // A new controller loads the saved map into a fresh engine.
         Engine fresh;
         MidiLearnController learn(fresh, m_path, nullptr);
-        QCOMPARE(fresh.ccMapping(21), int(ParamId::Cutoff));
+        QCOMPARE(fresh.midiLearnMap()->mapping(21), int(ParamId::Cutoff));
         QCOMPARE(learn.mappingFor(QStringLiteral("cutoff")), QStringLiteral("21"));
     }
 
@@ -279,7 +385,7 @@ private slots:
         learn.arm(QStringLiteral("decay"));
         learn.setActive(false);
         QCOMPARE(learn.armedParam(), QString());
-        QCOMPARE(engine.learnTarget(), -1);
+        QCOMPARE(engine.midiLearnMap()->learnTarget(), -1);
     }
 
     void clearAndClearAll()
@@ -297,15 +403,15 @@ private slots:
 
         learn.clear(QStringLiteral("accent"));
         QCOMPARE(learn.mappingFor(QStringLiteral("accent")), QString());
-        QCOMPARE(engine.ccMapping(40), -1);
+        QCOMPARE(engine.midiLearnMap()->mapping(40), -1);
 
         learn.arm(QStringLiteral("volume"));
         block(engine, {cc(7, 1)});
         learn.drainEvents();
         learn.clearAll();
-        QCOMPARE(engine.ccMapping(7), -1);
+        QCOMPARE(engine.midiLearnMap()->mapping(7), -1);
         kp::MidiMap saved;
-        QCOMPARE(kp::loadMidiMap(m_path, &saved), kp::LoadResult::Loaded);
+        QCOMPARE(kp::loadMidiMap(m_path, kParams, &saved), kp::LoadResult::Loaded);
         QCOMPARE(saved.ccToParam[7], -1);
     }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <string>
 #include <string_view>
 
@@ -17,5 +18,14 @@ struct ParamDescriptor
     int detents;              // 0 = continuous; N = selector or switch with N positions
     std::string (*format)(float normalized); // display text, e.g. "1.25 kHz"; not realtime-safe
 };
+
+// Snap a normalized value to the nearest detent position (unchanged if continuous).
+inline float snapToDetent(const ParamDescriptor &param, float normalized) noexcept
+{
+    if (param.detents < 2)
+        return normalized;
+    const double positions = param.detents - 1;
+    return float(double(std::lround(double(normalized) * positions)) / positions);
+}
 
 } // namespace krate
