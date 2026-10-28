@@ -23,8 +23,8 @@ MidiLearnController::MidiLearnController(krate::IInstrument &instrument, const Q
     Q_ASSERT(!s_instance);
     s_instance = this;
 
-    using k303::persistence::LoadResult;
-    switch (k303::persistence::loadMidiMap(m_filePath, m_params, &m_map)) {
+    using krate::files::LoadResult;
+    switch (krate::files::loadMidiMap(m_filePath, m_params, &m_map)) {
     case LoadResult::Loaded:
         qCInfo(lcMidi) << "loaded MIDI mappings from" << m_filePath;
         break;
@@ -159,6 +159,6 @@ void MidiLearnController::mappingsEdited()
 {
     ++m_revision;
     emit mappingsChanged();
-    if (!k303::persistence::saveMidiMap(m_filePath, m_params, m_map))
+    if (!krate::files::saveMidiMap(m_filePath, m_params, m_map))
         qCWarning(lcMidi) << "could not save MIDI mappings to" << m_filePath;
 }

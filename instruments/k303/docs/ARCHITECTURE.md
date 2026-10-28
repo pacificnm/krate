@@ -6,7 +6,8 @@ k303 is two halves joined by lock-free primitives: a Qt GUI that never touches a
 
 | Module | Kind | Depends on | Responsibility |
 | --- | --- | --- | --- |
-| `krate_core` (`src/core`) | static lib, C++20 | std only | Shared Krate pieces: `krate::IInstrument`, `AudioBlock`, `MidiEvent`, `TransportState`, `ParamDescriptor`, `StandaloneTransport`, `StepClock`, `SpscQueue`, `decode()`, `MidiLearnMap` (moves to `shared/core` in R6) |
+| `krate_core` (`shared/core`) | static lib, C++20 | std only | Shared Krate pieces: `krate::IInstrument`, `AudioBlock`, `MidiEvent`, `TransportState`, `ParamDescriptor`, `StandaloneTransport`, `StepClock`, `SpscQueue`, `decode()`, `MidiLearnMap`, `MasterStage` |
+| `krate_app`, `krate_qml` (`shared/app`, `shared/qml`) | static libs | Qt | File helpers (JSON, MIDI map, panel), screenshot hook; QML module `Krate` (controls, `Theme`, `MidiLearn`) |
 | `k303_dsp` | static lib, C++20 | std only | Oscillator, diode ladder, envelopes, voice, sequencer, parameter store, SPSC queue; `Engine` implements `krate::IInstrument`. Pure, allocation-free in `process()` |
 | `krate_host` | static lib | `krate_core`, libjack | Standalone host (`krate::JackHost`): ports from `outputChannels()`, MIDI in, transport, master stage (soft clip + meter). Knows no instrument |
 | `k303_app` | part of executable | Qt 6 Core/Gui/Qml/Quick, `k303_dsp`, `krate_host` | QML-facing controllers, persistence, MIDI Learn UI state |

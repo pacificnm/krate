@@ -90,7 +90,7 @@ public:
 };
 ```
 
-As built in R2 (`src/core/Instrument.h`): parameters are reached by index rather than through a shared `ParamStore` type, so the interface does not depend on any instrument's parameter enum; `ParamStore` stays an implementation detail. A `processStereo()` helper wraps two buffers into an `AudioBlock` for stereo hosts and tests.
+As built in R2 (`shared/core/Instrument.h`): parameters are reached by index rather than through a shared `ParamStore` type, so the interface does not depend on any instrument's parameter enum; `ParamStore` stays an implementation detail. A `processStereo()` helper wraps two buffers into an `AudioBlock` for stereo hosts and tests.
 
 Instrument-specific data (k303 patterns, K909 drum tracks, Kalliope programs) does not go through this interface. Each instrument has its own command queue (GUI → audio) and event queue (audio → GUI) between its controller and its core, as k303 already does with `Engine::post()` and `popEvent()`.
 
@@ -100,8 +100,8 @@ Output level: each instrument keeps its output bounded (no hard overs) but does 
 
 | Piece | Shared? | Notes |
 | --- | --- | --- |
-| `MidiEvent`, status decoding (note on/off, CC, velocity-0 as note off, channel) | Shared | `krate::decode()` in `src/core/Midi.h`; no queue |
-| `MidiLearnMap`: CC → parameter table, learn target, detent snapping, "CC learned" queue to the GUI | Shared, realtime-safe | `krate::MidiLearnMap` in `src/core/Midi.h`; each instrument owns one and returns it from `IInstrument::midiLearnMap()` |
+| `MidiEvent`, status decoding (note on/off, CC, velocity-0 as note off, channel) | Shared | `krate::decode()` in `shared/core/Midi.h`; no queue |
+| `MidiLearnMap`: CC → parameter table, learn target, detent snapping, "CC learned" queue to the GUI | Shared, realtime-safe | `krate::MidiLearnMap` in `shared/core/Midi.h`; each instrument owns one and returns it from `IInstrument::midiLearnMap()` |
 | What notes do (mono with legato, drum triggers, poly voice allocation) | Per instrument | Inside each `process()` |
 | `MidiLearnController` (QML singleton), `LearnOverlay` (QML) | Shared, generic over `parameters()` | Constructed from any `IInstrument&`; works by parameter key; mapping file resolved through the descriptor table (R4) |
 | Mapping file | Per instrument | `~/.config/<instrument>/midimap.json`; in the rack, stored per device in the session |
@@ -129,30 +129,32 @@ The only difference between the two columns is the host. Instrument cores and co
 
 ## Shared code layout
 
-A monorepo, so the shared library and all instruments change together and build as one CMake project:
+A monorepo, so the shared library and all instruments change together and build as one CMake project. As built in R6:
 
 ```
+CMakeLists.txt         Krate project; one add_subdirectory per folder below
 shared/
-  core/      IInstrument, AudioBlock, TransportState, ParamDescriptor, ParamStore,
-             SpscQueue, MidiEvent + decoding, MidiLearnMap, Denormals, HalfbandDecimator,
-             offline render harness (WAV writer, bench)              -- no Qt
-  host/      JackHost (standalone), later RackHost                   -- JACK, no Qt
-  app/       Persistence helpers (atomic JSON save, versioned load), MidiLearnController,
-             generic panel/param controller, screenshot hook          -- Qt
-  qml/       Knob, PanelButton, Led, LcdField, PanelLabel, LearnOverlay, Theme,
-             scale-to-window Main pattern                            -- QML module
+  core/      krate_core   IInstrument, AudioBlock, TransportState, ParamDescriptor, StandaloneTransport,
+                          StepClock, Midi (decode, MidiLearnMap), MasterStage, SpscQueue, Denormals  -- no Qt
+  host/      krate_host   JackHost (standalone); later RackHost                                   -- JACK, no Qt
+  app/       krate_app    JsonFile, MidiMapFile, PanelFile, ScreenshotHook                        -- Qt
+             krate_qml    MidiLearnController (QML singleton MidiLearn)
+  qml/       krate_qml    QML module "Krate": Knob, PanelButton, Led, LcdField, PanelLabel,
+                          LearnOverlay, Theme
+  tests/     tst_queue; TestHost.h (drives any IInstrument with a StandaloneTransport)
 instruments/
-  k303/      core/ (Voice, DiodeLadder, Sequencer, Engine : IInstrument), app/, qml/, tests/
+  k303/      dsp/ (k303_dsp: Engine : IInstrument), app/ + qml/ (k303_ui: QML module "K303"),
+             tools/ (k303-render), tests/, docs/, README.md
   k909/      ...
   kalliope/  ...
 apps/
-  k303/      main.cpp: JackHost + k303 module
+  k303/      main.cpp: JackHost + the K303 and Krate modules
   k909/, kalliope/
   krate/     main.cpp: RackHost + all instrument modules + rack UI (binary: krate)
 docs/        suite-level docs (this file); each instrument keeps its own docs/
 ```
 
-Each instrument builds as **libraries plus a QML module** (static), and each app is a thin `main.cpp`. The rack links all three instruments' libraries and shows their panels inside its own window.
+Each instrument builds as **libraries plus a static QML module**, and each app is a thin `main.cpp` that links the modules' plugins (`Q_IMPORT_QML_PLUGIN`). The rack will link every instrument's libraries and show their panels inside its own window. Binaries land in `build/bin/`, QML modules in `build/qml/`.
 
 QML singletons: k303 uses singletons (`Synth`, `Pattern`, `MidiLearn`). That works in the rack because each instrument has its own QML module, giving one instance per instrument type. **Decided: the rack holds at most one of each instrument**, so singletons stay. (Allowing two copies of one instrument later would mean replacing the singletons with per-panel controller objects.)
 
@@ -226,9 +228,9 @@ Each step keeps every test green and k303 behaving the same; commit after each.
 | R3 ✅ | **Transport.** Add `TransportState` and a `StandaloneTransport`; Tempo and run/stop move out of the instrument into the transport; extract `StepClock` from `Sequencer` and drive it from beat position | Existing timing tests pass against the transport; the Tempo knob still works (it drives the standalone transport). Result: renders byte-identical; Tempo stays in k303's parameter table so the knob, `panel.json` and MIDI Learn keep working, but the engine ignores it and the standalone app forwards it to its transport |
 | R4 ✅ | **Generic MIDI.** Extract `MidiEvent` decoding and `MidiLearnMap` into shared core; make `MidiLearnController` and `LearnOverlay` work from descriptor keys | `tst_midi` passes unchanged plus tests for the shared pieces |
 | R5 ✅ | **Host decoupling.** `JackHost` takes an `IInstrument&` and a transport, and owns the master stage; no k303 types in the host | Host compiles without any k303 header. Result: `krate::JackHost` + `krate::MasterStage` (tanh soft clip + meter; the engine no longer clips); `krate_core` and `krate_host` libraries; verified by compiling `core/` + `host/` alone; renders byte-identical |
-| R6 | **Repo layout.** Move to `shared/`, `instruments/k303/`, `apps/k303/`; shared QML components become their own module | Clean build from scratch; the k303 app and all tests run as before |
+| R6 ✅ | **Repo layout.** Move to `shared/`, `instruments/k303/`, `apps/k303/`; shared QML components become their own module | Clean build from scratch; the k303 app and all tests run as before |
 
-After R6, starting K909 means adding `instruments/k909/` and `apps/k909/` and nothing in `shared/` should need to change except genuinely new shared pieces.
+**The refactor is complete.** Starting K909 means adding `instruments/k909/` and `apps/k909/` and nothing in `shared/` should need to change except genuinely new shared pieces.
 
 ## Decisions and open questions
 

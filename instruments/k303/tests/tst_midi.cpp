@@ -11,12 +11,12 @@
 
 #include "app/MidiLearnController.h"
 #include "core/Midi.h"
-#include "app/Persistence.h"
+#include "app/MidiMapFile.h"
 #include "dsp/Engine.h"
 #include "TestHost.h"
 
 using namespace k303;
-namespace kp = k303::persistence;
+namespace kp = krate::files;
 
 namespace {
 

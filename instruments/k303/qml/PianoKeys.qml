@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Krate
 
 // The 13-key note pad (C..C): white keys in the bottom row, black keys raised
 // between them, a red LED per key. litKey = semitone 0..12, or -1.

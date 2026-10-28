@@ -1,6 +1,6 @@
 #include "app/SynthController.h"
 
-#include "app/Persistence.h"
+#include "app/PanelFile.h"
 
 #include <QJSEngine>
 #include <QLoggingCategory>
@@ -24,8 +24,8 @@ SynthController::SynthController(const QString &panelFilePath, QObject *parent)
     s_instance = this;
 
     // Knob positions from last time (missing or unreadable file: defaults).
-    k303::persistence::PanelValues values;
-    if (k303::persistence::loadPanel(m_panelFilePath, &values) == k303::persistence::LoadResult::NewerVersion)
+    krate::files::PanelValues values;
+    if (krate::files::loadPanel(m_panelFilePath, k303::kParams, &values) == krate::files::LoadResult::NewerVersion)
         m_panelFilePath += QStringLiteral(".v1"); // leave a newer file alone
     for (int i = 0; i < k303::ParamCount; ++i)
         m_engine.setParam(i, values[std::size_t(i)]);
@@ -139,10 +139,10 @@ void SynthController::connectAudio()
 void SynthController::savePanel()
 {
     m_saveTimer.stop();
-    k303::persistence::PanelValues values{};
+    krate::files::PanelValues values(std::size_t(k303::ParamCount), 0.0f);
     for (int i = 0; i < k303::ParamCount; ++i)
         values[std::size_t(i)] = m_engine.param(i);
-    if (!k303::persistence::savePanel(m_panelFilePath, values))
+    if (!krate::files::savePanel(m_panelFilePath, k303::kParams, values))
         qCWarning(lcAudio) << "could not save panel settings to" << m_panelFilePath;
 }
 

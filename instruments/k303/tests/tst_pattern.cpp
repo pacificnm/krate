@@ -9,12 +9,14 @@
 #include <vector>
 
 #include "app/PatternModel.h"
-#include "app/Persistence.h"
+#include "app/PanelFile.h"
+#include "app/PatternFile.h"
 #include "dsp/Engine.h"
 #include "TestHost.h"
 
 using namespace k303;
 namespace kp = k303::persistence;
+namespace kf = krate::files;
 
 namespace {
 
@@ -300,16 +302,16 @@ private slots:
 
     void panelRoundTrip()
     {
-        kp::PanelValues values = kp::defaultPanel();
+        kf::PanelValues values = kf::defaultPanel(kParams);
         values[std::size_t(ParamId::Cutoff)] = 0.25f;
         values[std::size_t(ParamId::PlayMode)] = 1.0f;
-        QVERIFY(kp::savePanel(m_path, values));
-        kp::PanelValues back;
-        QCOMPARE(kp::loadPanel(m_path, &back), kp::LoadResult::Loaded);
+        QVERIFY(kf::savePanel(m_path, kParams, values));
+        kf::PanelValues back;
+        QCOMPARE(kf::loadPanel(m_path, kParams, &back), kp::LoadResult::Loaded);
         QVERIFY(back == values);
 
         writeFile(m_path, R"({ "version": 1, "params": { "cutoff": 7, "warp": 0.5 } })");
-        QCOMPARE(kp::loadPanel(m_path, &back), kp::LoadResult::Loaded);
+        QCOMPARE(kf::loadPanel(m_path, kParams, &back), kp::LoadResult::Loaded);
         QCOMPARE(back[std::size_t(ParamId::Cutoff)], 1.0f);  // clamped
         QCOMPARE(back[std::size_t(ParamId::Volume)], paramDescriptor(ParamId::Volume).defaultValue); // missing: default
     }

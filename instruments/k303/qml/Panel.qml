@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Krate
 
 // The whole instrument at design resolution (1600 x 692); layout in docs/UI.md.
 // Upper deck 0-340: sound knobs, tempo, pattern display, volume. Lower deck

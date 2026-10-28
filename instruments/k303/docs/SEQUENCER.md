@@ -25,7 +25,7 @@ Pitch: `midiNote = 24 + 12 · (octave + 1) + note + transpose`, giving C1 (24, a
 
 ## Timing
 
-Time comes from the transport (docs/SHARED_FOUNDATIONS.MD#transport): every block carries `playing`, `restarted`, `bpm` and `beatAtBlockStart`. Each sample's beat is `beatAtBlockStart + i · bpm / 60 / sampleRate`.
+Time comes from the transport ([SHARED_FOUNDATIONS.MD](../../../docs/SHARED_FOUNDATIONS.MD#transport)): every block carries `playing`, `restarted`, `bpm` and `beatAtBlockStart`. Each sample's beat is `beatAtBlockStart + i · bpm / 60 / sampleRate`.
 
 - `krate::StepClock` turns beats into steps: `stepPosition = anchorPos + (beat − anchorBeat) · stepsPerBeat`; a step starts when `floor(stepPosition)` increases. Steps are 16ths by default (4 per beat; see Scale below).
 - Gate-off happens when the step's fractional position reaches `gateLength = 0.5` (*starting value*; constant, not a panel control).

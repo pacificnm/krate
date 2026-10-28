@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Krate
 
 // The 16 step buttons with LEDs, one per row of the Pattern model. The selected
 // step's LED is steady; the playhead's LED flashes bright as it enters a step

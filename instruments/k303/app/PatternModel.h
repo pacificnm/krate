@@ -4,7 +4,7 @@
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
-#include "app/Persistence.h"
+#include "app/PatternFile.h"
 
 namespace k303 {
 class Engine;

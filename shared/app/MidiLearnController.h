@@ -6,7 +6,7 @@
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
-#include "app/Persistence.h"
+#include "app/MidiMapFile.h"
 #include "core/ParamDescriptor.h"
 
 namespace krate {
@@ -73,7 +73,7 @@ private:
     krate::MidiLearnMap &m_learnMap;
     std::span<const krate::ParamDescriptor> m_params;
     QString m_filePath;
-    k303::persistence::MidiMap m_map;
+    krate::files::MidiMap m_map;
     bool m_active = false;
     QString m_armed;
     int m_revision = 0;

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import Krate
 
 // Two-position slide switch: saw (0) / square (1), with waveform icons above.
 Item {
