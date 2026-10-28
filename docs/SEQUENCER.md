@@ -71,8 +71,8 @@ All edits go through `Pattern` (singleton `PatternModel`): it updates its mirror
 | `SetStep` | step index, full `Step` |
 | `SetLength` | 1..16 |
 | `LoadPattern` | full `Pattern` (used on pattern switch and on load) |
-| `Transport` | play / stop |
-| `SetTempo` | BPM (also mirrored in `ParamStore` for the knob) |
+
+Transport and tempo don't use the queue: run/stop is an atomic flag (`Synth.playing` → `Engine::setRunning`) and tempo is the `tempo` parameter in `ParamStore`, both read at the start of each audio block. The playhead is reported back through `Engine::currentStep()` → `Synth.currentStep`, polled at 60 Hz for display only.
 
 Edits while playing apply from the next step boundary that reads that step. No locks, no double-buffer swap needed: the audio thread copies the step into its own pattern when it drains the queue.
 

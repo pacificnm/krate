@@ -60,6 +60,17 @@ void Sequencer::setPattern(const Pattern &pattern) noexcept
     m_pattern.length = std::clamp<std::uint8_t>(pattern.length, 1, 16);
 }
 
+void Sequencer::setStep(int index, const Step &step) noexcept
+{
+    if (index >= 0 && index < int(m_pattern.steps.size()))
+        m_pattern.steps[std::size_t(index)] = step;
+}
+
+void Sequencer::setLength(int length) noexcept
+{
+    m_pattern.length = std::uint8_t(std::clamp(length, 1, 16));
+}
+
 void Sequencer::start() noexcept
 {
     m_running = true;

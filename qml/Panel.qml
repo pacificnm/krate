@@ -23,6 +23,11 @@ Item {
     width: Theme.designWidth
     height: Theme.designHeight
 
+    // Space toggles run/stop from anywhere: no control accepts Space, so the key
+    // propagates up from whatever has focus.
+    focus: true
+    Keys.onSpacePressed: Synth.playing = !Synth.playing
+
     // ---- Upper deck ---------------------------------------------------------
 
     Rectangle {
@@ -176,7 +181,7 @@ Item {
         width: 40
         height: 26
         radius: 3
-        on: false // M4: flashes on each beat
+        on: Synth.currentStep >= 0 && Synth.currentStep % 4 === 0 // lit for the first step of each beat
     }
 
     Grid {
@@ -461,7 +466,7 @@ Item {
         x: 362
         y: 360
         selectedStep: panel.selectedStep
-        playStep: -1 // M4: Synth.currentStep
+        playStep: Synth.currentStep
         onStepClicked: step => panel.selectedStep = step
     }
 

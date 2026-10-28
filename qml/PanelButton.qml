@@ -31,7 +31,9 @@ Item {
         clicked()
     }
 
-    Keys.onSpacePressed: activate()
+    // Enter, not Space: Space is the panel's run/stop key (docs/UI.md).
+    Keys.onReturnPressed: activate()
+    Keys.onEnterPressed: activate()
 
     Rectangle { // drop shadow
         x: 1

@@ -15,6 +15,7 @@ Window {
                                                 height / Theme.designHeight)
 
     Panel {
+        focus: true
         x: (root.width - width * root.panelScale) / 2
         y: (root.height - height * root.panelScale) / 2
         transform: Scale {

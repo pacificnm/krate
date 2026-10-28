@@ -99,6 +99,57 @@ private slots:
         QCOMPARE(engine.currentStep(), 3); // 0.5 s at 120 BPM = 4 steps of 125 ms
     }
 
+    // Commands posted from the GUI land at the start of the next block.
+    void engineAppliesCommands()
+    {
+        Engine engine;
+        engine.setSampleRate(48000.0);
+        std::vector<float> l(64), r(64);
+
+        Command len;
+        len.kind = Command::Kind::SetLength;
+        len.index = 4;
+        QVERIFY(engine.post(len));
+
+        Command step;
+        step.kind = Command::Kind::SetStep;
+        step.index = 2;
+        step.step = Step{5, 1, true, false, Gate::Tie};
+        QVERIFY(engine.post(step));
+
+        engine.process(l.data(), r.data(), 64);
+        QCOMPARE(int(engine.sequencer().pattern().length), 4);
+        const Step &s = engine.sequencer().pattern().steps[2];
+        QCOMPARE(int(s.note), 5);
+        QCOMPARE(int(s.octave), 1);
+        QVERIFY(s.accent);
+        QCOMPARE(int(s.gate), int(Gate::Tie));
+
+        Command load;
+        load.kind = Command::Kind::LoadPattern;
+        load.pattern.length = 7;
+        load.pattern.steps[0].note = 9;
+        QVERIFY(engine.post(load));
+        engine.process(l.data(), r.data(), 64);
+        QCOMPARE(int(engine.sequencer().pattern().length), 7);
+        QCOMPARE(int(engine.sequencer().pattern().steps[0].note), 9);
+    }
+
+    void engineReportsCurrentStep()
+    {
+        Engine engine;
+        engine.setSampleRate(48000.0);
+        std::vector<float> l(64), r(64);
+        engine.process(l.data(), r.data(), 64);
+        QCOMPARE(engine.currentStep(), -1); // stopped
+        engine.setRunning(true);
+        engine.process(l.data(), r.data(), 64);
+        QCOMPARE(engine.currentStep(), 0);
+        engine.setRunning(false);
+        engine.process(l.data(), r.data(), 64);
+        QCOMPARE(engine.currentStep(), -1);
+    }
+
     // A volume jump is smoothed over ~10 ms instead of landing on one sample.
     void volumeIsSmoothed()
     {

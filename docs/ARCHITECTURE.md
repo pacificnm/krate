@@ -51,7 +51,8 @@ Every channel is single-producer / single-consumer and fixed size. Nothing alloc
 | Param dirty bits | audio → GUI | `std::atomic<uint64_t>` bitmask | Which params the audio thread changed (from MIDI), so the GUI updates those knobs only |
 | CC map | GUI → audio | `std::array<std::atomic<int16_t>, 128>`: CC number → ParamId, −1 = unmapped | MIDI Learn bindings |
 | Learn arm | GUI → audio | `std::atomic<int16_t> learnTarget` (−1 = off) | Param waiting for a CC |
-| Commands | GUI → audio | `SpscQueue<Command, 256>` | Step edits, pattern switch, transport play/stop, tempo, whole-pattern load |
+| Commands | GUI → audio | `SpscQueue<Command, 256>` (`Engine::post`), drained at the start of each block | `SetStep`, `SetLength`, `LoadPattern` |
+| Run/stop | GUI → audio | `std::atomic<bool>` (`Engine::setRunning`) | Transport |
 | Events | audio → GUI | `SpscQueue<Event, 256>` | `CcLearned{cc, param}`, `NoteOn{note}` (for step record), `Xrun` |
 | Playhead | audio → GUI | `std::atomic<int8_t> currentStep` (−1 = stopped) | LED playhead |
 

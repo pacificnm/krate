@@ -50,6 +50,9 @@ public:
     void setSampleRate(double sampleRate) noexcept;
     void setTempo(double bpm) noexcept;
     void setPattern(const Pattern &pattern) noexcept;
+    void setStep(int index, const Step &step) noexcept;  // ignored if out of range
+    void setLength(int length) noexcept;                  // clamped to 1..16
+    const Pattern &pattern() const noexcept { return m_pattern; }
 
     void start() noexcept;
     // Returns GateOff if a note was sounding.

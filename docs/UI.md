@@ -56,7 +56,7 @@ Controls marked "drawn" render and move but do nothing until their milestone. Un
 | Component | Behavior |
 | --- | --- |
 | `Knob.qml` | Dark ribbed skirt, silver cap, black pointer. Only the rib and pointer layers rotate, so lighting stays fixed and nothing re-tessellates while turning. `minAngle`/`maxAngle` (default ±135°), `detents` for selectors. Vertical drag: 200 px = full range; Shift = fine (×0.1); wheel = 1/100 or one detent; double-click = default; Up/Down keys when focused. Learn mode (M6): click arms it, pulsing outline when armed, CC badge when mapped |
-| `PanelButton.qml` | Hardware push button, light or dark, optional LED, optional red indicator bar (Run/Stop), optional face text. `checkable`; Space activates when focused |
+| `PanelButton.qml` | Hardware push button, light or dark, optional LED, optional red indicator bar (Run/Stop), optional face text. `checkable`; Enter activates when focused |
 | `Led.qml` | Red LED with glow; any size or shape |
 | `StepRow.qml` | 16 step buttons with LEDs and numbers. Selected step lit; playhead pulses (M4: `OpacityAnimator`, runs on the render thread) |
 | `PianoKeys.qml` | 13 keys C..C on a key bed: white keys in the bottom row, black keys raised between them, LED per key, note labels |
@@ -99,7 +99,7 @@ Labels: bold sans-serif uppercase, 11–15 px; displays: monospace.
 
 | Key | Action |
 | --- | --- |
-| Space | Run / stop (when no button has focus) |
+| Space | Run / stop, from anywhere (focused buttons use Enter) |
 | Left / Right | Select previous / next step |
 | A, S | Toggle accent / slide on the selected step |
 | N, T, R | Set the selected step to Note / Tie / Rest |

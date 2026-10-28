@@ -5,9 +5,22 @@
 
 #include "dsp/ParamStore.h"
 #include "dsp/Sequencer.h"
+#include "dsp/SpscQueue.h"
 #include "dsp/Voice.h"
 
 namespace k303 {
+
+// GUI -> audio pattern change, applied at the start of the next audio block.
+// Edits to the playing pattern take effect when the sequencer next reads that step.
+struct Command
+{
+    enum class Kind : std::uint8_t { SetStep, SetLength, LoadPattern };
+
+    Kind kind = Kind::SetStep;
+    std::uint8_t index = 0;    // SetStep: step 0..15; SetLength: 1..16
+    Step step{};               // SetStep
+    Pattern pattern{};         // LoadPattern
+};
 
 // Everything the audio callback renders. Host-agnostic: JACK today, LV2 later.
 // process() runs on the realtime thread and must not allocate, lock or block.
@@ -29,11 +42,18 @@ public:
     bool isRunning() const noexcept { return m_running.load(std::memory_order_relaxed); }
     int currentStep() const noexcept { return m_currentStep.load(std::memory_order_relaxed); }
 
+    // GUI thread (single producer). Returns false if the queue is full.
+    bool post(const Command &command) noexcept { return m_commands.push(command); }
+
+    // For tests and offline rendering only: not safe while the audio thread runs.
+    const Sequencer &sequencer() const noexcept { return m_sequencer; }
+
     // GUI thread: peak absolute output since the last call.
     float takePeak() noexcept { return m_peak.exchange(0.0f, std::memory_order_relaxed); }
 
 private:
     void handle(const SequencerEvent &event) noexcept;
+    void applyCommands() noexcept;
 
     ParamStore m_params;
     Sequencer m_sequencer;
@@ -42,6 +62,8 @@ private:
 
     float m_volume = 0.0f;      // smoothed (realtime thread only)
     float m_volumeCoeff = 0.0f;
+
+    SpscQueue<Command, 256> m_commands;
 
     std::atomic<bool> m_running{false};
     std::atomic<int> m_currentStep{-1};

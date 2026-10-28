@@ -40,8 +40,27 @@ void Engine::handle(const SequencerEvent &event) noexcept
     }
 }
 
+void Engine::applyCommands() noexcept
+{
+    while (const auto command = m_commands.pop()) {
+        switch (command->kind) {
+        case Command::Kind::SetStep:
+            m_sequencer.setStep(command->index, command->step);
+            break;
+        case Command::Kind::SetLength:
+            m_sequencer.setLength(command->index);
+            break;
+        case Command::Kind::LoadPattern:
+            m_sequencer.setPattern(command->pattern);
+            break;
+        }
+    }
+}
+
 void Engine::process(float *outL, float *outR, std::uint32_t frames) noexcept
 {
+    applyCommands();
+
     const ParamStore &p = m_params;
 
     VoiceParams vp;

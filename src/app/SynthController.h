@@ -26,6 +26,8 @@ class SynthController : public QObject
     Q_PROPERTY(int xrunCount READ xrunCount NOTIFY audioStatusChanged)
     Q_PROPERTY(qreal outputLevel READ outputLevel NOTIFY outputLevelChanged)
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
+    // Playing step 0..15, or -1 when stopped. Display only: polled at 60 Hz.
+    Q_PROPERTY(int currentStep READ currentStep NOTIFY currentStepChanged)
 
     // Sound parameters, normalized 0..1 (docs/DSP.md#parameters). One notify
     // signal for all: changes are rare and there are only nine.
@@ -56,6 +58,7 @@ public:
     qreal outputLevel() const { return m_outputLevel; }
 
     bool playing() const { return m_engine.isRunning(); }
+    int currentStep() const { return m_currentStep; }
     void setPlaying(bool playing);
 
     qreal tuning() const { return param(k303::ParamId::Tuning); }
@@ -92,6 +95,7 @@ signals:
     void outputLevelChanged();
     void playingChanged();
     void paramsChanged();
+    void currentStepChanged();
 
 private:
     qreal param(k303::ParamId id) const { return m_engine.params().get(id); }
@@ -108,6 +112,7 @@ private:
     QTimer m_retryTimer;
     QString m_audioStatus;
     qreal m_outputLevel = 0.0;
+    int m_currentStep = -1;
     int m_lastXruns = 0;
     int m_lastSampleRate = 0;
     int m_lastBufferSize = 0;

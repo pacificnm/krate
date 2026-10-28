@@ -176,6 +176,13 @@ void SynthController::poll()
         }
     }
 
+    // While offline the engine doesn't run, so it can't report a step.
+    const int step = m_client.isOpen() ? m_engine.currentStep() : -1;
+    if (step != m_currentStep) {
+        m_currentStep = step;
+        emit currentStepChanged();
+    }
+
     // Values the audio thread changed (MIDI CCs, from M6) need the knobs to follow.
     if (m_engine.params().takeChangedByAudio() != 0)
         emit paramsChanged();

@@ -35,6 +35,7 @@ add_library(k303_dsp STATIC
     src/dsp/ParamStore.h
     src/dsp/Sequencer.h
     src/dsp/Sequencer.cpp
+    src/dsp/SpscQueue.h
     src/dsp/Voice.h
     src/dsp/Voice.cpp
 )
@@ -111,3 +112,8 @@ qt_add_executable(tst_sequencer tests/tst_sequencer.cpp)
 target_compile_options(tst_sequencer PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_sequencer PRIVATE k303_dsp Qt6::Test)
 add_test(NAME tst_sequencer COMMAND tst_sequencer)
+
+qt_add_executable(tst_queue tests/tst_queue.cpp)
+target_compile_options(tst_queue PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_queue PRIVATE k303_dsp Qt6::Test)
+add_test(NAME tst_queue COMMAND tst_queue)
