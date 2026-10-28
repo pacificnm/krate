@@ -4,7 +4,7 @@ import QtQuick
 import Krate
 
 // K909's panel at design size 1600 x 940 (docs/UI.md). D0: chassis, branding,
-// section headers and labels; the controls arrive in D2-D4.
+// section headers, labels and every knob; the buttons arrive in D3-D5.
 Item {
     id: panel
 
@@ -68,6 +68,24 @@ Item {
         { name: "OPEN", first: 14, steps: 1 }, { name: "CRASH", first: 15, steps: 1 },
         { name: "RIDE", first: 16, steps: 1 }
     ]
+
+    // A knob bound to one of Drums' parameters by key, MIDI-learnable.
+    component DrumKnob: Knob {
+        id: drumKnob
+        required property string key
+        width: 62
+        height: 62
+        name: key
+        value: Drums.revision >= 0 ? Drums.value(key) : 0
+        defaultValue: Drums.defaultValue(key)
+        displayText: Drums.displayText(key, value)
+        onMoved: v => Drums.setValue(key, v)
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: drumKnob.key
+        }
+    }
 
     // Chassis
     Rectangle {
@@ -160,12 +178,23 @@ Item {
             Repeater {
                 model: section.modelData.knobs
 
-                PanelLabel {
+                Item {
+                    id: knobSlot
                     required property var modelData
-                    centerX: (modelData.col + 0.5) * panel.column
-                    y: panel.rowLabelY[modelData.row] - panel.sectionTop
-                    text: modelData.label
-                    font.pixelSize: 13
+                    readonly property real cx: (modelData.col + 0.5) * panel.column
+                    readonly property real labelY: panel.rowLabelY[modelData.row] - panel.sectionTop
+
+                    PanelLabel {
+                        centerX: knobSlot.cx
+                        y: knobSlot.labelY
+                        text: knobSlot.modelData.label
+                        font.pixelSize: 13
+                    }
+                    DrumKnob {
+                        key: knobSlot.modelData.key
+                        x: knobSlot.cx - width / 2
+                        y: knobSlot.labelY + 24
+                    }
                 }
             }
         }
@@ -176,6 +205,29 @@ Item {
     PanelLabel { centerX: 1060; y: 572; text: "TEMPO"; visible: Drums.ownsTransport }
     PanelLabel { centerX: 1190; y: 572; text: "VOLUME" }
     PanelLabel { centerX: 1320; y: 572; text: "SHUFFLE" }
+    DrumKnob {
+        key: "tempo"
+        visible: Drums.ownsTransport
+        x: 1060 - width / 2
+        y: 600
+        width: 84
+        height: 84
+    }
+    DrumKnob {
+        key: "volume"
+        x: 1190 - width / 2
+        y: 596
+        width: 100
+        height: 100
+    }
+    DrumKnob {
+        key: "shuffle"
+        detents: 6
+        x: 1320 - width / 2
+        y: 604
+        width: 70
+        height: 70
+    }
 
     // Lower deck: transport buttons, step buttons and the track strip
     Rectangle {
