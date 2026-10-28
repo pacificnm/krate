@@ -32,9 +32,21 @@ int main(int argc, char *argv[])
                          QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
                              + QStringLiteral("/patterns.json"),
                          nullptr);
-    // ~/.config/k303/midimap.json
-    MidiLearnController midiLearn(synth.engine(), configDir + QStringLiteral("/midimap.json"), nullptr);
+    // ~/.config/k303/midimap.json. Learnable buttons besides the knobs: pattern
+    // select 1-8 and run/stop (keys match the panel's LearnOverlays).
+    const QStringList actions = {
+        QStringLiteral("pattern1"), QStringLiteral("pattern2"), QStringLiteral("pattern3"), QStringLiteral("pattern4"),
+        QStringLiteral("pattern5"), QStringLiteral("pattern6"), QStringLiteral("pattern7"), QStringLiteral("pattern8"),
+        QStringLiteral("runstop"),
+    };
+    MidiLearnController midiLearn(synth.engine(), configDir + QStringLiteral("/midimap.json"), nullptr, actions);
     synth.setMidiInputMatch(midiLearn.inputPortMatch());
+    QObject::connect(&midiLearn, &MidiLearnController::actionTriggered, &app, [&](const QString &action) {
+        if (action == u"runstop")
+            synth.setPlaying(!synth.playing());
+        else if (action.startsWith(u"pattern"))
+            pattern.setPatternIndex(action.mid(7).toInt() - 1);
+    });
 
     QQmlApplicationEngine engine;
     QObject::connect(

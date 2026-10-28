@@ -224,6 +224,7 @@ Item {
             model: 8
 
             PanelButton {
+                id: patternButton
                 required property int index
                 width: 34
                 height: 30
@@ -231,6 +232,12 @@ Item {
                 text: "Pattern " + (index + 1)
                 dark: Pattern.index === index
                 onClicked: Pattern.index = index
+
+                LearnOverlay {
+                    anchors.fill: parent
+                    paramKey: "pattern" + (patternButton.index + 1)
+                    round: false
+                }
             }
         }
     }
@@ -479,6 +486,12 @@ Item {
         indicatorBar: true
         ledOn: Synth.playing
         onClicked: Synth.playing = !Synth.playing
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "runstop"
+            round: false
+        }
     }
     PanelLabel { centerX: 103; y: 650; text: "RUN / STOP" }
 

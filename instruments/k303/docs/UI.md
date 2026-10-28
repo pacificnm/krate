@@ -31,7 +31,7 @@ A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and sca
 | Waveform switch | Saw / square | M2 |
 | Tuning, Cut Off Freq, Resonance, Env Mod, Decay, Accent | Sound knobs | M2 |
 | Unmap / Audio / About | Clear all MIDI mappings / audio status LED, click to reconnect / about box (M7) | M6, M1, M7 |
-| 1–8 buttons + red block | Pattern select 1–8; the red block is a beat LED | M5, M4 |
+| 1–8 buttons + red block | Pattern select 1–8 (MIDI-learnable); the red block is a beat LED | M5, M4 |
 | Tempo knob | Sequencer tempo | M4 |
 | Scale selector (1/16, 1/32, 1/16T) | Step length (SEQUENCER.md) | Done |
 | Play Mode selector (Forward, Reverse, Fwd+Rev, Invert, Random) | Step order / pitch inversion (SEQUENCER.md) | Done |
@@ -40,7 +40,7 @@ A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and sca
 | Model plate | "K-303 / Acid Bass Synthesizer" | — |
 | Volume knob | Output volume | M2 |
 | MIDI Learn | Learn toggle + LED | M6 |
-| Run/Stop | Start / stop the sequencer | M4 |
+| Run/Stop | Start / stop the sequencer (MIDI-learnable) | M4 |
 | Keyboard | On = note keys play the voice; off = note keys edit the selected step | M5 |
 | Time | On = time mode: DOWN = Note, UP = Tie, ACCENT = Rest (labels above the buttons), the classic step-entry convention | M5 |
 | 16-step LED row | Click selects the step to edit; playhead LED moves while running. Each button shows its step: note name, ↑/↓ for octave up/down, – for a tie, blank for a rest; dimmed past the pattern length | M4, M5 |

@@ -3,6 +3,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
+#include "core/Midi.h"
+
 namespace krate::files {
 
 namespace {
@@ -14,7 +16,8 @@ QString keyString(const ParamDescriptor &param)
 
 } // namespace
 
-LoadResult loadMidiMap(const QString &path, std::span<const ParamDescriptor> params, MidiMap *map)
+LoadResult loadMidiMap(const QString &path, std::span<const ParamDescriptor> params, MidiMap *map,
+                       const QStringList &actions)
 {
     *map = MidiMap{};
     QJsonObject json;
@@ -35,20 +38,25 @@ LoadResult loadMidiMap(const QString &path, std::span<const ParamDescriptor> par
                 break;
             }
         }
+        if (const qsizetype action = actions.indexOf(key); action >= 0)
+            map->ccToParam[std::size_t(cc)] = MidiLearnMap::actionTarget(int(action));
     }
     return LoadResult::Loaded;
 }
 
-bool saveMidiMap(const QString &path, std::span<const ParamDescriptor> params, const MidiMap &map)
+bool saveMidiMap(const QString &path, std::span<const ParamDescriptor> params, const MidiMap &map,
+                 const QStringList &actions)
 {
     QJsonArray mappings;
     for (int cc = 0; cc < 128; ++cc) {
-        const int param = map.ccToParam[std::size_t(cc)];
-        if (param >= 0 && param < int(params.size()))
-            mappings.append(QJsonObject{
-                {QStringLiteral("cc"), cc},
-                {QStringLiteral("param"), keyString(params[std::size_t(param)])},
-            });
+        const int target = map.ccToParam[std::size_t(cc)];
+        QString key;
+        if (target >= 0 && target < int(params.size()))
+            key = keyString(params[std::size_t(target)]);
+        else if (MidiLearnMap::isAction(target) && MidiLearnMap::actionIndex(target) < actions.size())
+            key = actions.at(MidiLearnMap::actionIndex(target));
+        if (!key.isEmpty())
+            mappings.append(QJsonObject{{QStringLiteral("cc"), cc}, {QStringLiteral("param"), key}});
     }
     return writeJsonFile(path, {
         {QStringLiteral("version"), kMidiMapFileVersion},

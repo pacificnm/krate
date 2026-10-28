@@ -31,10 +31,10 @@ MidiLearnMap::MidiLearnMap(std::span<const ParamDescriptor> params) noexcept
         m.store(kUnmapped, std::memory_order_relaxed);
 }
 
-void MidiLearnMap::setMapping(int cc, int param) noexcept
+void MidiLearnMap::setMapping(int cc, int target) noexcept
 {
     if (cc >= 0 && cc < 128)
-        m_map[std::size_t(cc)].store(std::int16_t(valid(param) ? param : kUnmapped), std::memory_order_relaxed);
+        m_map[std::size_t(cc)].store(std::int16_t(valid(target) ? target : kUnmapped), std::memory_order_relaxed);
 }
 
 int MidiLearnMap::mapping(int cc) const noexcept
@@ -48,9 +48,9 @@ void MidiLearnMap::clearAll() noexcept
         m.store(kUnmapped, std::memory_order_relaxed);
 }
 
-void MidiLearnMap::setLearnTarget(int param) noexcept
+void MidiLearnMap::setLearnTarget(int target) noexcept
 {
-    m_learnTarget.store(std::int16_t(valid(param) ? param : kUnmapped), std::memory_order_relaxed);
+    m_learnTarget.store(std::int16_t(valid(target) ? target : kUnmapped), std::memory_order_relaxed);
 }
 
 MidiLearnMap::Result MidiLearnMap::controlChange(int cc, int value) noexcept
@@ -59,20 +59,28 @@ MidiLearnMap::Result MidiLearnMap::controlChange(int cc, int value) noexcept
     if (cc < 0 || cc >= 128)
         return r;
 
-    int param = m_learnTarget.load(std::memory_order_relaxed);
-    if (valid(param)) {
-        m_map[std::size_t(cc)].store(std::int16_t(param), std::memory_order_relaxed);
+    int target = m_learnTarget.load(std::memory_order_relaxed);
+    if (valid(target)) {
+        m_map[std::size_t(cc)].store(std::int16_t(target), std::memory_order_relaxed);
         m_learnTarget.store(kUnmapped, std::memory_order_relaxed);
-        m_learned.push({std::uint8_t(cc), std::int16_t(param)});
+        m_learned.push({std::uint8_t(cc), std::int16_t(target)});
+        if (isAction(target))
+            return r; // the teaching press doesn't fire
     } else {
-        param = m_map[std::size_t(cc)].load(std::memory_order_relaxed);
+        target = m_map[std::size_t(cc)].load(std::memory_order_relaxed);
     }
-    if (!valid(param))
+
+    if (isAction(target)) {
+        if (valid(target) && (value & 0x7F) > 0) // press, not release
+            m_actions.push(actionIndex(target));
+        return r;
+    }
+    if (!isParam(target))
         return r;
 
     // Switches and selectors snap to their positions; knobs follow the value.
-    r.param = param;
-    r.value = snapToDetent(m_params[std::size_t(param)], float(value & 0x7F) / 127.0f);
+    r.param = target;
+    r.value = snapToDetent(m_params[std::size_t(target)], float(value & 0x7F) / 127.0f);
     return r;
 }
 

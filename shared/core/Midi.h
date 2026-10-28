@@ -24,19 +24,25 @@ struct MidiMessage
 
 MidiMessage decode(const MidiEvent &event) noexcept;
 
-// CC -> parameter table plus MIDI Learn, shared by every instrument
-// (docs/SHARED_FOUNDATIONS.MD#midi-and-midi-learn). Parameters are indices
-// into the instrument's descriptor table. Mapping and learn-target writes are
+// CC -> target table plus MIDI Learn, shared by every instrument
+// (docs/SHARED_FOUNDATIONS.MD#midi-and-midi-learn). A target is either a
+// parameter (index into the instrument's descriptor table, >= 0) or an action
+// (a button the app defines, e.g. "select pattern 1": actionTarget(n), <= -2).
+// Parameters follow the CC value; actions fire on a press (value > 0) and are
+// handed to the GUI via popAction(). Mapping and learn-target writes are
 // atomic, so the GUI may change them while the audio thread reads them.
 class MidiLearnMap
 {
 public:
     static constexpr int kUnmapped = -1;
+    static constexpr int actionTarget(int action) noexcept { return -2 - action; }
+    static constexpr bool isAction(int target) noexcept { return target <= -2; }
+    static constexpr int actionIndex(int target) noexcept { return -2 - target; }
 
     struct Learned
     {
         std::uint8_t cc = 0;
-        std::int16_t param = kUnmapped;
+        std::int16_t target = kUnmapped; // parameter index or actionTarget(n)
     };
 
     // What a CC should do: set `param` to `value` (normalized, snapped to the
@@ -51,28 +57,40 @@ public:
 
     std::span<const ParamDescriptor> parameters() const noexcept { return m_params; }
 
+    // Setup: how many actions the app defines (0 = parameters only).
+    void setActionCount(int count) noexcept { m_actionCount = count; }
+    int actionCount() const noexcept { return m_actionCount; }
+
     // Any thread.
-    void setMapping(int cc, int param) noexcept;
+    void setMapping(int cc, int target) noexcept;
     int mapping(int cc) const noexcept;
     void clearAll() noexcept;
-    void setLearnTarget(int param) noexcept;  // kUnmapped = not learning
+    void setLearnTarget(int target) noexcept; // kUnmapped = not learning
     int learnTarget() const noexcept { return m_learnTarget.load(std::memory_order_relaxed); }
 
-    // Audio thread: a Control Change arrived. If a parameter is armed, the CC
-    // is bound to it first (so the rest of the same knob turn already moves
-    // it) and a Learned notice is queued for the GUI.
+    // Audio thread: a Control Change arrived. If a target is armed, the CC is
+    // bound to it first and a Learned notice is queued for the GUI: a learned
+    // knob applies this value at once, a learned button does not fire on the
+    // press that taught it. A mapped action press is queued for popAction().
     Result controlChange(int cc, int value) noexcept;
 
-    // GUI thread (single consumer).
+    // GUI thread (single consumers).
     std::optional<Learned> popLearned() noexcept { return m_learned.pop(); }
+    std::optional<int> popAction() noexcept { return m_actions.pop(); } // action index
 
 private:
-    bool valid(int param) const noexcept { return param >= 0 && param < int(m_params.size()); }
+    bool isParam(int target) const noexcept { return target >= 0 && target < int(m_params.size()); }
+    bool valid(int target) const noexcept
+    {
+        return isParam(target) || (isAction(target) && actionIndex(target) < m_actionCount);
+    }
 
     std::span<const ParamDescriptor> m_params;
+    int m_actionCount = 0;
     std::array<std::atomic<std::int16_t>, 128> m_map;
     std::atomic<std::int16_t> m_learnTarget{kUnmapped};
     SpscQueue<Learned, 64> m_learned;
+    SpscQueue<int, 64> m_actions;
 };
 
 } // namespace krate

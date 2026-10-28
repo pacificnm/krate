@@ -102,7 +102,7 @@ Output level: each instrument keeps its output bounded (no hard overs) but does 
 | Piece | Shared? | Notes |
 | --- | --- | --- |
 | `MidiEvent`, status decoding (note on/off, CC, velocity-0 as note off, channel) | Shared | `krate::decode()` in `shared/core/Midi.h`; no queue |
-| `MidiLearnMap`: CC → parameter table, learn target, detent snapping, "CC learned" queue to the GUI | Shared, realtime-safe | `krate::MidiLearnMap` in `shared/core/Midi.h`; each instrument owns one and returns it from `IInstrument::midiLearnMap()` |
+| `MidiLearnMap`: CC → target table (a parameter, or an app-defined **action** such as "select pattern 1" that fires on a press), learn target, detent snapping, "CC learned" and "action pressed" queues to the GUI | Shared, realtime-safe | `krate::MidiLearnMap` in `shared/core/Midi.h`; each instrument owns one and returns it from `IInstrument::midiLearnMap()` |
 | What notes do (mono with legato, drum triggers, poly voice allocation) | Per instrument | Inside each `process()` |
 | `MidiLearnController` (QML singleton), `LearnOverlay` (QML) | Shared, generic over `parameters()` | Constructed from any `IInstrument&`; works by parameter key; mapping file resolved through the descriptor table (R4) |
 | Mapping file | Per instrument | `~/.config/<instrument>/midimap.json`; in the rack, stored per device in the session |
@@ -201,7 +201,7 @@ Decided: the target setup is **one Nektar Impact LX49 mk3** driving every instru
 - A button (or several) on the LX49 switches focus: "focus k303", "focus K909", "focus Kalliope", "focus next". Whichever message the button sends (CC, note or Program Change) works, because focus actions are learned like parameters. The panel shows which instrument has focus.
 - Keys and follow-focus knobs drive the focused instrument; fixed knobs (for example K909's level, or tempo) ignore focus.
 - If the LX49's pads can send on their own channel, per-channel routing lets pads play K909 (e.g. channel 10) while the keys play the focused instrument. To be checked on the hardware.
-- Hardware notes (2026-10-28): the LX49 mk3 is class-compliant on Linux (USB ID `2467:201a`) and has **two MIDI ports**: `MIDI1` (keys, knobs, faders, pads) and `MIDI2` (control and transport buttons). Hosts connect every port matching the device name, so both arrive. What the control buttons send is still to be recorded (K6).
+- Hardware notes (2026-10-28): the LX49 mk3 is class-compliant on Linux (USB ID `2467:201a`) and has **two MIDI ports**: `MIDI1` (keys, knobs, faders, pads) and `MIDI2` (control and transport buttons). Hosts connect every port matching the device name, so both arrive. The control buttons send CCs on channel 16 via MIDI2 (one sends CC 47, value 127 on press and 0 on release); full list still to be recorded (K6).
 
 #### Who resolves CCs
 

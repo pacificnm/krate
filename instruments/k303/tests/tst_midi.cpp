@@ -156,7 +156,7 @@ private slots:
         const auto learned = engine.midiLearnMap()->popLearned();
         QVERIFY(learned.has_value());
         QCOMPARE(int(learned->cc), 74);
-        QCOMPARE(int(learned->param), int(ParamId::Resonance));
+        QCOMPARE(int(learned->target), int(ParamId::Resonance));
         QVERIFY(!engine.midiLearnMap()->popLearned().has_value());
     }
 
@@ -308,6 +308,60 @@ private slots:
         kp::MidiMap saved;
         QCOMPARE(kp::loadMidiMap(m_path, kFakeParams, &saved), kp::LoadResult::Loaded);
         QCOMPARE(saved.ccToParam[20], 2);
+    }
+
+    // Buttons: an action fires on a press, not on the release or the teaching press.
+    void learnMapActions()
+    {
+        krate::MidiLearnMap map(kFakeParams);
+        map.setActionCount(2);
+        const int pattern1 = krate::MidiLearnMap::actionTarget(0);
+        map.setLearnTarget(pattern1);
+        map.controlChange(47, 127);                       // the teaching press
+        QCOMPARE(map.mapping(47), pattern1);
+        QCOMPARE(map.popLearned()->target, pattern1);
+        QVERIFY(!map.popAction().has_value());            // ...doesn't fire
+        map.controlChange(47, 0);                         // release
+        QVERIFY(!map.popAction().has_value());
+        QCOMPARE(map.controlChange(47, 127).param, krate::MidiLearnMap::kUnmapped); // not a parameter
+        QCOMPARE(*map.popAction(), 0);
+        map.setMapping(48, krate::MidiLearnMap::actionTarget(5)); // no such action: ignored
+        QCOMPARE(map.mapping(48), krate::MidiLearnMap::kUnmapped);
+    }
+
+    void learnControllerButtons()
+    {
+        const QStringList actions = {QStringLiteral("pattern1"), QStringLiteral("runstop")};
+        {
+            FakeInstrument fake;
+            MidiLearnController learn(fake, m_path, nullptr, actions);
+            QSignalSpy fired(&learn, &MidiLearnController::actionTriggered);
+            learn.setActive(true);
+            learn.arm(QStringLiteral("pattern1"));
+            QCOMPARE(learn.armedParam(), QStringLiteral("pattern1"));
+
+            std::vector<float> l(64), r(64);
+            MidiEvent ch16 = cc(47, 127);
+            ch16.data[0] = 0xBF; // channel 16, as the LX49's MIDI2 buttons send
+            krate::processStereo(fake, l.data(), r.data(), 64, &ch16, 1);
+            learn.drainEvents();
+            QCOMPARE(learn.mappingFor(QStringLiteral("pattern1")), QStringLiteral("47"));
+            QCOMPARE(fired.count(), 0); // the teaching press
+
+            krate::processStereo(fake, l.data(), r.data(), 64, &ch16, 1);
+            learn.drainEvents();
+            QCOMPARE(fired.count(), 1);
+            QCOMPARE(fired.at(0).at(0).toString(), QStringLiteral("pattern1"));
+        }
+        // Saved by name, reloaded.
+        kp::MidiMap saved;
+        QCOMPARE(kp::loadMidiMap(m_path, kFakeParams, &saved, actions), kp::LoadResult::Loaded);
+        QCOMPARE(saved.ccToParam[47], krate::MidiLearnMap::actionTarget(0));
+        FakeInstrument fresh;
+        MidiLearnController learn(fresh, m_path, nullptr, actions);
+        QCOMPARE(fresh.learn.mapping(47), krate::MidiLearnMap::actionTarget(0));
+        learn.clear(QStringLiteral("pattern1"));
+        QCOMPARE(fresh.learn.mapping(47), krate::MidiLearnMap::kUnmapped);
     }
 
     // --- Mapping file ---------------------------------------------------------

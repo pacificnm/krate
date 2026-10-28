@@ -18,7 +18,9 @@ class QJSEngine;
 
 // QML singleton "MidiLearn" (docs/MIDI.md#midi-learn). Instrument-neutral:
 // works with any krate::IInstrument through its parameter descriptors and its
-// krate::MidiLearnMap, using parameter keys throughout (the keys QML passes).
+// krate::MidiLearnMap, using keys throughout (the keys QML passes). A key is a
+// parameter key or one of the app's action keys (learnable buttons such as
+// "pattern1"); a mapped action press is announced with actionTriggered().
 // In learn mode a click arms a control; the next CC binds to it on the audio
 // thread. Keeps the GUI copy of the CC map, which is saved to midimap.json.
 class MidiLearnController : public QObject
@@ -35,7 +37,8 @@ class MidiLearnController : public QObject
 public:
     // Not default-constructible on purpose: see SynthController. The instrument
     // must provide a MidiLearnMap.
-    MidiLearnController(krate::IInstrument &instrument, const QString &filePath, QObject *parent);
+    MidiLearnController(krate::IInstrument &instrument, const QString &filePath, QObject *parent,
+                        const QStringList &actions = {});
     ~MidiLearnController() override;
 
     static MidiLearnController *create(QQmlEngine *, QJSEngine *);
@@ -61,10 +64,12 @@ signals:
     void activeChanged();
     void armedParamChanged();
     void mappingsChanged();
+    // A learned button was pressed: the app performs the action.
+    void actionTriggered(const QString &action);
 
 private:
-    int indexOf(const QString &paramKey) const; // -1 if unknown
-    QString keyOf(int index) const;
+    int indexOf(const QString &key) const; // parameter index or action target; kUnmapped if unknown
+    QString keyOf(int target) const;
     void setArmed(const QString &paramKey);
     void mappingsEdited();
 
@@ -72,6 +77,7 @@ private:
 
     krate::MidiLearnMap &m_learnMap;
     std::span<const krate::ParamDescriptor> m_params;
+    QStringList m_actions;
     QString m_filePath;
     krate::files::MidiMap m_map;
     bool m_active = false;
