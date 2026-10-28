@@ -1,5 +1,7 @@
 # k303
 
+Part of **Krate**, a suite of instruments and a rack that plays them together (see [SHARED_FOUNDATIONS.MD](docs/SHARED_FOUNDATIONS.MD)).
+
 A standalone acid bass synthesizer for Linux/KDE, inspired by classic 1980s analog bass synths. Qt 6 / QML hardware-style front panel, a C++ realtime DSP engine with a modeled diode-ladder filter, a built-in 16-step sequencer, and MIDI Learn for hardware controllers (developed against a Nektar Impact LX49 mk3).
 
 Status: M0–M6 built (panel, JACK audio out, parameters, voice DSP with diode-ladder filter, sequencer with scale and play modes, pattern editing and storage, MIDI input and MIDI Learn); knob positions are saved. Next: M7, v1 polish (About box, sound tuning, accessibility, quick-start check). See [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -9,6 +11,7 @@ Status: M0–M6 built (panel, JACK audio out, parameters, voice DSP with diode-l
 | Doc | What it covers |
 | --- | --- |
 | [PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md) | Original brief (source of intent) |
+| [SHARED_FOUNDATIONS.MD](docs/SHARED_FOUNDATIONS.MD) | The Krate suite: shared instrument interfaces, transport, MIDI routing, the Krate rack, and the k303 refactor plan |
 | [DECISIONS.md](docs/DECISIONS.md) | Decisions made since the brief, and where they differ from it |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Modules, threads, how GUI, audio and MIDI talk to each other |
 | [DSP.md](docs/DSP.md) | Oscillator, diode-ladder filter, envelopes, accent, slide, parameters |
