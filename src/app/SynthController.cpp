@@ -2,6 +2,7 @@
 
 #include <QJSEngine>
 #include <QLoggingCategory>
+#include <QRegularExpression>
 #include <QtMath>
 
 Q_LOGGING_CATEGORY(lcAudio, "k303.audio")
@@ -146,9 +147,34 @@ void SynthController::connectAudio()
     poll();
 }
 
+void SynthController::setMidiInputMatch(const QString &pattern)
+{
+    m_midiMatch = pattern;
+    connectMidiInput();
+}
+
+void SynthController::connectMidiInput()
+{
+    if (!m_client.isOpen() || m_midiMatch.isEmpty() || m_client.midiInputConnected())
+        return;
+    const QRegularExpression match(m_midiMatch, QRegularExpression::CaseInsensitiveOption);
+    if (!match.isValid()) {
+        qCWarning(lcAudio) << "invalid MIDI input pattern" << m_midiMatch;
+        return;
+    }
+    for (const auto &port : m_client.midiSourcePorts()) {
+        const QString name = QString::fromStdString(port);
+        if (name.contains(match) && m_client.connectMidiFrom(port)) {
+            qCInfo(lcAudio) << "midi_in <-" << name;
+            return;
+        }
+    }
+}
+
 void SynthController::disconnectAudio()
 {
     m_client.close();
+    m_midiConnected = false;
     setAudioStatus(QStringLiteral("AUDIO OFFLINE"));
 }
 
@@ -157,11 +183,20 @@ void SynthController::poll()
     if (m_client.isOpen() && m_client.serverGone()) {
         qCWarning(lcAudio) << "audio server went away";
         m_client.close();
+        m_midiConnected = false;
         setAudioStatus(QStringLiteral("AUDIO OFFLINE"));
         m_retryTimer.start();
     }
 
+    if (m_client.isOpen() && m_client.takePortsChanged())
+        connectMidiInput();
+
     if (m_client.isOpen()) {
+        const bool midi = m_client.midiInputConnected();
+        if (midi != m_midiConnected) {
+            m_midiConnected = midi;
+            m_lastXruns = -1; // refresh the status line
+        }
         const int xruns = xrunCount();
         const int rate = sampleRate();
         const int buffer = bufferSize();
@@ -169,10 +204,11 @@ void SynthController::poll()
             m_lastXruns = xruns;
             m_lastSampleRate = rate;
             m_lastBufferSize = buffer;
-            setAudioStatus(QStringLiteral("%1 kHz · %2 · %3 xruns")
+            setAudioStatus(QStringLiteral("%1 kHz · %2 · %3 xruns · %4")
                                .arg(rate / 1000.0, 0, 'g', 3)
                                .arg(buffer)
-                               .arg(xruns));
+                               .arg(xruns)
+                               .arg(m_midiConnected ? QStringLiteral("MIDI in") : QStringLiteral("no MIDI")));
         }
     }
 

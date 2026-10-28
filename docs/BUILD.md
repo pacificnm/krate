@@ -53,7 +53,7 @@ qml/
 tools/
   render_main.cpp      # k303-render
 tests/
-  tst_params.cpp tst_dsp.cpp tst_sequencer.cpp tst_queue.cpp tst_pattern.cpp  (tst_midi.cpp in M6)
+  tst_params.cpp tst_dsp.cpp tst_sequencer.cpp tst_queue.cpp tst_pattern.cpp tst_midi.cpp
 docs/
 ```
 
@@ -112,7 +112,9 @@ ctest --test-dir build --output-on-failure
 cmake --build build --target k303_qmllint                     # lints against the generated module (knows Theme is a singleton)
 ```
 
-Screenshot without a display: `QT_QPA_PLATFORM=offscreen K303_SCREENSHOT=/tmp/k303.png ./build/k303` renders the window, saves it and quits.
+Screenshot without a display: `QT_QPA_PLATFORM=offscreen K303_SCREENSHOT=/tmp/k303.png ./build/k303` renders the window, saves it and quits (after `K303_SCREENSHOT_DELAY_MS`, default 500).
+
+Test MIDI without hardware: point `inputPortMatch` at `Midi Through` and send with `aseqsend -p 14:0 "B0 15 7F"` (CC 21 = 127). Use `XDG_CONFIG_HOME` / `XDG_DATA_HOME` to keep test runs away from your real config and patterns.
 
 Without Ninja installed, drop `-G Ninja`; CMake's default Makefile generator works the same.
 
@@ -122,5 +124,5 @@ Without Ninja installed, drop `-G Ninja`; CMake's default Makefile generator wor
 | `tst_dsp` | No NaN/Inf over long renders at max resonance, all cutoffs, 44.1/48/96 kHz; output peak bounds; oscillator alias level below a threshold at high pitch |
 | `tst_queue` | SPSC queue order, full/wrap, two-thread stress |
 | `tst_pattern` | Pattern model edits reach the engine; pattern switch, length, clear; JSON round-trip; unknown keys ignored; bad files fall back to defaults; newer `version` not overwritten; debounced and on-quit saves; audition |
-| `tst_ccmap` | Learn binds the first CC; rebinding moves a CC; switch threshold at 64 |
+| `tst_midi` | Mapped CCs move params (any channel); learn binds the first CC and applies it; rebinding moves a CC; switch threshold at 64; keys, legato, velocity-0 note off, keys ignored while running, sample-accurate event timing; mapping file round-trip and bad entries; MidiLearn controller end to end |
 | RT allocation guard | Debug build: running `Engine::process` under `RtGuard` with a full pattern and MIDI input triggers no allocation |

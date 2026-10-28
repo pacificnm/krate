@@ -9,6 +9,8 @@
 #include <QJsonDocument>
 #include <QSaveFile>
 
+#include "dsp/Params.h"
+
 namespace k303::persistence {
 
 namespace {
@@ -159,14 +161,74 @@ LoadResult loadPatterns(const QString &path, PatternBank *bank)
     return LoadResult::Loaded;
 }
 
-bool savePatterns(const QString &path, const PatternBank &bank)
+namespace {
+
+bool writeJson(const QString &path, const QJsonObject &json)
 {
     QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly))
         return false;
-    file.write(QJsonDocument(toJson(bank)).toJson(QJsonDocument::Indented));
+    file.write(QJsonDocument(json).toJson(QJsonDocument::Indented));
     return file.commit();
+}
+
+} // namespace
+
+bool savePatterns(const QString &path, const PatternBank &bank)
+{
+    return writeJson(path, toJson(bank));
+}
+
+LoadResult loadMidiMap(const QString &path, MidiMap *map)
+{
+    *map = MidiMap{};
+
+    QFile file(path);
+    if (!file.exists())
+        return LoadResult::Missing;
+    if (!file.open(QIODevice::ReadOnly))
+        return LoadResult::Invalid;
+    QJsonParseError error{};
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError || !doc.isObject())
+        return LoadResult::Invalid;
+
+    const QJsonObject json = doc.object();
+    const int version = json.value(u"version").toInt(0);
+    if (version > kMidiMapFileVersion)
+        return LoadResult::NewerVersion;
+    if (version < 1)
+        return LoadResult::Invalid;
+
+    map->inputPortMatch = json.value(u"inputPortMatch").toString(map->inputPortMatch);
+    for (const auto &entry : json.value(u"mappings").toArray()) {
+        const QJsonObject o = entry.toObject();
+        const int cc = o.value(u"cc").toInt(-1);
+        const auto param = paramFromKey(o.value(u"param").toString().toStdString());
+        if (cc >= 0 && cc < 128 && param)
+            map->ccToParam[std::size_t(cc)] = int(*param);
+    }
+    return LoadResult::Loaded;
+}
+
+bool saveMidiMap(const QString &path, const MidiMap &map)
+{
+    QJsonArray mappings;
+    for (int cc = 0; cc < 128; ++cc) {
+        const int param = map.ccToParam[std::size_t(cc)];
+        if (param >= 0 && param < ParamCount)
+            mappings.append(QJsonObject{
+                {QStringLiteral("cc"), cc},
+                {QStringLiteral("param"), QString::fromLatin1(paramInfo(ParamId(param)).key.data(),
+                                                              qsizetype(paramInfo(ParamId(param)).key.size()))},
+            });
+    }
+    return writeJson(path, {
+        {QStringLiteral("version"), kMidiMapFileVersion},
+        {QStringLiteral("inputPortMatch"), map.inputPortMatch},
+        {QStringLiteral("mappings"), mappings},
+    });
 }
 
 } // namespace k303::persistence

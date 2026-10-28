@@ -10,7 +10,7 @@ Each milestone ends with something you can run and check. Do them in order; each
 | M3 | **Voice DSP** | PolyBLEP osc, 4x-oversampled diode ladder, MEG/VEG, accent sweep, slide; `k303-render` writes a WAV of a hard-coded riff that sounds like classic acid bass; `tst_dsp` passes; `--bench` under 5% of a core |
 | M4 | **Sequencer** | Done: sequencer core with M3; playhead LED flashes from `Synth.currentStep`; beat LED; Space = run/stop; lock-free command queue (`tst_queue`, clean under ThreadSanitizer). Open: 133 BPM pattern stays in time with a click track for 10 minutes (listening check) |
 | M5 | **Pattern editing and storage** | Done: select step, set note/octave/accent/slide/gate from the panel and keyboard shortcuts; edits sent live to the audio thread; 8 patterns, length 1–16; Clear; Keyboard mode auditions notes; `patterns.json` saved 2 s after edits and on quit (`tst_pattern`) |
-| M6 | **MIDI in and Learn** | LX49 auto-connects; keys play the voice when stopped (legato slides between held keys); learn mode binds knobs; bindings survive restart; `tst_ccmap` and `tst_persistence` pass |
+| M6 | **MIDI in and Learn** | Done: `midi_in` auto-connects by name, also on hot-plug; keys play the voice when stopped (legato, velocity ≥ 100 = accent); learn mode binds knobs and the waveform switch; bindings saved to `midimap.json`; `tst_midi` passes; verified end to end via Midi Through. Open: confirm on the LX49 hardware |
 | M7 | **v1 polish** | Sound tuned by ear against reference recordings (update starting values in DSP.md); qmllint clean; accessibility names set; README quick start verified on a clean machine |
 
 ## Later (post v1)

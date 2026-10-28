@@ -53,7 +53,7 @@ Every channel is single-producer / single-consumer and fixed size. Nothing alloc
 | Learn arm | GUI → audio | `std::atomic<int16_t> learnTarget` (−1 = off) | Param waiting for a CC |
 | Commands | GUI → audio | `SpscQueue<Command, 256>` (`Engine::post`), drained at the start of each block | `SetStep`, `SetLength`, `LoadPattern` |
 | Run/stop | GUI → audio | `std::atomic<bool>` (`Engine::setRunning`) | Transport |
-| Events | audio → GUI | `SpscQueue<Event, 256>` | `CcLearned{cc, param}`, `NoteOn{note}` (for step record), `Xrun` |
+| Events | audio → GUI | `SpscQueue<EngineEvent, 256>` (`Engine::popEvent`), drained by `MidiLearn` at 60 Hz | `CcLearned{cc, param}`, `NoteOn{note, velocity}` (for step record). Xruns are counted by the JACK client instead |
 | Playhead | audio → GUI | `std::atomic<int8_t> currentStep` (−1 = stopped) | LED playhead |
 
 The GUI polls atomics and drains the events queue from one `QTimer` at 60 Hz. UI timers are fine for *display*; they never drive timing.
@@ -72,7 +72,7 @@ Registered in the `K303` QML module with `QML_ELEMENT` / `QML_SINGLETON`:
 | --- | --- |
 | `Synth` (singleton) | One `Q_PROPERTY(qreal …)` per parameter (normalized), `playing`, `tempo`, `currentStep`, `xrunCount`, `audioConnected` |
 | `Pattern` (singleton, `PatternModel`) | `QAbstractListModel` of 16 steps (roles: `note`, `octave`, `accent`, `slide`, `gate`, `active`, `label`); `index` (pattern 0..7), `length`, `selectedStep`, `selected*` properties for the selected step, `keyboardMode`, `timeMode`; invokables: `setNote`, `octaveUp/Down`, `toggleAccent/Slide`, `setGate`, `selectNext/Previous`, `clear`, `auditionOn/Off`, `save` |
-| `MidiLearn` (singleton) | `active`, `armedParam`, `mappingFor(paramId)`, `clear(paramId)`, `clearAll()` |
+| `MidiLearn` (singleton, `MidiLearnController`) | `active`, `armedParam`, `revision`, `arm(key)`, `mappingFor(key)`, `clear(key)`, `clearAll()`; owns the GUI copy of the CC map (saved to `midimap.json`) and is the single consumer of the engine's audio→GUI event queue |
 
 QML holds no audio state and runs no timing logic.
 

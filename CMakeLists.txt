@@ -64,6 +64,8 @@ qt_add_qml_module(k303
     # warns that plugin link targets don't exist.
     NO_IMPORT_SCAN
     SOURCES
+        src/app/MidiLearnController.h
+        src/app/MidiLearnController.cpp
         src/app/PatternModel.h
         src/app/PatternModel.cpp
         src/app/Persistence.h
@@ -82,6 +84,7 @@ qt_add_qml_module(k303
         qml/WaveSwitch.qml
         qml/StepRow.qml
         qml/PianoKeys.qml
+        qml/LearnOverlay.qml
 )
 
 target_include_directories(k303 PRIVATE src/app) # generated QML type registration includes headers by bare name
@@ -134,3 +137,14 @@ add_executable(tst_pattern
 target_compile_options(tst_pattern PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_pattern PRIVATE k303_dsp Qt6::Qml Qt6::Test)
 add_test(NAME tst_pattern COMMAND tst_pattern)
+
+add_executable(tst_midi
+    tests/tst_midi.cpp
+    src/app/MidiLearnController.h
+    src/app/MidiLearnController.cpp
+    src/app/Persistence.h
+    src/app/Persistence.cpp
+)
+target_compile_options(tst_midi PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_midi PRIVATE k303_dsp Qt6::Qml Qt6::Test)
+add_test(NAME tst_midi COMMAND tst_midi)

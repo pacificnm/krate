@@ -7,11 +7,13 @@ MIDI arrives on a JACK MIDI input port (`k303:midi_in`). Under PipeWire, USB MID
 | Message | Effect |
 | --- | --- |
 | Control Change (any channel) | If MIDI Learn is armed: bind this CC to the armed parameter. Else if the CC is mapped: set that parameter to `value / 127` |
-| Note On (velocity > 0) | Plays the voice directly (monophonic, last-note priority) while the sequencer is stopped. Also pushed to the GUI as `NoteOn` for step record (later) |
-| Note Off / Note On velocity 0 | Releases the voice if it is the sounding note; falls back to the previously held key if one is still down (legato, slides between held keys) |
+| Note On (velocity > 0) | Plays the voice directly (monophonic, last-note priority) while the sequencer is stopped. Pressing a key while another is held slides to it. **Velocity ≥ 100 plays the note accented.** Always pushed to the GUI as `NoteOn` (for step record, later) |
+| Note Off / Note On velocity 0 | Releases the voice if it is the sounding note; falls back to the previously held key if one is still down (slides back to it) |
 | Everything else | Ignored in v1. MIDI clock (0xF8, 0xFA, 0xFB, 0xFC) is handled in a later milestone |
 
-Channel: v1 listens on all channels (omni). A channel filter is a later setting.
+Channel: v1 listens on all channels (omni). A channel filter is a later setting. Keys are ignored while the sequencer runs; starting the sequencer forgets held keys.
+
+Auto-connect: at startup, and again whenever JACK ports appear (e.g. the controller is plugged in later), `midi_in` connects to the first MIDI source whose name matches `inputPortMatch` (case-insensitive regex). The status line under the pattern buttons shows "MIDI in" or "no MIDI".
 
 ## MIDI Learn
 
@@ -22,11 +24,12 @@ Channel: v1 listens on all channels (omni). A channel filter is a later setting.
         ─► GUI shows the binding, saves midimap.json
 ```
 
-- Learn mode is a panel toggle. In learn mode a click on any knob or switch arms it instead of changing it; clicking the armed control again disarms it.
+- Learn mode is a panel toggle (MIDI LEARN button, or L; Esc leaves it). In learn mode a click on any knob or switch arms it instead of changing it; clicking the armed control again disarms it. Learnable: the six sound knobs, Tempo, Volume and the Waveform switch. Learn mode stays on after a binding, so you can map several controls in a row.
+- Implementation: `MidiLearn` QML singleton (`MidiLearnController`) plus a `LearnOverlay` inside each learnable control. The overlay shows a blue outline (pulsing while armed) and a "CC n" badge, and takes the clicks only while learn mode is on.
 - The first CC that arrives while a parameter is armed binds to it. The binding is done in the audio thread so the next CC of that same turn already moves the knob.
 - One CC drives one parameter. Binding a CC that was already mapped elsewhere moves it (the old binding is removed). A parameter may have several CCs.
 - In learn mode each mapped control shows its CC number as a small badge.
-- Right-click (or long-press) in learn mode clears that control's mappings. "Clear all" lives next to the Learn toggle.
+- Right-click in learn mode clears that control's mappings. The UNMAP button (upper left) clears all of them.
 - Switches (`waveform`) map CC values < 64 → first position, ≥ 64 → second.
 - Knob pickup: v1 jumps (the parameter takes the CC value immediately). Soft takeover is a later option.
 

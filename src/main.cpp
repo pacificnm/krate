@@ -5,6 +5,7 @@
 #include <QStandardPaths>
 #include <QTimer>
 
+#include "app/MidiLearnController.h"
 #include "app/PatternModel.h"
 #include "app/SynthController.h"
 
@@ -25,6 +26,12 @@ int main(int argc, char *argv[])
                          QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
                              + QStringLiteral("/patterns.json"),
                          nullptr);
+    // ~/.config/k303/midimap.json (docs/MIDI.md#mapping-file)
+    MidiLearnController midiLearn(synth.engine(),
+                                  QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
+                                      + QStringLiteral("/midimap.json"),
+                                  nullptr);
+    synth.setMidiInputMatch(midiLearn.inputPortMatch());
 
     QQmlApplicationEngine engine;
     QObject::connect(
@@ -32,9 +39,11 @@ int main(int argc, char *argv[])
         [] { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
     engine.loadFromModule("K303", "Main");
 
-    // Dev hook (docs/BUILD.md): K303_SCREENSHOT=<file.png> saves the window and quits.
+    // Dev hook (docs/BUILD.md): K303_SCREENSHOT=<file.png> saves the window and quits
+    // (after K303_SCREENSHOT_DELAY_MS, default 500).
     if (const QString shot = qEnvironmentVariable("K303_SCREENSHOT"); !shot.isEmpty()) {
-        QTimer::singleShot(500, &app, [&engine, shot] {
+        const int delayMs = qEnvironmentVariableIntValue("K303_SCREENSHOT_DELAY_MS");
+        QTimer::singleShot(delayMs > 0 ? delayMs : 500, &app, [&engine, shot] {
             const auto roots = engine.rootObjects();
             auto *window = roots.isEmpty() ? nullptr : qobject_cast<QQuickWindow *>(roots.first());
             if (!window || !window->grabWindow().save(shot))

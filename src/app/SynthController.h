@@ -25,6 +25,7 @@ class SynthController : public QObject
     Q_PROPERTY(int bufferSize READ bufferSize NOTIFY audioStatusChanged)
     Q_PROPERTY(int xrunCount READ xrunCount NOTIFY audioStatusChanged)
     Q_PROPERTY(qreal outputLevel READ outputLevel NOTIFY outputLevelChanged)
+    Q_PROPERTY(bool midiConnected READ midiConnected NOTIFY audioStatusChanged)
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     // Playing step 0..15, or -1 when stopped. Display only: polled at 60 Hz.
     Q_PROPERTY(int currentStep READ currentStep NOTIFY currentStepChanged)
@@ -59,6 +60,11 @@ public:
     int bufferSize() const { return int(m_client.bufferSize()); }
     int xrunCount() const { return int(m_client.xrunCount()); }
     qreal outputLevel() const { return m_outputLevel; }
+    bool midiConnected() const { return m_midiConnected; }
+
+    // Regular expression (case-insensitive) for the MIDI source to auto-connect
+    // to midi_in, from midimap.json. Retried whenever ports appear.
+    void setMidiInputMatch(const QString &pattern);
 
     bool playing() const { return m_engine.isRunning(); }
     int currentStep() const { return m_currentStep; }
@@ -105,6 +111,7 @@ private:
     void setParam(k303::ParamId id, qreal value);
     void poll();
     void setAudioStatus(const QString &status);
+    void connectMidiInput();
 
     static inline SynthController *s_instance = nullptr;
 
@@ -116,6 +123,8 @@ private:
     QString m_audioStatus;
     qreal m_outputLevel = 0.0;
     int m_currentStep = -1;
+    QString m_midiMatch;
+    bool m_midiConnected = false;
     int m_lastXruns = 0;
     int m_lastSampleRate = 0;
     int m_lastBufferSize = 0;

@@ -1,5 +1,7 @@
 #include "jack/JackClient.h"
 
+#include <jack/midiport.h>
+
 #include "dsp/Denormals.h"
 #include "dsp/Engine.h"
 
@@ -42,9 +44,10 @@ bool JackClient::open(const char *clientName, std::string *error)
 
     m_outL = jack_port_register(m_client, "out_L", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
     m_outR = jack_port_register(m_client, "out_R", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-    if (!m_outL || !m_outR) {
+    m_midiIn = jack_port_register(m_client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+    if (!m_outL || !m_outR || !m_midiIn) {
         if (error)
-            *error = "could not register output ports";
+            *error = "could not register ports";
         close();
         return false;
     }
@@ -60,6 +63,8 @@ bool JackClient::open(const char *clientName, std::string *error)
     jack_set_sample_rate_callback(m_client, &JackClient::onSampleRate, this);
     jack_set_buffer_size_callback(m_client, &JackClient::onBufferSize, this);
     jack_on_shutdown(m_client, &JackClient::onShutdown, this);
+    jack_set_port_registration_callback(m_client, &JackClient::onPortRegistration, this);
+    m_portsChanged.store(true, std::memory_order_relaxed); // look for MIDI sources once at start
 
     if (jack_activate(m_client) != 0) {
         if (error)
@@ -81,6 +86,7 @@ void JackClient::close()
     m_client = nullptr;
     m_outL = nullptr;
     m_outR = nullptr;
+    m_midiIn = nullptr;
 }
 
 std::vector<std::string> JackClient::connectToPlayback()
@@ -108,6 +114,30 @@ std::vector<std::string> JackClient::connectToPlayback()
     return connected;
 }
 
+std::vector<std::string> JackClient::midiSourcePorts() const
+{
+    std::vector<std::string> result;
+    if (!m_client)
+        return result;
+    const char **ports = jack_get_ports(m_client, nullptr, JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput);
+    if (!ports)
+        return result;
+    for (int i = 0; ports[i]; ++i)
+        result.emplace_back(ports[i]);
+    jack_free(ports);
+    return result;
+}
+
+bool JackClient::connectMidiFrom(const std::string &port)
+{
+    return m_client && jack_connect(m_client, port.c_str(), jack_port_name(m_midiIn)) == 0;
+}
+
+bool JackClient::midiInputConnected() const
+{
+    return m_midiIn && jack_port_connected(m_midiIn) > 0;
+}
+
 int JackClient::onProcess(jack_nframes_t frames, void *arg)
 {
     auto *self = static_cast<JackClient *>(arg);
@@ -121,7 +151,25 @@ int JackClient::onProcess(jack_nframes_t frames, void *arg)
 
     auto *outL = static_cast<float *>(jack_port_get_buffer(self->m_outL, frames));
     auto *outR = static_cast<float *>(jack_port_get_buffer(self->m_outR, frames));
-    self->m_engine.process(outL, outR, frames);
+
+    // Copy this block's MIDI into a fixed array; the engine applies each at its frame.
+    constexpr std::uint32_t kMaxEvents = 256;
+    MidiEvent events[kMaxEvents];
+    std::uint32_t count = 0;
+    void *midi = jack_port_get_buffer(self->m_midiIn, frames);
+    const std::uint32_t available = jack_midi_get_event_count(midi);
+    for (std::uint32_t i = 0; i < available && count < kMaxEvents; ++i) {
+        jack_midi_event_t ev;
+        if (jack_midi_event_get(&ev, midi, i) != 0 || ev.size < 1 || ev.size > 3 || ev.time >= frames)
+            continue; // SysEx and malformed events are ignored
+        MidiEvent &out = events[count++];
+        out.frame = ev.time;
+        out.size = std::uint8_t(ev.size);
+        for (std::size_t b = 0; b < ev.size; ++b)
+            out.data[b] = ev.buffer[b];
+    }
+
+    self->m_engine.process(outL, outR, frames, events, count);
     return 0;
 }
 
@@ -141,6 +189,11 @@ int JackClient::onBufferSize(jack_nframes_t frames, void *arg)
 {
     static_cast<JackClient *>(arg)->m_bufferSize.store(frames, std::memory_order_relaxed);
     return 0;
+}
+
+void JackClient::onPortRegistration(jack_port_id_t, int, void *arg)
+{
+    static_cast<JackClient *>(arg)->m_portsChanged.store(true, std::memory_order_relaxed);
 }
 
 void JackClient::onShutdown(void *arg)

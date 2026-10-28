@@ -29,6 +29,12 @@ Item {
         case Qt.Key_N: Pattern.setGate(0); break
         case Qt.Key_T: Pattern.setGate(1); break
         case Qt.Key_R: Pattern.setGate(2); break
+        case Qt.Key_L: MidiLearn.active = !MidiLearn.active; break
+        case Qt.Key_Escape:
+            if (!MidiLearn.active)
+                return
+            MidiLearn.active = false
+            break
         default:
             if (event.key >= Qt.Key_1 && event.key <= Qt.Key_8)
                 Pattern.index = event.key - Qt.Key_1
@@ -65,6 +71,12 @@ Item {
         y: 6
         position: Synth.waveform >= 0.5 ? 1 : 0
         onToggled: position => Synth.waveform = position
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "waveform"
+            round: false
+        }
     }
 
     Row { // maker mark
@@ -129,6 +141,11 @@ Item {
                 defaultValue: Synth.defaultValue(soundKnob.modelData.key)
                 displayText: Synth.displayText(soundKnob.modelData.key, value)
                 onMoved: v => Synth.setParamByKey(soundKnob.modelData.key, v)
+
+                LearnOverlay {
+                    anchors.fill: parent
+                    paramKey: soundKnob.modelData.key
+                }
             }
         }
     }
@@ -172,6 +189,8 @@ Item {
                 onClicked: {
                     if (isAudio)
                         Synth.connectAudio()
+                    else if (utility.modelData.name === "UNMAP")
+                        MidiLearn.clearAll()
                 }
             }
         }
@@ -227,6 +246,11 @@ Item {
         defaultValue: Synth.defaultValue("tempo")
         displayText: Synth.displayText("tempo", value)
         onMoved: v => Synth.tempo = v
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "tempo"
+        }
     }
 
     // Scale selector (later feature)
@@ -387,6 +411,11 @@ Item {
         defaultValue: Synth.defaultValue("volume")
         displayText: Synth.displayText("volume", value)
         onMoved: v => Synth.volume = v
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "volume"
+        }
     }
 
     // ---- Lower deck ---------------------------------------------------------
@@ -422,8 +451,9 @@ Item {
         width: 58
         height: 36
         text: "MIDI Learn"
-        checkable: true
         hasLed: true
+        ledOn: MidiLearn.active
+        onClicked: MidiLearn.active = !MidiLearn.active
     }
 
     PanelButton {

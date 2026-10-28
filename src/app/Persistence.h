@@ -36,6 +36,23 @@ LoadResult loadPatterns(const QString &path, PatternBank *bank);
 // Atomic: writes a temp file and renames it over the target.
 bool savePatterns(const QString &path, const PatternBank &bank);
 
+// --- MIDI mappings (docs/MIDI.md#mapping-file) ---------------------------------
+
+inline constexpr int kMidiMapFileVersion = 1;
+
+struct MidiMap
+{
+    QString inputPortMatch = QStringLiteral("Impact LX49");
+    std::array<int, 128> ccToParam; // ParamId per CC, -1 = unmapped
+
+    MidiMap() { ccToParam.fill(-1); }
+};
+
+// On anything but Loaded, *map is set to MidiMap{}. Unknown parameter keys and
+// CC numbers outside 0..127 are skipped.
+LoadResult loadMidiMap(const QString &path, MidiMap *map);
+bool saveMidiMap(const QString &path, const MidiMap &map);
+
 // JSON conversion (docs/SEQUENCER.md#pattern-storage). Unknown keys are
 // ignored; out-of-range values are clamped; missing steps are rests.
 QJsonObject toJson(const PatternBank &bank);

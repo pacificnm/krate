@@ -40,17 +40,26 @@ public:
     // Returns the names of the ports connected to.
     std::vector<std::string> connectToPlayback();
 
+    // MIDI output ports of other clients (candidates to feed midi_in).
+    std::vector<std::string> midiSourcePorts() const;
+    bool connectMidiFrom(const std::string &port);
+    bool midiInputConnected() const;
+    // True once after ports appear or disappear (e.g. a controller is plugged in).
+    bool takePortsChanged() { return m_portsChanged.exchange(false, std::memory_order_relaxed); }
+
 private:
     static int onProcess(jack_nframes_t frames, void *arg);
     static int onXrun(void *arg);
     static int onSampleRate(jack_nframes_t rate, void *arg);
     static int onBufferSize(jack_nframes_t frames, void *arg);
     static void onShutdown(void *arg);
+    static void onPortRegistration(jack_port_id_t port, int registered, void *arg);
 
     Engine &m_engine;
     jack_client_t *m_client = nullptr;
     jack_port_t *m_outL = nullptr;
     jack_port_t *m_outR = nullptr;
+    jack_port_t *m_midiIn = nullptr;
 
     std::uint32_t m_engineRate = 0; // realtime thread only
 
@@ -58,6 +67,7 @@ private:
     std::atomic<std::uint32_t> m_bufferSize{0};
     std::atomic<std::uint32_t> m_xruns{0};
     std::atomic<bool> m_serverGone{false};
+    std::atomic<bool> m_portsChanged{false};
 };
 
 } // namespace k303
