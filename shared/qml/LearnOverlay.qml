@@ -11,7 +11,7 @@ Item {
     property bool round: true
 
     readonly property bool armed: MidiLearn.armedParam === paramKey
-    readonly property string ccs: MidiLearn.revision >= 0 ? MidiLearn.mappingFor(paramKey) : ""
+    readonly property string badge: MidiLearn.revision >= 0 ? MidiLearn.badgeFor(paramKey) : ""
 
     visible: MidiLearn.active
     z: 100
@@ -35,7 +35,7 @@ Item {
     }
 
     Rectangle { // CC badge
-        visible: overlay.ccs !== ""
+        visible: overlay.badge !== ""
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: -10
@@ -47,7 +47,7 @@ Item {
         Text {
             id: badgeText
             anchors.centerIn: parent
-            text: "CC " + overlay.ccs
+            text: overlay.badge
             color: "white"
             font.family: Theme.labelFont
             font.pixelSize: 12

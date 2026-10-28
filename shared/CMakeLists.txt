@@ -63,6 +63,8 @@ qt_add_qml_module(krate_qml
         app/HostController.h
         app/HostController.cpp
         app/InstrumentRegistry.h
+        app/InstrumentMidiLearn.h
+        app/InstrumentMidiLearn.cpp
         app/MidiLearnController.h
         app/MidiLearnController.cpp
         app/ParamController.h

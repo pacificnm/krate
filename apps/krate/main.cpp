@@ -13,11 +13,12 @@
 #include <QStandardPaths>
 
 #include "RackController.h"
+#include "RackMidiLearn.h"
+#include "RackSession.h"
 #include "app/HostController.h"
 #include "app/InstrumentRegistry.h"
 #include "app/K303Instrument.h"
 #include "app/KlickInstrument.h"
-#include "app/MidiLearnController.h"
 #include "app/ScreenshotHook.h"
 #include "core/Midi.h"
 #include "core/Transport.h"
@@ -52,8 +53,8 @@ int main(int argc, char *argv[])
     std::vector<std::string> ids;
 
     // Each instrument keeps its own files, shared with its standalone app
-    // (~/.config/<id>, ~/.local/share/<id>), so patterns carry over.
-    // Rack sessions (rack.json) arrive in K5.
+    // (~/.config/<id>, ~/.local/share/<id>), so patterns and knobs carry over;
+    // the rack's own settings are in rack.json.
     const QString config = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
     const QString data = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     for (const auto &entry : entries) {
@@ -66,26 +67,29 @@ int main(int argc, char *argv[])
         ids.push_back(entry.id.toStdString());
     }
 
-    // Interim (until rack-level learn in K5): MIDI Learn on the first instrument
-    // that has a learn map, with its standalone mappings.
-    std::unique_ptr<MidiLearnController> midiLearn;
-    for (std::size_t i = 0; i < instances.size() && !midiLearn; ++i) {
-        if (!instances[i]->instrument().midiLearnMap())
-            continue;
-        auto *instance = instances[i].get();
-        midiLearn = std::make_unique<MidiLearnController>(
-            instance->instrument(), QDir(config).filePath(entries[qsizetype(i)].id + QStringLiteral("/midimap.json")),
-            nullptr, entries[qsizetype(i)].actions);
-        QObject::connect(midiLearn.get(), &MidiLearnController::actionTriggered, &app,
-                         [instance](const QString &action) { instance->triggerAction(action); });
-    }
+    RackController rackController(rack, transport, entries, nullptr);
+
+    // Rack-wide MIDI Learn: panel keys refer to the focused instrument.
+    std::vector<RackMidiLearn::Device> learnDevices;
+    for (qsizetype i = 0; i < entries.size(); ++i)
+        learnDevices.push_back({entries[i].id, instances[std::size_t(i)]->instrument().parameters(), entries[i].actions,
+                                instances[std::size_t(i)].get()});
+    RackMidiLearn midiLearn(rack, std::move(learnDevices),
+                            [&rackController] { rackController.setPlaying(!rackController.playing()); }, nullptr);
+    QObject::connect(&rackController, &RackController::focusChanged, &midiLearn, &RackMidiLearn::focusChanged);
+
+    // ~/.config/krate/rack.json: tempo, focus, mixer, routing, mappings, MIDI device.
+    QStringList deviceIds;
+    for (const auto &entry : entries)
+        deviceIds << entry.id;
+    RackSession session(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/rack.json"),
+                        rackController, rack, midiLearn, deviceIds, nullptr);
+    session.load();
 
     krate::RackProcessor processor(rack, transport, ids);
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
-    host.setMidiInputMatch(midiLearn ? midiLearn->inputPortMatch() : QStringLiteral("Impact LX49"));
-
-    RackController rackController(rack, transport, entries, nullptr);
+    host.setMidiInputMatch(session.midiInput());
 
     QQmlApplicationEngine engine;
     QObject::connect(

@@ -9,7 +9,7 @@
 #include <array>
 #include <string>
 
-#include "app/MidiLearnController.h"
+#include "app/InstrumentMidiLearn.h"
 #include "core/Midi.h"
 #include "app/MidiMapFile.h"
 #include "dsp/Engine.h"
@@ -289,7 +289,7 @@ private slots:
     {
         {
             FakeInstrument fake;
-            MidiLearnController learn(fake, m_path, nullptr);
+            krate::InstrumentMidiLearn learn(fake, m_path, nullptr);
             learn.setActive(true);
             learn.arm(QStringLiteral("gate"));
             QCOMPARE(fake.learn.learnTarget(), 2);
@@ -303,7 +303,7 @@ private slots:
         }
         // Saved by key, reloaded into a fresh instrument.
         FakeInstrument fresh;
-        MidiLearnController learn(fresh, m_path, nullptr);
+        krate::InstrumentMidiLearn learn(fresh, m_path, nullptr);
         QCOMPARE(fresh.learn.mapping(20), 2);
         kp::MidiMap saved;
         QCOMPARE(kp::loadMidiMap(m_path, kFakeParams, &saved), kp::LoadResult::Loaded);
@@ -334,8 +334,8 @@ private slots:
         const QStringList actions = {QStringLiteral("pattern1"), QStringLiteral("runstop")};
         {
             FakeInstrument fake;
-            MidiLearnController learn(fake, m_path, nullptr, actions);
-            QSignalSpy fired(&learn, &MidiLearnController::actionTriggered);
+            krate::InstrumentMidiLearn learn(fake, m_path, nullptr, actions);
+            QSignalSpy fired(&learn, &krate::InstrumentMidiLearn::actionTriggered);
             learn.setActive(true);
             learn.arm(QStringLiteral("pattern1"));
             QCOMPARE(learn.armedParam(), QStringLiteral("pattern1"));
@@ -358,7 +358,7 @@ private slots:
         QCOMPARE(kp::loadMidiMap(m_path, kFakeParams, &saved, actions), kp::LoadResult::Loaded);
         QCOMPARE(saved.ccToParam[47], krate::MidiLearnMap::actionTarget(0));
         FakeInstrument fresh;
-        MidiLearnController learn(fresh, m_path, nullptr, actions);
+        krate::InstrumentMidiLearn learn(fresh, m_path, nullptr, actions);
         QCOMPARE(fresh.learn.mapping(47), krate::MidiLearnMap::actionTarget(0));
         learn.clear(QStringLiteral("pattern1"));
         QCOMPARE(fresh.learn.mapping(47), krate::MidiLearnMap::kUnmapped);
@@ -403,7 +403,7 @@ private slots:
     {
         Engine engine;
         {
-            MidiLearnController learn(engine, m_path, nullptr);
+            krate::InstrumentMidiLearn learn(engine, m_path, nullptr);
             learn.arm(QStringLiteral("cutoff"));
             QCOMPARE(engine.midiLearnMap()->learnTarget(), -1); // arming needs learn mode
 
@@ -412,7 +412,7 @@ private slots:
             QCOMPARE(learn.armedParam(), QStringLiteral("cutoff"));
             QCOMPARE(engine.midiLearnMap()->learnTarget(), int(ParamId::Cutoff));
 
-            QSignalSpy mappings(&learn, &MidiLearnController::mappingsChanged);
+            QSignalSpy mappings(&learn, &krate::InstrumentMidiLearn::mappingsChanged);
             block(engine, {cc(21, 90)});
             learn.drainEvents();
             QCOMPARE(mappings.count(), 1);
@@ -424,7 +424,7 @@ private slots:
         }
         // A new controller loads the saved map into a fresh engine.
         Engine fresh;
-        MidiLearnController learn(fresh, m_path, nullptr);
+        krate::InstrumentMidiLearn learn(fresh, m_path, nullptr);
         QCOMPARE(fresh.midiLearnMap()->mapping(21), int(ParamId::Cutoff));
         QCOMPARE(learn.mappingFor(QStringLiteral("cutoff")), QStringLiteral("21"));
     }
@@ -432,7 +432,7 @@ private slots:
     void armTogglesAndLeavingLearnDisarms()
     {
         Engine engine;
-        MidiLearnController learn(engine, m_path, nullptr);
+        krate::InstrumentMidiLearn learn(engine, m_path, nullptr);
         learn.setActive(true);
         learn.arm(QStringLiteral("decay"));
         learn.arm(QStringLiteral("decay")); // second click disarms
@@ -446,7 +446,7 @@ private slots:
     void clearAndClearAll()
     {
         Engine engine;
-        MidiLearnController learn(engine, m_path, nullptr);
+        krate::InstrumentMidiLearn learn(engine, m_path, nullptr);
         learn.setActive(true);
         learn.arm(QStringLiteral("accent"));
         block(engine, {cc(40, 1)});

@@ -81,6 +81,8 @@ add_executable(tst_midi
     tests/tst_midi.cpp
     ${PROJECT_SOURCE_DIR}/shared/app/MidiLearnController.h
     ${PROJECT_SOURCE_DIR}/shared/app/MidiLearnController.cpp
+    ${PROJECT_SOURCE_DIR}/shared/app/InstrumentMidiLearn.h
+    ${PROJECT_SOURCE_DIR}/shared/app/InstrumentMidiLearn.cpp
 )
 target_compile_options(tst_midi PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_midi PRIVATE k303_dsp krate_app krate_testing Qt6::Qml Qt6::Test)

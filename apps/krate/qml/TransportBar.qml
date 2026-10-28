@@ -24,6 +24,12 @@ Rectangle {
                 indicatorBar: true
                 ledOn: Rack.playing
                 onClicked: Rack.playing = !Rack.playing
+
+                LearnOverlay {
+                    anchors.fill: parent
+                    paramKey: "rack:playstop"
+                    round: false
+                }
             }
             PanelLabel {
                 width: 92
@@ -64,7 +70,40 @@ Rectangle {
         }
     }
 
+    Row { // MIDI learn
+        anchors.right: status.left
+        anchors.rightMargin: 30
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 12
+
+        Column {
+            spacing: 2
+            PanelButton {
+                width: 58
+                height: 30
+                text: "MIDI Learn"
+                hasLed: true
+                ledOn: MidiLearn.active
+                onClicked: MidiLearn.active = !MidiLearn.active
+            }
+            PanelLabel { width: 58; text: "LEARN"; font.pixelSize: 10 }
+        }
+        Column {
+            spacing: 2
+            PanelButton {
+                width: 58
+                height: 30
+                text: "Follow focus: learned knobs drive whichever instrument has focus"
+                hasLed: true
+                ledOn: MidiLearn.followFocus
+                onClicked: MidiLearn.followFocus = !MidiLearn.followFocus
+            }
+            PanelLabel { width: 58; text: "FOLLOW"; font.pixelSize: 10 }
+        }
+    }
+
     Column {
+        id: status
         anchors.right: title.left
         anchors.rightMargin: 30
         anchors.verticalCenter: parent.verticalCenter

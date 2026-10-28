@@ -9,6 +9,10 @@ qt_add_qml_module(krate
     SOURCES
         RackController.h
         RackController.cpp
+        RackMidiLearn.h
+        RackMidiLearn.cpp
+        RackSession.h
+        RackSession.cpp
     QML_FILES
         qml/Main.qml
         qml/TransportBar.qml
@@ -26,3 +30,20 @@ target_link_libraries(krate PRIVATE
     krate_rack krate_host
     Qt6::Gui Qt6::Quick Qt6::QuickControls2
 )
+
+# Rack learn and session, with fake instruments (sources compiled directly).
+add_executable(tst_racklearn
+    tests/tst_racklearn.cpp
+    RackController.h
+    RackController.cpp
+    RackMidiLearn.h
+    RackMidiLearn.cpp
+    RackSession.h
+    RackSession.cpp
+    ${PROJECT_SOURCE_DIR}/shared/app/MidiLearnController.h
+    ${PROJECT_SOURCE_DIR}/shared/app/MidiLearnController.cpp
+)
+target_include_directories(tst_racklearn PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_racklearn PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_racklearn PRIVATE krate_rack krate_app Qt6::Qml Qt6::Test)
+add_test(NAME tst_racklearn COMMAND tst_racklearn)

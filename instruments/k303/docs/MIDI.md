@@ -33,6 +33,15 @@ Auto-connect: at startup, and again whenever JACK ports appear (e.g. the control
 - Switches (`waveform`) map CC values < 64 → first position, ≥ 64 → second.
 - Knob pickup: v1 jumps (the parameter takes the CC value immediately). Soft takeover is a later option.
 
+## In the Krate rack
+
+Inside `krate`, MIDI Learn works the same way from the panels, but learns into the rack's map instead of k303's own:
+
+- A knob clicked in learn mode is k303's while k303 has focus. It maps as **fixed** (always k303's), or with **FOLLOW** on, as **follow-focus** (the same knob name on whichever instrument has focus).
+- Mappings record the MIDI channel; badges read like "CC 47 ch16".
+- Pattern buttons and the rack's PLAY/STOP, instrument tabs and ◂ ▸ are learnable buttons, from CCs or notes.
+- Everything is saved in `~/.config/krate/rack.json`; k303's own `midimap.json` is used only by the standalone app.
+
 ## Mapping file
 
 `~/.config/k303/midimap.json`, written whenever a binding changes (GUI thread, temp file + rename).

@@ -24,6 +24,15 @@ Window {
         sequence: "Tab"
         onActivated: Rack.focus = (Rack.focus + 1) % Rack.deviceCount
     }
+    Shortcut {
+        sequence: "L"
+        onActivated: MidiLearn.active = !MidiLearn.active
+    }
+    Shortcut {
+        sequence: "Escape"
+        enabled: MidiLearn.active
+        onActivated: MidiLearn.active = false
+    }
 
     TransportBar {
         id: transportBar
@@ -35,6 +44,15 @@ Window {
         y: transportBar.height + 10
         x: 16
         spacing: 8
+
+        PanelButton { // focus previous (learnable)
+            width: 40
+            height: 40
+            faceText: "◂"
+            text: "Focus previous instrument"
+            onClicked: Rack.focus = (Rack.focus + Rack.deviceCount - 1) % Rack.deviceCount
+            LearnOverlay { anchors.fill: parent; paramKey: "rack:previous"; round: false }
+        }
 
         Repeater {
             model: Rack.deviceNames
@@ -70,9 +88,23 @@ Window {
                     anchors.fill: parent
                     onClicked: Rack.focus = tab.index
                 }
+                LearnOverlay { // a controller button can focus this instrument
+                    anchors.fill: parent
+                    paramKey: "rack:focus:" + tab.index
+                    round: false
+                }
                 Accessible.role: Accessible.PageTab
                 Accessible.name: modelData + (focused ? " (focused)" : "")
             }
+        }
+
+        PanelButton { // focus next (learnable)
+            width: 40
+            height: 40
+            faceText: "▸"
+            text: "Focus next instrument"
+            onClicked: Rack.focus = (Rack.focus + 1) % Rack.deviceCount
+            LearnOverlay { anchors.fill: parent; paramKey: "rack:next"; round: false }
         }
     }
 

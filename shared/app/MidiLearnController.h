@@ -1,28 +1,18 @@
 #pragma once
 
-#include <span>
-
 #include <QObject>
+#include <QString>
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
-#include "app/MidiMapFile.h"
-#include "core/ParamDescriptor.h"
-
-namespace krate {
-class IInstrument;
-class MidiLearnMap;
-}
 class QQmlEngine;
 class QJSEngine;
 
-// QML singleton "MidiLearn" (docs/MIDI.md#midi-learn). Instrument-neutral:
-// works with any krate::IInstrument through its parameter descriptors and its
-// krate::MidiLearnMap, using keys throughout (the keys QML passes). A key is a
-// parameter key or one of the app's action keys (learnable buttons such as
-// "pattern1"); a mapped action press is announced with actionTriggered().
-// In learn mode a click arms a control; the next CC binds to it on the audio
-// thread. Keeps the GUI copy of the CC map, which is saved to midimap.json.
+// QML singleton "MidiLearn": the MIDI Learn API every panel's LearnOverlay uses
+// (docs/MIDI.md#midi-learn). Keys are parameter keys or action keys (learnable
+// buttons). Two implementations: krate::InstrumentMidiLearn (a standalone app:
+// one instrument's map, midimap.json) and the rack's RackMidiLearn (the rack-
+// wide map: keys refer to the focused instrument; rack.json).
 class MidiLearnController : public QObject
 {
     Q_OBJECT
@@ -30,15 +20,14 @@ class MidiLearnController : public QObject
     QML_SINGLETON
 
     Q_PROPERTY(bool active READ active WRITE setActive NOTIFY activeChanged)
-    Q_PROPERTY(QString armedParam READ armedParam NOTIFY armedParamChanged) // param key, "" = none
-    // Bumped on every mapping change; bind to it to refresh mappingFor() badges.
+    Q_PROPERTY(QString armedParam READ armedParam NOTIFY armedParamChanged) // key, "" = none
+    // Bumped on every mapping change; bind to it to refresh badges.
     Q_PROPERTY(int revision READ revision NOTIFY mappingsChanged)
+    // Rack only: learned knobs follow the focused instrument instead of staying fixed.
+    Q_PROPERTY(bool followFocus READ followFocus WRITE setFollowFocus NOTIFY followFocusChanged)
+    Q_PROPERTY(bool canFollowFocus READ canFollowFocus CONSTANT)
 
 public:
-    // Not default-constructible on purpose: see SynthController. The instrument
-    // must provide a MidiLearnMap.
-    MidiLearnController(krate::IInstrument &instrument, const QString &filePath, QObject *parent,
-                        const QStringList &actions = {});
     ~MidiLearnController() override;
 
     static MidiLearnController *create(QQmlEngine *, QJSEngine *);
@@ -47,41 +36,47 @@ public:
     void setActive(bool active);
     QString armedParam() const { return m_armed; }
     int revision() const { return m_revision; }
-    QString inputPortMatch() const { return m_map.inputPortMatch; }
+    bool followFocus() const { return m_followFocus; }
+    void setFollowFocus(bool on);
+    virtual bool canFollowFocus() const { return false; }
 
-    // Arm a control for learning (or disarm it if already armed).
-    Q_INVOKABLE void arm(const QString &paramKey);
-    // CC numbers mapped to a parameter, e.g. "21" or "21 74"; "" if none.
-    Q_INVOKABLE QString mappingFor(const QString &paramKey) const;
-    Q_INVOKABLE void clear(const QString &paramKey);
-    Q_INVOKABLE void clearAll();
+    // Arm a control for learning (or disarm it if already armed). Learn mode only.
+    Q_INVOKABLE void arm(const QString &key);
+    // Mapped sources for a key, e.g. "21 74"; "" if none.
+    Q_INVOKABLE virtual QString mappingFor(const QString &key) const = 0;
+    // The badge a learn overlay shows, e.g. "CC 21" ("" if unmapped).
+    Q_INVOKABLE virtual QString badgeFor(const QString &key) const;
+    Q_INVOKABLE virtual void clear(const QString &key) = 0;
+    Q_INVOKABLE virtual void clearAll() = 0;
 
 public slots:
-    // Called at 60 Hz; public for tests.
-    void drainEvents();
+    // Called at 60 Hz: learned mappings and pressed buttons from the audio thread.
+    virtual void drainEvents() = 0;
 
 signals:
     void activeChanged();
     void armedParamChanged();
     void mappingsChanged();
+    void followFocusChanged();
     // A learned button was pressed: the app performs the action.
     void actionTriggered(const QString &action);
 
-private:
-    int indexOf(const QString &key) const; // parameter index or action target; kUnmapped if unknown
-    QString keyOf(int target) const;
-    void setArmed(const QString &paramKey);
-    void mappingsEdited();
+protected:
+    // Not default-constructible: see k303's SynthController.
+    explicit MidiLearnController(QObject *parent);
 
+    // Arm `key` in the backend ("" disarms); false if the key can't be learned.
+    virtual bool armTarget(const QString &key) = 0;
+    // A key got its mapping: disarm it if it was armed, refresh badges.
+    void learned(const QString &key);
+    void mappingsEdited(); // refresh badges
+
+private:
     static inline MidiLearnController *s_instance = nullptr;
 
-    krate::MidiLearnMap &m_learnMap;
-    std::span<const krate::ParamDescriptor> m_params;
-    QStringList m_actions;
-    QString m_filePath;
-    krate::files::MidiMap m_map;
     bool m_active = false;
     QString m_armed;
     int m_revision = 0;
+    bool m_followFocus = false;
     QTimer m_pollTimer;
 };

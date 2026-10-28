@@ -88,18 +88,18 @@ float Rack::takeDevicePeak(int device) noexcept
     return m_devices[std::size_t(device)].peak.exchange(0.0f, std::memory_order_relaxed);
 }
 
-// Packed mapping: bits 30-31 kind, 16-23 device, 0-15 target. 0 = none.
+// Packed mapping: bits 29-31 kind, 16-23 device, 0-15 target. 0 = none.
 std::uint32_t Rack::pack(Mapping m) noexcept
 {
     if (m.kind == Mapping::Kind::None)
         return 0;
-    return (std::uint32_t(m.kind) << 30) | (std::uint32_t(m.device & 0xFF) << 16) | std::uint32_t(m.target & 0xFFFF);
+    return (std::uint32_t(m.kind) << 29) | (std::uint32_t(m.device & 0xFF) << 16) | std::uint32_t(m.target & 0xFFFF);
 }
 
 Rack::Mapping Rack::unpack(std::uint32_t packed) noexcept
 {
     Mapping m;
-    m.kind = Mapping::Kind(packed >> 30);
+    m.kind = Mapping::Kind(packed >> 29);
     if (m.kind == Mapping::Kind::None)
         return m;
     m.device = int((packed >> 16) & 0xFF);
@@ -120,17 +120,19 @@ Rack::Mapping Rack::ccMapping(int channel, int cc) const noexcept
     return unpack(m_ccMap[std::size_t(channel)][std::size_t(cc)].load(std::memory_order_relaxed));
 }
 
-void Rack::setNoteAction(int channel, int note, int action) noexcept
+void Rack::setNoteMapping(int channel, int note, Mapping mapping) noexcept
 {
+    if (mapping.kind != Mapping::Kind::FocusAction && mapping.kind != Mapping::Kind::Action)
+        mapping = {};
     if (channel >= 0 && channel < kChannels && note >= 0 && note < 128)
-        m_noteActions[std::size_t(channel)][std::size_t(note)].store(action, std::memory_order_relaxed);
+        m_noteMap[std::size_t(channel)][std::size_t(note)].store(pack(mapping), std::memory_order_relaxed);
 }
 
-int Rack::noteAction(int channel, int note) const noexcept
+Rack::Mapping Rack::noteMapping(int channel, int note) const noexcept
 {
     if (channel < 0 || channel >= kChannels || note < 0 || note >= 128)
-        return -1;
-    return m_noteActions[std::size_t(channel)][std::size_t(note)].load(std::memory_order_relaxed);
+        return {};
+    return unpack(m_noteMap[std::size_t(channel)][std::size_t(note)].load(std::memory_order_relaxed));
 }
 
 void Rack::clearMappings() noexcept
@@ -138,9 +140,9 @@ void Rack::clearMappings() noexcept
     for (auto &row : m_ccMap)
         for (auto &e : row)
             e.store(0, std::memory_order_relaxed);
-    for (auto &row : m_noteActions)
+    for (auto &row : m_noteMap)
         for (auto &e : row)
-            e.store(-1, std::memory_order_relaxed);
+            e.store(0, std::memory_order_relaxed);
 }
 
 void Rack::arm(Mapping target) noexcept
@@ -210,7 +212,7 @@ void Rack::route(MidiEvent event) noexcept
             m_ccMap[std::size_t(channel)][m.data1].store(pack(armed), std::memory_order_relaxed);
             m_armed.store(0, std::memory_order_relaxed);
             m_learned.push({false, std::uint8_t(channel), m.data1, armed});
-            if (armed.kind == Mapping::Kind::FocusAction)
+            if (armed.kind == Mapping::Kind::FocusAction || armed.kind == Mapping::Kind::Action)
                 break;
         }
         Mapping map = unpack(m_ccMap[std::size_t(channel)][m.data1].load(std::memory_order_relaxed));
@@ -239,24 +241,33 @@ void Rack::route(MidiEvent event) noexcept
             if (m.data2 > 0) // a button press, not its release
                 runAction(map.target);
             break;
+        case Mapping::Kind::Action:
+            if (m.data2 > 0)
+                m_fired.push({map.device, map.target});
+            break;
         }
         break;
     }
     case MidiMessage::Type::NoteOn:
     case MidiMessage::Type::NoteOff: {
         if (m.type == MidiMessage::Type::NoteOn) {
-            // Only focus actions are learned from notes.
+            // Only buttons (focus actions and actions) are learned from notes.
             const Mapping armed = unpack(m_armed.load(std::memory_order_relaxed));
-            if (armed.kind == Mapping::Kind::FocusAction) {
-                m_noteActions[std::size_t(channel)][m.data1].store(armed.target, std::memory_order_relaxed);
+            if (armed.kind == Mapping::Kind::FocusAction || armed.kind == Mapping::Kind::Action) {
+                m_noteMap[std::size_t(channel)][m.data1].store(pack(armed), std::memory_order_relaxed);
                 m_armed.store(0, std::memory_order_relaxed);
                 m_learned.push({true, std::uint8_t(channel), m.data1, armed});
                 break; // the teaching press doesn't fire; its note-off is swallowed below
             }
         }
-        if (const int action = m_noteActions[std::size_t(channel)][m.data1].load(std::memory_order_relaxed); action >= 0) {
-            if (m.type == MidiMessage::Type::NoteOn)
-                runAction(action);
+        if (const Mapping button = unpack(m_noteMap[std::size_t(channel)][m.data1].load(std::memory_order_relaxed));
+            button.kind != Mapping::Kind::None) {
+            if (m.type == MidiMessage::Type::NoteOn) {
+                if (button.kind == Mapping::Kind::FocusAction)
+                    runAction(button.target);
+                else
+                    m_fired.push({button.device, button.target});
+            }
             break; // the note is the button: don't play it
         }
         forward(target, event);

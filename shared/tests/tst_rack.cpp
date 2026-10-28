@@ -218,6 +218,42 @@ private slots:
         QCOMPARE(b.received.size(), std::size_t(1));
     }
 
+    // Actions (play/stop, an instrument's buttons) are handed to the GUI on a press.
+    void actionsFireOnPressFromCcOrNote()
+    {
+        FakeDevice a(kParamsA, 0.0f), b(kParamsB, 0.0f);
+        Rack rack;
+        rack.addDevice(a);
+        rack.addDevice(b);
+        rack.arm({Kind::Action, Rack::kRackDevice, 0}); // e.g. play/stop
+        run(rack, 64, {cc(15, 47, 127)});              // the teaching press
+        QVERIFY(!rack.popFired().has_value());
+        QCOMPARE(int(rack.popLearned()->mapping.kind), int(Kind::Action));
+
+        run(rack, 64, {cc(15, 47, 127), cc(15, 47, 0)});
+        auto fired = rack.popFired();
+        QVERIFY(fired.has_value());
+        QCOMPARE(fired->device, Rack::kRackDevice);
+        QCOMPARE(fired->action, 0);
+        QVERIFY(!rack.popFired().has_value()); // the release does nothing
+
+        rack.arm({Kind::Action, 1, 2}); // device 1's action 2, learned from a pad
+        run(rack, 64, {noteOn(9, 38), noteOff(9, 38)});
+        QVERIFY(!rack.popFired().has_value());
+        run(rack, 64, {noteOn(9, 38), noteOff(9, 38)});
+        fired = rack.popFired();
+        QCOMPARE(fired->device, 1);
+        QCOMPARE(fired->action, 2);
+        QVERIFY(a.received.empty() && b.received.empty()); // the pad never plays
+    }
+
+    void noteMapsOnlyHoldButtons()
+    {
+        Rack rack;
+        rack.setNoteMapping(0, 60, {Kind::Param, 0, 0}); // not a button: refused
+        QCOMPARE(int(rack.noteMapping(0, 60).kind), int(Kind::None));
+    }
+
     // --- Rack CC map ---------------------------------------------------------------
 
     void fixedMappingIgnoresFocus()
@@ -301,10 +337,11 @@ private slots:
         Rack rack;
         rack.addDevice(a);
         rack.setCcMapping(0, 1, {Kind::Param, 0, 0});
-        rack.setNoteAction(0, 36, 0);
+        rack.setNoteMapping(0, 36, {Kind::FocusAction, -1, 0});
+        QCOMPARE(int(rack.noteMapping(0, 36).kind), int(Kind::FocusAction));
         rack.clearMappings();
         QCOMPARE(int(rack.ccMapping(0, 1).kind), int(Kind::None));
-        QCOMPARE(rack.noteAction(0, 36), -1);
+        QCOMPARE(int(rack.noteMapping(0, 36).kind), int(Kind::None));
     }
 
     // --- Mixer ---------------------------------------------------------------------

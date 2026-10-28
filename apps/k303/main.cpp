@@ -6,7 +6,7 @@
 
 #include "app/HostController.h"
 #include "app/K303Instrument.h"
-#include "app/MidiLearnController.h"
+#include "app/InstrumentMidiLearn.h"
 #include "app/ScreenshotHook.h"
 #include "core/Transport.h"
 #include "host/JackHost.h"
@@ -38,9 +38,9 @@ int main(int argc, char *argv[])
     const std::unique_ptr<krate::InstrumentInstance> instrument = entry.create(context);
 
     // ~/.config/k303/midimap.json: knobs plus the entry's learnable buttons.
-    MidiLearnController midiLearn(instrument->instrument(), context.configDir + QStringLiteral("/midimap.json"),
+    krate::InstrumentMidiLearn midiLearn(instrument->instrument(), context.configDir + QStringLiteral("/midimap.json"),
                                   nullptr, entry.actions);
-    QObject::connect(&midiLearn, &MidiLearnController::actionTriggered, &app,
+    QObject::connect(&midiLearn, &krate::InstrumentMidiLearn::actionTriggered, &app,
                      [&instrument](const QString &action) { instrument->triggerAction(action); });
 
     krate::InstrumentProcessor processor(instrument->instrument(), transport);

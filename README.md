@@ -8,7 +8,7 @@ A suite of software instruments for Linux, and (coming) a rack that plays them t
 | [**Klick**](instruments/klick/README.md): metronome, clicks on the shared transport | Works in the rack core and `krate-render` |
 | **K909**: drum machine | Planned |
 | **Kalliope**: polysynth | Planned |
-| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + Klick); rack MIDI Learn and sessions next |
+| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + Klick), rack-wide MIDI Learn, sessions in `~/.config/krate/rack.json` |
 
 Design: [docs/SHARED_FOUNDATIONS.MD](docs/SHARED_FOUNDATIONS.MD) (shared interfaces, transport, MIDI, the rack, repo layout).
 

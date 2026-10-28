@@ -46,13 +46,29 @@ public:
     static constexpr int kFocusNext = 0xFFFE;
     static constexpr int kFocusPrevious = 0xFFFD;
 
+    // The rack itself as an Action's device (e.g. play/stop).
+    static constexpr int kRackDevice = 255;
+
     // What a mapped CC or note does.
     struct Mapping
     {
-        enum class Kind : std::uint8_t { None, Param, FollowFocus, FocusAction };
+        enum class Kind : std::uint8_t {
+            None,
+            Param,       // device's parameter `target` follows the CC value
+            FollowFocus, // the focused device's parameter with the same key as `device`'s `target`
+            FocusAction, // focus: device `target`, kFocusNext or kFocusPrevious
+            Action,      // a button: action `target` of `device` (or of the rack: kRackDevice)
+        };
         Kind kind = Kind::None;
-        int device = -1;  // Param: target device; FollowFocus: device the key was learned from
-        int target = -1;  // Param/FollowFocus: parameter index on `device`; FocusAction: action
+        int device = -1;
+        int target = -1;
+    };
+
+    // Audio -> GUI: an Action button was pressed (the GUI performs it).
+    struct Fired
+    {
+        int device = -1; // device index, or kRackDevice
+        int action = -1;
     };
 
     // Audio -> GUI: something was learned.
@@ -98,15 +114,17 @@ public:
     // Rack MIDI map. channel 0..15 or kAnyChannel.
     void setCcMapping(int channel, int cc, Mapping mapping) noexcept;
     Mapping ccMapping(int channel, int cc) const noexcept;
-    void setNoteAction(int channel, int note, int action) noexcept; // action -1 = none
-    int noteAction(int channel, int note) const noexcept;
+    // Notes as buttons: FocusAction or Action mappings only (the note never plays).
+    void setNoteMapping(int channel, int note, Mapping mapping) noexcept;
+    Mapping noteMapping(int channel, int note) const noexcept;
     void clearMappings() noexcept;
 
-    // Learn: arm a target; the next CC (or, for focus actions, CC or note) binds
-    // to it, recording its channel. Arming Kind::None disarms.
+    // Learn: arm a target; the next CC (or, for focus actions and actions, CC or
+    // note) binds to it, recording its channel. Arming Kind::None disarms.
     void arm(Mapping target) noexcept;
     Mapping armed() const noexcept { return unpack(m_armed.load(std::memory_order_relaxed)); }
     std::optional<Learned> popLearned() noexcept { return m_learned.pop(); }
+    std::optional<Fired> popFired() noexcept { return m_fired.pop(); }
 
     // --- Audio thread ----------------------------------------------------------
     void process(const RackBlock &block) noexcept;
@@ -153,9 +171,10 @@ private:
     bool m_primed = false;     // first block starts at the fader settings instead of ramping to them
 
     std::array<std::array<std::atomic<std::uint32_t>, 128>, kChannels + 1> m_ccMap;
-    std::array<std::array<std::atomic<std::int32_t>, 128>, kChannels> m_noteActions;
+    std::array<std::array<std::atomic<std::uint32_t>, 128>, kChannels> m_noteMap;
     std::atomic<std::uint32_t> m_armed{0};
     SpscQueue<Learned, 64> m_learned;
+    SpscQueue<Fired, 64> m_fired;
 
     MasterStage m_master;
 };
