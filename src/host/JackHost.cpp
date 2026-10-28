@@ -1,12 +1,14 @@
-#include "jack/JackClient.h"
+#include "host/JackHost.h"
+
+#include <algorithm>
 
 #include <jack/midiport.h>
 
+#include "core/Denormals.h"
 #include "core/Instrument.h"
 #include "core/StandaloneTransport.h"
-#include "dsp/Denormals.h"
 
-namespace k303 {
+namespace krate {
 
 namespace {
 
@@ -15,20 +17,21 @@ void silentJackMessage(const char *) {}
 
 } // namespace
 
-JackClient::JackClient(krate::IInstrument &instrument, krate::StandaloneTransport &transport)
+JackHost::JackHost(IInstrument &instrument, StandaloneTransport &transport)
     : m_instrument(instrument)
     , m_transport(transport)
+    , m_channels(std::clamp(instrument.outputChannels(), 1, kMaxChannels))
 {
     jack_set_error_function(silentJackMessage);
     jack_set_info_function(silentJackMessage);
 }
 
-JackClient::~JackClient()
+JackHost::~JackHost()
 {
     close();
 }
 
-bool JackClient::open(const char *clientName, std::string *error)
+bool JackHost::open(const char *clientName, std::string *error)
 {
     if (m_client)
         return true;
@@ -44,10 +47,14 @@ bool JackClient::open(const char *clientName, std::string *error)
     m_serverGone.store(false, std::memory_order_relaxed);
     m_xruns.store(0, std::memory_order_relaxed);
 
-    m_outL = jack_port_register(m_client, "out_L", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
-    m_outR = jack_port_register(m_client, "out_R", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    bool portsOk = true;
+    for (int c = 0; c < m_channels; ++c) {
+        const std::string name = m_channels == 2 ? (c == 0 ? "out_L" : "out_R") : "out_" + std::to_string(c + 1);
+        m_outs[std::size_t(c)] = jack_port_register(m_client, name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+        portsOk = portsOk && m_outs[std::size_t(c)];
+    }
     m_midiIn = jack_port_register(m_client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
-    if (!m_outL || !m_outR || !m_midiIn) {
+    if (!portsOk || !m_midiIn) {
         if (error)
             *error = "could not register ports";
         close();
@@ -58,14 +65,14 @@ bool JackClient::open(const char *clientName, std::string *error)
     m_sampleRate.store(rate, std::memory_order_relaxed);
     m_bufferSize.store(jack_get_buffer_size(m_client), std::memory_order_relaxed);
     m_instrument.prepare(rate, jack_get_buffer_size(m_client));
-    m_engineRate = rate;
+    m_preparedRate = rate;
 
-    jack_set_process_callback(m_client, &JackClient::onProcess, this);
-    jack_set_xrun_callback(m_client, &JackClient::onXrun, this);
-    jack_set_sample_rate_callback(m_client, &JackClient::onSampleRate, this);
-    jack_set_buffer_size_callback(m_client, &JackClient::onBufferSize, this);
-    jack_on_shutdown(m_client, &JackClient::onShutdown, this);
-    jack_set_port_registration_callback(m_client, &JackClient::onPortRegistration, this);
+    jack_set_process_callback(m_client, &JackHost::onProcess, this);
+    jack_set_xrun_callback(m_client, &JackHost::onXrun, this);
+    jack_set_sample_rate_callback(m_client, &JackHost::onSampleRate, this);
+    jack_set_buffer_size_callback(m_client, &JackHost::onBufferSize, this);
+    jack_on_shutdown(m_client, &JackHost::onShutdown, this);
+    jack_set_port_registration_callback(m_client, &JackHost::onPortRegistration, this);
     m_portsChanged.store(true, std::memory_order_relaxed); // look for MIDI sources once at start
 
     if (jack_activate(m_client) != 0) {
@@ -77,7 +84,7 @@ bool JackClient::open(const char *clientName, std::string *error)
     return true;
 }
 
-void JackClient::close()
+void JackHost::close()
 {
     if (!m_client)
         return;
@@ -86,12 +93,11 @@ void JackClient::close()
         jack_deactivate(m_client);
     jack_client_close(m_client);
     m_client = nullptr;
-    m_outL = nullptr;
-    m_outR = nullptr;
+    m_outs.fill(nullptr);
     m_midiIn = nullptr;
 }
 
-std::vector<std::string> JackClient::connectToPlayback()
+std::vector<std::string> JackHost::connectToPlayback()
 {
     std::vector<std::string> connected;
     if (!m_client)
@@ -102,21 +108,21 @@ std::vector<std::string> JackClient::connectToPlayback()
     if (!ports)
         return connected;
 
-    jack_port_t *outs[] = {m_outL, m_outR};
-    for (int i = 0; i < 2 && ports[i]; ++i) {
-        if (jack_connect(m_client, jack_port_name(outs[i]), ports[i]) == 0)
-            connected.emplace_back(ports[i]);
-    }
-    // Mono playback device: send both channels to its only port.
-    if (ports[0] && !ports[1]) {
-        if (jack_connect(m_client, jack_port_name(m_outR), ports[0]) == 0)
-            connected.emplace_back(ports[0]);
+    int available = 0;
+    while (ports[available])
+        ++available;
+    // Channel c goes to playback port c; with fewer playback ports, wrap around
+    // (a mono device gets every channel).
+    for (int c = 0; c < m_channels && available > 0; ++c) {
+        const char *target = ports[c % available];
+        if (jack_connect(m_client, jack_port_name(m_outs[std::size_t(c)]), target) == 0)
+            connected.emplace_back(target);
     }
     jack_free(ports);
     return connected;
 }
 
-std::vector<std::string> JackClient::midiSourcePorts() const
+std::vector<std::string> JackHost::midiSourcePorts() const
 {
     std::vector<std::string> result;
     if (!m_client)
@@ -130,33 +136,34 @@ std::vector<std::string> JackClient::midiSourcePorts() const
     return result;
 }
 
-bool JackClient::connectMidiFrom(const std::string &port)
+bool JackHost::connectMidiFrom(const std::string &port)
 {
     return m_client && jack_connect(m_client, port.c_str(), jack_port_name(m_midiIn)) == 0;
 }
 
-bool JackClient::midiInputConnected() const
+bool JackHost::midiInputConnected() const
 {
     return m_midiIn && jack_port_connected(m_midiIn) > 0;
 }
 
-int JackClient::onProcess(jack_nframes_t frames, void *arg)
+int JackHost::onProcess(jack_nframes_t frames, void *arg)
 {
-    auto *self = static_cast<JackClient *>(arg);
+    auto *self = static_cast<JackHost *>(arg);
     ScopedFlushDenormals ftz;
 
     const std::uint32_t rate = self->m_sampleRate.load(std::memory_order_relaxed);
-    if (rate != self->m_engineRate) {
+    if (rate != self->m_preparedRate) {
         self->m_instrument.prepare(rate, frames);
-        self->m_engineRate = rate;
+        self->m_preparedRate = rate;
     }
 
-    auto *outL = static_cast<float *>(jack_port_get_buffer(self->m_outL, frames));
-    auto *outR = static_cast<float *>(jack_port_get_buffer(self->m_outR, frames));
+    float *outputs[kMaxChannels];
+    for (int c = 0; c < self->m_channels; ++c)
+        outputs[c] = static_cast<float *>(jack_port_get_buffer(self->m_outs[std::size_t(c)], frames));
 
     // Copy this block's MIDI into a fixed array; the engine applies each at its frame.
     constexpr std::uint32_t kMaxEvents = 256;
-    krate::MidiEvent events[kMaxEvents];
+    MidiEvent events[kMaxEvents];
     std::uint32_t count = 0;
     void *midi = jack_port_get_buffer(self->m_midiIn, frames);
     const std::uint32_t available = jack_midi_get_event_count(midi);
@@ -164,44 +171,45 @@ int JackClient::onProcess(jack_nframes_t frames, void *arg)
         jack_midi_event_t ev;
         if (jack_midi_event_get(&ev, midi, i) != 0 || ev.size < 1 || ev.size > 3 || ev.time >= frames)
             continue; // SysEx and malformed events are ignored
-        krate::MidiEvent &out = events[count++];
+        MidiEvent &out = events[count++];
         out.frame = ev.time;
         out.size = std::uint8_t(ev.size);
         for (std::size_t b = 0; b < ev.size; ++b)
             out.data[b] = ev.buffer[b];
     }
 
-    const krate::TransportState transport = self->m_transport.advance(frames, double(rate));
-    krate::processStereo(self->m_instrument, outL, outR, frames, events, count, &transport);
+    const TransportState transport = self->m_transport.advance(frames, double(rate));
+    self->m_instrument.process(AudioBlock{outputs, frames, events, count, &transport});
+    self->m_master.process(outputs, self->m_channels, frames);
     return 0;
 }
 
-int JackClient::onXrun(void *arg)
+int JackHost::onXrun(void *arg)
 {
-    static_cast<JackClient *>(arg)->m_xruns.fetch_add(1, std::memory_order_relaxed);
+    static_cast<JackHost *>(arg)->m_xruns.fetch_add(1, std::memory_order_relaxed);
     return 0;
 }
 
-int JackClient::onSampleRate(jack_nframes_t rate, void *arg)
+int JackHost::onSampleRate(jack_nframes_t rate, void *arg)
 {
-    static_cast<JackClient *>(arg)->m_sampleRate.store(rate, std::memory_order_relaxed);
+    static_cast<JackHost *>(arg)->m_sampleRate.store(rate, std::memory_order_relaxed);
     return 0;
 }
 
-int JackClient::onBufferSize(jack_nframes_t frames, void *arg)
+int JackHost::onBufferSize(jack_nframes_t frames, void *arg)
 {
-    static_cast<JackClient *>(arg)->m_bufferSize.store(frames, std::memory_order_relaxed);
+    static_cast<JackHost *>(arg)->m_bufferSize.store(frames, std::memory_order_relaxed);
     return 0;
 }
 
-void JackClient::onPortRegistration(jack_port_id_t, int, void *arg)
+void JackHost::onPortRegistration(jack_port_id_t, int, void *arg)
 {
-    static_cast<JackClient *>(arg)->m_portsChanged.store(true, std::memory_order_relaxed);
+    static_cast<JackHost *>(arg)->m_portsChanged.store(true, std::memory_order_relaxed);
 }
 
-void JackClient::onShutdown(void *arg)
+void JackHost::onShutdown(void *arg)
 {
-    static_cast<JackClient *>(arg)->m_serverGone.store(true, std::memory_order_relaxed);
+    static_cast<JackHost *>(arg)->m_serverGone.store(true, std::memory_order_relaxed);
 }
 
-} // namespace k303
+} // namespace krate

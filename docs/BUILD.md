@@ -29,66 +29,59 @@ sudo apt install build-essential cmake ninja-build \
 ```
 CMakeLists.txt
 src/
-  main.cpp
-  dsp/                 # k303_dsp: no Qt, no JACK
-    Params.h           # ParamId enum, ranges, string ids, normalized→engine maps
+  core/                # krate_core: shared Krate pieces; no Qt, no JACK, no instrument
+    Instrument.h         IInstrument, AudioBlock, MidiEvent, TransportState
+    ParamDescriptor.h    parameter descriptors, snapToDetent
+    StandaloneTransport.h
+    StepClock.{h,cpp}    step timing and order from beat position
+    Midi.{h,cpp}         decode(), MidiLearnMap
+    MasterStage.h        host soft clip + master meter
+    SpscQueue.h, Denormals.h
+  host/                # krate_host: JACK, no Qt, no instrument
+    JackHost.{h,cpp}     standalone host: ports, MIDI in, transport, master stage
+  dsp/                 # k303_dsp: k303's realtime core; no Qt, no JACK
+    Params.{h,cpp}       parameter table, units, display text
     ParamStore.h
-    SpscQueue.h
-    Oscillator.{h,cpp}
-    DiodeLadder.{h,cpp}
-    Oversampler.{h,cpp}
-    Envelope.{h,cpp}
-    Voice.{h,cpp}
-    Sequencer.{h,cpp}
-    Engine.{h,cpp}     # owns Voice + Sequencer, process(in events, out buffer, n)
-  jack/                # k303_jack
-    JackClient.{h,cpp}
+    Oscillator, DiodeLadder, HalfbandDecimator, Voice
+    Sequencer.{h,cpp}    k303 step rules on krate::StepClock
+    Engine.{h,cpp}       implements krate::IInstrument
   app/                 # Qt side
-    SynthController.{h,cpp}     # QML singleton "Synth"
+    SynthController.{h,cpp}     # QML singleton "Synth": params, standalone transport, JackHost
     PatternModel.{h,cpp}        # QML singleton "Pattern"
-    MidiLearnController.{h,cpp} # QML singleton "MidiLearn"
-    Persistence.{h,cpp}         # midimap.json, patterns.json
+    MidiLearnController.{h,cpp} # QML singleton "MidiLearn" (instrument-neutral)
+    Persistence.{h,cpp}         # patterns.json, midimap.json, panel.json
 qml/
-  Main.qml Panel.qml Knob.qml StepLed.qml PanelSwitch.qml NoteKey.qml Theme.qml
+  Main.qml Panel.qml Knob.qml StepRow.qml PianoKeys.qml PanelButton.qml Led.qml
+  LcdField.qml WaveSwitch.qml PanelLabel.qml LearnOverlay.qml Theme.qml
 tools/
   render_main.cpp      # k303-render
 tests/
-  tst_params.cpp tst_dsp.cpp tst_sequencer.cpp tst_queue.cpp tst_pattern.cpp tst_midi.cpp
+  tst_params tst_dsp tst_sequencer tst_queue tst_pattern tst_midi, TestHost.h
 docs/
 ```
+
+R6 (docs/SHARED_FOUNDATIONS.MD) moves `core/` and `host/` to `shared/` and k303 to `instruments/k303/` + `apps/k303/`.
 
 ## CMake outline
 
 ```cmake
-cmake_minimum_required(VERSION 3.24)
-project(k303 VERSION 0.1 LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Test)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(JACK REQUIRED IMPORTED_TARGET jack)
-qt_standard_project_setup(REQUIRES 6.8)
+add_library(krate_core STATIC src/core/...)          # PUBLIC include dir: src
+add_library(krate_host STATIC src/host/JackHost.cpp)
+target_link_libraries(krate_host PUBLIC krate_core PkgConfig::JACK)
 
 add_library(k303_dsp STATIC src/dsp/...)
-target_include_directories(k303_dsp PUBLIC src)
+target_link_libraries(k303_dsp PUBLIC krate_core)
 
-add_library(k303_jack STATIC src/jack/JackClient.cpp)
-target_link_libraries(k303_jack PUBLIC k303_dsp PkgConfig::JACK)
+qt_add_executable(k303 src/main.cpp)
+qt_add_qml_module(k303 URI K303 VERSION 1.0 NO_IMPORT_SCAN
+  SOURCES src/app/...  QML_FILES qml/...)
+target_link_libraries(k303 PRIVATE k303_dsp krate_host Qt6::Quick Qt6::QuickControls2)
 
-qt_add_executable(k303 src/main.cpp src/app/...)
-qt_add_qml_module(k303 URI K303 VERSION 1.0
-  QML_FILES qml/Main.qml qml/Panel.qml qml/Knob.qml ...)
-target_link_libraries(k303 PRIVATE k303_jack Qt6::Quick Qt6::QuickControls2)
-
-add_executable(k303-render tools/render_main.cpp)
-target_link_libraries(k303-render PRIVATE k303_dsp)
-
-enable_testing()
-# one qt_add_executable + add_test per tests/tst_*.cpp, linking Qt6::Test
+add_executable(k303-render tools/render_main.cpp)   # links k303_dsp only
+# tests: one executable + add_test per tests/tst_*.cpp
 ```
 
-Warnings: `-Wall -Wextra -Wpedantic -Werror` on `k303_dsp` and `k303_jack`. Debug builds add `-fsanitize=address,undefined` (option `K303_SANITIZE`, default ON for Debug).
+Warnings: `-Wall -Wextra -Wpedantic -Werror` on `krate_core`, `krate_host`, `k303_dsp` and `k303-render`. Debug builds add `-fsanitize=address,undefined` (option `K303_SANITIZE`, default ON for Debug).
 
 ## Build and run
 

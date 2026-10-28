@@ -20,9 +20,11 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(JACK REQUIRED IMPORTED_TARGET jack)
 qt_standard_project_setup(REQUIRES 6.8)
 
-# --- DSP core: no Qt, no JACK -------------------------------------------------
-add_library(k303_dsp STATIC
+# --- Shared Krate core: no Qt, no JACK, no instrument --------------------------
+add_library(krate_core STATIC
+    src/core/Denormals.h
     src/core/Instrument.h
+    src/core/MasterStage.h
     src/core/Midi.h
     src/core/Midi.cpp
     src/core/ParamDescriptor.h
@@ -30,13 +32,26 @@ add_library(k303_dsp STATIC
     src/core/StandaloneTransport.h
     src/core/StepClock.h
     src/core/StepClock.cpp
-    src/dsp/Denormals.h
+)
+target_include_directories(krate_core PUBLIC src)
+target_compile_options(krate_core PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
+# --- Shared standalone host: JACK, no Qt, no instrument ---------------------------
+add_library(krate_host STATIC
+    src/host/JackHost.h
+    src/host/JackHost.cpp
+)
+target_link_libraries(krate_host PUBLIC krate_core PkgConfig::JACK)
+target_compile_options(krate_host PRIVATE -Wall -Wextra -Wpedantic -Werror)
+
+# --- k303 DSP core: no Qt, no JACK ------------------------------------------------
+add_library(k303_dsp STATIC
     src/dsp/DiodeLadder.h
     src/dsp/DiodeLadder.cpp
     src/dsp/Engine.h
     src/dsp/Engine.cpp
-    src/dsp/Oscillator.h
     src/dsp/HalfbandDecimator.h
+    src/dsp/Oscillator.h
     src/dsp/Oscillator.cpp
     src/dsp/Params.h
     src/dsp/Params.cpp
@@ -46,16 +61,8 @@ add_library(k303_dsp STATIC
     src/dsp/Voice.h
     src/dsp/Voice.cpp
 )
-target_include_directories(k303_dsp PUBLIC src)
+target_link_libraries(k303_dsp PUBLIC krate_core)
 target_compile_options(k303_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
-
-# --- JACK host -----------------------------------------------------------------
-add_library(k303_jack STATIC
-    src/jack/JackClient.h
-    src/jack/JackClient.cpp
-)
-target_link_libraries(k303_jack PUBLIC k303_dsp PkgConfig::JACK)
-target_compile_options(k303_jack PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 # --- Application ---------------------------------------------------------------
 qt_add_executable(k303
@@ -98,7 +105,8 @@ target_include_directories(k303 PRIVATE src/app) # generated QML type registrati
 target_compile_options(k303 PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_definitions(k303 PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSION}")
 target_link_libraries(k303 PRIVATE
-    k303_jack
+    k303_dsp
+    krate_host
     Qt6::Gui
     Qt6::Quick
     Qt6::QuickControls2

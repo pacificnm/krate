@@ -47,7 +47,8 @@ struct EngineEvent
 // Everything the audio callback renders. Host-agnostic: JACK today, LV2 later.
 // process() runs on the realtime thread and must not allocate, lock or block.
 //
-// Sequencer -> Voice -> volume -> soft clip. Time comes from the block's
+// Sequencer -> Voice -> volume. No limiting: the host's master stage soft-clips
+// (docs/SHARED_FOUNDATIONS.MD). Time comes from the block's
 // transport: while it plays, the sequencer plays its pattern; while stopped
 // (or with no transport), MIDI keys play the voice. The Tempo parameter is not
 // read here: the host's transport carries the tempo. MIDI CCs move

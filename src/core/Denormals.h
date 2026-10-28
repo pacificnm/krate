@@ -4,7 +4,7 @@
 #include <xmmintrin.h>
 #endif
 
-namespace k303 {
+namespace krate {
 
 // Enables flush-to-zero / denormals-are-zero for the current scope and restores
 // the previous mode on exit. Put one at the top of every audio callback.
@@ -29,4 +29,4 @@ public:
     ScopedFlushDenormals &operator=(const ScopedFlushDenormals &) = delete;
 };
 
-} // namespace k303
+} // namespace krate

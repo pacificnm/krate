@@ -83,7 +83,7 @@ On an accented note:
 
 ## Output
 
-Mono voice copied to `out_L` and `out_R`. A final soft clip (`tanh`) after the volume stage prevents harsh digital overs.
+Mono voice × volume, copied to both output channels. The engine does not limit: the host's master stage (`krate::MasterStage`, a `tanh` soft clip, in the JACK host and in `k303-render`) prevents hard overs and feeds the level meter. In the Krate rack the mixer's master stage takes that role.
 
 ## Performance budget
 

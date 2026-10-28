@@ -6,7 +6,7 @@
 
 #include "core/StandaloneTransport.h"
 #include "dsp/Engine.h"
-#include "jack/JackClient.h"
+#include "host/JackHost.h"
 
 class QQmlEngine;
 class QJSEngine;
@@ -132,7 +132,7 @@ private:
 
     mutable k303::Engine m_engine; // mutable: ParamStore reads are const in spirit
     krate::StandaloneTransport m_transport; // run/stop and tempo for the standalone app
-    k303::JackClient m_client{m_engine, m_transport};
+    krate::JackHost m_client{m_engine, m_transport};
 
     QTimer m_pollTimer;
     QTimer m_retryTimer;

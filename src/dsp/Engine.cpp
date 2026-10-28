@@ -189,7 +189,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         if (transport.playing)
             handle(m_sequencer.tick(transport.beatAtBlockStart + double(i) * beatsPerSample));
         m_volume += (volumeTarget - m_volume) * m_volumeCoeff;
-        const float s = std::tanh(m_voice.next() * m_volume); // soft clip after volume
+        const float s = m_voice.next() * m_volume; // the host's master stage soft-clips
         outL[i] = s;
         outR[i] = s;
         peak = std::max(peak, std::fabs(s));

@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "core/MasterStage.h"
 #include "core/StandaloneTransport.h"
 #include "dsp/Engine.h"
 #include "dsp/Params.h"
@@ -105,11 +106,14 @@ int main(int argc, char **argv)
     krate::IInstrument &instrument = engine; // everything below goes through the interface
     instrument.prepare(rate, kBlock);
     krate::StandaloneTransport transport;
+    krate::MasterStage master;
     transport.setBpm(k303::units::tempoBpm(params.get(k303::ParamId::Tempo)));
     transport.setPlaying(true);
     const auto render = [&](float *left, float *right) {
         const krate::TransportState state = transport.advance(kBlock, rate);
         krate::processStereo(instrument, left, right, kBlock, nullptr, 0, &state);
+        float *const outputs[2] = {left, right};
+        master.process(outputs, 2, kBlock); // the same master stage as the JACK host
     };
     std::vector<float> l(kBlock), r(kBlock);
 

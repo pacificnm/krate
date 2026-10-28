@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <string>
@@ -7,26 +8,32 @@
 
 #include <jack/jack.h>
 
+#include "core/MasterStage.h"
+
 namespace krate {
+
 class IInstrument;
 class StandaloneTransport;
-}
 
-namespace k303 {
-
-// Owns the JACK client and its ports. In the JACK realtime callback it advances
-// the transport and runs the instrument's process() with it. All public methods are for the GUI thread; the callbacks
-// only touch atomics and the engine.
-class JackClient
+// Standalone host: one JACK client running one instrument
+// (docs/SHARED_FOUNDATIONS.MD#threads-standalone-and-rack). Knows nothing
+// about any particular instrument. Per block, in the JACK realtime callback:
+// read MIDI, advance the transport, run the instrument, then the master stage
+// (soft clip + meter) into the output ports. Public methods are for the GUI
+// thread; the callbacks only touch atomics, the instrument and the transport.
+class JackHost
 {
 public:
-    JackClient(krate::IInstrument &instrument, krate::StandaloneTransport &transport);
-    ~JackClient();
+    static constexpr int kMaxChannels = 8;
 
-    JackClient(const JackClient &) = delete;
-    JackClient &operator=(const JackClient &) = delete;
+    JackHost(IInstrument &instrument, StandaloneTransport &transport);
+    ~JackHost();
 
-    // Opens the client without starting a server, registers ports, activates.
+    JackHost(const JackHost &) = delete;
+    JackHost &operator=(const JackHost &) = delete;
+
+    // Opens the client without starting a server, registers one output port per
+    // instrument channel (out_L/out_R for stereo) and midi_in, then activates.
     // On failure returns false and fills *error.
     bool open(const char *clientName, std::string *error);
     void close();
@@ -39,8 +46,11 @@ public:
     std::uint32_t bufferSize() const { return m_bufferSize.load(std::memory_order_relaxed); }
     std::uint32_t xrunCount() const { return m_xruns.load(std::memory_order_relaxed); }
 
-    // Connects out_L/out_R to the first two physical playback ports.
-    // Returns the names of the ports connected to.
+    // Master output peak since the last call (0..1), for the level meter.
+    float takePeak() noexcept { return m_master.takePeak(); }
+
+    // Connects the outputs to the first physical playback ports (a mono device
+    // gets every channel). Returns the names of the ports connected to.
     std::vector<std::string> connectToPlayback();
 
     // MIDI output ports of other clients (candidates to feed midi_in).
@@ -58,14 +68,15 @@ private:
     static void onShutdown(void *arg);
     static void onPortRegistration(jack_port_id_t port, int registered, void *arg);
 
-    krate::IInstrument &m_instrument;
-    krate::StandaloneTransport &m_transport;
+    IInstrument &m_instrument;
+    StandaloneTransport &m_transport;
+    const int m_channels;
     jack_client_t *m_client = nullptr;
-    jack_port_t *m_outL = nullptr;
-    jack_port_t *m_outR = nullptr;
+    std::array<jack_port_t *, kMaxChannels> m_outs{};
     jack_port_t *m_midiIn = nullptr;
+    MasterStage m_master;
 
-    std::uint32_t m_engineRate = 0; // realtime thread only
+    std::uint32_t m_preparedRate = 0; // realtime thread only
 
     std::atomic<std::uint32_t> m_sampleRate{0};
     std::atomic<std::uint32_t> m_bufferSize{0};
@@ -74,4 +85,4 @@ private:
     std::atomic<bool> m_portsChanged{false};
 };
 
-} // namespace k303
+} // namespace krate

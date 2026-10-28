@@ -3,6 +3,7 @@
 #include <cmath>
 #include <vector>
 
+#include "core/MasterStage.h"
 #include "dsp/DiodeLadder.h"
 #include "dsp/Engine.h"
 #include "dsp/HalfbandDecimator.h"
@@ -94,7 +95,7 @@ private slots:
         host.run(24000);
         const float peak = engine.takePeak();
         QVERIFY(peak > 0.05f);
-        QVERIFY(peak < 1.0f); // soft clip
+        QVERIFY(peak < 1.0f); // at default settings; limiting is the host's master stage
         QCOMPARE(host.left, host.right);
         QCOMPARE(engine.currentStep(), 3); // 0.5 s at 120 BPM = 4 steps of 125 ms
     }
@@ -171,6 +172,29 @@ private slots:
         host.run(32);
         // 32 samples into a 480-sample one-pole: ~6% of the way.
         QVERIFY(engine.takePeak() < 0.2f * steadyPeak);
+    }
+
+    // --- Master stage (host) ----------------------------------------------------
+
+    void masterStageBoundsAndMeters()
+    {
+        krate::MasterStage master;
+        std::vector<float> l = {0.0f, 0.1f, -0.5f, 2.0f, -50.0f, 1e6f};
+        std::vector<float> r(l.size(), 0.0f);
+        float *const buffers[2] = {l.data(), r.data()};
+        master.process(buffers, 2, std::uint32_t(l.size()));
+        for (float s : l)
+            QVERIFY(std::abs(s) <= 1.0f);     // never a hard over
+        QVERIFY(std::abs(l[1] - 0.1f) < 0.001f); // quiet signals barely touched
+        QCOMPARE(l[0], 0.0f);
+        const float peak = master.takePeak();
+        QVERIFY(peak > 0.99f && peak <= 1.0f);
+        QCOMPARE(master.takePeak(), 0.0f);     // reset after reading
+
+        std::vector<float> quietL(4, 0.0f), loudR(4, 0.5f);
+        float *const both[2] = {quietL.data(), loudR.data()};
+        master.process(both, 2, 4);
+        QVERIFY(std::abs(master.takePeak() - std::tanh(0.5f)) < 1e-6f); // every channel is metered
     }
 
     // --- Diode ladder ---------------------------------------------------------

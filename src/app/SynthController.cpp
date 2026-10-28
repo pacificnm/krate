@@ -232,7 +232,7 @@ void SynthController::poll()
     }
 
     // Meter: peak in dB mapped to 0..1 over kMeterFloorDb..0, with a steady fall.
-    const float peak = m_engine.takePeak();
+    const float peak = m_client.takePeak(); // master output, after the soft clip
     const qreal db = peak > 0.0f ? 20.0 * std::log10(qreal(peak)) : kMeterFloorDb;
     const qreal target = qBound(0.0, 1.0 - db / kMeterFloorDb, 1.0);
     const qreal level = std::max(target, m_outputLevel - kMeterFallPerPoll);
