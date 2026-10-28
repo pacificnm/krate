@@ -191,6 +191,25 @@ Focus switching from the controller: a rack action that is MIDI-learnable like a
 
 Standalone apps keep their own `midimap.json` as today (one device, so no channel or focus logic).
 
+#### One controller
+
+Decided: the target setup is **one Nektar Impact LX49 mk3** driving every instrument.
+
+- A button (or several) on the LX49 switches focus: "focus k303", "focus K909", "focus Kalliope", "focus next". Whichever message the button sends (CC, note or Program Change) works, because focus actions are learned like parameters. The panel shows which instrument has focus.
+- Keys and follow-focus knobs drive the focused instrument; fixed knobs (for example K909's level, or tempo) ignore focus.
+- If the LX49's pads can send on their own channel, per-channel routing lets pads play K909 (e.g. channel 10) while the keys play the focused instrument. To be checked on the hardware.
+
+#### Who resolves CCs
+
+Decided: **in the rack, Krate resolves mapped CCs itself** and sets the target instrument's parameter directly. Instruments receive notes and any CCs the rack has not mapped. Each instrument's own `MidiLearnMap` is used standalone only. This is what lets one knob drive K909 while another drives k303, whatever has focus.
+
+#### Rack additions to the shared interfaces
+
+Both are added when the rack is built (K1 below); standalone apps are unaffected.
+
+1. **`IInstrument::setParamFromHost(int index, float normalized)`.** Sets a parameter on behalf of the host *and* raises its "changed by audio" bit, so the instrument's panel moves the knob. Called from the audio thread by the rack when a mapped CC arrives. (`setParam()` stays the GUI's call and raises no bit.) If sample-accurate parameter changes are ever needed, this becomes parameter events carried in `AudioBlock`.
+2. **The MIDI device choice belongs to the host.** In the rack, which controller to connect (`inputPortMatch`, default "Impact LX49") is stored in `rack.json`. Standalone apps keep it in their own `midimap.json` as today.
+
 Standalone apps keep working unchanged. The rack is one more app over the same libraries.
 
 ### Tempo
@@ -232,6 +251,19 @@ Each step keeps every test green and k303 behaving the same; commit after each.
 
 **The refactor is complete.** Starting K909 means adding `instruments/k909/` and `apps/k909/` and nothing in `shared/` should need to change except genuinely new shared pieces.
 
+## Rack build plan
+
+Each step ends with something runnable and tested; commit after each. Instruments keep working standalone throughout.
+
+| # | Step | Done when |
+| --- | --- | --- |
+| K1 | **Rack core** (`shared/rack`, no Qt, no JACK): `krate::Rack` owns the device list, per-device buffers, the shared transport, MIDI routing (channel map + focus), the rack CC map (fixed and follow-focus, resolved via `setParamFromHost`), focus actions, and the mixer (level, pan, mute, solo) into the master stage. Adds `setParamFromHost` to `IInstrument` | Offline tests with fake instruments: routing by channel and focus, focus switching from a learned message, fixed vs follow-focus CCs, mixer math, two devices locked to one transport |
+| K2 | **Klick** (proposed): a tiny metronome instrument in `instruments/klick` (beat clicks, accented bar, level) | Second real device in the rack; locks to the transport; also serves as the click track for k303's timing check |
+| K3 | **Controller split and registry.** Instrument controllers stop owning a host or transport: k303's `Synth` gets its transport and audio status from whoever hosts it. Each instrument library exports a registry entry (id, name, factory, panel, default MIDI channel) | Standalone k303 unchanged: renders byte-identical, app behaves the same |
+| K4 | **RackHost and the `krate` app.** One JACK client: a stereo pair per device plus master, MIDI in. Window: transport bar, device panels (tabs or stack, focus indicator), mixer strip. Panels hide their own Tempo and RUN/STOP | `./build/bin/krate` plays k303 (and Klick) in time from the transport bar; mixer and per-device ports work |
+| K5 | **Rack MIDI learn and session.** Learn fixed and follow-focus knobs and focus actions; `rack.json` saves transport, mixer, routing, MIDI map, focus, device choice and each device's state | A restart restores everything |
+| K6 | **Hardware check with the LX49**: focus buttons, pads channel, knobs | Notes recorded here; any message types the LX49 sends that we don't handle are fixed |
+
 ## Decisions and open questions
 
 | # | Question | Decision |
@@ -243,3 +275,7 @@ Each step keeps every test green and k303 behaving the same; commit after each.
 | 5 | Rack audio outputs | Stereo pair per device plus master |
 | 6 | Tempo in the rack | Transport bar; panels hide their own Tempo and RUN/STOP in the rack |
 | 7 | More instruments later | Yes: compile-time instrument registry; nothing in the rack is instrument-specific |
+| 8 | Controllers | One LX49; focus switched from a button on it (any learnable CC, note or Program Change); pads on their own channel if the hardware allows |
+| 9 | Who maps CCs in the rack | Krate resolves mapped CCs and calls `setParamFromHost`; instruments get notes and unmapped CCs; instrument learn maps are standalone-only |
+| 10 | MIDI device setting | Host-owned: `rack.json` in the rack, `midimap.json` standalone |
+| 11 | Next build | The Krate rack (K1–K6), before K909 |
