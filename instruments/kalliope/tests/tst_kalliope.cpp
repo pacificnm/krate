@@ -1,5 +1,6 @@
 #include <QtTest>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <set>
@@ -111,24 +112,26 @@ private slots:
         QVERIFY(!k.controller.playing());
     }
 
-    // P0: silent, and a learned CC still moves its parameter (snapped to detents).
-    void engineIsSilentAndLearnsCcs()
+    // A note plays, and learned CCs move their parameters (snapped to detents).
+    void engineLearnsCcsAndPlaysNotes()
     {
         Engine engine;
         engine.prepare(48000.0, 128);
         engine.midiLearnMap()->setMapping(21, int(ParamId::Cutoff));
         engine.midiLearnMap()->setMapping(22, int(ParamId::KeyMode));
         std::array<float, 128> left, right;
-        left.fill(1.0f);
-        right.fill(1.0f);
         const std::array<krate::MidiEvent, 3> midi{{
             {0, 3, {0x91, 60, 100}},
             {5, 3, {0xB1, 21, 127}},
             {6, 3, {0xB1, 22, 70}}, // 0.55 -> Unison
         }};
         krate::processStereo(engine, left.data(), right.data(), 128, midi.data(), 3);
-        for (std::size_t i = 0; i < left.size(); ++i)
-            QVERIFY(left[i] == 0.0f && right[i] == 0.0f);
+        float peak = 0.0f;
+        for (std::size_t i = 0; i < left.size(); ++i) {
+            QCOMPARE(left[i], right[i]); // mono until the chorus
+            peak = std::max(peak, std::fabs(left[i]));
+        }
+        QVERIFY(peak > 0.0f);
         QCOMPARE(engine.param(ParamId::Cutoff), 1.0f);
         QCOMPARE(engine.param(ParamId::KeyMode), 0.5f);
     }

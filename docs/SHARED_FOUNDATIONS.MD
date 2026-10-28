@@ -137,6 +137,7 @@ CMakeLists.txt         Krate project; one add_subdirectory per folder below
 shared/
   core/      krate_core   IInstrument, AudioBlock, TransportState, ParamDescriptor, Transport,
                           StepClock, Midi (decode, MidiLearnMap), MasterStage, SpscQueue, Denormals  -- no Qt
+  dsp/       krate_dsp    HalfbandDecimator, polyBlep (header-only DSP building blocks)          -- no Qt
   host/      krate_host   JackHost (standalone); later RackHost                                   -- JACK, no Qt
   app/       krate_app    JsonFile, MidiMapFile, PanelFile, ScreenshotHook                        -- Qt
              krate_qml    MidiLearnController (QML singleton MidiLearn)
@@ -147,7 +148,9 @@ instruments/
   k303/      dsp/ (k303_dsp: Engine : IInstrument), app/ + qml/ (k303_ui: QML module "K303"),
              tools/ (k303-render), tests/, docs/, README.md
   klick/     dsp/ (klick_dsp: metronome, IInstrument), tests/, README.md
-  k909/      ...
+  k909/      dsp/ (k909_dsp), app/ + qml/ (k909_ui: QML module "K909"), tools/ (k909-render), tests/, docs/
+  kalliope/  dsp/ (kalliope_dsp), app/ + qml/ (kalliope_ui: QML module "Kalliope"), tools/ (kalliope-render), tests/, docs/
+             (K909 and Kalliope are included as "k909/...", "kalliope/...": instruments share file names)
   kalliope/  ...
 apps/
   k303/      main.cpp: JackHost + the K303 and Krate modules

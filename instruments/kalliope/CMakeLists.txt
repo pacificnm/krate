@@ -6,14 +6,27 @@ set(KALLIOPE_WARNINGS -Wall -Wextra -Wpedantic -Werror)
 add_library(kalliope_dsp STATIC
     dsp/Engine.h
     dsp/Engine.cpp
+    dsp/Envelope.h
+    dsp/Filters.h
+    dsp/Filters.cpp
+    dsp/Lfo.h
+    dsp/Oscillator.h
+    dsp/Oscillator.cpp
     dsp/Params.h
     dsp/Params.cpp
+    dsp/Voice.h
+    dsp/Voice.cpp
 )
 # Included as "kalliope/dsp/...", "kalliope/app/...": instruments share file
 # names (Engine.h, Params.h), and the rack builds against all of them.
 target_include_directories(kalliope_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(kalliope_dsp PUBLIC krate_core krate_dsp)
 target_compile_options(kalliope_dsp PRIVATE ${KALLIOPE_WARNINGS})
+
+# --- kalliope-render: offline renderer and benchmark
+add_executable(kalliope-render tools/render_main.cpp)
+target_link_libraries(kalliope-render PRIVATE kalliope_dsp)
+target_compile_options(kalliope-render PRIVATE ${KALLIOPE_WARNINGS})
 
 # --- kalliope_ui: QML module "Kalliope": controller and the panel
 qt_add_library(kalliope_ui STATIC)
@@ -36,6 +49,11 @@ target_link_libraries(kalliope_ui PUBLIC kalliope_dsp krate_host krate_app krate
 target_compile_options(kalliope_ui PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests
+add_executable(kalliope_tst_voice tests/tst_voice.cpp)
+target_compile_options(kalliope_tst_voice PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(kalliope_tst_voice PRIVATE kalliope_dsp krate_testing Qt6::Test)
+add_test(NAME kalliope_tst_voice COMMAND kalliope_tst_voice)
+
 # Compiles the controller sources directly (plain add_executable) rather than
 # linking the QML module library, so no QML plugin is involved.
 add_executable(tst_kalliope
