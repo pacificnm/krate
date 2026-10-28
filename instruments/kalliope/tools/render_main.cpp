@@ -57,6 +57,20 @@ std::vector<NoteEvent> line(std::initializer_list<int> notes, double step, doubl
     return e;
 }
 
+std::vector<NoteEvent> chords(std::initializer_list<std::initializer_list<int>> list, double step, double gate)
+{
+    std::vector<NoteEvent> e;
+    double t = 0.0;
+    for (const auto &chord : list) {
+        for (int n : chord) {
+            e.push_back({t, n, 100});
+            e.push_back({t + gate, -n, 0});
+        }
+        t += step;
+    }
+    return e;
+}
+
 std::vector<Sound> sounds()
 {
     namespace p = kalliope::positions;
@@ -70,7 +84,7 @@ std::vector<Sound> sounds()
                      {ParamId::Vco2Fine, 0.53f}, {ParamId::Pwm, 0.7f}, {ParamId::PwmSrc, pos(0, p::kPwmSrc)},
                      {ParamId::LfoRate, 0.35f}, {ParamId::Cutoff, 0.55f}, {ParamId::VcfEnv, 0.1f},
                      {ParamId::Env2A, 0.6f}, {ParamId::Env2R, 0.65f}},
-         line({57, 60, 64}, 1.0, 0.9)},
+         chords({{57, 60, 64}, {55, 59, 62}, {53, 57, 60, 64}}, 1.2, 1.1)},
         {"sync lead", {{ParamId::Vco1Wave, pos(1, p::kVco1Wave)}, {ParamId::Vco2Wave, pos(1, p::kVco2Wave)},
                        {ParamId::Sync, 1.0f}, {ParamId::Mix, 1.0f}, {ParamId::ModEnv, 0.6f},
                        {ParamId::ModDest, pos(2, p::kModDest)}, {ParamId::Env1D, 0.55f}, {ParamId::Env1S, 0.0f},
@@ -169,7 +183,7 @@ int main(int argc, char **argv)
 
     krate::MasterStage master;
     if (bench) {
-        // The heaviest single voice: sync, cross mod, full resonance, held for 60 s.
+        // The heaviest case: all eight voices held with sync, cross mod and full resonance, 60 s.
         kalliope::Engine engine;
         engine.prepare(rate, kBlock);
         engine.setParam(ParamId::Sync, 1.0f);
@@ -178,9 +192,12 @@ int main(int argc, char **argv)
         std::vector<float> out;
         out.reserve(std::size_t(rate) * 60 * 2 + 2 * kBlock);
         const auto t0 = std::chrono::steady_clock::now();
-        play(engine, master, {{0.0, 48, 100}}, 60.0, rate, out);
+        std::vector<NoteEvent> chord;
+        for (int note : {36, 43, 48, 52, 55, 60, 64, 67})
+            chord.push_back({0.0, note, 100});
+        play(engine, master, chord, 60.0, rate, out);
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-        std::printf("rendered 60 s of one voice at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
+        std::printf("rendered 60 s of 8 voices at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
                     seconds, seconds / 60.0 * 100.0);
         return 0;
     }

@@ -13,9 +13,9 @@
 
 namespace kalliope {
 
-// Kalliope's realtime core (docs/DSP.md). P1: one voice, played by MIDI with
-// last-note priority, at 2x and decimated; pitch bend, mod wheel, MIDI Learn.
-// Polyphony arrives in P2, effects in P4.
+// Kalliope's realtime core (docs/DSP.md): eight voices at 2x, decimated once;
+// Poly, Unison and Solo key modes (docs/PLAY.md#key-modes), sustain pedal,
+// pitch bend, mod wheel, MIDI Learn. Effects arrive in P4.
 class Engine final : public krate::IInstrument
 {
 public:
@@ -36,19 +36,42 @@ public:
     // The panel's settings in DSP units (what the voices play with).
     VoiceSettings settings() const noexcept;
 
+    static constexpr int kVoices = 8;
+    enum class KeyMode { Poly, Unison, Solo };
+
+    // Inspection (tests): what each voice is doing.
+    bool voiceActive(int v) const noexcept { return m_voices[std::size_t(v)].active(); }
+    bool voiceGate(int v) const noexcept { return m_voices[std::size_t(v)].gate(); }
+    int voiceNote(int v) const noexcept { return m_voices[std::size_t(v)].note(); }
+    double voiceLevel(int v) const noexcept { return m_voices[std::size_t(v)].level(); }
+    int activeVoices() const noexcept;
+
 private:
     static constexpr std::uint32_t kChunk = 128; // frames rendered at a time (fixed buffers)
 
     void handleMidi(const krate::MidiEvent &event) noexcept;
     void noteOn(int note, int velocity) noexcept;
     void noteOff(int note) noexcept;
+    void setSustain(bool down) noexcept;
+    void allNotesOff() noexcept;
     void render(float *out, std::uint32_t frames, const VoiceSettings &s) noexcept;
+    KeyMode keyMode() const noexcept;
+    void applyKeyMode(KeyMode mode) noexcept;
+    int pickVoice(int note) noexcept; // Poly: which voice plays `note`
+    void playMono(bool retrigger) noexcept; // Unison/Solo: the voices follow the top held key
+    void releaseVoice(int v) noexcept;      // key up: release, or hold for the pedal
 
     krate::ParamValues<ParamCount> m_params{kParams};
     krate::MidiLearnMap m_learn{kParams}; // parameters are ParamId values
     double m_sampleRate = 48000.0;
 
-    Voice m_voice;
+    std::array<Voice, kVoices> m_voices;
+    std::array<std::uint64_t, kVoices> m_started{};  // note-on order, for stealing
+    std::array<bool, kVoices> m_sustained{};         // key up, held by the pedal
+    std::uint64_t m_counter = 0;
+    KeyMode m_mode = KeyMode::Poly;
+    bool m_sustain = false;
+    std::uint32_t m_phaseSeed = 0x9E3779B9u; // start phases of new Poly notes (deterministic)
     Lfo m_lfo;
     krate::HalfbandDecimator<31> m_decimator;
     std::array<float, 2 * kChunk> m_buffer2x{};

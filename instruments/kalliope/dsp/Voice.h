@@ -56,17 +56,25 @@ public:
 
     // retrigger false: legato, the envelopes keep going (Solo, Unison).
     void noteOn(int note, float velocity, bool retrigger) noexcept;
+    // Take this sounding voice for a new note: fade it out over 2 ms, then start the note.
+    void steal(int note, float velocity) noexcept;
     void noteOff() noexcept;
     void kill() noexcept;           // silence now (tests, reset)
-    bool active() const noexcept { return m_env2.active(); }
-    bool released() const noexcept { return !m_gate; }
-    int note() const noexcept { return m_note; }
+    bool active() const noexcept { return m_env2.active() || m_stealing; }
+    bool gate() const noexcept { return m_gate; }
+    int note() const noexcept { return m_stealing ? m_nextNote : m_note; }
     double level() const noexcept { return m_env2.level(); }
+
+    // Unison: this voice's detune, output gain and oscillator start phase
+    // (0, 1, 0 for one voice per note).
+    void setSpread(double detuneSemis, double gain, double phase) noexcept;
 
     // Adds 2 * frames samples (2x rate) to out2x. lfo: one value per host-rate frame.
     void render(float *out2x, std::uint32_t frames, const float *lfo, const VoiceSettings &s) noexcept;
 
 private:
+    void start(int note, float velocity) noexcept; // a fresh note on a silent voice
+
     double m_rate = 96000.0;
     Oscillator m_vco1, m_vco2;
     HighPass m_hpf;
@@ -79,6 +87,14 @@ private:
     double m_vco2Value = 0.0; // last VCO-2 output (cross mod)
     double m_cutoff = -1.0;  // smoothed cutoff, octaves; < 0 = take the next value as is
     double m_gain = -1.0;    // smoothed VCA level
+    double m_detune = 0.0;   // semitones (unison)
+    double m_spreadGain = 1.0;
+    double m_startPhase = 0.0;
+    bool m_stealing = false; // fading out before m_nextNote starts
+    double m_fade = 1.0;
+    double m_fadeStep = 0.0;
+    int m_nextNote = 60;
+    float m_nextVelocity = 1.0f;
 };
 
 } // namespace kalliope

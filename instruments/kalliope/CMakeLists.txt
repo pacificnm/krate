@@ -49,10 +49,12 @@ target_link_libraries(kalliope_ui PUBLIC kalliope_dsp krate_host krate_app krate
 target_compile_options(kalliope_ui PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests
-add_executable(kalliope_tst_voice tests/tst_voice.cpp)
-target_compile_options(kalliope_tst_voice PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(kalliope_tst_voice PRIVATE kalliope_dsp krate_testing Qt6::Test)
-add_test(NAME kalliope_tst_voice COMMAND kalliope_tst_voice)
+foreach(test tst_voice tst_voices)
+    add_executable(kalliope_${test} tests/${test}.cpp)
+    target_compile_options(kalliope_${test} PRIVATE -Wall -Wextra -Wpedantic)
+    target_link_libraries(kalliope_${test} PRIVATE kalliope_dsp krate_testing Qt6::Test)
+    add_test(NAME kalliope_${test} COMMAND kalliope_${test})
+endforeach()
 
 # Compiles the controller sources directly (plain add_executable) rather than
 # linking the QML module library, so no QML plugin is involved.

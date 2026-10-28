@@ -11,6 +11,7 @@ constexpr double kLowRangeHzAtC2 = 0.3;     // VCO-2 Low
 constexpr double kSmoothingSeconds = 0.004; // cutoff and level changes
 constexpr double kMaxPulseNarrowing = 0.45; // width 0.5 down to 0.05
 constexpr double kMixGain = 0.5;
+constexpr double kStealFadeSeconds = 0.002;
 
 double noteHz(double note) { return 440.0 * std::exp2((note - 69.0) / 12.0); }
 } // namespace
@@ -20,6 +21,7 @@ void Voice::prepare(double sampleRate2x) noexcept
     m_rate = sampleRate2x;
     m_env1.setSampleRate(sampleRate2x);
     m_env2.setSampleRate(sampleRate2x);
+    m_fadeStep = 1.0 / (kStealFadeSeconds * sampleRate2x);
     kill();
 }
 
@@ -32,23 +34,63 @@ void Voice::kill() noexcept
     m_vcf.reset();
     m_cutoff = -1.0;
     m_gain = -1.0;
+    m_stealing = false;
+    m_fade = 1.0;
 }
 
-void Voice::noteOn(int note, float velocity, bool retrigger) noexcept
+void Voice::setSpread(double detuneSemis, double gain, double phase) noexcept
+{
+    m_detune = detuneSemis;
+    m_spreadGain = gain;
+    m_startPhase = phase;
+}
+
+void Voice::start(int note, float velocity) noexcept
 {
     m_note = note;
     m_velocity = std::clamp(double(velocity), 0.0, 1.0);
     m_gate = true;
-    if (retrigger || !m_env2.active()) {
-        if (!m_env2.active()) { // a fresh voice: start clean
-            m_vco1.reset();
-            m_vco2.reset();
-            m_hpf.reset();
-            m_vcf.reset();
-            m_cutoff = -1.0;
-            m_gain = -1.0;
-            m_sinceOn = 0.0;
-        }
+    m_vco1.reset(m_startPhase);
+    m_vco2.reset(m_startPhase);
+    m_hpf.reset();
+    m_vcf.reset();
+    m_cutoff = -1.0;
+    m_gain = -1.0;
+    m_sinceOn = 0.0;
+    m_env1.kill();
+    m_env2.kill();
+    m_env1.gateOn();
+    m_env2.gateOn();
+}
+
+void Voice::steal(int note, float velocity) noexcept
+{
+    if (!m_env2.active()) {
+        start(note, velocity);
+        return;
+    }
+    m_stealing = true;
+    m_nextNote = note;
+    m_nextVelocity = velocity;
+    m_gate = true;
+}
+
+void Voice::noteOn(int note, float velocity, bool retrigger) noexcept
+{
+    if (m_stealing) { // still fading out: the new note replaces the one waiting
+        m_nextNote = note;
+        m_nextVelocity = velocity;
+        return;
+    }
+    if (!m_env2.active()) { // a fresh voice: start clean
+        start(note, velocity);
+        return;
+    }
+    // A sounding voice: same pitch path, envelopes from where they are.
+    m_note = note;
+    m_velocity = std::clamp(double(velocity), 0.0, 1.0);
+    m_gate = true;
+    if (retrigger) {
         m_env1.gateOn();
         m_env2.gateOn();
     }
@@ -56,6 +98,9 @@ void Voice::noteOn(int note, float velocity, bool retrigger) noexcept
 
 void Voice::noteOff() noexcept
 {
+    if (m_stealing) { // released before it started: let the fade finish, then stay silent
+        m_nextNote = -1;
+    }
     m_gate = false;
     m_env1.gateOff();
     m_env2.gateOff();
@@ -63,7 +108,7 @@ void Voice::noteOff() noexcept
 
 void Voice::render(float *out2x, std::uint32_t frames, const float *lfo, const VoiceSettings &s) noexcept
 {
-    if (!m_env2.active())
+    if (!active())
         return;
 
     m_vco1.setWave(s.vco1Wave);
@@ -74,18 +119,20 @@ void Voice::render(float *out2x, std::uint32_t frames, const float *lfo, const V
     m_env2.setTimes(s.env2, keyScale);
     m_hpf.set(s.hpfHz, m_rate);
 
-    const double velocityGain = 1.0 - s.velocityAmount * (1.0 - m_velocity);
-    const double targetGain = s.level * velocityGain;
-    const double baseCutoff = s.cutoffOctaves + s.keyFollow * (m_note - 60) / 12.0;
     const double smoothing = 1.0 - std::exp(-1.0 / (kSmoothingSeconds * m_rate));
-    if (m_cutoff < 0.0)
-        m_cutoff = baseCutoff;
-    if (m_gain < 0.0)
-        m_gain = targetGain;
     const double nyquistOctaves = std::log2(0.42 * m_rate);
     const double dt = 1.0 / (m_rate * 0.5); // seconds per host frame
 
     for (std::uint32_t i = 0; i < frames; ++i) {
+        // Per frame: a stolen voice can start its new note mid-block.
+        const double velocityGain = 1.0 - s.velocityAmount * (1.0 - m_velocity);
+        const double targetGain = s.level * velocityGain;
+        const double baseCutoff = s.cutoffOctaves + s.keyFollow * (m_note - 60) / 12.0;
+        if (m_cutoff < 0.0)
+            m_cutoff = baseCutoff;
+        if (m_gain < 0.0)
+            m_gain = targetGain;
+
         // LFO, faded in after note-on by the LFO delay.
         const double fade = s.lfoDelay > 0.0 ? std::min(1.0, m_sinceOn / s.lfoDelay) : 1.0;
         const double l = double(lfo[i]) * fade;
@@ -94,7 +141,7 @@ void Voice::render(float *out2x, std::uint32_t frames, const float *lfo, const V
         // Pitch for this host frame (shared by its two 2x samples).
         const double env1Now = m_env1.level();
         const double modOct = s.modLfoOctaves * l + s.modEnvOctaves * env1Now;
-        const double common = m_note + s.bendSemis + s.vibratoSemis * double(lfo[i]);
+        const double common = m_note + m_detune + s.bendSemis + s.vibratoSemis * double(lfo[i]);
         const double f1 = noteHz(common + 12.0 * (s.vco1Octave + (s.modVco1 ? modOct : 0.0)));
         const double f2 = s.vco2Low
                               ? kLowRangeHzAtC2 * std::exp2((common - 36.0 + s.vco2FineSemis) / 12.0
@@ -131,9 +178,26 @@ void Voice::render(float *out2x, std::uint32_t frames, const float *lfo, const V
             const float filtered = m_vcf.process(m_hpf.process(mixed), s.slope24);
             m_env1.next();
             const double amp = m_env2.next();
-            out2x[2 * i + std::uint32_t(k)] += float(double(filtered) * amp * m_gain * tremolo);
+            double fade = 1.0;
+            if (m_stealing) {
+                m_fade -= m_fadeStep;
+                fade = std::max(m_fade, 0.0);
+            }
+            out2x[2 * i + std::uint32_t(k)] += float(double(filtered) * amp * m_gain * tremolo * m_spreadGain * fade);
         }
-        if (!m_env2.active())
+        if (m_stealing && m_fade <= 0.0) {
+            // Faded out: the new note starts on the next frame.
+            m_stealing = false;
+            m_fade = 1.0;
+            if (m_nextNote >= 0) {
+                start(m_nextNote, m_nextVelocity);
+            } else {
+                m_env1.kill();
+                m_env2.kill();
+                m_gate = false;
+            }
+        }
+        if (!active())
             break;
     }
 }

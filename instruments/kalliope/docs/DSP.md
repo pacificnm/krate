@@ -25,18 +25,18 @@ Each voice runs at **2× the host rate**; the voices are summed at 2× and the s
 
 | Block | Design |
 | --- | --- |
-| **Oscillators** | `Oscillator`: phase accumulators where every jump (a saw's wrap, a pulse's edges, a sync reset) is corrected by a two-sample polynomial band-limited step of the jump's actual height at its exact sub-sample time (the sample before gets h·t²/2, the one after −h·(1−t)²/2). Saw, pulse (width 0.05–0.5 from PWM), square; triangle and sine are continuous (the triangle's corners alias little at 2×). **Sync**: VCO-2 resets when VCO-1 wraps, with the reset's jump corrected the same way. **Cross mod**: VCO-2's last output scales VCO-1's frequency by 1 ± 4 × depth (linear FM, clamped at 0) |
+| **Oscillators** | `Oscillator`: phase accumulators where every jump (a saw's wrap, a pulse's edges, a sync reset) is corrected by a two-sample polynomial band-limited step of the jump's actual height at its exact sub-sample time (the sample before gets h·t²/2, the one after −h·(1−t)²/2). Saw, pulse (width 0.05–0.5 from PWM, its DC removed as on an AC-coupled circuit), square; triangle and sine are continuous (the triangle's corners alias little at 2×). **Sync**: VCO-2 resets when VCO-1 wraps, with the reset's jump corrected the same way. **Cross mod**: VCO-2's last output scales VCO-1's frequency by 1 ± 4 × depth (linear FM, clamped at 0) |
 | **Ranges** | Footages are octaves: 16' = note −1 octave, 8' = as played, 4' = +1, 2' = +2. VCO-2 Low: a fixed 0.3 Hz at C2, tracking the keyboard, for slow sweeps and cross-mod effects |
 | **Noise** | xorshift32 white noise per voice (VCO-2's fourth waveform) |
 | **HPF** | 1-pole TPT high-pass, 0 (off) to 1 kHz |
 | **VCF** | `Ladder`: 4 TPT one-pole stages, the feedback solved per sample (zero delay), tanh at the input; −24 dB from the 4th stage, −12 dB from the 2nd, feedback from the 4th; k = 4.2 × Resonance (self-oscillates near the top); input makeup √(1+k). Cutoff = knob + ENV (8 oct) × velocity + LFO (4 oct) + key follow, summed in octaves, smoothed (4 ms) and clamped under 0.42 × the 2× rate |
 | **Envelopes** | `Envelope`: ADSR with exponential (RC-like) segments, 1 ms–10 s; the attack aims at 1.2 and stops at 1 (`attack` = time to full level); decay and release times are to −60 dB of the way. Env Key Follow shortens times by up to half (C2 → top of the keyboard). Retriggering starts from the current level (no click) |
 | **LFO** | One per instrument (all voices share its phase, as on the original style of machine); per-voice delay ramp (linear fade-in over `lfo_delay`) so newly played notes start dry |
-| **VCA** | ENV-2 × level² × (1 − tremolo) × velocity (1 − amount × (1 − velocity)), level smoothed over 4 ms. Stealing declick arrives with polyphony (P2) |
+| **VCA** | ENV-2 × level² × (1 − tremolo) × velocity (1 − amount × (1 − velocity)), level smoothed over 4 ms; a 2 ms fade when the voice is stolen |
 
 ## Voices and allocation
 
-8 voices. **Poly**: a free voice if any; otherwise the oldest released voice; otherwise the oldest held voice (with the declick fade). **Unison**: all 8 voices on the newest note, detuned ±12 cents across them, last-note priority, legato (no retrigger while a key is held). **Solo**: one voice, last-note priority, legato. Sustain (CC 64) keeps released notes sounding until the pedal lifts.
+8 voices, summed at 2× and decimated once. **Poly**: a note already sounding (or releasing) reuses its voice; else a silent voice; else the oldest released (or pedal-held) voice; else the oldest held one. A sounding voice that is taken fades out over 2 ms before its new note starts (no click). Each new Poly note starts its oscillators at a different (pseudo-random, deterministic) phase, like free-running analog oscillators, so a chord's notes don't all start on the same edge. **Unison**: all 8 voices on the newest note, detuned evenly from −12 to +12 cents, start phases spread, each at 1/√8 so the stack sits near one voice's level; last-note priority, legato (no retrigger while a key is held). **Solo**: one voice, last-note priority, legato. Changing Key Mode releases every note. Sustain (CC 64) keeps released notes sounding until the pedal lifts; CC 120 and 123 release everything.
 
 ## Effects
 
@@ -47,4 +47,4 @@ Each voice runs at **2× the host rate**; the voices are summed at 2× and the s
 
 ## Levels and CPU
 
-Eight voices at full resonance must stay bounded (tests check peaks with every voice playing). Budget: 8 voices, 2× oversampled, chorus and delay under 10% of a core at 48 kHz / 64 frames (`kalliope-render --bench`). P1 measures one voice (sync, cross mod, full resonance) at 0.55%. Silent voices are skipped.
+The engine applies Volume and a −3 dB output trim: single notes sit around −15 dBFS and a four-note pad peaks around −4 dBFS at the default levels, under the host's soft clip. Eight voices at full resonance stay bounded (tested). Budget: 8 voices, 2× oversampled, chorus and delay under 10% of a core at 48 kHz / 64 frames (`kalliope-render --bench`). P2 measures all 8 voices held with sync, cross mod and full resonance at 3.8% (one voice: 0.55%). Silent voices are skipped.

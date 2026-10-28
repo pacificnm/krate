@@ -151,6 +151,7 @@ private slots:
     {
         Engine e;
         plain(e);
+        e.setParam(ParamId::KeyMode, 1.0f); // Solo: legato, last-note priority
         // Bend fully up (range 2 st), then hold 60, press 64, release 64: back to 60.
         const auto out = render(e, {{0.0, 0xE0, 0x7F, 0x7F}, {0.0, 0x90, 69, 100}, {0.5, 0xE0, 0x00, 0x40},
                                     {0.5, 0x80, 69, 0}, {0.6, 0x90, 60, 100}, {1.0, 0x90, 64, 100},

@@ -18,7 +18,7 @@ double Oscillator::naive(double phase, double width) const noexcept
     switch (m_wave) {
     case Wave::Triangle: return 1.0 - 4.0 * std::fabs(phase - 0.5); // -1 at 0, +1 at 0.5
     case Wave::Saw: return 2.0 * phase - 1.0;
-    case Wave::Pulse: return phase < width ? 1.0 : -1.0;
+    case Wave::Pulse: return (phase < width ? 1.0 : -1.0) - (2.0 * width - 1.0); // without its DC, as AC-coupled
     case Wave::Square: return phase < 0.5 ? 1.0 : -1.0;
     case Wave::Sine: return std::sin(2.0 * std::numbers::pi * phase);
     case Wave::Noise: return 0.0;

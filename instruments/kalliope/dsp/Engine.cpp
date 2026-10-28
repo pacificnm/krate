@@ -9,6 +9,9 @@ namespace kalliope {
 
 namespace {
 constexpr double kVolumeSmoothingSeconds = 0.01;
+// -3 dB under the voices: a four-note pad at the default levels peaks around
+// -4 dBFS, under the host's soft clip; single notes sit around -15 dBFS.
+constexpr double kOutputTrim = 0.7071;
 constexpr double kMaxResonance = 4.2;     // ladder feedback at Resonance 100%: self-oscillation
 constexpr double kModLfoOctaves = 1.0;
 constexpr double kModEnvOctaves = 2.0;
@@ -16,12 +19,22 @@ constexpr double kVcfEnvOctaves = 8.0;
 constexpr double kVcfLfoOctaves = 4.0;
 constexpr double kWheelVibratoSemis = 1.0;
 constexpr int kCcModWheel = 1;
+constexpr int kCcSustain = 64;
+constexpr int kCcAllSoundOff = 120;
+constexpr int kCcAllNotesOff = 123;
+constexpr double kUnisonDetuneCents = 12.0; // voices spread -12 .. +12 cents
 } // namespace
 
 void Engine::prepare(double sampleRate, std::uint32_t) noexcept
 {
     m_sampleRate = sampleRate;
-    m_voice.prepare(2.0 * sampleRate);
+    for (Voice &voice : m_voices)
+        voice.prepare(2.0 * sampleRate);
+    m_heldCount = 0;
+    m_sustained.fill(false);
+    m_sustain = false;
+    m_mode = keyMode();
+    applyKeyMode(m_mode);
     m_decimator.reset();
     m_lfo.reset();
     m_volumeSmoothing = 1.0 - std::exp(-1.0 / (kVolumeSmoothingSeconds * sampleRate));
@@ -80,9 +93,78 @@ VoiceSettings Engine::settings() const noexcept
     return s;
 }
 
+int Engine::activeVoices() const noexcept
+{
+    int n = 0;
+    for (const Voice &voice : m_voices)
+        n += voice.active() ? 1 : 0;
+    return n;
+}
+
+Engine::KeyMode Engine::keyMode() const noexcept
+{
+    return KeyMode(units::index(m_params.get(int(ParamId::KeyMode)), positions::kKeyMode));
+}
+
+void Engine::applyKeyMode(KeyMode mode) noexcept
+{
+    m_mode = mode;
+    for (int v = 0; v < kVoices; ++v) {
+        if (mode == KeyMode::Unison) {
+            // Detuned across the voices, spread start phases, gain so the stack sums near one voice's level.
+            const double detune = kUnisonDetuneCents * (2.0 * v / (kVoices - 1) - 1.0) / 100.0;
+            m_voices[std::size_t(v)].setSpread(detune, 1.0 / std::sqrt(double(kVoices)), double(v) / kVoices);
+        } else {
+            m_voices[std::size_t(v)].setSpread(0.0, 1.0, 0.0);
+        }
+    }
+}
+
+void Engine::allNotesOff() noexcept
+{
+    m_heldCount = 0;
+    m_sustained.fill(false);
+    for (Voice &voice : m_voices)
+        voice.noteOff();
+}
+
+int Engine::pickVoice(int note) noexcept
+{
+    // The same note again: its own voice (sounding or releasing).
+    for (int v = 0; v < kVoices; ++v)
+        if (m_voices[std::size_t(v)].active() && m_voices[std::size_t(v)].note() == note)
+            return v;
+    // A silent voice.
+    for (int v = 0; v < kVoices; ++v)
+        if (!m_voices[std::size_t(v)].active())
+            return v;
+    // The oldest released voice, else the oldest held one.
+    int best = -1;
+    for (int pass = 0; pass < 2 && best < 0; ++pass)
+        for (int v = 0; v < kVoices; ++v) {
+            const bool released = !m_voices[std::size_t(v)].gate() || m_sustained[std::size_t(v)];
+            if ((pass == 0) != released)
+                continue;
+            if (best < 0 || m_started[std::size_t(v)] < m_started[std::size_t(best)])
+                best = v;
+        }
+    return best;
+}
+
+void Engine::playMono(bool retrigger) noexcept
+{
+    const int note = m_held[std::size_t(m_heldCount - 1)];
+    const int count = m_mode == KeyMode::Unison ? kVoices : 1;
+    for (int v = 0; v < count; ++v) {
+        m_sustained[std::size_t(v)] = false;
+        m_voices[std::size_t(v)].noteOn(note, m_lastVelocity, retrigger);
+    }
+}
+
 void Engine::noteOn(int note, int velocity) noexcept
 {
-    // Last-note priority over the held keys.
+    m_lastVelocity = float(velocity) / 127.0f;
+    // The held keys, oldest first (last-note priority in Unison and Solo).
     for (int i = 0; i < m_heldCount; ++i)
         if (m_held[std::size_t(i)] == note) {
             std::copy(m_held.begin() + i + 1, m_held.begin() + m_heldCount, m_held.begin() + i);
@@ -93,9 +175,35 @@ void Engine::noteOn(int note, int velocity) noexcept
         std::copy(m_held.begin() + 1, m_held.end(), m_held.begin());
         --m_heldCount;
     }
+    const bool othersHeld = m_heldCount > 0;
     m_held[std::size_t(m_heldCount++)] = std::uint8_t(note);
-    m_lastVelocity = float(velocity) / 127.0f;
-    m_voice.noteOn(note, m_lastVelocity, true);
+
+    if (m_mode != KeyMode::Poly) {
+        playMono(!othersHeld); // legato while another key is down
+        return;
+    }
+    const int v = pickVoice(note);
+    Voice &voice = m_voices[std::size_t(v)];
+    // Free-running oscillators, as on analog machines: each new note starts at
+    // its own phase, so a chord's notes don't all start on the same edge.
+    m_phaseSeed ^= m_phaseSeed << 13;
+    m_phaseSeed ^= m_phaseSeed >> 17;
+    m_phaseSeed ^= m_phaseSeed << 5;
+    voice.setSpread(0.0, 1.0, double(m_phaseSeed >> 8) / double(1u << 24));
+    m_started[std::size_t(v)] = ++m_counter;
+    m_sustained[std::size_t(v)] = false;
+    if (voice.active() && voice.note() != note)
+        voice.steal(note, m_lastVelocity);   // fade out its old note first
+    else
+        voice.noteOn(note, m_lastVelocity, true);
+}
+
+void Engine::releaseVoice(int v) noexcept
+{
+    if (m_sustain)
+        m_sustained[std::size_t(v)] = true;
+    else
+        m_voices[std::size_t(v)].noteOff();
 }
 
 void Engine::noteOff(int note) noexcept
@@ -107,12 +215,36 @@ void Engine::noteOff(int note) noexcept
             --m_heldCount;
             break;
         }
-    if (!wasTop)
+
+    if (m_mode != KeyMode::Poly) {
+        if (!wasTop)
+            return;
+        if (m_heldCount > 0) {
+            playMono(false); // back to the previous held key, legato
+            return;
+        }
+        const int count = m_mode == KeyMode::Unison ? kVoices : 1;
+        for (int v = 0; v < count; ++v)
+            releaseVoice(v);
         return;
-    if (m_heldCount > 0) // back to the previous held key, legato
-        m_voice.noteOn(m_held[std::size_t(m_heldCount - 1)], m_lastVelocity, false);
-    else
-        m_voice.noteOff();
+    }
+    for (int v = 0; v < kVoices; ++v) {
+        const Voice &voice = m_voices[std::size_t(v)];
+        if (voice.gate() && voice.note() == note && !m_sustained[std::size_t(v)])
+            releaseVoice(v);
+    }
+}
+
+void Engine::setSustain(bool down) noexcept
+{
+    m_sustain = down;
+    if (down)
+        return;
+    for (int v = 0; v < kVoices; ++v)
+        if (m_sustained[std::size_t(v)]) {
+            m_sustained[std::size_t(v)] = false;
+            m_voices[std::size_t(v)].noteOff();
+        }
 }
 
 void Engine::handleMidi(const krate::MidiEvent &event) noexcept
@@ -124,6 +256,10 @@ void Engine::handleMidi(const krate::MidiEvent &event) noexcept
             m_params.setFromAudio(r.param, r.value);
         else if (m.data1 == kCcModWheel)
             m_wheel = m.data2 / 127.0;
+        else if (m.data1 == kCcSustain)
+            setSustain(m.data2 >= 64);
+        else if (m.data1 == kCcAllNotesOff || m.data1 == kCcAllSoundOff)
+            allNotesOff();
         break;
     case krate::MidiMessage::Type::NoteOn:
         noteOn(m.data1, m.data2);
@@ -151,7 +287,8 @@ void Engine::render(float *out, std::uint32_t frames, const VoiceSettings &s) no
         for (std::uint32_t i = 0; i < n; ++i)
             m_lfoValues[i] = float(m_lfo.next(lfoHz, lfoWave, m_sampleRate));
         std::fill_n(m_buffer2x.begin(), 2 * n, 0.0f);
-        m_voice.render(m_buffer2x.data(), n, m_lfoValues.data(), s);
+        for (Voice &voice : m_voices)
+            voice.render(m_buffer2x.data(), n, m_lfoValues.data(), s);
         for (std::uint32_t i = 0; i < n; ++i)
             out[i] = m_decimator.process(m_buffer2x[2 * i], m_buffer2x[2 * i + 1]);
         out += n;
@@ -165,6 +302,10 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     float *left = block.outputs[0];
     float *right = block.outputs[1];
     const VoiceSettings s = settings();
+    if (const KeyMode mode = keyMode(); mode != m_mode) {
+        allNotesOff(); // a new key mode starts from silence (release tails ring out)
+        applyKeyMode(mode);
+    }
 
     // Render up to each MIDI event, then apply it on its exact frame.
     std::uint32_t done = 0;
@@ -181,7 +322,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
             handleMidi(block.midi[e]);
     }
 
-    const double target = units::gain(m_params.get(int(ParamId::Volume)));
+    const double target = kOutputTrim * units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)
         m_volume = target;
     for (std::uint32_t i = 0; i < block.frames; ++i) {
