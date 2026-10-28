@@ -13,6 +13,9 @@ Item {
     property bool hasLed: false
     property bool ledOn: checked
     property bool indicatorBar: false
+    // A colored face (function buttons); transparent = the light or dark face.
+    property color tint: "transparent"
+    readonly property bool tinted: tint.a > 0
 
     signal clicked()
     signal pressed()
@@ -56,8 +59,14 @@ Item {
         border.color: btn.activeFocus ? Theme.accentUi : (btn.dark ? "#0E0E0F" : Theme.buttonEdge)
         border.width: btn.activeFocus ? 2 : 1
         gradient: Gradient {
-            GradientStop { position: 0.0; color: btn.dark ? Theme.buttonDark : Theme.buttonLight }
-            GradientStop { position: 1.0; color: btn.dark ? Theme.buttonDarkShade : Theme.buttonLightShade }
+            GradientStop {
+                position: 0.0
+                color: btn.tinted ? Qt.lighter(btn.tint, 1.15) : btn.dark ? Theme.buttonDark : Theme.buttonLight
+            }
+            GradientStop {
+                position: 1.0
+                color: btn.tinted ? Qt.darker(btn.tint, 1.25) : btn.dark ? Theme.buttonDarkShade : Theme.buttonLightShade
+            }
         }
 
         Rectangle {
@@ -83,7 +92,7 @@ Item {
             visible: btn.faceText !== ""
             anchors.centerIn: parent
             text: btn.faceText
-            color: btn.dark ? Theme.inkInverse : Theme.ink
+            color: btn.dark && !btn.tinted ? Theme.inkInverse : Theme.ink
             font.family: Theme.labelFont
             font.pixelSize: Math.min(16, btn.height * 0.45)
             font.bold: true

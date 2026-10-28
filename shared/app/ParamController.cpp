@@ -84,6 +84,12 @@ QString ParamController::label(const QString &key) const
     return QString::fromUtf8(l.data(), qsizetype(l.size()));
 }
 
+int ParamController::detents(const QString &key) const
+{
+    const int i = indexOf(key);
+    return i < 0 ? 0 : m_instrument.parameters()[std::size_t(i)].detents;
+}
+
 QString ParamController::displayText(const QString &key, qreal value) const
 {
     const int i = indexOf(key);

@@ -3,8 +3,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Krate
 
-// Kalliope's panel at design size 1600 x 1100 (docs/UI.md). P0: chassis,
-// branding, section headers and control labels; the controls arrive in P3.
+// Kalliope's panel at design size 1600 x 1100 (docs/UI.md): the sound sections
+// (sliders, selectors, switches), the function deck (arpeggio, key mode, effects;
+// patches arrive in P5) and the keyboard deck (volume, tempo, octave, the
+// on-screen keyboard, utilities). Every control is bound to Kalliope by key.
 Item {
     id: panel
 
@@ -31,7 +33,7 @@ Item {
         { title: "LFO", columns: 3, controls: [
             { key: "lfo_rate", label: "RATE", kind: "slider", col: 0 },
             { key: "lfo_delay", label: "DELAY\nTIME", kind: "slider", col: 1 },
-            { key: "lfo_wave", label: "WAVE", kind: "knob", col: 2 } ] },
+            { key: "lfo_wave", label: "WAVE", kind: "knob", col: 2, valueBelow: true } ] },
         { title: "VCO MODULATOR", columns: 5, controls: [
             { key: "mod_lfo", label: "LFO\nMOD", kind: "slider", col: 0 },
             { key: "mod_env", label: "ENV\nMOD", kind: "slider", col: 1 },
@@ -73,6 +75,119 @@ Item {
             { key: "env2_s", label: "S", kind: "slider", col: 2 },
             { key: "env2_r", label: "R", kind: "slider", col: 3 } ] }
     ]
+
+    // ---- Controls bound to Kalliope's parameters by key; all MIDI-learnable.
+
+    component ParamSlider: PanelSlider {
+        id: paramSlider
+        required property string key
+        name: Kalliope.label(key)
+        value: Kalliope.revision >= 0 ? Kalliope.value(key) : 0
+        defaultValue: Kalliope.defaultValue(key)
+        displayText: Kalliope.displayText(key, value)
+        onMoved: v => Kalliope.setValue(key, v)
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: paramSlider.key
+            round: false
+        }
+    }
+
+    component ParamSwitch: PanelSwitch {
+        id: paramSwitch
+        required property string key
+        name: Kalliope.label(key)
+        positions: Kalliope.detents(key)
+        value: Kalliope.revision >= 0 ? Kalliope.value(key) : 0
+        displayText: Kalliope.displayText(key, value)
+        onMoved: v => Kalliope.setValue(key, v)
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: paramSwitch.key
+            round: false
+        }
+    }
+
+    // Black knob, white pointer; a selector (detents) or continuous.
+    component ParamKnob: Knob {
+        id: paramKnob
+        required property string key
+        name: Kalliope.label(key)
+        detents: Kalliope.detents(key)
+        value: Kalliope.revision >= 0 ? Kalliope.value(key) : 0
+        defaultValue: Kalliope.defaultValue(key)
+        displayText: Kalliope.displayText(key, value)
+        onMoved: v => Kalliope.setValue(key, v)
+        capColor: "#2C2D30"
+        capShadeColor: "#101112"
+        capBorderColor: "#060607"
+        pointerColor: "#F0F0F0"
+        Accessible.description: displayText
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: paramKnob.key
+        }
+    }
+
+    // A selector with its positions written around it (ring), or, where the
+    // names are too long for that, its current position written under it.
+    component Selector: Item {
+        id: selector
+        required property string key
+        property real size: 56
+        property bool ring: true
+        readonly property int count: Kalliope.detents(key)
+
+        width: size
+        height: size
+
+        ParamKnob {
+            key: selector.key
+            anchors.fill: parent
+        }
+        ValueText {
+            visible: !selector.ring
+            x: selector.size / 2 - width / 2
+            y: selector.size + 4
+            width: selector.size + 20
+            text: Kalliope.revision >= 0 ? Kalliope.displayText(selector.key, Kalliope.value(selector.key)) : ""
+        }
+        Repeater {
+            model: selector.ring ? selector.count : 0
+
+            Text {
+                required property int index
+                readonly property real angle: (-135 + 270 * index / (selector.count - 1)) * Math.PI / 180
+                readonly property real radius: selector.size / 2 + 13
+                x: selector.size / 2 + radius * Math.sin(angle) - width / 2
+                y: selector.size / 2 - radius * Math.cos(angle) - height / 2
+                text: Kalliope.displayText(selector.key, index / (selector.count - 1))
+                color: panel.silk
+                font.family: Theme.labelFont
+                font.pixelSize: 10
+            }
+        }
+    }
+
+    // Small caption under a control: its current value.
+    component ValueText: Text {
+        color: panel.dim
+        font.family: Theme.labelFont
+        font.pixelSize: 10
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+    }
+
+    component DeckLabel: Text {
+        color: panel.silk
+        font.family: Theme.labelFont
+        font.pixelSize: 12
+        font.bold: true
+        horizontalAlignment: Text.AlignHCenter
+    }
 
     // Chassis
     Rectangle {
@@ -162,6 +277,65 @@ Item {
             }
 
             Repeater {
+                model: section.modelData.controls.filter(c => c.kind === "slider")
+
+                ParamSlider {
+                    required property var modelData
+                    key: modelData.key
+                    x: (modelData.col + 0.5) * panel.column - width / 2
+                    y: 80
+                    height: 184
+                }
+            }
+            Repeater {
+                model: section.modelData.controls.filter(c => c.kind === "knob")
+
+                Item {
+                    id: knobSlot
+                    required property var modelData
+                    readonly property bool selector: Kalliope.detents(modelData.key) > 1
+                    readonly property real size: 52
+                    x: (modelData.col + 0.5) * panel.column - size / 2
+                    y: 92 + (modelData.row ?? 0) * 124
+
+                    Selector {
+                        visible: knobSlot.selector
+                        key: knobSlot.modelData.key
+                        size: knobSlot.size
+                        ring: !(knobSlot.modelData.valueBelow ?? false)
+                    }
+                    ParamKnob {
+                        visible: !knobSlot.selector
+                        key: knobSlot.modelData.key
+                        width: knobSlot.size
+                        height: knobSlot.size
+                    }
+                }
+            }
+            Repeater {
+                model: section.modelData.controls.filter(c => c.kind === "switch")
+
+                Item {
+                    id: switchSlot
+                    required property var modelData
+                    readonly property real cx: (modelData.col + 0.5) * panel.column
+                    readonly property real switchY: (modelData.row ?? 0) === 0 ? 96 : 196
+
+                    ParamSwitch {
+                        id: control
+                        key: switchSlot.modelData.key
+                        x: switchSlot.cx - width / 2
+                        y: switchSlot.switchY
+                    }
+                    ValueText {
+                        x: switchSlot.cx - width / 2
+                        y: switchSlot.switchY + control.height + 4
+                        width: panel.column + 6
+                        text: control.displayText
+                    }
+                }
+            }
+            Repeater {
                 model: section.modelData.controls
 
                 Text {
@@ -181,7 +355,8 @@ Item {
         }
     }
 
-    // Function deck: arpeggiator, patch display, key mode, banks and patches, effects
+    // ---- Function deck: arpeggiator, key mode, patch (P5), banks and patches (P5), effects
+
     Rectangle {
         x: panel.margin
         y: 560
@@ -192,12 +367,11 @@ Item {
     }
     Repeater {
         model: [
-            { title: "ARPEGGIO", x: 40, w: 300 },
-            { title: "PATCH", x: 360, w: 240 },
-            { title: "KEY MODE", x: 620, w: 220 },
-            { title: "BANK", x: 860, w: 300 },
-            { title: "PATCH NUMBER", x: 1180, w: 230 },
-            { title: "FX", x: 1430, w: 146 }
+            { title: "ARPEGGIO", x: 40, w: 290 },
+            { title: "KEY MODE", x: 345, w: 215 },
+            { title: "PATCH", x: 575, w: 225 },
+            { title: "BANK  ·  PATCH NUMBER", x: 815, w: 425 },
+            { title: "FX", x: 1255, w: 321 }
         ]
 
         Rectangle {
@@ -219,7 +393,185 @@ Item {
         }
     }
 
-    // Keyboard deck (the keyboard arrives in P3)
+    // A function button bound to a switch parameter (on/off).
+    component ToggleButton: PanelButton {
+        id: toggle
+        required property string key
+        text: Kalliope.label(key)
+        hasLed: true
+        ledOn: Kalliope.revision >= 0 && Kalliope.value(key) > 0.5
+        onClicked: Kalliope.setValue(key, ledOn ? 0 : 1)
+        width: 58
+        height: 46
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: toggle.key
+            round: false
+        }
+    }
+
+    // Arpeggio: ARP, HOLD, mode / range / rate
+    DeckLabel { x: 56; y: 604; width: 58; text: "ARP" }
+    ToggleButton { key: "arp_on"; x: 56; y: 624; tint: "#E2701F" }
+    DeckLabel { x: 124; y: 604; width: 58; text: "HOLD" }
+    ToggleButton { key: "arp_hold"; x: 124; y: 624; tint: "#E8C12A" }
+    Repeater {
+        model: [{ key: "arp_mode", label: "MODE", cx: 214 }, { key: "arp_range", label: "RANGE", cx: 262 },
+                { key: "arp_rate", label: "RATE", cx: 308 }]
+
+        Item {
+            id: arpKnob
+            required property var modelData
+            DeckLabel { x: arpKnob.modelData.cx - width / 2; y: 604; text: arpKnob.modelData.label }
+            ParamKnob {
+                id: arpControl
+                key: arpKnob.modelData.key
+                x: arpKnob.modelData.cx - width / 2
+                y: 624
+                width: 40
+                height: 40
+            }
+            ValueText {
+                x: arpKnob.modelData.cx - width / 2
+                y: 670
+                width: 52
+                text: arpControl.displayText
+            }
+        }
+    }
+
+    // Key mode: three buttons, one lit; velocity and bend range under them
+    Repeater {
+        model: ["POLY", "UNISON", "SOLO"]
+
+        PanelButton {
+            id: modeButton
+            required property int index
+            required property string modelData
+            readonly property real position: index / 2
+            x: 360 + index * 66
+            y: 624
+            width: 58
+            height: 40
+            text: "Key mode " + modelData
+
+            DeckLabel {
+                x: modeButton.width / 2 - width / 2
+                y: -20
+                text: modeButton.modelData
+            }
+            tint: "#3F7FD0"
+            hasLed: true
+            ledOn: Kalliope.revision >= 0 && Math.abs(Kalliope.value("key_mode") - position) < 0.01
+            onClicked: Kalliope.setValue("key_mode", position)
+        }
+    }
+    Item {
+        LearnOverlay { // the key mode buttons learn as one selector
+            x: 356
+            y: 620
+            width: 190
+            height: 54
+            paramKey: "key_mode"
+            round: false
+        }
+    }
+    Repeater {
+        model: [{ key: "velocity", label: "VELOCITY", cx: 405 }, { key: "bend_range", label: "BEND", cx: 500 }]
+
+        Item {
+            id: playKnob
+            required property var modelData
+            DeckLabel { x: playKnob.modelData.cx - width / 2; y: 672; text: playKnob.modelData.label }
+            ParamKnob {
+                id: playControl
+                key: playKnob.modelData.key
+                x: playKnob.modelData.cx - 50
+                y: 692
+                width: 40
+                height: 40
+            }
+            ValueText {
+                x: playKnob.modelData.cx - 6
+                y: 702
+                width: 56
+                horizontalAlignment: Text.AlignLeft
+                text: playControl.displayText
+            }
+        }
+    }
+
+    // Patch display (patches arrive in P5)
+    Rectangle {
+        x: 600
+        y: 612
+        width: 120
+        height: 70
+        radius: 4
+        color: "#120606"
+        border.color: "#3A3B3E"
+        border.width: 2
+
+        Text {
+            anchors.centerIn: parent
+            text: "--"
+            color: "#5A1A12"
+            font.family: "monospace"
+            font.pixelSize: 48
+            font.bold: true
+        }
+    }
+
+    // Effects: chorus (Off / I / II) and the delay
+    DeckLabel { x: 1270; y: 604; width: 70; text: "CHORUS" }
+    PanelButton {
+        id: chorusButton
+        readonly property int position: Kalliope.revision >= 0 ? Math.round(Kalliope.value("chorus") * 2) : 0
+        x: 1276
+        y: 624
+        width: 58
+        height: 46
+        tint: "#E2701F"
+        text: "Chorus"
+        hasLed: true
+        ledOn: position > 0
+        onClicked: Kalliope.setValue("chorus", ((position + 1) % 3) / 2)
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "chorus"
+            round: false
+        }
+    }
+    ValueText { x: 1270; y: 676; width: 70; text: Kalliope.displayText("chorus", chorusButton.position / 2) }
+    Repeater {
+        model: [{ key: "delay_level", label: "DELAY", cx: 1390 }, { key: "delay_time", label: "TIME", cx: 1458 },
+                { key: "delay_fb", label: "FEEDBACK", cx: 1526 }]
+
+        Item {
+            id: fxKnob
+            required property var modelData
+            DeckLabel { x: fxKnob.modelData.cx - width / 2; y: 604; text: fxKnob.modelData.label }
+            ParamKnob {
+                id: fxControl
+                key: fxKnob.modelData.key
+                x: fxKnob.modelData.cx - width / 2
+                y: 624
+                width: 46
+                height: 46
+            }
+            ValueText {
+                x: fxKnob.modelData.cx - width / 2
+                y: 676
+                width: 60
+                text: fxControl.displayText
+            }
+        }
+    }
+
+    // ---- Keyboard deck: volume, tempo, octave; the keyboard; utilities
+
     Rectangle {
         x: panel.margin
         y: 780
@@ -227,5 +579,109 @@ Item {
         height: panel.height - y - panel.margin
         radius: 4
         color: "#0F0F10"
+    }
+
+    DeckLabel { x: 100 - width / 2; y: 800; text: "VOLUME" }
+    ParamKnob { key: "volume"; x: 60; y: 822; width: 80; height: 80 }
+    DeckLabel { x: 225 - width / 2; y: 800; text: "TEMPO"; visible: Kalliope.ownsTransport }
+    ParamKnob { key: "tempo"; x: 195; y: 828; width: 60; height: 60; visible: Kalliope.ownsTransport }
+
+    // Octave shift for the on-screen keyboard (Z / X)
+    property int baseNote: 48 // the keyboard's lowest C
+    DeckLabel { x: 160 - width / 2; y: 940; text: "OCTAVE" }
+    PanelButton { x: 62; y: 962; width: 52; height: 40; faceText: "◂"; text: "Octave down"; onClicked: panel.baseNote = Math.max(24, panel.baseNote - 12) }
+    PanelButton { x: 206; y: 962; width: 52; height: 40; faceText: "▸"; text: "Octave up"; onClicked: panel.baseNote = Math.min(84, panel.baseNote + 12) }
+    Text {
+        x: 160 - width / 2
+        y: 970
+        text: "C" + (panel.baseNote / 12 - 1)
+        color: "#FF3A26"
+        font.family: "monospace"
+        font.pixelSize: 22
+        font.bold: true
+    }
+
+    Keyboard {
+        x: 320
+        y: 806
+        width: 960
+        height: 250
+        baseNote: panel.baseNote
+    }
+
+    // Utilities: clear all MIDI mappings, audio (click to reconnect), MIDI Learn
+    Repeater {
+        model: [{ name: "UNMAP", cx: 1360 }, { name: "AUDIO", cx: 1440 }, { name: "LEARN", cx: 1520 }]
+
+        Item {
+            id: utility
+            required property var modelData
+            readonly property string name: modelData.name
+
+            DeckLabel { x: utility.modelData.cx - width / 2; y: 800; text: utility.name }
+            PanelButton {
+                x: utility.modelData.cx - width / 2
+                y: 822
+                width: 60
+                height: 36
+                text: utility.name === "AUDIO" ? "Audio: reconnect"
+                    : utility.name === "LEARN" ? "MIDI Learn" : "Clear all MIDI mappings"
+                hasLed: utility.name !== "UNMAP"
+                ledOn: utility.name === "AUDIO" ? Host.audioConnected : MidiLearn.active
+                onClicked: {
+                    if (utility.name === "AUDIO")
+                        Host.connectAudio()
+                    else if (utility.name === "LEARN")
+                        MidiLearn.active = !MidiLearn.active
+                    else
+                        MidiLearn.clearAll()
+                }
+            }
+        }
+    }
+    Text { // audio status: rate, buffer, xruns, MIDI, or AUDIO OFFLINE
+        x: 1312
+        y: 876
+        width: 250
+        elide: Text.ElideRight
+        text: Host.audioStatus
+        color: Host.audioConnected ? panel.dim : Theme.ledOn
+        font.family: Theme.labelFont
+        font.pixelSize: 11
+    }
+    Rectangle { // output level meter
+        x: 1312
+        y: 900
+        width: 250
+        height: 10
+        radius: 2
+        color: Theme.ledOff
+
+        Rectangle {
+            width: parent.width * Host.outputLevel
+            height: parent.height
+            radius: 2
+            color: Theme.ledOn
+        }
+    }
+
+    // Keyboard (docs/UI.md): Space run/stop, Z / X octave, L learn, Esc leaves learn.
+    Keys.onSpacePressed: Kalliope.playing = !Kalliope.playing // no-op in the rack
+    Keys.onPressed: event => {
+        if (event.modifiers !== Qt.NoModifier && event.modifiers !== Qt.KeypadModifier)
+            return
+        switch (event.key) {
+        case Qt.Key_Z: panel.baseNote = Math.max(24, panel.baseNote - 12); break
+        case Qt.Key_X: panel.baseNote = Math.min(84, panel.baseNote + 12); break
+        case Qt.Key_L: MidiLearn.active = !MidiLearn.active; break
+        case Qt.Key_Escape:
+            if (!MidiLearn.active)
+                return
+            MidiLearn.active = false
+            break
+        default:
+            return
+        }
+        event.accepted = true
     }
 }

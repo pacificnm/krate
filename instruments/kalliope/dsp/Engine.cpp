@@ -247,6 +247,17 @@ void Engine::setSustain(bool down) noexcept
         }
 }
 
+void Engine::publishHeld() noexcept
+{
+    std::uint64_t mask[2] = {0, 0};
+    for (int i = 0; i < m_heldCount; ++i) {
+        const int n = m_held[std::size_t(i)];
+        mask[n / 64] |= std::uint64_t(1) << (n % 64);
+    }
+    m_heldMask[0].store(mask[0], std::memory_order_relaxed);
+    m_heldMask[1].store(mask[1], std::memory_order_relaxed);
+}
+
 void Engine::handleMidi(const krate::MidiEvent &event) noexcept
 {
     const krate::MidiMessage m = krate::decode(event); // all channels (omni)
@@ -306,6 +317,12 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         allNotesOff(); // a new key mode starts from silence (release tails ring out)
         applyKeyMode(mode);
     }
+    while (const auto n = m_guiNotes.pop()) {
+        if (n->velocity > 0)
+            noteOn(n->note, n->velocity);
+        else
+            noteOff(n->note);
+    }
 
     // Render up to each MIDI event, then apply it on its exact frame.
     std::uint32_t done = 0;
@@ -321,6 +338,8 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         if (e < block.midiCount)
             handleMidi(block.midi[e]);
     }
+
+    publishHeld();
 
     const double target = kOutputTrim * units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)

@@ -34,6 +34,8 @@ public:
     // The parameter's label from the descriptor table, e.g. "Bass Drum Tune"
     // (accessible names).
     Q_INVOKABLE QString label(const QString &key) const;
+    // Positions of a selector or switch (0 = continuous).
+    Q_INVOKABLE int detents(const QString &key) const;
     // Display text, e.g. "1340 Hz"; pass the value so bindings update with it.
     Q_INVOKABLE QString displayText(const QString &key, qreal value) const;
 

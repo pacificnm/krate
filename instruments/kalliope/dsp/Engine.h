@@ -1,11 +1,13 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 
 #include "core/Instrument.h"
 #include "core/Midi.h"
 #include "core/ParamValues.h"
+#include "core/SpscQueue.h"
 #include "dsp/HalfbandDecimator.h"
 #include "kalliope/dsp/Lfo.h"
 #include "kalliope/dsp/Params.h"
@@ -38,6 +40,20 @@ public:
 
     static constexpr int kVoices = 8;
     enum class KeyMode { Poly, Unison, Solo };
+
+    // GUI thread: play a note from the on-screen keyboard (applied at the next
+    // block). velocity 0 = note off. False if the queue is full.
+    bool postNote(int note, int velocity) noexcept
+    {
+        return m_guiNotes.push({std::uint8_t(note), std::uint8_t(velocity)});
+    }
+    // Any thread: is `note` held (by MIDI or the on-screen keyboard)? Updated every block.
+    bool noteHeld(int note) const noexcept
+    {
+        if (note < 0 || note > 127)
+            return false;
+        return (m_heldMask[std::size_t(note / 64)].load(std::memory_order_relaxed) >> (note % 64)) & 1u;
+    }
 
     // Inspection (tests): what each voice is doing.
     bool voiceActive(int v) const noexcept { return m_voices[std::size_t(v)].active(); }
@@ -78,6 +94,14 @@ private:
     std::array<float, kChunk> m_lfoValues{};
 
     // Held keys, oldest first (last-note priority).
+    struct GuiNote
+    {
+        std::uint8_t note, velocity;
+    };
+    krate::SpscQueue<GuiNote, 128> m_guiNotes;
+    std::array<std::atomic<std::uint64_t>, 2> m_heldMask{};
+    void publishHeld() noexcept;
+
     std::array<std::uint8_t, 16> m_held{};
     int m_heldCount = 0;
     float m_lastVelocity = 1.0f;

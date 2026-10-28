@@ -112,6 +112,29 @@ private slots:
         QVERIFY(!k.controller.playing());
     }
 
+    // The on-screen keyboard: a note goes through the queue, is held, and the
+    // controller's held-notes view follows.
+    void onScreenKeyboardPlays()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        k.engine.prepare(48000.0, 64);
+        std::array<float, 64> l, r;
+        k.controller.noteOn(64);
+        QVERIFY(!k.engine.noteHeld(64)); // applied at the next block
+        krate::processStereo(k.engine, l.data(), r.data(), 64);
+        QVERIFY(k.engine.noteHeld(64));
+        QVERIFY(k.controller.noteHeld(64));
+        QCOMPARE(k.engine.activeVoices(), 1);
+        k.controller.noteOff(64);
+        krate::processStereo(k.engine, l.data(), r.data(), 64);
+        QVERIFY(!k.engine.noteHeld(64));
+        QCOMPARE(k.controller.detents(QStringLiteral("vco2_range")), 5);
+        QCOMPARE(k.controller.detents(QStringLiteral("cutoff")), 0);
+    }
+
     // A note plays, and learned CCs move their parameters (snapped to detents).
     void engineLearnsCcsAndPlaysNotes()
     {

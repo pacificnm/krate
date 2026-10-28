@@ -40,6 +40,7 @@ qt_add_qml_module(kalliope_ui
         app/KalliopeInstrument.h
         app/KalliopeInstrument.cpp
     QML_FILES
+        qml/Keyboard.qml
         qml/Main.qml
         qml/Panel.qml
 )
