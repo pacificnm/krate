@@ -7,8 +7,8 @@ A suite of software instruments for Linux, and a rack that plays them together f
 | [**k303**](instruments/k303/README.md): acid bass synth with a 16-step sequencer, diode-ladder filter, MIDI Learn | Playable |
 | [**Klick**](instruments/klick/README.md): metronome, clicks on the shared transport | Works in the rack core and `krate-render` |
 | [**K909**](instruments/k909/README.md): drum machine, 11 synthesized voices, tracks × steps sequencer with accent and shuffle, patterns A–H | Playable, standalone and in the rack (MIDI channel 10) |
-| **Kalliope**: polysynth | Planned |
-| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + K909 + Klick), rack-wide MIDI Learn, sessions in `~/.config/krate/rack.json` |
+| [**Kalliope**](instruments/kalliope/README.md): 8-voice polysynth, two oscillators with sync and cross mod, 12/24 dB ladder, chorus and delay, 64 patches, arpeggiator | Playable, standalone and in the rack (MIDI channel 2) |
+| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + K909 + Kalliope + Klick), rack-wide MIDI Learn, sessions in `~/.config/krate/rack.json` |
 
 Design: [docs/SHARED_FOUNDATIONS.MD](docs/SHARED_FOUNDATIONS.MD) (shared interfaces, transport, MIDI, the rack, repo layout).
 
@@ -36,8 +36,9 @@ cmake --build build
 ctest --test-dir build
 pw-jack ./build/bin/k303                          # k303 on its own
 pw-jack ./build/bin/k909                          # K909 on its own
-pw-jack ./build/bin/krate                         # the rack: k303 + K909 + Klick
-./build/bin/krate-render --bars 8 --out rack.wav  # the rack, rendered offline (add --k909 0.8 for drums)
+pw-jack ./build/bin/kalliope                      # Kalliope on its own
+pw-jack ./build/bin/krate                         # the rack: k303 + K909 + Kalliope + Klick
+./build/bin/krate-render --bars 8 --out rack.wav  # the rack, rendered offline (add --k909 0.8 --kalliope 1 for all four)
 ```
 
 More (dependencies, testing, MIDI without hardware): [instruments/k303/docs/BUILD.md](instruments/k303/docs/BUILD.md).

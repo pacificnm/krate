@@ -156,7 +156,7 @@ apps/
   k303/      main.cpp: JackHost + the K303 and Krate modules
   k909/, kalliope/
   krate/     main.cpp: RackHost + all instrument modules + rack UI (binary: krate)
-  krate-render/  main.cpp: the rack (k303 + Klick, K909 with --k909) rendered offline to WAV
+  krate-render/  main.cpp: the rack (k303 + Klick, K909 with --k909, Kalliope with --kalliope) rendered offline to WAV
 docs/        suite-level docs (this file); each instrument keeps its own docs/
 ```
 

@@ -23,6 +23,9 @@ constexpr int kCcSustain = 64;
 constexpr int kCcAllSoundOff = 120;
 constexpr int kCcAllNotesOff = 123;
 constexpr double kUnisonDetuneCents = 12.0; // voices spread -12 .. +12 cents
+// Arp Rate positions as steps per beat: 1/8, 1/16, 1/8T, 1/16T.
+constexpr int kArpStepsPerBeat[] = {2, 4, 3, 6};
+constexpr double kArpGate = 0.5; // each arpeggio note lasts half a step
 // Delay Time positions in beats: 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2.
 constexpr double kDelayBeats[] = {0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0};
 } // namespace
@@ -127,6 +130,8 @@ void Engine::applyKeyMode(KeyMode mode) noexcept
 void Engine::allNotesOff() noexcept
 {
     m_heldCount = 0;
+    m_latchedCount = 0;
+    m_arpNote = -1;
     m_sustained.fill(false);
     for (Voice &voice : m_voices)
         voice.noteOff();
@@ -165,27 +170,8 @@ void Engine::playMono(bool retrigger) noexcept
     }
 }
 
-void Engine::noteOn(int note, int velocity) noexcept
+void Engine::voiceOn(int note) noexcept
 {
-    m_lastVelocity = float(velocity) / 127.0f;
-    // The held keys, oldest first (last-note priority in Unison and Solo).
-    for (int i = 0; i < m_heldCount; ++i)
-        if (m_held[std::size_t(i)] == note) {
-            std::copy(m_held.begin() + i + 1, m_held.begin() + m_heldCount, m_held.begin() + i);
-            --m_heldCount;
-            break;
-        }
-    if (m_heldCount == int(m_held.size())) {
-        std::copy(m_held.begin() + 1, m_held.end(), m_held.begin());
-        --m_heldCount;
-    }
-    const bool othersHeld = m_heldCount > 0;
-    m_held[std::size_t(m_heldCount++)] = std::uint8_t(note);
-
-    if (m_mode != KeyMode::Poly) {
-        playMono(!othersHeld); // legato while another key is down
-        return;
-    }
     const int v = pickVoice(note);
     Voice &voice = m_voices[std::size_t(v)];
     // Free-running oscillators, as on analog machines: each new note starts at
@@ -200,6 +186,55 @@ void Engine::noteOn(int note, int velocity) noexcept
         voice.steal(note, m_lastVelocity);   // fade out its old note first
     else
         voice.noteOn(note, m_lastVelocity, true);
+}
+
+void Engine::voiceOff(int note) noexcept
+{
+    for (int v = 0; v < kVoices; ++v) {
+        const Voice &voice = m_voices[std::size_t(v)];
+        if (voice.gate() && voice.note() == note && !m_sustained[std::size_t(v)])
+            releaseVoice(v);
+    }
+}
+
+void Engine::releaseAllVoices() noexcept
+{
+    m_sustained.fill(false);
+    for (Voice &voice : m_voices)
+        voice.noteOff();
+}
+
+void Engine::noteOn(int note, int velocity) noexcept
+{
+    m_lastVelocity = float(velocity) / 127.0f;
+    // Hold: the first key of a new chord replaces the latched one.
+    if (m_hold) {
+        if (m_heldCount == 0)
+            m_latchedCount = 0;
+        if (std::find(m_latched.begin(), m_latched.begin() + m_latchedCount, note) == m_latched.begin() + m_latchedCount
+            && m_latchedCount < int(m_latched.size()))
+            m_latched[std::size_t(m_latchedCount++)] = std::uint8_t(note);
+    }
+    // The held keys, oldest first (last-note priority in Unison and Solo).
+    for (int i = 0; i < m_heldCount; ++i)
+        if (m_held[std::size_t(i)] == note) {
+            std::copy(m_held.begin() + i + 1, m_held.begin() + m_heldCount, m_held.begin() + i);
+            --m_heldCount;
+            break;
+        }
+    if (m_heldCount == int(m_held.size())) {
+        std::copy(m_held.begin() + 1, m_held.end(), m_held.begin());
+        --m_heldCount;
+    }
+    const bool othersHeld = m_heldCount > 0;
+    m_held[std::size_t(m_heldCount++)] = std::uint8_t(note);
+
+    if (m_arpOn)
+        return; // the arpeggiator plays it
+    if (m_mode != KeyMode::Poly)
+        playMono(!othersHeld); // legato while another key is down
+    else
+        voiceOn(note);
 }
 
 void Engine::releaseVoice(int v) noexcept
@@ -219,6 +254,8 @@ void Engine::noteOff(int note) noexcept
             --m_heldCount;
             break;
         }
+    if (m_arpOn)
+        return; // the arpeggiator follows the held (or latched) keys
 
     if (m_mode != KeyMode::Poly) {
         if (!wasTop)
@@ -232,11 +269,118 @@ void Engine::noteOff(int note) noexcept
             releaseVoice(v);
         return;
     }
-    for (int v = 0; v < kVoices; ++v) {
-        const Voice &voice = m_voices[std::size_t(v)];
-        if (voice.gate() && voice.note() == note && !m_sustained[std::size_t(v)])
+    voiceOff(note);
+}
+
+void Engine::arpUpdate(const krate::TransportState &transport) noexcept
+{
+    const bool on = units::index(m_params.get(int(ParamId::ArpOn)), positions::kSwitch) == 1;
+    const bool hold = units::index(m_params.get(int(ParamId::ArpHold)), positions::kSwitch) == 1;
+    if (hold != m_hold) {
+        m_hold = hold;
+        // Turning Hold on latches what is held now; off, the arpeggio follows the keys again.
+        m_latchedCount = 0;
+        if (hold)
+            for (int i = 0; i < m_heldCount; ++i)
+                m_latched[std::size_t(m_latchedCount++)] = m_held[std::size_t(i)];
+    }
+    if (on != m_arpOn) {
+        m_arpOn = on;
+        arpRelease();
+        if (on) {
+            releaseAllVoices(); // held keys stop sounding as chords: the arpeggio takes over
+        } else {
+            m_arpClock.stop();
+            // Keys still down play as chords again.
+            for (int i = 0; i < m_heldCount; ++i)
+                if (m_mode == KeyMode::Poly)
+                    voiceOn(m_held[std::size_t(i)]);
+            if (m_mode != KeyMode::Poly && m_heldCount > 0)
+                playMono(true);
+        }
+    }
+
+    m_arpClock.setStepsPerBeat(kArpStepsPerBeat[units::index(m_params.get(int(ParamId::ArpRate)), positions::kArpRate)]);
+    m_arpClock.setGateLength(kArpGate);
+    const bool run = m_arpOn && transport.playing;
+    if (run && (transport.restarted || !m_arpClock.running())) {
+        arpRelease();
+        m_arpClock.start();
+        m_arpPosition = 0;
+    } else if (!run && m_arpClock.running()) {
+        m_arpClock.stop();
+        arpRelease();
+    }
+}
+
+void Engine::arpRelease() noexcept
+{
+    if (m_arpNote < 0)
+        return;
+    if (m_mode == KeyMode::Poly) {
+        voiceOff(m_arpNote);
+    } else {
+        const int count = m_mode == KeyMode::Unison ? kVoices : 1;
+        for (int v = 0; v < count; ++v)
             releaseVoice(v);
     }
+    m_arpNote = -1;
+}
+
+void Engine::arpStep() noexcept
+{
+    arpRelease();
+    // The keys to arpeggiate, low to high, without repeats.
+    std::array<int, 16> keys{};
+    int count = 0;
+    const std::uint8_t *source = m_hold ? m_latched.data() : m_held.data();
+    const int sourceCount = m_hold ? m_latchedCount : m_heldCount;
+    for (int i = 0; i < sourceCount; ++i) {
+        const int n = source[i];
+        if (std::find(keys.begin(), keys.begin() + count, n) == keys.begin() + count)
+            keys[std::size_t(count++)] = n;
+    }
+    if (count == 0)
+        return;
+    std::sort(keys.begin(), keys.begin() + count);
+
+    const int octaves = 1 + units::index(m_params.get(int(ParamId::ArpRange)), positions::kArpRange);
+    const auto length = std::uint32_t(count * octaves);
+    std::uint32_t index = 0;
+    switch (units::index(m_params.get(int(ParamId::ArpMode)), positions::kArpMode)) {
+    case 0: // Up
+        index = m_arpPosition % length;
+        break;
+    case 1: // Down
+        index = length - 1 - m_arpPosition % length;
+        break;
+    case 2: { // Up & Down, without repeating the top and bottom notes
+        if (length == 1)
+            break;
+        const std::uint32_t k = m_arpPosition % (2 * length - 2);
+        index = k < length ? k : 2 * length - 2 - k;
+        break;
+    }
+    default: // Random
+        m_arpRandom ^= m_arpRandom << 13;
+        m_arpRandom ^= m_arpRandom >> 17;
+        m_arpRandom ^= m_arpRandom << 5;
+        index = m_arpRandom % length;
+        break;
+    }
+    ++m_arpPosition;
+    const int note = std::min(127, keys[index % std::uint32_t(count)] + 12 * int(index / std::uint32_t(count)));
+
+    if (m_mode == KeyMode::Poly) {
+        voiceOn(note);
+    } else {
+        const int voices = m_mode == KeyMode::Unison ? kVoices : 1;
+        for (int v = 0; v < voices; ++v) {
+            m_sustained[std::size_t(v)] = false;
+            m_voices[std::size_t(v)].noteOn(note, m_lastVelocity, true);
+        }
+    }
+    m_arpNote = note;
 }
 
 void Engine::setSustain(bool down) noexcept
@@ -330,20 +474,43 @@ void Engine::process(const krate::AudioBlock &block) noexcept
             noteOff(n->note);
     }
 
-    // Render up to each MIDI event, then apply it on its exact frame.
+    static constexpr krate::TransportState kStopped{};
+    const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
+    arpUpdate(transport);
+    const double beatsPerSample = transport.bpm / 60.0 / m_sampleRate;
+
+    // Voices render in runs between the frames where something happens: MIDI
+    // events and arpeggiator steps land on their exact sample.
     std::uint32_t done = 0;
-    for (std::uint32_t e = 0; e <= block.midiCount; ++e) {
-        const std::uint32_t until = e < block.midiCount ? std::min(block.midi[e].frame, block.frames) : block.frames;
-        if (until > done) {
-            VoiceSettings now = s;
-            now.bendSemis = m_bend * units::bendSemitones(m_params.get(int(ParamId::BendRange)));
-            now.vibratoSemis = kWheelVibratoSemis * m_wheel;
-            render(left + done, until - done, now);
-            done = until;
+    const auto renderTo = [&](std::uint32_t frame) {
+        if (frame <= done)
+            return;
+        VoiceSettings now = s;
+        now.bendSemis = m_bend * units::bendSemitones(m_params.get(int(ParamId::BendRange)));
+        now.vibratoSemis = kWheelVibratoSemis * m_wheel;
+        render(left + done, frame - done, now);
+        done = frame;
+    };
+    std::uint32_t nextEvent = 0;
+    for (std::uint32_t i = 0; i < block.frames; ++i) {
+        while (nextEvent < block.midiCount && block.midi[nextEvent].frame <= i) {
+            renderTo(i);
+            handleMidi(block.midi[nextEvent++]);
         }
-        if (e < block.midiCount)
-            handleMidi(block.midi[e]);
+        if (m_arpClock.running()) {
+            const auto tick = m_arpClock.tick(transport.beatAtBlockStart + double(i) * beatsPerSample);
+            if (tick.stepStarted) {
+                renderTo(i);
+                arpStep();
+            } else if (tick.gatePoint) {
+                renderTo(i);
+                arpRelease();
+            }
+        }
     }
+    while (nextEvent < block.midiCount) // events past the block's end (malformed): apply at the end
+        handleMidi(block.midi[nextEvent++]);
+    renderTo(block.frames);
 
     publishHeld();
 

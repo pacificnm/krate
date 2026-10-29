@@ -83,9 +83,10 @@ target_compile_options(tst_kalliope PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_kalliope PRIVATE kalliope_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
 add_test(NAME tst_kalliope COMMAND tst_kalliope)
 
-# Patches: the same controller sources, through the instrument's registry entry.
-add_executable(kalliope_tst_patches
-    tests/tst_patches.cpp
+# Patches and the arpeggiator: the same controller sources, through the instrument's registry entry.
+foreach(test tst_patches tst_arp)
+add_executable(kalliope_${test}
+    tests/${test}.cpp
     app/KalliopeController.h
     app/KalliopeController.cpp
     app/KalliopeInstrument.h
@@ -97,7 +98,8 @@ add_executable(kalliope_tst_patches
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
 )
-target_include_directories(kalliope_tst_patches PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_compile_options(kalliope_tst_patches PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(kalliope_tst_patches PRIVATE kalliope_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
-add_test(NAME kalliope_tst_patches COMMAND kalliope_tst_patches)
+target_include_directories(kalliope_${test} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_compile_options(kalliope_${test} PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(kalliope_${test} PRIVATE kalliope_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
+add_test(NAME kalliope_${test} COMMAND kalliope_${test})
+endforeach()

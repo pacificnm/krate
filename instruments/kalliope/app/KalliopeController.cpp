@@ -20,7 +20,9 @@ KalliopeController::KalliopeController(kalliope::Engine &engine, const QString &
     m_pollTimer.start();
 
     syncTempo(); // the saved Tempo knob position
+    syncArp();   // a saved Arpeggio on: ready to play as soon as keys are held
     connect(this, &ParamController::paramsChanged, this, &KalliopeController::syncTempo);
+    connect(this, &ParamController::paramsChanged, this, &KalliopeController::syncArp);
 }
 
 KalliopeController::~KalliopeController()
@@ -83,6 +85,23 @@ void KalliopeController::poll()
     if (playing() != m_playing) {
         m_playing = playing();
         emit playingChanged();
+    }
+}
+
+void KalliopeController::syncArp()
+{
+    const bool on = value(QStringLiteral("arp_on")) > 0.5;
+    if (on == m_arpOn)
+        return;
+    m_arpOn = on;
+    if (!m_transport)
+        return; // in the rack, the rack's transport bar runs the arpeggio
+    if (on && !m_transport->playing()) {
+        setPlaying(true);
+        m_arpStartedTransport = true;
+    } else if (!on && m_arpStartedTransport) {
+        setPlaying(false);
+        m_arpStartedTransport = false;
     }
 }
 

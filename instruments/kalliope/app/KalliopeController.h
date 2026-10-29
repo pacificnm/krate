@@ -56,6 +56,7 @@ signals:
 
 private:
     void syncTempo(); // the Tempo knob drives the transport, if we have one
+    void syncArp();   // standalone: Arpeggio on starts the transport, off stops what it started
     void poll();
 
     static inline KalliopeController *s_instance = nullptr;
@@ -64,6 +65,8 @@ private:
     krate::Transport *m_transport = nullptr;
     QTimer m_pollTimer;
     bool m_playing = false;
+    bool m_arpOn = false;
+    bool m_arpStartedTransport = false;
     int m_notesRevision = 0;
     std::uint64_t m_heldSeen[2] = {0, 0};
 };

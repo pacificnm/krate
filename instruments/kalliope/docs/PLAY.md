@@ -10,13 +10,14 @@
 
 ## Arpeggiator
 
-Runs on the audio thread on the shared `krate::StepClock`, so it locks to the transport: the standalone app's (Tempo, START from the ARPEGGIO button or Space) or the rack's transport bar.
+Runs on the audio thread on the shared `krate::StepClock`, ticked every sample from the transport's beat position, so it locks to the transport: the standalone app's (Tempo; Space) or the rack's transport bar. Steps and gate ends land on their exact sample.
 
-- While **Arpeggio** is on, held notes feed the arpeggiator instead of the voices. Standalone, turning Arpeggio on starts the transport (and turning it off stops it again, if Arpeggio started it); in the rack, the arpeggiator runs while the rack's transport plays.
-- **Mode**: Up, Down, Up & Down (no repeated end notes), Random. Notes are ordered by pitch, over **Range** octaves.
-- **Rate**: 1/8, 1/16, 1/8T, 1/16T (the clock's steps per beat). Each note is gated for half a step.
-- **Hold**: released notes stay in the arpeggio; playing a new chord while none is held replaces them.
-- The arpeggiator plays through the current Key Mode (Poly lets release tails overlap).
+- **Keys and notes.** With Arpeggio off, keys play voices directly. With it on, keys only feed the arpeggiator, which plays the voices. Turning it on releases the keys' chord; turning it off plays the keys still down as a chord again.
+- **Standalone**, turning Arpeggio on starts the transport if it is stopped, and turning it off stops it again if Arpeggio was what started it (a transport you started by hand keeps running). **In the rack**, the arpeggio runs while the rack's transport plays.
+- **Mode**: Up, Down, Up & Down (the top and bottom notes are not repeated), Random. The held notes are ordered low to high, without repeats, and extended over **Range** octaves (1–4).
+- **Rate**: 1/8, 1/16, 1/8T, 1/16T (2, 4, 3 or 6 steps per beat). Each note lasts half a step.
+- **Hold**: released keys stay in the arpeggio; the first key of a new chord (with no keys down) replaces them. Turning Hold on latches what is held at that moment.
+- Velocity is the last key's. The arpeggio plays through the current Key Mode: Poly lets release tails overlap; Unison and Solo retrigger every note.
 
 ## Patches
 

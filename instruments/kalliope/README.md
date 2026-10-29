@@ -2,7 +2,7 @@
 
 An eight-voice polyphonic synthesizer for the [Krate](../../README.md) suite: two oscillators per voice with sync and cross mod, high-pass and resonant 12/24 dB low-pass filters, two envelopes, an arpeggiator on the shared transport, chorus and delay, 64 patches, and a hardware-style panel of sliders. Runs standalone (`kalliope`) and in the Krate rack (default MIDI channel 2).
 
-Status: P5 (8 voices, the full panel, on-screen keyboard, chorus and delay, 64 patches with 16 factory sounds; the arpeggiator and the rack to come). `pw-jack ./build/bin/kalliope`; `./build/bin/kalliope-render --out-dir build` writes `kalliope-sounds.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
+Status: P6. Playable standalone (`pw-jack ./build/bin/kalliope`) and in the Krate rack (`pw-jack ./build/bin/krate`, MIDI channel 2): 8 voices, the full panel, on-screen keyboard, chorus and delay, 64 patches with 16 factory sounds, the arpeggiator on the transport. Polish (P7) to come. `pw-jack ./build/bin/kalliope`; `./build/bin/kalliope-render --out-dir build` writes `kalliope-sounds.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
 
 | Doc | Contents |
 | --- | --- |

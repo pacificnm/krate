@@ -26,6 +26,7 @@ target_compile_options(krate PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(krate PRIVATE
     k303_ui k303_uiplugin
     k909_ui k909_uiplugin
+    kalliope_ui kalliope_uiplugin
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin
     krate_rack krate_host

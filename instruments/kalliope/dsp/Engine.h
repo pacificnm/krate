@@ -9,6 +9,7 @@
 #include "core/Midi.h"
 #include "core/ParamValues.h"
 #include "core/SpscQueue.h"
+#include "core/StepClock.h"
 #include "dsp/HalfbandDecimator.h"
 #include "kalliope/dsp/Effects.h"
 #include "kalliope/dsp/Lfo.h"
@@ -19,8 +20,13 @@ namespace kalliope {
 
 // Kalliope's realtime core (docs/DSP.md): eight voices at 2x, decimated once,
 // then the stereo chorus and the tempo-synced ping-pong delay; Poly, Unison and
-// Solo key modes (docs/PLAY.md#key-modes), sustain pedal, pitch bend, mod
-// wheel, MIDI Learn. The delay's buffer is allocated here, at construction.
+// Solo key modes (docs/PLAY.md#key-modes), the arpeggiator on the transport
+// (docs/PLAY.md#arpeggiator), sustain pedal, pitch bend, mod wheel, MIDI Learn.
+// The delay's buffer is allocated here, at construction.
+//
+// Keys (what is held) and voice notes (what sounds) are separate: with the
+// arpeggiator off, keys play voices directly; with it on, keys feed the
+// arpeggiator and it plays the voices.
 class Engine final : public krate::IInstrument
 {
 public:
@@ -72,6 +78,8 @@ public:
     int voiceNote(int v) const noexcept { return m_voices[std::size_t(v)].note(); }
     double voiceLevel(int v) const noexcept { return m_voices[std::size_t(v)].level(); }
     int activeVoices() const noexcept;
+    // The note the arpeggiator is playing, or -1 (tests, display).
+    int arpNote() const noexcept { return m_arpNote; }
 
 private:
     static constexpr std::uint32_t kChunk = 128; // frames rendered at a time (fixed buffers)
@@ -87,6 +95,12 @@ private:
     int pickVoice(int note) noexcept; // Poly: which voice plays `note`
     void playMono(bool retrigger) noexcept; // Unison/Solo: the voices follow the top held key
     void releaseVoice(int v) noexcept;      // key up: release, or hold for the pedal
+    void releaseAllVoices() noexcept;       // every voice to release (keys stay held)
+    void voiceOn(int note) noexcept;        // Poly: a voice for `note` (stealing if needed)
+    void voiceOff(int note) noexcept;       // Poly: release `note`'s voice
+    void arpUpdate(const krate::TransportState &transport) noexcept; // once per block
+    void arpStep() noexcept;                // a step starts: the next note
+    void arpRelease() noexcept;             // the gate ends (or the arpeggio stops)
 
     krate::ParamValues<ParamCount> m_params{kParams};
     krate::MidiLearnMap m_learn{kParams}; // parameters are ParamId values
@@ -118,6 +132,16 @@ private:
 
     std::array<std::uint8_t, 16> m_held{};
     int m_heldCount = 0;
+
+    // Arpeggiator (docs/PLAY.md#arpeggiator).
+    krate::StepClock m_arpClock;
+    bool m_arpOn = false;
+    bool m_hold = false;
+    std::array<std::uint8_t, 16> m_latched{}; // keys kept by Hold
+    int m_latchedCount = 0;
+    int m_arpNote = -1;
+    std::uint32_t m_arpPosition = 0;
+    std::uint32_t m_arpRandom = 0x2F6B3A1Du;
     float m_lastVelocity = 1.0f;
     double m_bend = 0.0;  // -1..1
     double m_wheel = 0.0; // 0..1
