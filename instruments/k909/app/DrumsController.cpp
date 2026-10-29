@@ -1,5 +1,7 @@
 #include "k909/app/DrumsController.h"
 
+#include "app/RunControl.h"
+
 #include <algorithm>
 #include <array>
 
@@ -80,11 +82,17 @@ void DrumsController::save()
 
 bool DrumsController::playing() const
 {
-    return m_transport && m_transport->playing();
+    if (m_transport)
+        return m_transport->playing();
+    return m_run && m_run->running(m_runId);
 }
 
 void DrumsController::setPlaying(bool playing)
 {
+    if (!m_transport && m_run) {
+        m_run->setRunning(m_runId, playing);
+        return;
+    }
     if (!m_transport || playing == m_transport->playing())
         return;
     m_transport->setPlaying(playing);
@@ -262,4 +270,14 @@ void DrumsController::syncTempo()
 {
     if (m_transport)
         m_transport->setBpm(k909::units::tempoBpm(float(value(QStringLiteral("tempo")))));
+}
+
+void DrumsController::setRunControl(krate::RunControl *run, const QString &id)
+{
+    m_run = run;
+    m_runId = id;
+    if (!m_run)
+        return;
+    m_run->addRunner(id);
+    connect(m_run, &krate::RunControl::changed, this, &DrumsController::playingChanged);
 }

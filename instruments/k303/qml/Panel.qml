@@ -480,7 +480,7 @@ Item {
 
     PanelButton {
         id: runStop
-        visible: Synth.ownsTransport // the rack's transport bar has its own
+        visible: Synth.canRun // standalone: the transport; in the rack: just k303's sequencer
         x: 32
         y: 506
         width: 142
@@ -496,7 +496,7 @@ Item {
             round: false
         }
     }
-    PanelLabel { centerX: 103; y: 650; text: "RUN / STOP"; visible: Synth.ownsTransport }
+    PanelLabel { centerX: 103; y: 650; text: "RUN / STOP"; visible: Synth.canRun }
 
     // Keyboard and time-mode buttons
     PanelButton {

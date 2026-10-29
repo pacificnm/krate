@@ -1,5 +1,7 @@
 #include "kalliope/app/KalliopeController.h"
 
+#include "app/RunControl.h"
+
 #include <cmath>
 
 #include <QJSEngine>
@@ -41,11 +43,17 @@ KalliopeController *KalliopeController::create(QQmlEngine *, QJSEngine *)
 
 bool KalliopeController::playing() const
 {
-    return m_transport && m_transport->playing();
+    if (m_transport)
+        return m_transport->playing();
+    return m_run && m_run->running(m_runId);
 }
 
 void KalliopeController::setPlaying(bool playing)
 {
+    if (!m_transport && m_run) {
+        m_run->setRunning(m_runId, playing);
+        return;
+    }
     if (!m_transport || playing == m_transport->playing())
         return;
     m_transport->setPlaying(playing);
@@ -112,4 +120,14 @@ void KalliopeController::syncTempo()
 {
     if (m_transport)
         m_transport->setBpm(kalliope::units::tempoBpm(float(value(QStringLiteral("tempo")))));
+}
+
+void KalliopeController::setRunControl(krate::RunControl *run, const QString &id)
+{
+    m_run = run;
+    m_runId = id;
+    if (!m_run)
+        return;
+    m_run->addRunner(id);
+    connect(m_run, &krate::RunControl::changed, this, &KalliopeController::playingChanged);
 }

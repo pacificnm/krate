@@ -1,5 +1,7 @@
 #include "app/SynthController.h"
 
+#include "app/RunControl.h"
+
 #include "app/PanelFile.h"
 
 #include <QJSEngine>
@@ -54,8 +56,19 @@ SynthController *SynthController::create(QQmlEngine *, QJSEngine *)
     return s_instance;
 }
 
+bool SynthController::playing() const
+{
+    if (m_transport)
+        return m_transport->playing();
+    return m_run && m_run->running(m_runId);
+}
+
 void SynthController::setPlaying(bool playing)
 {
+    if (!m_transport && m_run) {
+        m_run->setRunning(m_runId, playing);
+        return;
+    }
     if (!m_transport || playing == m_transport->playing())
         return;
     m_transport->setPlaying(playing);
@@ -131,4 +144,14 @@ void SynthController::poll()
             syncTempo(); // a MIDI-mapped tempo knob
         emit paramsChanged();
     }
+}
+
+void SynthController::setRunControl(krate::RunControl *run, const QString &id)
+{
+    m_run = run;
+    m_runId = id;
+    if (!m_run)
+        return;
+    m_run->addRunner(id);
+    connect(m_run, &krate::RunControl::changed, this, &SynthController::playingChanged);
 }

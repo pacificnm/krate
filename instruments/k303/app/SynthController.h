@@ -9,6 +9,9 @@
 
 class QQmlEngine;
 class QJSEngine;
+namespace krate {
+class RunControl;
+}
 
 // QML singleton "Synth": the GUI's view of k303's engine. Owns the Engine and
 // saves its knob positions; polls the playhead and MIDI-changed knobs at 60 Hz.
@@ -24,6 +27,8 @@ class SynthController : public QObject
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     // False in the rack: the panel hides RUN/STOP and Tempo then.
     Q_PROPERTY(bool ownsTransport READ ownsTransport CONSTANT)
+    // RUN / STOP works: its own transport (standalone) or the rack's run control.
+    Q_PROPERTY(bool canRun READ canRun NOTIFY playingChanged)
     // Playing step 0..15, or -1 when stopped. Display only: polled at 60 Hz.
     Q_PROPERTY(int currentStep READ currentStep NOTIFY currentStepChanged)
 
@@ -58,7 +63,10 @@ public:
     k303::Engine &engine() { return m_engine; }
 
     bool ownsTransport() const { return m_transport != nullptr; }
-    bool playing() const { return m_transport && m_transport->playing(); }
+    bool canRun() const { return m_transport != nullptr || m_run != nullptr; }
+    // In the rack: RUN / STOP runs just this instrument's sequencer (before QML loads).
+    void setRunControl(krate::RunControl *run, const QString &id);
+    bool playing() const;
     int currentStep() const { return m_currentStep; }
     void setPlaying(bool playing);
 
@@ -110,6 +118,8 @@ private:
 
     mutable k303::Engine m_engine; // mutable: ParamStore reads are const in spirit
     krate::Transport *m_transport = nullptr;
+    krate::RunControl *m_run = nullptr;
+    QString m_runId;
 
     QTimer m_pollTimer;
     int m_currentStep = -1;

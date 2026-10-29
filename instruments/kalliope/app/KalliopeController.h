@@ -9,6 +9,7 @@ class QQmlEngine;
 class QJSEngine;
 
 namespace krate {
+class RunControl;
 class Transport;
 }
 namespace kalliope {
@@ -28,6 +29,8 @@ class KalliopeController : public krate::ParamController
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     // False in the rack: the panel hides Tempo then.
     Q_PROPERTY(bool ownsTransport READ ownsTransport CONSTANT)
+    // RUN / STOP works: its own transport (standalone) or the rack's run control.
+    Q_PROPERTY(bool canRun READ canRun NOTIFY playingChanged)
     // Bumped when the held keys change (MIDI or the on-screen keyboard); bind
     //     Kalliope.notesRevision >= 0 && Kalliope.noteHeld(n)
     Q_PROPERTY(int notesRevision READ notesRevision NOTIFY notesChanged)
@@ -41,6 +44,9 @@ public:
     static KalliopeController *create(QQmlEngine *, QJSEngine *);
 
     bool ownsTransport() const { return m_transport != nullptr; }
+    bool canRun() const { return m_transport != nullptr || m_run != nullptr; }
+    // In the rack: RUN / STOP runs just this instrument's sequencer (before QML loads).
+    void setRunControl(krate::RunControl *run, const QString &id);
     bool playing() const;
     void setPlaying(bool playing);
     int notesRevision() const { return m_notesRevision; }
@@ -63,6 +69,8 @@ private:
 
     kalliope::Engine &m_engine;
     krate::Transport *m_transport = nullptr;
+    krate::RunControl *m_run = nullptr;
+    QString m_runId;
     QTimer m_pollTimer;
     bool m_playing = false;
     bool m_arpOn = false;

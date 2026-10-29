@@ -26,6 +26,16 @@ public:
     void setGateLength(double fraction) noexcept { m_gateLength = fraction; }
 
     void start() noexcept;  // the next tick starts the first step
+    // Running, but the first step waits for this beat (joining a transport
+    // that's already playing, on the next bar).
+    void startAt(double beat) noexcept;
+    // The start of the next bar (of `beatsPerBar` quarter notes) at or after `beat`.
+    static double nextBar(double beat, int beatsPerBar = 4) noexcept
+    {
+        const double bars = beat / beatsPerBar;
+        const double whole = double(static_cast<long long>(bars));
+        return (bars - whole < 1e-9 ? whole : whole + 1.0) * beatsPerBar;
+    }
     void stop() noexcept;
     bool running() const noexcept { return m_running; }
 
@@ -56,6 +66,8 @@ private:
 
     bool m_running = false;
     bool m_anchored = false;
+    bool m_waiting = false;       // startAt(): nothing before m_startBeat
+    double m_startBeat = 0.0;
     double m_anchorBeat = 0.0;    // step position = m_anchorPos + (beat - m_anchorBeat) * stepsPerBeat
     double m_anchorPos = 0.0;
     double m_lastBeat = 0.0;

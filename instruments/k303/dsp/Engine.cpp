@@ -178,11 +178,15 @@ void Engine::process(const krate::AudioBlock &block) noexcept
 
     static constexpr krate::TransportState kStopped{};
     const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
-    const bool sequence = transport.playing && m_sequencerEnabled.load(std::memory_order_relaxed);
+    const bool sequence = transport.playing && m_sequencerEnabled.load(std::memory_order_relaxed)
+                          && !m_sequencerSuspended.load(std::memory_order_relaxed);
     if (sequence && (transport.restarted || !m_sequencer.running())) {
         if (m_sequencer.running())
             handle(m_sequencer.stop());
-        m_sequencer.start();
+        if (transport.restarted || transport.beatAtBlockStart <= 0.0)
+            m_sequencer.start();
+        else // switched on while the transport plays: in time, from the next bar
+            m_sequencer.startAt(krate::StepClock::nextBar(transport.beatAtBlockStart));
         m_heldCount = 0; // the sequencer owns the voice now
     } else if (!sequence && m_sequencer.running()) {
         handle(m_sequencer.stop());

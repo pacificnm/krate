@@ -1,5 +1,7 @@
 #include "RackController.h"
 
+#include "RackRunControl.h"
+
 #include <cmath>
 
 #include <QJSEngine>
@@ -93,6 +95,8 @@ void RackController::setPlaying(bool playing)
 {
     if (playing == m_transport.playing())
         return;
+    if (playing && m_run) // the rack's PLAY runs every sequencer
+        m_run->playAll();
     m_transport.setPlaying(playing);
     emit playingChanged();
 }
@@ -285,6 +289,10 @@ void RackController::poll()
         emit focusChanged();
         setMixerShown(false);
         setSongShown(false);
+    }
+    if (const bool playing = m_transport.playing(); playing != m_shownPlaying) { // an instrument's RUN, or a song's end
+        m_shownPlaying = playing;
+        emit playingChanged();
     }
     if (const double bpm = m_transport.bpm(); bpm != m_shownBpm) { // set by a song's tempo map too
         m_shownBpm = bpm;

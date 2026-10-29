@@ -80,6 +80,7 @@ public:
     // Any thread. Off: the sequencer doesn't follow the transport and MIDI keys
     // play the voice while it plays too (a song track playing k303). On by default.
     void setSequencerEnabled(bool on) noexcept override { m_sequencerEnabled.store(on, std::memory_order_relaxed); }
+    void setSequencerSuspended(bool on) noexcept override { m_sequencerSuspended.store(on, std::memory_order_relaxed); }
     bool sequencerEnabled() const noexcept { return m_sequencerEnabled.load(std::memory_order_relaxed); }
 
     // GUI thread (single consumer).
@@ -117,6 +118,7 @@ private:
     std::atomic<int> m_currentStep{-1};
     std::atomic<bool> m_onBeat{false};
     std::atomic<bool> m_sequencerEnabled{true};
+    std::atomic<bool> m_sequencerSuspended{false};
     std::atomic<float> m_peak{0.0f};
 };
 

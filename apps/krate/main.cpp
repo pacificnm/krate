@@ -15,6 +15,7 @@
 
 #include "RackController.h"
 #include "RackMidiLearn.h"
+#include "RackRunControl.h"
 #include "RackSession.h"
 #include "SongController.h"
 #include "app/HostController.h"
@@ -64,6 +65,11 @@ int main(int argc, char *argv[])
     krate::song::SongPlayer songPlayer; // plays a loaded song into the rack (docs/SONG_PLAYER.md)
     std::vector<std::unique_ptr<krate::InstrumentInstance>> instances;
     std::vector<std::string> ids;
+    // Each instrument's own RUN / STOP: just its sequencer, on the rack's transport.
+    QStringList runIds;
+    for (const auto &entry : entries)
+        runIds << entry.id;
+    RackRunControl runControl(rack, transport, runIds, nullptr);
 
     // Each instrument keeps its own files, shared with its standalone app
     // (~/.config/<id>, ~/.local/share/<id>), so patterns and knobs carry over;
@@ -73,6 +79,7 @@ int main(int argc, char *argv[])
     for (const auto &entry : entries) {
         krate::InstrumentContext context;
         context.transport = nullptr; // the transport bar owns play and tempo
+        context.run = &runControl;
         context.configDir = QDir(config).filePath(entry.id);
         context.dataDir = QDir(data).filePath(entry.id);
         instances.push_back(entry.create(context));
@@ -83,6 +90,8 @@ int main(int argc, char *argv[])
     }
 
     RackController rackController(rack, transport, entries, nullptr);
+    rackController.setRunControl(&runControl);
+    QObject::connect(&rackController, &RackController::playingChanged, &runControl, &RackRunControl::transportChanged);
 
     // Rack-wide MIDI Learn: panel keys refer to the focused instrument.
     std::vector<RackMidiLearn::Device> learnDevices;

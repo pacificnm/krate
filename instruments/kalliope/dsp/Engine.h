@@ -48,6 +48,7 @@ public:
     krate::MidiLearnMap *midiLearnMap() noexcept override { return &m_learn; }
     void process(const krate::AudioBlock &block) noexcept override;
     void setSequencerEnabled(bool on) noexcept override { m_sequencerEnabled.store(on, std::memory_order_relaxed); }
+    void setSequencerSuspended(bool on) noexcept override { m_sequencerSuspended.store(on, std::memory_order_relaxed); }
 
     float param(ParamId id) const noexcept { return m_params.get(int(id)); }
     void setParam(ParamId id, float normalized) noexcept { m_params.set(int(id), normalized); }
@@ -152,6 +153,7 @@ private:
     krate::SpscQueue<std::uint8_t, 16> m_programs; // audio -> GUI
     std::array<std::atomic<std::uint64_t>, 2> m_heldMask{};
     std::atomic<bool> m_sequencerEnabled{true}; // the step sequencer (the arpeggiator always runs)
+    std::atomic<bool> m_sequencerSuspended{false};
     void publishHeld() noexcept;
 
     std::array<std::uint8_t, 16> m_held{};

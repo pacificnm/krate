@@ -6,6 +6,8 @@ Instance::Instance(const krate::InstrumentContext &context)
     : synth(context.configDir + QStringLiteral("/panel.json"), context.transport, nullptr)
     , pattern(synth.engine(), context.dataDir + QStringLiteral("/patterns.json"), nullptr)
 {
+    if (context.run)
+        synth.setRunControl(context.run, QStringLiteral("k303"));
 }
 
 void Instance::triggerAction(const QString &action)

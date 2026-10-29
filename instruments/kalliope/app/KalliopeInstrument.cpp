@@ -11,6 +11,8 @@ Instance::Instance(const krate::InstrumentContext &context)
     , patches(controller, engine, context.dataDir + QStringLiteral("/patches.json"), nullptr)
     , sequencer(controller, engine, context.dataDir + QStringLiteral("/sequences.json"), nullptr)
 {
+    if (context.run)
+        controller.setRunControl(context.run, QStringLiteral("kalliope"));
 }
 
 void Instance::triggerAction(const QString &action)

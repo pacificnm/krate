@@ -49,6 +49,26 @@ class TestSequencer : public QObject
     Q_OBJECT
 
 private slots:
+    // Switched on while the transport plays: the first step waits for the bar.
+    void clockStartsOnTheNextBar()
+    {
+        QCOMPARE(krate::StepClock::nextBar(0.0), 0.0);
+        QCOMPARE(krate::StepClock::nextBar(1.3), 4.0);
+        QCOMPARE(krate::StepClock::nextBar(4.0), 4.0);
+        QCOMPARE(krate::StepClock::nextBar(7.99), 8.0);
+        krate::StepClock clock;
+        clock.setStepsPerBeat(4);
+        clock.startAt(4.0);
+        QVERIFY(clock.running());
+        for (double beat = 1.3; beat < 3.999; beat += 0.01)
+            QVERIFY(!clock.tick(beat).stepStarted); // nothing before the bar
+        QVERIFY(clock.tick(4.0).stepStarted);       // the first step, on it
+        QCOMPARE(clock.step(), 0);
+        QVERIFY(!clock.tick(4.2).stepStarted);
+        QVERIFY(clock.tick(4.25).stepStarted);       // in time: a 16th later
+        QCOMPARE(clock.step(), 1);
+    }
+
     void stepsLandOnTheirSample()
     {
         Sequencer seq;

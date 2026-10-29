@@ -495,10 +495,10 @@ Item {
     }
     DeckLabel { x: 248; y: 596; width: 56; text: "HOLD" }
     ToggleButton { key: "arp_hold"; x: 248; y: 614; tint: "#E8C12A" }
-    DeckLabel { x: 330; y: 596; width: 56; text: "START"; visible: Kalliope.ownsTransport }
+    DeckLabel { x: 330; y: 596; width: 56; text: "START"; visible: Kalliope.canRun }
     ActionButton {
         action: "start"
-        visible: Kalliope.ownsTransport
+        visible: Kalliope.canRun
         x: 330
         y: 614
         height: 40

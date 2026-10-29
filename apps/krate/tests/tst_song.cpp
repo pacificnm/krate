@@ -42,7 +42,7 @@ public:
         std::fill_n(b.outputs[0], b.frames, 0.0f);
         std::fill_n(b.outputs[1], b.frames, 0.0f);
     }
-    void setSequencerEnabled(bool on) noexcept override { sequencer = on; }
+    void setSequencerSuspended(bool on) noexcept override { sequencer = !on; }
     bool sequencer = true;
     float tone = 0.5f;
 };

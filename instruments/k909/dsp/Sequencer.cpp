@@ -179,6 +179,12 @@ void Sequencer::setShuffle(int amount) noexcept
     m_clock.setGateLength(kMaxShuffleDelay * m_shuffle / kMaxShuffle);
 }
 
+void Sequencer::startAt(double beat) noexcept
+{
+    start();
+    m_clock.startAt(beat);
+}
+
 void Sequencer::start() noexcept
 {
     m_clock.start();

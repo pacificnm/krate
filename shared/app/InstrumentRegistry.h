@@ -10,6 +10,7 @@
 namespace krate {
 
 class IInstrument;
+class RunControl;
 class Transport;
 
 // What a host gives an instrument it creates (docs/SHARED_FOUNDATIONS.MD#adding-instruments).
@@ -21,6 +22,9 @@ struct InstrumentContext
     Transport *transport = nullptr;
     QString configDir; // e.g. ~/.config/<id>: panel.json, midimap.json
     QString dataDir;   // e.g. ~/.local/share/<id>: patterns and other user data
+    // In the rack: starts and stops just this instrument's sequencer on the
+    // rack's transport (its own RUN / STOP). Standalone: nullptr.
+    RunControl *run = nullptr;
 };
 
 // One live instrument: its realtime core plus the Qt controllers its panel binds

@@ -414,7 +414,7 @@ Item {
     }
     // START / STOP (standalone only: the rack's transport bar owns them) and CLEAR
     PanelButton {
-        visible: Drums.ownsTransport
+        visible: Drums.canRun
         x: 60
         y: 752
         width: 120
@@ -432,7 +432,7 @@ Item {
         }
     }
     PanelButton {
-        visible: Drums.ownsTransport
+        visible: Drums.canRun
         x: 60
         y: 816
         width: 120

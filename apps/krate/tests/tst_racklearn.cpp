@@ -11,6 +11,7 @@
 
 #include "RackController.h"
 #include "RackMidiLearn.h"
+#include "RackRunControl.h"
 #include "RackSession.h"
 #include "app/InstrumentRegistry.h"
 #include "core/Instrument.h"
@@ -48,6 +49,8 @@ public:
     std::span<const ParamDescriptor> params;
     std::vector<float> values;
     int notes = 0; // note-ons received
+    bool sequencer = true;
+    void setSequencerEnabled(bool on) noexcept override { sequencer = on; }
 };
 
 class FakeInstance final : public InstrumentInstance
@@ -237,6 +240,41 @@ private slots:
         f.learn->arm("rack:mix:9:fader");    // no such strip
         QVERIFY(f.learn->armedParam().isEmpty());
         f.learn->setActive(false);
+    }
+
+    // Each instrument's own RUN / STOP runs just its sequencer; the rack's PLAY runs them all.
+    void instrumentsRunOnTheirOwn()
+    {
+        Fixture f; // alpha, beta
+        RackRunControl run(f.rack, f.transport, {"alpha", "beta"});
+        run.addRunner("alpha");
+        run.addRunner("beta");
+        f.controller->setRunControl(&run);
+        QSignalSpy changed(&run, &krate::RunControl::changed);
+
+        run.setRunning("beta", true); // from silence: beta alone
+        QVERIFY(f.transport.playing());
+        QVERIFY(run.running("beta"));
+        QVERIFY(!run.running("alpha"));
+        QVERIFY(f.b.sequencer);
+        QVERIFY(!f.a.sequencer);
+        run.setRunning("alpha", true); // joins while beta plays
+        QVERIFY(run.running("alpha"));
+        QVERIFY(f.a.sequencer);
+        run.setRunning("beta", false); // alpha keeps going
+        QVERIFY(f.transport.playing());
+        QVERIFY(!f.b.sequencer);
+        run.setRunning("alpha", false); // the last one: the transport stops
+        QVERIFY(!f.transport.playing());
+        QVERIFY(changed.count() >= 4);
+
+        f.controller->setPlaying(true); // the rack's PLAY: everyone
+        QVERIFY(f.a.sequencer && f.b.sequencer);
+        QVERIFY(run.running("alpha") && run.running("beta"));
+        f.controller->setPlaying(false);
+        QVERIFY(!run.running("alpha"));
+        run.setRunning("nobody", true); // unknown: nothing
+        QVERIFY(!f.transport.playing());
     }
 
     // The mixer screen: shown on request, gone when focus changes (from a tab,

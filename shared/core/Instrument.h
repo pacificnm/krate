@@ -66,10 +66,13 @@ public:
     virtual MidiLearnMap *midiLearnMap() noexcept { return nullptr; }
 
     // Any thread. An instrument with its own pattern sequencer (k303, K909,
-    // Kalliope's step sequencer) stops following the transport while this is
-    // off, so a song can play it from MIDI instead. On by default; nothing for
-    // instruments without one.
+    // Kalliope's step sequencer) runs it while the transport plays, unless:
+    // - it's switched off (its own RUN/STOP in the rack: on by default); switched
+    //   on while the transport plays, it joins on the next bar;
+    // - it's suspended (a song is playing the instrument from MIDI instead).
+    // Nothing for instruments without one.
     virtual void setSequencerEnabled(bool) noexcept {}
+    virtual void setSequencerSuspended(bool) noexcept {}
 
     // Realtime: no allocation, locks, I/O or blocking.
     virtual void process(const AudioBlock &block) noexcept = 0;

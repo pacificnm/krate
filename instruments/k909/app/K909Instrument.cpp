@@ -6,6 +6,8 @@ Instance::Instance(const krate::InstrumentContext &context)
     : drums(engine, context.configDir + QStringLiteral("/panel.json"), context.dataDir + QStringLiteral("/patterns.json"),
             context.transport, nullptr)
 {
+    if (context.run)
+        drums.setRunControl(context.run, QStringLiteral("k909"));
 }
 
 void Instance::triggerAction(const QString &action)

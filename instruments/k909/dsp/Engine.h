@@ -66,6 +66,7 @@ public:
     // Setup, before processing starts (and offline tools): the starting pattern.
     // While running, use postPattern() and post().
     void setSequencerEnabled(bool on) noexcept override { m_sequencerEnabled.store(on, std::memory_order_relaxed); }
+    void setSequencerSuspended(bool on) noexcept override { m_sequencerSuspended.store(on, std::memory_order_relaxed); }
     void setPattern(const Pattern &pattern, int slot = 0) noexcept;
     const Pattern &pattern() const noexcept { return m_sequencer.pattern(); }
 
@@ -100,6 +101,7 @@ private:
     Sequencer m_sequencer;
     std::atomic<int> m_currentStep{-1};
     std::atomic<bool> m_sequencerEnabled{true};
+    std::atomic<bool> m_sequencerSuspended{false};
     std::atomic<int> m_playingSlot{0};
     std::atomic<int> m_queuedSlot{-1};
     double m_sampleRate = 48000.0;

@@ -602,7 +602,7 @@ void SongController::setSequencers(bool enabled)
 {
     for (krate::InstrumentInstance *instance : m_instances)
         if (instance)
-            instance->instrument().setSequencerEnabled(enabled);
+            instance->instrument().setSequencerSuspended(!enabled);
 }
 
 SongController::Snapshot SongController::capture() const

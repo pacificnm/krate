@@ -11,6 +11,7 @@ class QQmlEngine;
 class QJSEngine;
 
 namespace krate {
+class RunControl;
 class Transport;
 }
 namespace k909 {
@@ -32,6 +33,8 @@ class DrumsController : public krate::ParamController
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     // False in the rack: the panel hides START/STOP and Tempo then.
     Q_PROPERTY(bool ownsTransport READ ownsTransport CONSTANT)
+    // RUN / STOP works: its own transport (standalone) or the rack's run control.
+    Q_PROPERTY(bool canRun READ canRun NOTIFY playingChanged)
     // Playing step 0..15, or -1 when stopped. Display only: polled at 60 Hz.
     Q_PROPERTY(int currentStep READ currentStep NOTIFY currentStepChanged)
     // The track the step buttons edit: 0 = bass drum .. 10 = ride.
@@ -63,6 +66,9 @@ public:
     static DrumsController *create(QQmlEngine *, QJSEngine *);
 
     bool ownsTransport() const { return m_transport != nullptr; }
+    bool canRun() const { return m_transport != nullptr || m_run != nullptr; }
+    // In the rack: RUN / STOP runs just this instrument's sequencer (before QML loads).
+    void setRunControl(krate::RunControl *run, const QString &id);
     bool playing() const;
     void setPlaying(bool playing);
 
@@ -119,6 +125,8 @@ private:
 
     k909::Engine &m_engine;
     krate::Transport *m_transport = nullptr;
+    krate::RunControl *m_run = nullptr;
+    QString m_runId;
     QString m_patternsFilePath;
     k909::persistence::PatternBank m_bank; // the GUI's copy; every edit is also posted to the engine
     QTimer m_pollTimer;

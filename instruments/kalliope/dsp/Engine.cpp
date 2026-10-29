@@ -320,13 +320,18 @@ void Engine::arpUpdate(const krate::TransportState &transport) noexcept
     m_arpClock.setGateLength(kArpGate);
     m_arpClock.setLength(m_playMode == PlayMode::Sequencer ? m_sequence.length : 16);
     const bool run = m_playMode != PlayMode::Note && transport.playing
-                     && (m_playMode != PlayMode::Sequencer || m_sequencerEnabled.load(std::memory_order_relaxed));
+                     && (m_playMode != PlayMode::Sequencer
+                         || (m_sequencerEnabled.load(std::memory_order_relaxed)
+                             && !m_sequencerSuspended.load(std::memory_order_relaxed)));
     if (run && (transport.restarted || !m_arpClock.running())) {
         arpRelease();
         seqRelease();
         if (m_playMode == PlayMode::Sequencer)
             releaseAllVoices(); // keys stop sounding: from now on they transpose
-        m_arpClock.start();
+        if (m_playMode == PlayMode::Sequencer && !transport.restarted && transport.beatAtBlockStart > 0.0)
+            m_arpClock.startAt(krate::StepClock::nextBar(transport.beatAtBlockStart)); // joining: from the next bar
+        else
+            m_arpClock.start();
         m_arpPosition = 0;
     } else if (!run && m_arpClock.running()) {
         m_arpClock.stop();

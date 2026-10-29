@@ -12,6 +12,8 @@ qt_add_qml_module(krate
         RackController.cpp
         RackMidiLearn.h
         RackMidiLearn.cpp
+        RackRunControl.h
+        RackRunControl.cpp
         RackSession.h
         RackSession.cpp
         SongController.h
@@ -48,6 +50,8 @@ add_executable(tst_racklearn
     tests/tst_racklearn.cpp
     RackController.h
     RackController.cpp
+    RackRunControl.h
+    RackRunControl.cpp
     RackMidiLearn.h
     RackMidiLearn.cpp
     RackSession.h
@@ -65,6 +69,8 @@ add_executable(tst_song
     tests/tst_song.cpp
     RackController.h
     RackController.cpp
+    RackRunControl.h
+    RackRunControl.cpp
     SongController.h
     SongController.cpp
     SongLibrary.h

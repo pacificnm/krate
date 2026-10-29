@@ -28,10 +28,18 @@ void StepClock::setLength(int length) noexcept
     m_length = std::clamp(length, 1, 16);
 }
 
+void StepClock::startAt(double beat) noexcept
+{
+    start();
+    m_waiting = true;
+    m_startBeat = beat;
+}
+
 void StepClock::start() noexcept
 {
     m_running = true;
     m_anchored = false;
+    m_waiting = false;
     m_count = -1;
     m_step = -1;
     m_prevStep = -1;
@@ -51,10 +59,14 @@ StepClock::Tick StepClock::tick(double beat) noexcept
     if (!m_running)
         return t;
     if (!m_anchored) {
-        // The first step starts on the first sample after start(), wherever the beat is.
-        m_anchorBeat = beat;
+        // The first step starts on the first sample after start(), wherever the
+        // beat is; after startAt(), on that beat exactly.
+        if (m_waiting && beat + kEpsilon < m_startBeat)
+            return t;
+        m_anchorBeat = m_waiting ? m_startBeat : beat;
         m_anchorPos = 0.0;
         m_anchored = true;
+        m_waiting = false;
     }
     m_lastBeat = beat;
 

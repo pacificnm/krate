@@ -65,6 +65,7 @@ public:
     // 0 = straight .. 5 = every second step a third of a step late.
     void setShuffle(int amount) noexcept;
 
+    void startAt(double beat) noexcept; // running, the first step on that beat (joining a playing transport)
     void start() noexcept;
     void stop() noexcept;
     bool running() const noexcept { return m_clock.running(); }

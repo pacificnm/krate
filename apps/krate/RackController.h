@@ -19,6 +19,8 @@ class QJSEngine;
 // their panels, focus, the shared transport (play, tempo, beat) and the mixer.
 // Fader positions are 0..1 with unity gain at 0.8 (gain = (fader / 0.8)^2).
 // The master meter is Host.outputLevel (the host reads the master peak).
+class RackRunControl;
+
 class RackController : public QObject
 {
     Q_OBJECT
@@ -88,6 +90,9 @@ public:
     Q_INVOKABLE void setMidiChannel(int device, int channel); // just this one (or none)
     Q_INVOKABLE void restoreMidiChannels(int device);  // its registry defaults
 
+    // The instruments' own RUN / STOP (set before the panels load); PLAY switches them all on.
+    void setRunControl(RackRunControl *run) { m_run = run; }
+
     // Mixer moves from learned controller faders, knobs and buttons (polled; public for tests).
     void applyMixerMoves();
 
@@ -127,6 +132,8 @@ private:
     QList<Strip> m_strips;
     qreal m_masterFader = kUnityFader;
     int m_focus = 0;
+    RackRunControl *m_run = nullptr;
+    bool m_shownPlaying = false; // the play state last announced
     bool m_mixerShown = false;
     bool m_songShown = false;
     double m_shownBpm = 0.0; // the tempo last announced (a song's tempo map moves it from the audio thread)

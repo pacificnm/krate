@@ -74,6 +74,7 @@ public:
     void setStepsPerBeat(int steps) noexcept { m_clock.setStepsPerBeat(steps); } // 4, 8 or 6
     void setPlayMode(PlayMode mode) noexcept;
 
+    void startAt(double beat) noexcept; // running, the first step on that beat (joining a playing transport)
     void start() noexcept;
     // Returns GateOff if a note was sounding.
     SequencerEvent stop() noexcept;

@@ -85,6 +85,7 @@ target_compile_options(krate_song PRIVATE ${KRATE_WARNINGS})
 
 # --- krate_app: Qt helpers for any instrument app (files, screenshot hook)
 add_library(krate_app STATIC
+    app/RunControl.h
     app/InstrumentRegistry.h
     app/InstrumentRegistry.cpp
     app/JsonFile.h
