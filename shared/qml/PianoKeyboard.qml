@@ -16,8 +16,12 @@ Item {
     id: keyboard
 
     required property var instrument
-    property int baseNote: 36 // lowest C
+    property int baseNote: 36 // lowest C, as drawn
     property int octaves: 4   // 49 keys
+    // What a drawn key's MIDI note is, relative to the key drawn: a controller
+    // whose C keys send a B (the LX49: 11 at octave -3) needs -1, so its keys
+    // light the same keys here.
+    property int noteOffset: 0
     property bool followKeys: true
     property int followOctaves: 0 // how far it has slid to show played notes
     readonly property int shownBase: Math.max(0, Math.min(108, baseNote + 12 * followOctaves))
@@ -30,7 +34,9 @@ Item {
     readonly property var whiteOffsets: [0, 2, 4, 5, 7, 9, 11]
     property int mouseNote: -1
 
+    // Drawn notes (the key pattern always starts on a C); MIDI notes are drawn + noteOffset.
     function whiteNote(i) { return shownBase + 12 * Math.floor(i / 7) + whiteOffsets[i % 7] }
+    function midi(drawn) { return drawn + noteOffset }
 
     // Slide to show held notes: the lowest one stays in view when they span more than two octaves.
     function follow() {
@@ -38,9 +44,9 @@ Item {
             return
         let low = 128, high = -1
         for (let n = 0; n < 128; ++n)
-            if (instrument.noteHeld(n)) {
-                low = Math.min(low, n)
-                high = Math.max(high, n)
+            if (instrument.noteHeld(n)) { // as drawn
+                low = Math.min(low, n - noteOffset)
+                high = Math.max(high, n - noteOffset)
             }
         if (high < 0)
             return // nothing held: stay where it is
@@ -58,7 +64,7 @@ Item {
         function onNotesRevisionChanged() { keyboard.follow() }
     }
     function hasBlackAfter(i) { return i < whiteCount - 1 && [0, 1, 3, 4, 5].indexOf(i % 7) >= 0 }
-    function lit(note) { return note === mouseNote || (instrument.notesRevision >= 0 && instrument.noteHeld(note)) }
+    function lit(drawn) { return midi(drawn) === mouseNote || (instrument.notesRevision >= 0 && instrument.noteHeld(midi(drawn))) }
 
     // The key under a point: black keys first (they sit on top).
     function noteAt(px, py) {
@@ -75,7 +81,8 @@ Item {
         return whiteNote(i)
     }
 
-    function play(note) {
+    function play(drawn) { // drawn note, or -1
+        const note = drawn >= 0 ? midi(drawn) : -1
         if (note === mouseNote)
             return
         if (mouseNote >= 0)
@@ -139,7 +146,7 @@ Item {
         x: 6
         y: 4
         z: 10
-        text: "notes " + keyboard.shownBase + "–" + (keyboard.shownBase + 12 * keyboard.octaves)
+        text: "notes " + keyboard.midi(keyboard.shownBase) + "–" + keyboard.midi(keyboard.shownBase + 12 * keyboard.octaves)
         color: "#2A2B2D"
         font.pixelSize: Math.max(10, keyboard.height * 0.05)
         font.bold: true
