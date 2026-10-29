@@ -2,11 +2,15 @@
 
 #include <cstdint>
 
-#include "kalliope/dsp/Envelope.h"
+#include "dsp/Envelope.h"
+#include "dsp/BlepOscillator.h"
 #include "kalliope/dsp/Filters.h"
-#include "kalliope/dsp/Oscillator.h"
 
 namespace kalliope {
+
+using krate::Envelope;
+using krate::Oscillator;
+using krate::Wave;
 
 // Everything a voice needs from the panel, in DSP units, worked out once per
 // block by the engine (docs/BRIEF.md#parameters, docs/DSP.md).

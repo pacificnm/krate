@@ -2,11 +2,11 @@
 
 #include <cstdint>
 
-namespace kalliope {
+namespace krate {
 
 enum class Wave : std::uint8_t { Triangle, Saw, Pulse, Square, Sine, Noise };
 
-// Band-limited oscillator (docs/DSP.md#building-blocks). Every discontinuity
+// Band-limited oscillator (Kalliope's docs/DSP.md#building-blocks; Krimson uses it too). Every discontinuity
 // (a saw's wrap, a pulse's edges, a hard-sync reset) is corrected with a
 // two-sample polynomial band-limited step of the jump's actual height, placed
 // at its exact sub-sample time: the sample before the jump gets h*t^2/2, the
@@ -49,4 +49,4 @@ private:
     std::uint32_t m_noise = 0x2545F491u;
 };
 
-} // namespace kalliope
+} // namespace krate

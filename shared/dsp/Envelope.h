@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <cmath>
 
-namespace kalliope {
+namespace krate {
 
-// ADSR with exponential (RC-like) segments (docs/DSP.md#building-blocks).
+// ADSR with exponential (RC-like) segments (Kalliope's and Krimson's docs/DSP.md).
 // The attack aims at 1.2 and stops at 1, so `attack` is the time to full level;
 // decay and release are the times to fall 60 dB of the way to their target.
 class Envelope
@@ -81,4 +81,4 @@ inline void Envelope::setTimes(const Times &t, double scale) noexcept
     m_sustain = t.sustain;
 }
 
-} // namespace kalliope
+} // namespace krate

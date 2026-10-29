@@ -1,10 +1,10 @@
-#include "kalliope/dsp/Oscillator.h"
+#include "dsp/BlepOscillator.h"
 
 #include <algorithm>
 #include <cmath>
 #include <numbers>
 
-namespace kalliope {
+namespace krate {
 
 void Oscillator::reset(double phase) noexcept
 {
@@ -107,4 +107,4 @@ float Oscillator::next(double increment, double width, double syncT) noexcept
     return float(m_value);
 }
 
-} // namespace kalliope
+} // namespace krate

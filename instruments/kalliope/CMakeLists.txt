@@ -8,12 +8,8 @@ add_library(kalliope_dsp STATIC
     dsp/Engine.cpp
     dsp/Effects.h
     dsp/Effects.cpp
-    dsp/Envelope.h
     dsp/Filters.h
     dsp/Filters.cpp
-    dsp/Lfo.h
-    dsp/Oscillator.h
-    dsp/Oscillator.cpp
     dsp/Params.h
     dsp/Params.cpp
     dsp/Sequence.h

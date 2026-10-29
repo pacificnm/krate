@@ -11,13 +11,15 @@
 #include "core/SpscQueue.h"
 #include "core/StepClock.h"
 #include "dsp/HalfbandDecimator.h"
+#include "dsp/Lfo.h"
 #include "kalliope/dsp/Effects.h"
-#include "kalliope/dsp/Lfo.h"
 #include "kalliope/dsp/Params.h"
 #include "kalliope/dsp/Sequence.h"
 #include "kalliope/dsp/Voice.h"
 
 namespace kalliope {
+
+using krate::Lfo;
 
 // Kalliope's realtime core (docs/DSP.md): eight voices at 2x, decimated once,
 // then the stereo chorus and the tempo-synced ping-pong delay; Poly, Unison and

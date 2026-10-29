@@ -20,13 +20,19 @@ add_library(krate_core STATIC
 target_include_directories(krate_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(krate_core PRIVATE ${KRATE_WARNINGS})
 
-# --- krate_dsp: header-only DSP building blocks shared by instruments
-# (oversampling decimator, PolyBLEP); no Qt, no JACK
-add_library(krate_dsp INTERFACE
+# --- krate_dsp: DSP building blocks shared by instruments (oversampling
+# decimator, PolyBLEP, band-limited oscillator, ADSR, LFO); no Qt, no JACK.
+# Named so they never collide with an instrument's own dsp/ files (k303 has dsp/Oscillator.h).
+add_library(krate_dsp STATIC
+    dsp/BlepOscillator.h
+    dsp/BlepOscillator.cpp
+    dsp/Envelope.h
     dsp/HalfbandDecimator.h
+    dsp/Lfo.h
     dsp/PolyBlep.h
 )
-target_include_directories(krate_dsp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(krate_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(krate_dsp PRIVATE ${KRATE_WARNINGS})
 
 # --- krate_host: standalone JACK host; no Qt
 add_library(krate_host STATIC
