@@ -71,4 +71,32 @@ private:
     double m_last = 0.0; // the last stage's output, for the feedback
 };
 
+// Tremolo: the volume pulsing with an LFO, as an amp's tremolo does. SHAPE
+// goes from a smooth sine to a choppy square (a sine pushed through a
+// saturating curve, so its edges stay rounded and never click); DEPTH from a
+// gentle pulse to full chop; LEVEL makes up what the dips take.
+class Tremolo final : public Pedal
+{
+public:
+    enum Knob : int { Rate, Depth, Shape, Level };
+    static const PedalInfo kInfo;
+
+    Tremolo() : Pedal(kInfo) {}
+
+    static double rateHz(float rate); // 0.5 .. 15 Hz
+    // The gain (0..1) at LFO phase 0..1 for a Depth and Shape setting.
+    static double gainAt(double phase, float depth, float shape);
+
+protected:
+    void prepareEffect(double sampleRate) noexcept override;
+    void resetEffect() noexcept override;
+    void processEffect(float *buffer, std::uint32_t frames) noexcept override;
+
+private:
+    double m_rate = 48000.0;
+    double m_phase = 0.0;
+    double m_gain = 1.0;      // smoothed, so even the square's edges are soft
+    double m_smoothing = 0.0;
+};
+
 } // namespace krunch

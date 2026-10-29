@@ -75,6 +75,17 @@ The classic analog bucket-brigade flanger in broad strokes (`dsp/ModPedals.cpp`)
 
 Both start in FRONT, where these usually go (in front of the drive or between it and the amp); either works in the loop too.
 
+## Tremolo
+
+The volume pulsing with an LFO, as an amp's tremolo does (`dsp/ModPedals.cpp`). **SHAPE** turns a smooth sine into a choppy square: the sine is pushed through a saturating curve (harder as Shape goes up), and the gain is smoothed over 1.5 ms, so even the square's edges never click. **DEPTH** goes from a gentle pulse to full chop (silence in the dips). Starts in the LOOP, where an amp's own tremolo sits; it works in front too.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `rate` | 0.5 … 15 Hz | about 2.3 Hz |
+| `depth` | 0 … 10 | 6 |
+| `shape` | Sine … Square | Sine |
+| `level` | −12 … +12 dB | +1.2 dB (making up for the dips) |
+
 ## Chorus
 
 The guitar mixed with a copy through a short delay (7 ms) swept by a sine LFO (`dsp/TimePedals.cpp`).
@@ -108,4 +119,4 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

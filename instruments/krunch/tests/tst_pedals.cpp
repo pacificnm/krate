@@ -78,7 +78,7 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(9));
+        QCOMPARE(pedalTypes().size(), std::size_t(10));
         QCOMPARE(pedalTypes()[1]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
@@ -398,6 +398,70 @@ private slots:
         QVERIFY(db(smooth.high) - db(smooth.low) > 15.0);
         QVERIFY(db(deep.high) - db(deep.low) > 10.0);
         QVERIFY(db(deep.high) > db(smooth.high) + 2.0); // resonant peaks
+    }
+
+    // --- Tremolo -------------------------------------------------------------------------
+
+    void tremoloCurve()
+    {
+        for (float shape : {0.0f, 0.5f, 1.0f}) {
+            double lo = 1.0, hi = 0.0;
+            for (double p = 0.0; p < 1.0; p += 0.001) {
+                lo = std::min(lo, Tremolo::gainAt(p, 1.0f, shape));
+                hi = std::max(hi, Tremolo::gainAt(p, 1.0f, shape));
+            }
+            QVERIFY(lo < 1e-6 && std::fabs(hi - 1.0) < 1e-6); // full depth: silence to full
+        }
+        QCOMPARE(Tremolo::gainAt(0.37, 0.0f, 0.5f), 1.0); // no depth: no change
+        // Square spends far more of the cycle near full or near silent than sine does.
+        const auto nearEnds = [](float shape) {
+            int n = 0;
+            for (double p = 0.0; p < 1.0; p += 0.001)
+                if (const double g = Tremolo::gainAt(p, 1.0f, shape); g < 0.1 || g > 0.9)
+                    ++n;
+            return n;
+        };
+        QVERIFY(nearEnds(1.0f) > 2 * nearEnds(0.0f));
+    }
+
+    void tremoloPulsesAtItsRate()
+    {
+        Tremolo t;
+        t.prepare(kRate);
+        t.setKnob(Tremolo::Rate, 0.5f);
+        t.setKnob(Tremolo::Depth, 1.0f);
+        t.setKnob(Tremolo::Level, 0.5f);
+        std::vector<float> dc(48000 * 2, 0.5f);
+        const auto y = run(t, dc);
+        // Count the dips: the gain's minima, one per cycle.
+        int dips = 0;
+        bool low = false;
+        for (std::size_t i = 4800; i < y.size(); ++i) {
+            if (!low && y[i] < 0.05f) {
+                ++dips;
+                low = true;
+            } else if (low && y[i] > 0.4f) {
+                low = false;
+            }
+        }
+        const double expected = Tremolo::rateHz(0.5f) * (double(y.size() - 4800) / kRate);
+        QVERIFY2(std::fabs(dips - expected) <= 1.0, qPrintable(QStringLiteral("%1 dips, %2 expected").arg(dips).arg(expected)));
+    }
+
+    // Even the square at full depth and speed has no clicks: its edges are rounded.
+    void tremoloSquareDoesNotClick()
+    {
+        Tremolo t;
+        t.prepare(kRate);
+        t.setKnob(Tremolo::Rate, 1.0f);
+        t.setKnob(Tremolo::Depth, 1.0f);
+        t.setKnob(Tremolo::Shape, 1.0f);
+        std::vector<float> dc(48000, 0.5f);
+        const auto y = run(t, dc);
+        float step = 0.0f;
+        for (std::size_t i = 4801; i < y.size(); ++i)
+            step = std::max(step, std::fabs(y[i] - y[i - 1]));
+        QVERIFY2(step < 0.02f, qPrintable(QString::number(step))); // a 0.5 jump spread over ~1.5 ms
     }
 
     void phaserSpeedRange()

@@ -157,4 +157,61 @@ void Phaser::processEffect(float *buffer, std::uint32_t frames) noexcept
     }
 }
 
+// --- Tremolo ----------------------------------------------------------------------
+
+namespace {
+std::string tremoloRate(float v) { return std::format("{:.1f} Hz", Tremolo::rateHz(v)); }
+std::string shapeText(float v) { return v < 0.15f ? "Sine" : v > 0.85f ? "Square" : std::format("{:.1f}", double(v) * 10.0); }
+std::string tremoloLevel(float v)
+{
+    return std::format("{:+.1f} dB", std::round((-12.0 + 24.0 * double(v)) * 10.0) / 10.0 + 0.0);
+}
+} // namespace
+
+const PedalInfo Tremolo::kInfo = []() {
+    static const KnobInfo knobs[] = {
+        {"rate", "RATE", 0.45f, &tremoloRate},
+        {"depth", "DEPTH", 0.6f, &tenth},
+        {"shape", "SHAPE", 0.0f, &shapeText},
+        {"level", "LEVEL", 0.55f, &tremoloLevel},
+    };
+    return PedalInfo{"tremolo", "Tremolo", "#2E6B5E", knobs, true};
+}();
+
+double Tremolo::rateHz(float rate) { return 0.5 * std::pow(30.0, std::clamp(double(rate), 0.0, 1.0)); }
+
+double Tremolo::gainAt(double phase, float depth, float shape)
+{
+    // A sine, saturated harder as Shape goes up (k: 0.1 .. 12), scaled back to +-1.
+    const double k = 0.1 + 11.9 * std::clamp(double(shape), 0.0, 1.0);
+    const double w = std::tanh(k * std::sin(2.0 * std::numbers::pi * phase)) / std::tanh(k);
+    return 1.0 - std::clamp(double(depth), 0.0, 1.0) * (0.5 - 0.5 * w);
+}
+
+void Tremolo::prepareEffect(double sampleRate) noexcept
+{
+    m_rate = sampleRate;
+    m_smoothing = 1.0 - std::exp(-1.0 / (0.0015 * sampleRate)); // 1.5 ms: no clicks, still choppy
+}
+
+void Tremolo::resetEffect() noexcept
+{
+    m_phase = 0.25; // starts at the top of the cycle (full volume)
+    m_gain = 1.0;
+}
+
+void Tremolo::processEffect(float *buffer, std::uint32_t frames) noexcept
+{
+    const double increment = rateHz(knob(Rate)) / m_rate;
+    const float depth = knob(Depth), shape = knob(Shape);
+    const double level = std::pow(10.0, (-12.0 + 24.0 * double(knob(Level))) / 20.0);
+    for (std::uint32_t n = 0; n < frames; ++n) {
+        m_gain += (gainAt(m_phase, depth, shape) - m_gain) * m_smoothing;
+        m_phase += increment;
+        if (m_phase >= 1.0)
+            m_phase -= 1.0;
+        buffer[n] = float(buffer[n] * m_gain * level);
+    }
+}
+
 } // namespace krunch

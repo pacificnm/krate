@@ -59,8 +59,8 @@ void Pedal::process(float *buffer, std::uint32_t frames) noexcept
 std::span<const PedalInfo *const> pedalTypes()
 {
     static const PedalInfo *const kTypes[] = {&Compressor::kInfo, &GreenDrive::kInfo, &Eq5::kInfo, &Eq10::kInfo,
-                                              &Phaser::kInfo, &Flanger::kInfo, &Chorus::kInfo, &Delay::kInfo,
-                                              &Reverb::kInfo};
+                                              &Phaser::kInfo, &Flanger::kInfo, &Chorus::kInfo, &Tremolo::kInfo,
+                                              &Delay::kInfo, &Reverb::kInfo};
     return kTypes;
 }
 
@@ -76,6 +76,8 @@ std::unique_ptr<Pedal> makePedal(std::string_view type)
         return std::make_unique<Eq10>();
     if (type == Flanger::kInfo.type)
         return std::make_unique<Flanger>();
+    if (type == Tremolo::kInfo.type)
+        return std::make_unique<Tremolo>();
     if (type == Phaser::kInfo.type)
         return std::make_unique<Phaser>();
     if (type == Chorus::kInfo.type)
