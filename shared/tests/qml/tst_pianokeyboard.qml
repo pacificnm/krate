@@ -40,20 +40,6 @@ TestCase {
         keys.baseNote = 36
         keys.followOctaves = 0
         keys.followKeys = true
-        keys.noteOffset = 0
-    }
-
-    // A controller whose C keys send a B: drawn C lights for note 47, C# for 48.
-    function test_noteOffset() {
-        keys.baseNote = 48
-        keys.noteOffset = -1
-        fake.hold([47])
-        compare(keys.shownBase, 48)
-        verify(keys.lit(48))   // the leftmost (drawn C) key
-        verify(!keys.lit(47))
-        fake.hold([11])        // the lowest key at octave -3
-        compare(keys.shownBase, 12)
-        verify(keys.lit(12))   // still the leftmost key, a C
     }
 
     function test_fortyNineKeys() {

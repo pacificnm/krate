@@ -793,9 +793,7 @@ Item {
         y: 540
         width: 1360
         height: 320
-        // 49 keys, key for key with the LX49: its lowest key (a C) sends 47 at octave 0, 11 at -3.
-        baseNote: 48 + 12 * octave.shift
-        noteOffset: -1
+        baseNote: 47 + 12 * octave.shift // 49 keys, key for key with the LX49 (its lowest key sends 47 at octave 0, 11 at -3)
         litColor: "#E2343A"
     }
 
