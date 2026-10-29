@@ -100,6 +100,11 @@ public:
     };
     std::optional<ProgramChange> popProgramChange() noexcept { return m_programChanges.pop(); }
 
+    // Any thread: where the pitch bend (-1..1) and mod wheel (0..1) were last
+    // put, from any MIDI channel or the on-screen wheels (for the panel's wheels).
+    float bendPosition() const noexcept { return m_bendShown.load(std::memory_order_relaxed); }
+    float wheelPosition() const noexcept { return m_wheelShown.load(std::memory_order_relaxed); }
+
     // Any thread: is `note` held in any slot? Updated every block.
     bool noteHeld(int note) const noexcept
     {
@@ -224,6 +229,8 @@ private:
     krate::SpscQueue<krate::MidiEvent, 256> m_gui;
     krate::SpscQueue<ProgramChange, 32> m_programChanges; // audio -> GUI
     std::array<std::atomic<std::uint64_t>, 2> m_heldMask{};
+    std::atomic<float> m_bendShown{0.0f};
+    std::atomic<float> m_wheelShown{0.0f};
     // Octave: the shift each MIDI key went down with, per channel and note, so
     // its note-off matches even if Octave changed while it was held (-128 = up).
     std::array<std::array<std::int8_t, 128>, 16> m_keyShift{};

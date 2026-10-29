@@ -179,6 +179,12 @@ void KrimsonController::poll()
         m_playing = playing();
         emit playingChanged();
     }
+    if (const float bend = m_engine.bendPosition(), wheel = m_engine.wheelPosition();
+        bend != m_bendSeen || wheel != m_wheelSeen) {
+        m_bendSeen = bend;
+        m_wheelSeen = wheel;
+        emit wheelsChanged();
+    }
 }
 
 void KrimsonController::syncArp()

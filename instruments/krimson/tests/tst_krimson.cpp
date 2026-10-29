@@ -145,6 +145,35 @@ private slots:
         QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(0.3f));
     }
 
+    // The panel's wheels follow a MIDI keyboard's: the engine publishes where
+    // pitch bend and the mod wheel were last put, and the controller passes it on.
+    void wheelsFollowMidi()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        k.engine.prepare(48000.0, 64);
+        std::array<float, 64> l, r;
+        const auto send = [&](krate::MidiEvent e) { krate::processStereo(k.engine, l.data(), r.data(), 64, &e, 1); };
+        QCOMPARE(k.engine.bendPosition(), 0.0f);
+        QCOMPARE(k.engine.wheelPosition(), 0.0f);
+        QSignalSpy wheels(&k.controller, &KrimsonController::wheelsChanged);
+        send({0, 3, {0xE0, 0x7F, 0x7F}}); // bend all the way up (channel 1: the keyboard's)
+        send({0, 3, {0xB0, 1, 127}});     // mod wheel all the way up
+        QCOMPARE(k.engine.bendPosition(), 1.0f);
+        QCOMPARE(k.engine.wheelPosition(), 1.0f);
+        QTRY_COMPARE(k.controller.bendPosition(), 1.0);
+        QCOMPARE(k.controller.wheelPosition(), 1.0);
+        QVERIFY(wheels.count() >= 1);
+        send({0, 3, {0xE0, 0x00, 0x40}}); // back to the middle
+        QTRY_COMPARE(k.controller.bendPosition(), 0.0);
+        // The on-screen wheels report the same way.
+        k.controller.modWheel(0.25);
+        krate::processStereo(k.engine, l.data(), r.data(), 64, nullptr, 0);
+        QVERIFY(std::abs(k.engine.wheelPosition() - 0.25f) < 0.01f);
+    }
+
     // The octave buttons are learnable (standalone and in the rack: both learn
     // the entry's actions) and step the keys' octave, stopping at +-3.
     void octaveButtonsLearnAndStep()

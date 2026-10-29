@@ -30,6 +30,9 @@ class KrimsonController : public krate::ParamController
     Q_PROPERTY(int editedSlot READ editedSlot WRITE setEditedSlot NOTIFY editedSlotChanged)
     // Bumped when the held keys change (MIDI or the on-screen keyboard).
     Q_PROPERTY(int notesRevision READ notesRevision NOTIFY notesChanged)
+    // Where the pitch bend (-1..1) and mod wheel (0..1) are, from MIDI or the on-screen wheels.
+    Q_PROPERTY(qreal bendPosition READ bendPosition NOTIFY wheelsChanged)
+    Q_PROPERTY(qreal wheelPosition READ wheelPosition NOTIFY wheelsChanged)
     // MORPH lit: turning a knob sets its morph target (docs/PLAY.md#morph).
     Q_PROPERTY(bool morphEdit READ morphEdit WRITE setMorphEdit NOTIFY morphChanged)
     // Bumped when any morph target changes (or the edited slot does).
@@ -49,6 +52,8 @@ public:
     int editedSlot() const;
     void setEditedSlot(int slot);
     int notesRevision() const { return m_notesRevision; }
+    qreal bendPosition() const { return m_bendSeen; }
+    qreal wheelPosition() const { return m_wheelSeen; }
 
     // On-screen keyboard and wheels: played as the keyboard (the lit slots).
     Q_INVOKABLE void noteOn(int note);
@@ -70,6 +75,7 @@ public:
     void morphReloaded();
 
 signals:
+    void wheelsChanged();
     void playingChanged();
     void editedSlotChanged();
     void notesChanged();
@@ -87,6 +93,7 @@ private:
     QTimer m_pollTimer;
     bool m_playing = false;
     int m_notesRevision = 0;
+    float m_bendSeen = 0.0f, m_wheelSeen = 0.0f;
     bool m_morphEdit = false;
     bool m_arpOn = false;
     int m_arpSlot = 0;

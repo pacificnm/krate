@@ -541,8 +541,10 @@ void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
     case krate::MidiMessage::Type::ControlChange:
         if (const auto r = m_learn.controlChange(m.data1, m.data2); r.param != krate::MidiLearnMap::kUnmapped)
             store(r.param).setFromAudio(r.param, r.value); // learned knobs edit the edited slot
-        else if (m.data1 == kCcModWheel)
+        else if (m.data1 == kCcModWheel) {
             forSlots(-1, [&](int slot) { m_state[std::size_t(slot)].wheel = m.data2 / 127.0; });
+            m_wheelShown.store(float(m.data2) / 127.0f, std::memory_order_relaxed);
+        }
         else if (m.data1 == kCcSustain)
             forSlots(-1, [&](int slot) { setSustain(slot, m.data2 >= 64); });
         else if (m.data1 == kCcAllNotesOff || m.data1 == kCcAllSoundOff)
@@ -571,6 +573,7 @@ void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
             const int value = (event.data[2] << 7) | event.data[1];
             const double bend = std::clamp((value - 8192) / 8191.0, -1.0, 1.0);
             forSlots(-1, [&](int slot) { m_state[std::size_t(slot)].bend = bend; });
+            m_bendShown.store(float(bend), std::memory_order_relaxed);
         }
         break;
     }

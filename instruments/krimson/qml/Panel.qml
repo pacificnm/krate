@@ -238,7 +238,10 @@ Item {
         id: wheel
         property string label: ""
         property bool springs: false
-        property real amount: springs ? 0.5 : 0.0 // 0..1
+        property real position: springs ? 0.5 : 0.0 // 0..1, where the instrument says it is (MIDI included)
+        property bool dragging: false
+        property real dragAmount: 0.0
+        readonly property real amount: dragging ? dragAmount : position // drawn here
         signal changed(real amount)
         width: 50
         height: 240
@@ -269,16 +272,18 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 function set(y) {
-                    wheel.amount = Math.max(0, Math.min(1, 1 - y / height))
-                    wheel.changed(wheel.amount)
+                    wheel.dragAmount = Math.max(0, Math.min(1, 1 - y / height))
+                    wheel.changed(wheel.dragAmount)
                 }
-                onPressed: mouse => set(mouse.y)
+                onPressed: mouse => {
+                    wheel.dragging = true
+                    set(mouse.y)
+                }
                 onPositionChanged: mouse => set(mouse.y)
                 onReleased: {
-                    if (wheel.springs) {
-                        wheel.amount = 0.5
+                    wheel.dragging = false
+                    if (wheel.springs)
                         wheel.changed(0.5)
-                    }
                 }
             }
         }
@@ -733,8 +738,16 @@ Item {
         radius: 6
         color: "#1A1A1B"
     }
-    Wheel { x: 50; y: 560; label: "PITCH"; springs: true; height: 200; onChanged: a => Krimson.pitchBend(a * 2 - 1) }
-    Wheel { x: 120; y: 560; label: "MOD"; height: 200; onChanged: a => Krimson.modWheel(a) }
+    Wheel { // follows the LX49's wheels too
+        x: 50; y: 560; label: "PITCH"; springs: true; height: 200
+        position: (Krimson.bendPosition + 1) / 2
+        onChanged: a => Krimson.pitchBend(a * 2 - 1)
+    }
+    Wheel {
+        x: 120; y: 560; label: "MOD"; height: 200
+        position: Krimson.wheelPosition
+        onChanged: a => Krimson.modWheel(a)
+    }
 
     // Performances: all four slots' sounds and setup, 1-8.
     Column {
