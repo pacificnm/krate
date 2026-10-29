@@ -210,8 +210,35 @@ void RackController::setSolo(int device, bool solo)
     emit mixerChanged();
 }
 
+void RackController::applyMixerMoves()
+{
+    while (const auto move = m_rack.popMixerMove()) {
+        const int device = move->device == krate::Rack::kRackDevice ? -1 : move->device;
+        if (device >= m_strips.size())
+            continue;
+        switch (move->control) {
+        case krate::Rack::MixerFader:
+            setFader(device, move->value / 127.0);
+            break;
+        case krate::Rack::MixerPan: // 64 is centre
+            setPan(device, move->value == 64 ? 0.0 : (move->value - 64) / (move->value < 64 ? 64.0 : 63.0));
+            break;
+        case krate::Rack::MixerMute:
+            setMute(device, !mute(device));
+            break;
+        case krate::Rack::MixerSolo:
+            setSolo(device, !solo(device));
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 void RackController::poll()
 {
+    applyMixerMoves();
+
     // Focus can change from the controller (Program Change, learned buttons).
     if (const int focus = m_rack.focus(); focus != m_focus) {
         m_focus = focus;

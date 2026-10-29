@@ -83,6 +83,9 @@ public:
     Q_INVOKABLE void setMidiChannel(int device, int channel); // just this one (or none)
     Q_INVOKABLE void restoreMidiChannels(int device);  // its registry defaults
 
+    // Mixer moves from learned controller faders, knobs and buttons (polled; public for tests).
+    void applyMixerMoves();
+
 signals:
     void focusChanged();
     void mixerShownChanged();

@@ -48,6 +48,20 @@ std::optional<RackMidiLearn::Mapping> RackMidiLearn::resolve(const QString &key)
         return Mapping{Kind::FocusAction, -1, krate::Rack::kFocusNext};
     if (key == u"rack:previous")
         return Mapping{Kind::FocusAction, -1, krate::Rack::kFocusPrevious};
+    if (key.startsWith(u"rack:mix:")) { // rack:mix:<n|master>:<control>
+        const QStringList parts = key.split(u':');
+        const qsizetype control = kMixerControls.indexOf(parts.value(3));
+        if (parts.size() != 4 || control < 0)
+            return std::nullopt;
+        if (parts[2] == u"master")
+            return control == krate::Rack::MixerFader ? std::optional(Mapping{Kind::Mixer, krate::Rack::kRackDevice, krate::Rack::MixerFader})
+                                                      : std::nullopt;
+        bool ok = false;
+        const int device = parts[2].toInt(&ok);
+        if (ok && device >= 0 && device < int(m_devices.size()))
+            return Mapping{Kind::Mixer, device, int(control)};
+        return std::nullopt;
+    }
     if (key.startsWith(u"rack:focus:")) {
         bool ok = false;
         const int device = key.mid(11).toInt(&ok);
@@ -77,7 +91,7 @@ bool RackMidiLearn::matches(const Mapping &m, const QString &key) const
         if (!r || r->kind != m.kind || r->target != m.target)
             return false;
         // Focus actions carry no device (it doesn't survive packing as -1); actions do.
-        return m.kind != Kind::Action || r->device == m.device;
+        return (m.kind != Kind::Action && m.kind != Kind::Mixer) || r->device == m.device;
     }
     const int focused = m_rack.focus();
     switch (m.kind) {
@@ -222,6 +236,11 @@ QJsonArray RackMidiLearn::saveMappings() const
                 o[QStringLiteral("key")] = deviceId.isEmpty() ? QString() : m_devices[std::size_t(m.device)].actions.value(m.target);
             }
             break;
+        case Kind::Mixer:
+            o[QStringLiteral("kind")] = QStringLiteral("mixer");
+            o[QStringLiteral("device")] = m.device == krate::Rack::kRackDevice ? QStringLiteral("master") : deviceId;
+            o[QStringLiteral("key")] = o.value(u"device").toString().isEmpty() ? QString() : kMixerControls.value(m.target);
+            break;
         case Kind::None:
             continue;
         }
@@ -268,8 +287,16 @@ void RackMidiLearn::loadMappings(const QJsonArray &mappings)
                 if (const qsizetype a = m_devices[std::size_t(device)].actions.indexOf(key); a >= 0)
                     m = Mapping{Kind::Action, device, int(a)};
             }
+        } else if (kind == u"mixer") {
+            const qsizetype control = kMixerControls.indexOf(key);
+            if (deviceId == u"master" && control == krate::Rack::MixerFader)
+                m = Mapping{Kind::Mixer, krate::Rack::kRackDevice, krate::Rack::MixerFader};
+            else if (device >= 0 && control >= 0)
+                m = Mapping{Kind::Mixer, device, int(control)};
         }
-        if (!m || (e.isNote && m->kind != Kind::FocusAction && m->kind != Kind::Action)) {
+        const bool button = m && (m->kind == Kind::FocusAction || m->kind == Kind::Action
+                                  || (m->kind == Kind::Mixer && krate::Rack::isMixerButton(m->target)));
+        if (!m || (e.isNote && !button)) {
             qCWarning(lcRackLearn) << "skipping unknown mapping" << o;
             continue;
         }

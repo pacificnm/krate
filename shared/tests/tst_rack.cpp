@@ -252,6 +252,50 @@ private slots:
         Rack rack;
         rack.setNoteMapping(0, 60, {Kind::Param, 0, 0}); // not a button: refused
         QCOMPARE(int(rack.noteMapping(0, 60).kind), int(Kind::None));
+        rack.setNoteMapping(0, 61, {Kind::Mixer, 0, Rack::MixerFader}); // a fader isn't either
+        QCOMPARE(int(rack.noteMapping(0, 61).kind), int(Kind::None));
+        rack.setNoteMapping(0, 62, {Kind::Mixer, 0, Rack::MixerMute});
+        QCOMPARE(int(rack.noteMapping(0, 62).kind), int(Kind::Mixer));
+    }
+
+    // Mixer controls go to the GUI as moves: faders and pans every value (the
+    // learning move too), mute and solo on presses only.
+    void mixerControlsBecomeMoves()
+    {
+        FakeDevice a(kParamsA, 0.0f), b(kParamsB, 0.0f);
+        Rack rack;
+        rack.addDevice(a);
+        rack.addDevice(b);
+        rack.arm({Kind::Mixer, 1, Rack::MixerFader});
+        run(rack, 64, {cc(0, 7, 90)});
+        auto move = rack.popMixerMove();
+        QVERIFY(move.has_value()); // a fader applies the value that taught it
+        QCOMPARE(move->device, 1);
+        QCOMPARE(move->control, int(Rack::MixerFader));
+        QCOMPARE(move->value, std::uint8_t(90));
+        run(rack, 64, {cc(0, 7, 10), cc(0, 7, 11)});
+        QCOMPARE(rack.popMixerMove()->value, std::uint8_t(10));
+        QCOMPARE(rack.popMixerMove()->value, std::uint8_t(11));
+
+        rack.arm({Kind::Mixer, Rack::kRackDevice, Rack::MixerFader}); // the master
+        run(rack, 64, {cc(0, 8, 100)});
+        QCOMPARE(rack.popMixerMove()->device, Rack::kRackDevice);
+
+        rack.arm({Kind::Mixer, 0, Rack::MixerMute}); // a button, from a CC
+        run(rack, 64, {cc(15, 60, 127)});
+        QVERIFY(!rack.popMixerMove().has_value()); // the teaching press
+        run(rack, 64, {cc(15, 60, 127), cc(15, 60, 0)});
+        QCOMPARE(rack.popMixerMove()->control, int(Rack::MixerMute));
+        QVERIFY(!rack.popMixerMove().has_value()); // the release does nothing
+
+        rack.arm({Kind::Mixer, 1, Rack::MixerSolo}); // from a pad
+        run(rack, 64, {noteOn(9, 40), noteOff(9, 40)});
+        run(rack, 64, {noteOn(9, 40), noteOff(9, 40)});
+        move = rack.popMixerMove();
+        QCOMPARE(move->device, 1);
+        QCOMPARE(move->control, int(Rack::MixerSolo));
+        QVERIFY(!rack.popMixerMove().has_value());
+        QVERIFY(a.received.empty() && b.received.empty()); // nothing reached the instruments
     }
 
     // --- Rack CC map ---------------------------------------------------------------

@@ -12,6 +12,8 @@ Item {
     readonly property bool isMaster: device < 0
     // Re-evaluate the C++ getters whenever the mixer changes.
     readonly property int rev: Rack.mixerRevision
+    // MIDI Learn keys: rack:mix:<n|master>:fader|pan|mute|solo.
+    readonly property string learnKey: "rack:mix:" + (isMaster ? "master" : device) + ":"
 
     width: 110
     height: 230
@@ -43,6 +45,7 @@ Item {
         defaultValue: 0.5
         displayText: Math.abs(value - 0.5) < 0.01 ? "C" : (value < 0.5 ? "L" : "R") + Math.round(Math.abs(value - 0.5) * 200)
         onMoved: v => Rack.setPan(strip.device, v * 2 - 1)
+        LearnOverlay { anchors.fill: parent; paramKey: strip.learnKey + "pan" }
     }
 
     Row {
@@ -58,6 +61,7 @@ Item {
             text: strip.name + " mute"
             dark: strip.rev >= 0 && Rack.mute(strip.device)
             onClicked: Rack.setMute(strip.device, !Rack.mute(strip.device))
+            LearnOverlay { anchors.fill: parent; paramKey: strip.learnKey + "mute"; round: false }
         }
         PanelButton {
             width: 38
@@ -66,6 +70,7 @@ Item {
             text: strip.name + " solo"
             dark: strip.rev >= 0 && Rack.solo(strip.device)
             onClicked: Rack.setSolo(strip.device, !Rack.solo(strip.device))
+            LearnOverlay { anchors.fill: parent; paramKey: strip.learnKey + "solo"; round: false }
         }
     }
 
@@ -76,6 +81,7 @@ Item {
         value: strip.rev >= 0 ? Rack.fader(strip.device) : 0.8
         displayText: Rack.faderText(value)
         onMoved: v => Rack.setFader(strip.device, v)
+        LearnOverlay { anchors.fill: parent; paramKey: strip.learnKey + "fader"; round: false }
     }
 
     Meter {

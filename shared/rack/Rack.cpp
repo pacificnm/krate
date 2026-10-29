@@ -89,6 +89,16 @@ float Rack::takeDevicePeak(int device) noexcept
 }
 
 // Packed mapping: bits 29-31 kind, 16-23 device, 0-15 target. 0 = none.
+namespace {
+// Buttons fire on a press, can be learned from notes, and don't fire on the press that teaches them.
+bool isButton(const Rack::Mapping &m)
+{
+    using Kind = Rack::Mapping::Kind;
+    return m.kind == Kind::FocusAction || m.kind == Kind::Action
+           || (m.kind == Kind::Mixer && Rack::isMixerButton(m.target));
+}
+} // namespace
+
 std::uint32_t Rack::pack(Mapping m) noexcept
 {
     if (m.kind == Mapping::Kind::None)
@@ -122,7 +132,7 @@ Rack::Mapping Rack::ccMapping(int channel, int cc) const noexcept
 
 void Rack::setNoteMapping(int channel, int note, Mapping mapping) noexcept
 {
-    if (mapping.kind != Mapping::Kind::FocusAction && mapping.kind != Mapping::Kind::Action)
+    if (!isButton(mapping))
         mapping = {};
     if (channel >= 0 && channel < kChannels && note >= 0 && note < 128)
         m_noteMap[std::size_t(channel)][std::size_t(note)].store(pack(mapping), std::memory_order_relaxed);
@@ -212,7 +222,7 @@ void Rack::route(MidiEvent event) noexcept
             m_ccMap[std::size_t(channel)][m.data1].store(pack(armed), std::memory_order_relaxed);
             m_armed.store(0, std::memory_order_relaxed);
             m_learned.push({false, std::uint8_t(channel), m.data1, armed});
-            if (armed.kind == Mapping::Kind::FocusAction || armed.kind == Mapping::Kind::Action)
+            if (isButton(armed))
                 break;
         }
         Mapping map = unpack(m_ccMap[std::size_t(channel)][m.data1].load(std::memory_order_relaxed));
@@ -245,6 +255,10 @@ void Rack::route(MidiEvent event) noexcept
             if (m.data2 > 0)
                 m_fired.push({map.device, map.target});
             break;
+        case Mapping::Kind::Mixer:
+            if (!isMixerButton(map.target) || m.data2 > 0)
+                m_mixerMoves.push({map.device, map.target, m.data2});
+            break;
         }
         break;
     }
@@ -253,7 +267,7 @@ void Rack::route(MidiEvent event) noexcept
         if (m.type == MidiMessage::Type::NoteOn) {
             // Only buttons (focus actions and actions) are learned from notes.
             const Mapping armed = unpack(m_armed.load(std::memory_order_relaxed));
-            if (armed.kind == Mapping::Kind::FocusAction || armed.kind == Mapping::Kind::Action) {
+            if (isButton(armed)) {
                 m_noteMap[std::size_t(channel)][m.data1].store(pack(armed), std::memory_order_relaxed);
                 m_armed.store(0, std::memory_order_relaxed);
                 m_learned.push({true, std::uint8_t(channel), m.data1, armed});
@@ -265,6 +279,8 @@ void Rack::route(MidiEvent event) noexcept
             if (m.type == MidiMessage::Type::NoteOn) {
                 if (button.kind == Mapping::Kind::FocusAction)
                     runAction(button.target);
+                else if (button.kind == Mapping::Kind::Mixer)
+                    m_mixerMoves.push({button.device, button.target, m.data2});
                 else
                     m_fired.push({button.device, button.target});
             }

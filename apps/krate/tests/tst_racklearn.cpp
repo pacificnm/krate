@@ -192,6 +192,53 @@ private slots:
         QCOMPARE(f.playStops, 1);
     }
 
+    // Controller faders, knobs and buttons on the mixer strips (and the master fader).
+    void mixerControls()
+    {
+        Fixture f;
+        f.teach("rack:mix:1:fader", {cc(0, 7, 127)});
+        f.send({cc(0, 7, 0), cc(0, 7, 127)});
+        f.controller->applyMixerMoves();
+        QCOMPARE(f.controller->fader(1), 1.0);
+        f.send({cc(0, 7, 64)});
+        f.controller->applyMixerMoves();
+        QCOMPARE(f.controller->fader(1), 64 / 127.0);
+        QCOMPARE(f.learn->badgeFor("rack:mix:1:fader"), QStringLiteral("CC 7 ch1"));
+        QCOMPARE(f.learn->badgeFor("rack:mix:0:fader"), QString()); // only strip 1's
+
+        f.teach("rack:mix:0:pan", {cc(0, 10, 64)});
+        f.send({cc(0, 10, 0)});
+        f.controller->applyMixerMoves();
+        QCOMPARE(f.controller->pan(0), -1.0);
+        f.send({cc(0, 10, 64)});
+        f.controller->applyMixerMoves();
+        QCOMPARE(f.controller->pan(0), 0.0);
+
+        f.teach("rack:mix:0:mute", {noteOn(9, 40)});
+        f.send({noteOn(9, 40)});
+        f.controller->applyMixerMoves();
+        QVERIFY(f.controller->mute(0));
+        f.send({noteOn(9, 40)});
+        f.controller->applyMixerMoves();
+        QVERIFY(!f.controller->mute(0));
+        QCOMPARE(f.a.notes, 0); // the pad is a button, not a note
+
+        f.teach("rack:mix:1:solo", {cc(15, 61, 127)});
+        f.send({cc(15, 61, 127)});
+        f.controller->applyMixerMoves();
+        QVERIFY(f.controller->solo(1));
+
+        f.teach("rack:mix:master:fader", {cc(0, 8, 0)});
+        f.controller->applyMixerMoves();
+        QCOMPARE(f.controller->fader(-1), 0.0);
+        f.learn->setActive(true);
+        f.learn->arm("rack:mix:master:mute"); // the master has only a fader
+        QVERIFY(f.learn->armedParam().isEmpty());
+        f.learn->arm("rack:mix:9:fader");    // no such strip
+        QVERIFY(f.learn->armedParam().isEmpty());
+        f.learn->setActive(false);
+    }
+
     // The mixer screen: shown on request, gone when focus changes (from a tab,
     // or from the controller).
     void mixerScreen()
@@ -261,6 +308,9 @@ private slots:
             f.rack.setChannelDevice(9, 1); // beta on channel 10
             f.teach("rack:playstop", {cc(15, 50, 127)});
             f.teach("rack:mixer", {cc(15, 52, 127)});
+            f.teach("rack:mix:1:fader", {cc(0, 7, 100)});
+            f.teach("rack:mix:0:mute", {noteOn(9, 40)});
+            f.teach("rack:mix:master:fader", {cc(0, 8, 100)});
             f.controller->setMixerShown(true);
             session.save();
         }
@@ -279,6 +329,9 @@ private slots:
         g.send({cc(15, 52, 127)});
         QCOMPARE(g.mixerToggles, 1);
         QCOMPARE(g.playStops, 0);
+        QCOMPARE(g.learn->badgeFor("rack:mix:1:fader"), QStringLiteral("CC 7 ch1"));
+        QCOMPARE(g.learn->badgeFor("rack:mix:0:mute"), QStringLiteral("note 40 ch10"));
+        QCOMPARE(g.learn->badgeFor("rack:mix:master:fader"), QStringLiteral("CC 8 ch1"));
     }
 
     // The mixer strip's channel selector: a channel goes to one device; FOCUS

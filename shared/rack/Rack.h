@@ -58,10 +58,25 @@ public:
             FollowFocus, // the focused device's parameter with the same key as `device`'s `target`
             FocusAction, // focus: device `target`, kFocusNext or kFocusPrevious
             Action,      // a button: action `target` of `device` (or of the rack: kRackDevice)
+            Mixer,       // mixer control `target` (MixerControl) of `device`'s strip (or the master: kRackDevice)
         };
         Kind kind = Kind::None;
         int device = -1;
         int target = -1;
+    };
+
+    // A mixer strip's controls (Mapping::Kind::Mixer targets). Fader and Pan
+    // follow the CC; Mute and Solo are buttons (a press toggles).
+    enum MixerControl : int { MixerFader, MixerPan, MixerMute, MixerSolo };
+    static constexpr bool isMixerButton(int control) { return control == MixerMute || control == MixerSolo; }
+
+    // Audio -> GUI: a mapped mixer control moved; the GUI's mixer applies it
+    // (it owns the fader positions and the session).
+    struct MixerMove
+    {
+        int device = -1; // device index, or kRackDevice for the master
+        int control = MixerFader;
+        std::uint8_t value = 0; // the CC value (buttons: a press)
     };
 
     // Audio -> GUI: an Action button was pressed (the GUI performs it).
@@ -119,12 +134,14 @@ public:
     Mapping noteMapping(int channel, int note) const noexcept;
     void clearMappings() noexcept;
 
-    // Learn: arm a target; the next CC (or, for focus actions and actions, CC or
-    // note) binds to it, recording its channel. Arming Kind::None disarms.
+    // Learn: arm a target; the next CC (or, for buttons: focus actions, actions,
+    // mixer mute/solo, CC or note) binds to it, recording its channel. Arming
+    // Kind::None disarms.
     void arm(Mapping target) noexcept;
     Mapping armed() const noexcept { return unpack(m_armed.load(std::memory_order_relaxed)); }
     std::optional<Learned> popLearned() noexcept { return m_learned.pop(); }
     std::optional<Fired> popFired() noexcept { return m_fired.pop(); }
+    std::optional<MixerMove> popMixerMove() noexcept { return m_mixerMoves.pop(); }
 
     // --- Audio thread ----------------------------------------------------------
     void process(const RackBlock &block) noexcept;
@@ -175,6 +192,7 @@ private:
     std::atomic<std::uint32_t> m_armed{0};
     SpscQueue<Learned, 64> m_learned;
     SpscQueue<Fired, 64> m_fired;
+    SpscQueue<MixerMove, 512> m_mixerMoves; // faders send many
 
     MasterStage m_master;
 };
