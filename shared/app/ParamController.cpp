@@ -69,6 +69,23 @@ void ParamController::setValue(const QString &key, qreal value)
     changed();
 }
 
+void ParamController::setValues(const QHash<QString, qreal> &values)
+{
+    bool any = false;
+    for (auto it = values.begin(); it != values.end(); ++it) {
+        const int i = indexOf(it.key());
+        if (i < 0)
+            continue;
+        const float v = float(qBound(0.0, it.value(), 1.0));
+        if (v == m_instrument.param(i))
+            continue;
+        m_instrument.setParam(i, v);
+        any = true;
+    }
+    if (any)
+        changed();
+}
+
 qreal ParamController::defaultValue(const QString &key) const
 {
     const int i = indexOf(key);

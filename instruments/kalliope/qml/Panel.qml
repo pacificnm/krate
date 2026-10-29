@@ -356,7 +356,7 @@ Item {
         }
     }
 
-    // ---- Function deck: arpeggiator, key mode, patch (P5), banks and patches (P5), effects
+    // ---- Function deck: arpeggiator, key mode, patches, effects
 
     Rectangle {
         x: panel.margin
@@ -503,24 +503,143 @@ Item {
         }
     }
 
-    // Patch display (patches arrive in P5)
-    Rectangle {
-        x: 600
-        y: 612
-        width: 120
-        height: 70
+    // Patches (docs/PLAY.md#patches): display, arrows, WRITE, MANUAL; banks and numbers
+    property bool blink: false
+    Timer {
+        interval: 250
+        repeat: true
+        running: Patches.writing || Patches.pendingBank >= 0
+        onTriggered: panel.blink = !panel.blink
+        onRunningChanged: panel.blink = false
+    }
+
+    Rectangle { // two-digit patch display: bank, number; a dot while edited
+        x: 588
+        y: 606
+        width: 96
+        height: 62
         radius: 4
         color: "#120606"
         border.color: "#3A3B3E"
         border.width: 2
 
+        Accessible.role: Accessible.StaticText
+        Accessible.name: "Patch " + patchDigits.text + ", " + Patches.name
+
         Text {
+            id: patchDigits
             anchors.centerIn: parent
-            text: "--"
-            color: "#5A1A12"
+            text: Patches.manual ? "--"
+                : (Patches.pendingBank >= 0 ? (panel.blink ? " " : String(Patches.pendingBank + 1)) : String(Patches.bank + 1))
+                  + String(Patches.number + 1) + (Patches.edited ? "." : "")
+            color: "#FF3A26"
             font.family: "monospace"
-            font.pixelSize: 48
+            font.pixelSize: 40
             font.bold: true
+        }
+    }
+    ValueText {
+        x: 584
+        y: 674
+        width: 104
+        elide: Text.ElideRight
+        wrapMode: Text.NoWrap
+        text: Patches.name
+        color: panel.silk
+        font.pixelSize: 11
+    }
+    Column {
+        x: 688
+        y: 606
+        spacing: 4
+        PanelButton { width: 24; height: 29; faceText: "▲"; text: "Next patch"; onClicked: Patches.step(1) }
+        PanelButton { width: 24; height: 29; faceText: "▼"; text: "Previous patch"; onClicked: Patches.step(-1) }
+    }
+    PanelButton {
+        x: 718
+        y: 606
+        width: 74
+        height: 34
+        faceText: "WRITE"
+        text: "Write: then press a patch number to store the panel there"
+        tint: Patches.writing && panel.blink ? "#FF6A55" : "#B8302A"
+        onClicked: Patches.toggleWrite()
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "write"
+            round: false
+        }
+    }
+    PanelButton {
+        x: 718
+        y: 648
+        width: 74
+        height: 34
+        faceText: "MANUAL"
+        text: "Manual: the panel as set, not tied to a patch"
+        tint: Patches.manual ? "#5FCB52" : "#3C8F35"
+        onClicked: Patches.pressManual()
+    }
+    Text { // WRITE armed
+        visible: Patches.writing
+        x: 588
+        y: 692
+        text: "WRITE: press a patch number"
+        color: "#FF3A26"
+        font.family: Theme.labelFont
+        font.pixelSize: 11
+        font.bold: true
+    }
+
+    DeckLabel { x: 824; y: 620; text: "BANK" }
+    DeckLabel { x: 824; y: 676; text: "PATCH" }
+    Repeater {
+        model: 8
+
+        PanelButton {
+            id: bankButton
+            required property int index
+            x: 872 + index * 45
+            y: 610
+            width: 40
+            height: 34
+            faceText: String(index + 1)
+            text: "Bank " + (index + 1)
+            // Lit (bright) = the current bank; blinking = chosen, waiting for a patch number.
+            readonly property bool lit: Patches.pendingBank === index ? panel.blink
+                                      : Patches.pendingBank < 0 && !Patches.manual && Patches.bank === index
+            tint: lit ? "#FFFFFF" : "#9A9B9E"
+            onClicked: Patches.pressBank(index)
+
+            LearnOverlay {
+                anchors.fill: parent
+                paramKey: "bank" + (bankButton.index + 1)
+                round: false
+            }
+        }
+    }
+    Repeater {
+        model: 8
+
+        PanelButton {
+            id: patchButton
+            required property int index
+            x: 872 + index * 45
+            y: 666
+            width: 40
+            height: 34
+            faceText: String(index + 1)
+            text: "Patch " + (index + 1)
+            readonly property bool lit: !Patches.manual && Patches.number === index && Patches.pendingBank < 0
+            tint: lit ? "#FFE45C" : "#A88A1E"
+            onClicked: Patches.pressPatch(index)
+
+            LearnOverlay {
+                anchors.fill: parent
+                paramKey: "patch" + (patchButton.index + 1)
+                round: false
+            }
         }
     }
 

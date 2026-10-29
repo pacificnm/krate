@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QHash>
 #include <QObject>
 #include <QString>
 #include <QTimer>
@@ -30,6 +31,8 @@ public:
 
     Q_INVOKABLE qreal value(const QString &key) const;
     Q_INVOKABLE void setValue(const QString &key, qreal value);
+    // Several at once (a patch load): one change notification, unknown keys skipped.
+    void setValues(const QHash<QString, qreal> &values);
     Q_INVOKABLE qreal defaultValue(const QString &key) const;
     // The parameter's label from the descriptor table, e.g. "Bass Drum Tune"
     // (accessible names).

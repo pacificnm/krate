@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <optional>
 
 #include "core/Instrument.h"
 #include "core/Midi.h"
@@ -57,6 +58,14 @@ public:
         return (m_heldMask[std::size_t(note / 64)].load(std::memory_order_relaxed) >> (note % 64)) & 1u;
     }
 
+    // GUI thread: Program Changes received (0..127), for the patch controller.
+    std::optional<int> popProgram() noexcept
+    {
+        if (const auto p = m_programs.pop())
+            return int(*p);
+        return std::nullopt;
+    }
+
     // Inspection (tests): what each voice is doing.
     bool voiceActive(int v) const noexcept { return m_voices[std::size_t(v)].active(); }
     bool voiceGate(int v) const noexcept { return m_voices[std::size_t(v)].gate(); }
@@ -103,6 +112,7 @@ private:
         std::uint8_t note, velocity;
     };
     krate::SpscQueue<GuiNote, 128> m_guiNotes;
+    krate::SpscQueue<std::uint8_t, 16> m_programs; // audio -> GUI
     std::array<std::atomic<std::uint64_t>, 2> m_heldMask{};
     void publishHeld() noexcept;
 

@@ -41,6 +41,10 @@ qt_add_qml_module(kalliope_ui
         app/KalliopeController.cpp
         app/KalliopeInstrument.h
         app/KalliopeInstrument.cpp
+        app/PatchController.h
+        app/PatchController.cpp
+        app/PatchFile.h
+        app/PatchFile.cpp
     QML_FILES
         qml/Keyboard.qml
         qml/Main.qml
@@ -67,6 +71,10 @@ add_executable(tst_kalliope
     app/KalliopeController.cpp
     app/KalliopeInstrument.h
     app/KalliopeInstrument.cpp
+    app/PatchController.h
+    app/PatchController.cpp
+    app/PatchFile.h
+    app/PatchFile.cpp
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
 )
@@ -74,3 +82,22 @@ target_include_directories(tst_kalliope PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(tst_kalliope PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_kalliope PRIVATE kalliope_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
 add_test(NAME tst_kalliope COMMAND tst_kalliope)
+
+# Patches: the same controller sources, through the instrument's registry entry.
+add_executable(kalliope_tst_patches
+    tests/tst_patches.cpp
+    app/KalliopeController.h
+    app/KalliopeController.cpp
+    app/KalliopeInstrument.h
+    app/KalliopeInstrument.cpp
+    app/PatchController.h
+    app/PatchController.cpp
+    app/PatchFile.h
+    app/PatchFile.cpp
+    ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
+    ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
+)
+target_include_directories(kalliope_tst_patches PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_compile_options(kalliope_tst_patches PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(kalliope_tst_patches PRIVATE kalliope_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
+add_test(NAME kalliope_tst_patches COMMAND kalliope_tst_patches)

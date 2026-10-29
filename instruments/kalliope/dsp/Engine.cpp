@@ -283,6 +283,8 @@ void Engine::handleMidi(const krate::MidiEvent &event) noexcept
         noteOff(m.data1);
         break;
     case krate::MidiMessage::Type::ProgramChange:
+        m_programs.push(std::uint8_t(m.data1)); // the patch controller selects the patch
+        break;
     case krate::MidiMessage::Type::Other:
         // Pitch bend: 14 bits, centre 8192.
         if (event.size == 3 && (event.data[0] & 0xF0) == 0xE0) {

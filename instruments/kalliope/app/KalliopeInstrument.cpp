@@ -4,12 +4,25 @@ namespace kalliope {
 
 Instance::Instance(const krate::InstrumentContext &context)
     : controller(engine, context.configDir + QStringLiteral("/panel.json"), context.transport, nullptr)
+    , patches(controller, engine, context.dataDir + QStringLiteral("/patches.json"), nullptr)
 {
 }
 
 void Instance::triggerAction(const QString &action)
 {
-    Q_UNUSED(action); // bank, patch, arp, hold and write arrive in P5-P6
+    const auto toggle = [this](const QString &key) {
+        controller.setValue(key, controller.value(key) > 0.5 ? 0.0 : 1.0);
+    };
+    if (action.startsWith(u"bank"))
+        patches.pressBank(action.mid(4).toInt() - 1);
+    else if (action.startsWith(u"patch"))
+        patches.pressPatch(action.mid(5).toInt() - 1);
+    else if (action == u"write")
+        patches.toggleWrite();
+    else if (action == u"arp")
+        toggle(QStringLiteral("arp_on"));
+    else if (action == u"hold")
+        toggle(QStringLiteral("arp_hold"));
 }
 
 krate::InstrumentEntry registryEntry()

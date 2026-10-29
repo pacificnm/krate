@@ -80,7 +80,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | Pitch bend | ±`bend_range` semitones on every voice |
 | CC 1 (mod wheel) | Adds LFO vibrato to every voice's pitch, up to ±1 semitone at full, on top of VCO LFO Mod |
 | CC 64 (sustain) | Holds released notes until the pedal lifts |
-| Program Change n | Patch n (bank = n / 8, number = n % 8), standalone only (in the rack, Program Change can switch focus) |
+| Program Change n | Patch n (bank = n / 8, number = n % 8). In the rack, Program Change may be taken for focus switching first (the rack's setting) |
 | Any other CC | MIDI Learn mappings |
 
 ## Registry entry
