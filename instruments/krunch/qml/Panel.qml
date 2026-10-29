@@ -3,15 +3,16 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Krate
 
-// Krunch's panel at design size 1400 x 700: grille cloth with the logo and
+// Krunch's panel at design size 1400 x 990: grille cloth with the logo and
 // where the guitar comes from; below, the control plate: input, the four
 // channel buttons, the power amp, level; then the playing channel's controls
-// and its cabinet (IRs A and B from the IR library, and their mix).
+// and its cabinet (IRs A and B from the IR library, and their mix). Under the
+// amp, the pedalboard.
 Item {
     id: panel
 
     width: 1400
-    height: 700
+    height: 990
 
     readonly property int input: Krunch.revision >= 0 && Krunch.value("input") >= 0.5 ? 1 : 0
     readonly property int channel: Krunch.revision >= 0 ? Math.round(Krunch.value("channel") * 3) : 0
@@ -92,7 +93,8 @@ Item {
     }
 
     Rectangle { // the cabinet: black tolex
-        anchors.fill: parent
+        width: parent.width
+        height: 700
         radius: 10
         color: "#161617"
         border.color: "#050505"
@@ -366,6 +368,13 @@ Item {
             font.pixelSize: 12
             wrapMode: Text.WordWrap
         }
+    }
+
+    Pedalboard {
+        x: 0
+        y: 712
+        width: parent.width
+        height: 278
     }
 
     IrPicker {

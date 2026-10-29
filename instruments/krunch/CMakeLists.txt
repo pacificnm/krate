@@ -7,10 +7,13 @@ add_library(krunch_dsp STATIC
     dsp/Fft.cpp
     dsp/Filters.h
     dsp/Gate.h
+    dsp/GreenDrive.h
+    dsp/GreenDrive.cpp
     dsp/Krunch.h
     dsp/Krunch.cpp
     dsp/Oversampler.h
     dsp/Pedal.h
+    dsp/Pedal.cpp
     dsp/PowerAmp.h
     dsp/PowerAmp.cpp
     dsp/Preamp.h
@@ -45,9 +48,12 @@ qt_add_qml_module(krunch_ui
         app/KrunchController.cpp
         app/KrunchInstrument.h
         app/KrunchInstrument.cpp
+        app/PedalController.h
+        app/PedalController.cpp
     QML_FILES
         qml/Panel.qml
         qml/IrPicker.qml
+        qml/Pedalboard.qml
 )
 target_include_directories(krunch_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
 target_link_libraries(krunch_ui PUBLIC krunch_dsp krate_app krate_qml krate_song Qt6::Quick Qt6::Sql)
@@ -70,3 +76,8 @@ target_include_directories(tst_irlibrary PRIVATE app)
 target_compile_options(tst_irlibrary PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_irlibrary PRIVATE krunch_dsp krate_song Qt6::Sql Qt6::Test ZLIB::ZLIB)
 add_test(NAME tst_irlibrary COMMAND tst_irlibrary)
+
+add_executable(tst_pedals tests/tst_pedals.cpp)
+target_compile_options(tst_pedals PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_pedals PRIVATE krunch_dsp krate_testing Qt6::Test)
+add_test(NAME tst_pedals COMMAND tst_pedals)

@@ -119,9 +119,13 @@ public:
     // The rate prepare() was given (any thread): what kernels must be built for.
     double sampleRate() const noexcept { return m_rateForKernels.load(std::memory_order_relaxed); }
 
-    // Pedal chains (setup, before processing): in front of the amp, in the loop.
+    // Pedal chains (lists handed over from any thread, see Pedalboard): in
+    // front of the amp, in the loop.
     PedalChain &frontPedals() noexcept { return m_front; }
     PedalChain &loopPedals() noexcept { return m_loop; }
+    // Blocks processed so far (any thread): something replaced before this
+    // count moved two on is no longer in use by the audio thread.
+    std::uint64_t blocksProcessed() const noexcept { return m_blocks.load(std::memory_order_acquire); }
 
 private:
     float channelValue(int channel, ChannelParam p) const noexcept { return m_params.get(channelParam(channel, p)); }
@@ -160,6 +164,7 @@ private:
     std::atomic<float> m_inputPeak{0.0f};
     std::atomic<float> m_outputPeak{0.0f};
     std::atomic<bool> m_gateClosed{false};
+    std::atomic<std::uint64_t> m_blocks{0};
 };
 
 } // namespace krunch

@@ -34,7 +34,7 @@ Four channels, each with its own parameters (`ch<N>_<name>`) and cabinet. Only t
 
 ## FX loop
 
-Between the channel volume and the power amp: the loop's pedal chain (`dsp/Pedal.h`, empty until there are pedals). The front pedals run before the gate, always.
+Between the channel volume and the power amp: the loop's pedal chain (`dsp/Pedal.h`, empty for now). The pedalboard ([PEDALS.md](PEDALS.md)) runs before the gate, always.
 
 ## Power amp
 

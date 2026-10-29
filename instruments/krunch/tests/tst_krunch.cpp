@@ -100,18 +100,24 @@ double thd(Preamp &preamp, double hz = 220.0, float amplitude = 0.2f)
     return std::sqrt(harmonics / power(hz));
 }
 
-// A pedal for the chains: multiplies by a factor.
-class GainPedal final : public IPedal
+// A pedal for the chains: multiplies by its one knob (0..1 -> 0..2).
+std::string gainText(float v) { return std::to_string(v); }
+const KnobInfo kGainKnobs[] = {{"gain", "GAIN", 0.5f, &gainText}};
+const PedalInfo kGainInfo{"test_gain", "Gain", "#000000", kGainKnobs};
+
+class GainPedal final : public Pedal
 {
 public:
-    explicit GainPedal(float g) : gain(g) {}
-    void prepare(double) noexcept override {}
-    void process(float *buffer, std::uint32_t frames) noexcept override
+    explicit GainPedal(float g) : Pedal(kGainInfo) { setKnob(0, g / 2.0f); }
+
+protected:
+    void prepareEffect(double) noexcept override {}
+    void resetEffect() noexcept override {}
+    void processEffect(float *buffer, std::uint32_t frames) noexcept override
     {
         for (std::uint32_t n = 0; n < frames; ++n)
-            buffer[n] *= gain;
+            buffer[n] *= 2.0f * knob(0);
     }
-    float gain;
 };
 
 } // namespace
@@ -436,8 +442,12 @@ private slots:
         const auto levelWith = [&](float front, float loop, bool loopOn) {
             Krunch amp;
             GainPedal a(front), b(loop);
-            amp.frontPedals().add(a);
-            amp.loopPedals().add(b);
+            PedalList frontList, loopList;
+            frontList.count = loopList.count = 1;
+            frontList.pedals[0] = &a;
+            loopList.pedals[0] = &b;
+            amp.frontPedals().set(&frontList);
+            amp.loopPedals().set(&loopList);
             amp.prepare(kRate, 128);
             amp.setParam(channelParam(0, ChannelParam::Loop), loopOn ? 1.0f : 0.0f);
             amp.setParam(channelParam(0, ChannelParam::Gain), 0.1f); // clean: levels pass through

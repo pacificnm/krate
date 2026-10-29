@@ -136,6 +136,7 @@ void Krunch::process(const krate::AudioBlock &block) noexcept
         const std::uint32_t frames = std::min(kBlock, block.frames - offset);
         processBlock(in ? in + offset : nullptr, block.outputs[0] + offset, block.outputs[1] + offset, frames);
     }
+    m_blocks.fetch_add(1, std::memory_order_release);
 }
 
 void Krunch::processBlock(const float *in, float *left, float *right, std::uint32_t frames) noexcept

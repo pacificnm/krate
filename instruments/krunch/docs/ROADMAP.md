@@ -22,7 +22,7 @@ guitar → [pedals] → PREAMP (channel) → FX SEND → [loop pedals] → FX RE
 
 | Feature | Notes |
 | --- | --- |
-| Pedals in front of the amp | Boost, overdrive, gate, wah |
+| Pedals in front of the amp | ✅ The pedalboard (add, remove, drag to reorder, footswitches learnable, saved with songs) and the first pedal, Green Drive ([PEDALS.md](PEDALS.md)). Next: boost, gate, wah |
 | Pedals in the loop | Delay, chorus, reverb |
 | Reordering pedals | Drag to reorder each chain |
 | Footswitches | Channels and pedals from a MIDI foot controller |
