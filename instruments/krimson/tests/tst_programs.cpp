@@ -44,12 +44,35 @@ private slots:
                     ++k;
                 QVERIFY2(Engine::morphable(ParamId(k)), qPrintable(p.name + " morphs " + it.key()));
             }
-            if (i < 16)
-                QVERIFY2(names.insert(p.name).second, qPrintable(p.name));
-            else
-                QCOMPARE(p.name, QStringLiteral("Init"));
+            // Every bank has factory sounds, each with its own name (16 characters at most, as files keep them).
+            QVERIFY2(p.name != QStringLiteral("Init") && p.name.size() <= 16, qPrintable(p.name));
+            QVERIFY2(names.insert(p.name).second, qPrintable(p.name));
         }
         QCOMPARE(bank.current, (std::array<int, 4>{0, 1, 2, 3}));
+    }
+
+    // A programs.json from before banks 3-8 had sounds: its untouched Init
+    // slots get the factory sounds; anything stored there stays.
+    void newFactorySoundsFillUntouchedSlots()
+    {
+        QTemporaryDir dir;
+        const QString path = dir.filePath(QStringLiteral("programs.json"));
+        ProgramBank old = defaultBank();
+        for (int i = 16; i < kProgramCount; ++i)
+            old.programs[std::size_t(i)] = initProgram(); // as the file was
+        old.programs[20].name = QStringLiteral("Mine");   // one the user stored
+        old.programs[20].values[QStringLiteral("cutoff")] = 0.123;
+        Program initLooking = initProgram();               // stored, but still plain Init: same as untouched
+        old.programs[30] = initLooking;
+        QVERIFY(savePrograms(path, old));
+        ProgramBank loaded;
+        QCOMPARE(int(loadPrograms(path, &loaded)), int(krate::files::LoadResult::Loaded));
+        QCOMPARE(loaded.programs[16].name, factoryProgram(16).name);
+        QCOMPARE(loaded.programs[63].name, factoryProgram(63).name);
+        QCOMPARE(loaded.programs[20].name, QStringLiteral("Mine"));
+        QCOMPARE(loaded.programs[20].values.value(QStringLiteral("cutoff")), 0.123);
+        QCOMPARE(loaded.programs[30].name, factoryProgram(30).name);
+        QCOMPARE(loaded.programs[0].name, factoryProgram(0).name);
     }
 
     void jsonRoundTrip()

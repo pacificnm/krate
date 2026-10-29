@@ -53,8 +53,8 @@ struct PerformanceBank
 };
 
 Program initProgram();        // every slot parameter at its default, no morph
-Program factoryProgram(int index); // 0..15 (banks 1-2); others: initProgram()
-ProgramBank defaultBank();     // banks 1-2 factory, 3-8 init; slots on 11, 12, 13, 14
+Program factoryProgram(int index); // 0..63: every bank has factory sounds
+ProgramBank defaultBank();     // the factory sounds; slots on 11, 12, 13, 14
 
 QJsonObject toJson(const ProgramBank &bank);
 ProgramBank programsFromJson(const QJsonObject &json); // missing keys: init values; clamped
