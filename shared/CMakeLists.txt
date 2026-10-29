@@ -111,6 +111,8 @@ qt_add_qml_module(krate_qml
         app/InstrumentRegistry.h
         app/InstrumentMidiLearn.h
         app/InstrumentMidiLearn.cpp
+        app/KeyboardSettings.h
+        app/KeyboardSettings.cpp
         app/MidiLearnController.h
         app/MidiLearnController.cpp
         app/ParamController.h
@@ -125,6 +127,7 @@ qt_add_qml_module(krate_qml
         qml/PanelSlider.qml
         qml/PanelSwitch.qml
         qml/PianoKeyboard.qml
+        qml/ControllerPianoKeyboard.qml
         qml/RingKnob.qml
         qml/Theme.qml
 )
@@ -148,6 +151,18 @@ add_executable(tst_rack tests/tst_rack.cpp)
 target_compile_options(tst_rack PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_rack PRIVATE krate_rack krate_testing Qt6::Test)
 add_test(NAME tst_rack COMMAND tst_rack)
+
+# QML tests (shared controls), when Qt's qmltestrunner is installed.
+find_program(QMLTESTRUNNER qmltestrunner HINTS ${QT6_INSTALL_PREFIX}/${QT6_INSTALL_BINS} /usr/lib/qt6/bin)
+if(QMLTESTRUNNER)
+    add_test(NAME tst_qml_shared COMMAND ${QMLTESTRUNNER} -platform offscreen -input ${CMAKE_CURRENT_SOURCE_DIR}/tests/qml)
+endif()
+
+add_executable(tst_keyboardsettings tests/tst_keyboardsettings.cpp app/KeyboardSettings.h app/KeyboardSettings.cpp)
+target_include_directories(tst_keyboardsettings PRIVATE app)
+target_compile_options(tst_keyboardsettings PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_keyboardsettings PRIVATE Qt6::Qml Qt6::Test)
+add_test(NAME tst_keyboardsettings COMMAND tst_keyboardsettings)
 
 add_executable(tst_midifile tests/tst_midifile.cpp)
 target_compile_options(tst_midifile PRIVATE -Wall -Wextra -Wpedantic)

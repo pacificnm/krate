@@ -902,13 +902,13 @@ Item {
         }
     }
 
-    PianoKeyboard {
+    ControllerPianoKeyboard { // key for key with your MIDI keyboard (the rack's KEYS setting)
         instrument: Kalliope
         x: 320
         y: 806
         width: 960
         height: 250
-        baseNote: 48 + 12 * panel.octave
+        instrumentOctave: panel.octave
     }
 
     // Utilities: clear all MIDI mappings, audio (click to reconnect), MIDI Learn

@@ -787,13 +787,13 @@ Item {
         }
     }
 
-    PianoKeyboard {
+    ControllerPianoKeyboard { // key for key with your MIDI keyboard (the rack's KEYS setting)
         instrument: Krimson
         x: 200
         y: 540
         width: 1360
         height: 320
-        baseNote: 48 + 12 * octave.shift
+        instrumentOctave: octave.shift
         litColor: "#E2343A"
     }
 
