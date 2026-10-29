@@ -50,6 +50,7 @@ class SongController : public QObject
     Q_PROPERTY(int trackNumber READ trackNumber NOTIFY songChanged)
     Q_PROPERTY(qint64 songId READ songId NOTIFY songChanged) // in the library, 0 = not in it
     Q_PROPERTY(bool soundsSaved READ soundsSaved NOTIFY songChanged) // SAVE has kept sounds with this song
+    Q_PROPERTY(int libraryRevision READ libraryRevision NOTIFY libraryChanged) // bumped when the library changes
     Q_PROPERTY(QString files READ files NOTIFY songChanged) // "name.gp + name.mid"
     Q_PROPERTY(bool hasTab READ hasTab NOTIFY songChanged)
     Q_PROPERTY(bool hasMidi READ hasMidi NOTIFY songChanged)
@@ -87,6 +88,7 @@ public:
     int trackNumber() const { return m_details.trackNumber; }
     qint64 songId() const { return m_songId; }
     bool soundsSaved() const { return m_soundsSaved; }
+    int libraryRevision() const { return m_libraryRevision; }
     QString files() const;
     bool hasTab() const { return m_tab.has_value(); }
     bool hasMidi() const { return m_midi.has_value(); }
@@ -112,6 +114,12 @@ public:
     Q_INVOKABLE void setDetails(const QString &artist, const QString &album, const QString &title, int trackNumber);
     // Keep every instrument's sound and the mixer with the open song.
     Q_INVOKABLE void saveSounds();
+    // The library for its list, as rows in order: {kind: "artist"|"album"|"song",
+    // text, and for songs id, track, soundsSaved, open}; `search` matches
+    // artist, album or title.
+    Q_INVOKABLE QVariantList libraryRows(const QString &search) const;
+    // Removes a song and its copied files (closing it first if it's open).
+    Q_INVOKABLE void removeFromLibrary(qint64 id);
     Q_INVOKABLE void setInstrument(int track, int choice);
     Q_INVOKABLE void setLevel(int track, qreal level);
     Q_INVOKABLE void setMute(int track, bool mute);
@@ -138,6 +146,7 @@ signals:
     void positionChanged();
     void tickChanged();
     void errorChanged();
+    void libraryChanged();
 
 private:
     struct TrackSettings
@@ -178,6 +187,7 @@ private:
     qint64 m_songId = 0;
     SongLibrary::Details m_details;
     bool m_soundsSaved = false;
+    int m_libraryRevision = 0;
     std::optional<Snapshot> m_before; // the sounds and mixer from before the open song
 
     std::optional<krate::song::Score> m_score;  // from the tab file

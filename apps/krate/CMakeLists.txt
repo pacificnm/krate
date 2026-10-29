@@ -27,6 +27,7 @@ qt_add_qml_module(krate
         qml/Fader.qml
         qml/Meter.qml
         qml/SongScreen.qml
+        qml/LibraryPanel.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(krate PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSION}")

@@ -400,6 +400,44 @@ private slots:
         QCOMPARE(krimson.tone, 0.9f);
     }
 
+    // The library list: artists, albums, songs in track order; editing and removing.
+    void libraryList()
+    {
+        Fixture f;
+        write(f.path("Zed_Band-Second_Song-01-02-2026.mid"), midiFile({{"Bass", 1, 33}}));
+        write(f.path("Alpha-First.mid"), midiFile({{"Drums", 9, 36}}));
+        f.song->openPaths({f.path("Zed_Band-Second_Song-01-02-2026.mid")});
+        QCOMPARE(f.song->artist(), QStringLiteral("Zed Band"));
+        QCOMPARE(f.song->title(), QStringLiteral("Second Song"));
+        f.song->setDetails("Zed Band", "Demo Tape", "Second Song", 2);
+        f.song->openPaths({f.path("Alpha-First.mid")});
+        f.song->saveSounds();
+        QSignalSpy changed(f.song.get(), &SongController::libraryChanged);
+        const QVariantList rows = f.song->libraryRows({});
+        QStringList shape;
+        for (const QVariant &r : rows)
+            shape << r.toMap().value("kind").toString() + ":" + r.toMap().value("text").toString();
+        QCOMPARE(shape, (QStringList{"artist:Alpha", "album:Unknown album", "song:First", "artist:Zed Band", "album:Demo Tape",
+                                     "song:Second Song"}));
+        const QVariantMap first = rows[2].toMap(), second = rows[5].toMap();
+        QVERIFY(first.value("open").toBool());
+        QVERIFY(first.value("soundsSaved").toBool());
+        QCOMPARE(second.value("track").toInt(), 2);
+        QVERIFY(!second.value("open").toBool());
+        QCOMPARE(f.song->libraryRows("demo").size(), 3); // artist, album, song
+        // Click a song: it opens.
+        f.song->openSong(second.value("id").toLongLong());
+        QCOMPARE(f.song->title(), QStringLiteral("Second Song"));
+        QCOMPARE(f.song->album(), QStringLiteral("Demo Tape"));
+        // Remove the open song: closed, gone, its files too.
+        const QString file = f.song->files();
+        f.song->removeFromLibrary(f.song->songId());
+        QVERIFY(!f.song->loaded());
+        QCOMPARE(f.song->libraryRows({}).size(), 3);
+        QVERIFY(changed.count() >= 2);
+        QVERIFY(!file.isEmpty());
+    }
+
     void badFilesKeepTheSong()
     {
         Fixture f;

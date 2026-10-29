@@ -337,6 +337,8 @@ bool SongController::load(const QString &tabPath, const QString &midiPath, qint6
     pollPosition();
     if (m_songId)
         m_library.markOpened(m_songId);
+    ++m_libraryRevision; // a new song in it, or another one open
+    emit libraryChanged();
     emit songChanged();
     emit tracksChanged();
     saveSettings();
@@ -351,6 +353,8 @@ void SongController::setDetails(const QString &artist, const QString &album, con
     if (m_songId)
         m_library.setDetails(m_songId, m_details);
     emit songChanged();
+    ++m_libraryRevision;
+    emit libraryChanged();
 }
 
 void SongController::close()
@@ -377,6 +381,8 @@ void SongController::close()
     setSequencers(true);
     setError({});
     m_library.setLastSong(0); // nothing reopens next time
+    ++m_libraryRevision; // no song is "open" in the list
+    emit libraryChanged();
     emit songChanged();
     emit tracksChanged();
 }
@@ -611,6 +617,46 @@ void SongController::saveSounds()
     m_library.saveSounds(m_songId, now.sounds, now.mixer);
     m_soundsSaved = true;
     emit songChanged();
+    ++m_libraryRevision;
+    emit libraryChanged();
+}
+
+QVariantList SongController::libraryRows(const QString &search) const
+{
+    QVariantList rows;
+    QString artist, album;
+    bool first = true;
+    for (const SongLibrary::Song &s : m_library.songs(search)) {
+        const QString a = s.details.artist.isEmpty() ? tr("Unknown artist") : s.details.artist;
+        const QString b = s.details.album.isEmpty() ? tr("Unknown album") : s.details.album;
+        if (first || a.compare(artist, Qt::CaseInsensitive) != 0) {
+            rows << QVariantMap{{QStringLiteral("kind"), QStringLiteral("artist")}, {QStringLiteral("text"), a}};
+            artist = a;
+            album.clear();
+            first = false;
+        }
+        if (album.isNull() || b.compare(album, Qt::CaseInsensitive) != 0) {
+            rows << QVariantMap{{QStringLiteral("kind"), QStringLiteral("album")}, {QStringLiteral("text"), b}};
+            album = b;
+        }
+        rows << QVariantMap{{QStringLiteral("kind"), QStringLiteral("song")},
+                            {QStringLiteral("text"), s.details.title.isEmpty() ? tr("Untitled") : s.details.title},
+                            {QStringLiteral("id"), s.id},
+                            {QStringLiteral("track"), s.details.trackNumber},
+                            {QStringLiteral("soundsSaved"), s.soundsSaved},
+                            {QStringLiteral("open"), s.id == m_songId}};
+    }
+    return rows;
+}
+
+void SongController::removeFromLibrary(qint64 id)
+{
+    if (id == m_songId)
+        close();
+    if (m_library.remove(id)) {
+        ++m_libraryRevision;
+        emit libraryChanged();
+    }
 }
 
 // --- The library ---------------------------------------------------------------------
