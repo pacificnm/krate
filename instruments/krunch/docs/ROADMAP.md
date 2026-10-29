@@ -25,4 +25,5 @@ guitar → [pedals] → PREAMP (channel) → FX SEND → [loop pedals] → FX RE
 | Pedals in front of the amp | ✅ The pedalboard (add, remove, drag to reorder, footswitches learnable, saved with songs); Compressor, Green Drive, Round Fuzz, 5- and 10-band EQs, Phaser, Flanger, Tremolo ([PEDALS.md](PEDALS.md)). Next: boost, gate, wah |
 | Pedals in the loop | ✅ Each pedal FRONT or LOOP; Chorus, Delay and Reverb ([PEDALS.md](PEDALS.md)). Next: a stereo loop (stereo chorus, ping-pong delay, wide reverb), tempo-synced delay |
 | Reordering pedals | Drag to reorder each chain |
+| Signature pedals | ✅ Prism (the early-70s spacey lead and clean rig in one pedal), with Vibe and Drum Echo as pedals of their own ([PEDALS.md](PEDALS.md#signature-pedals)). More to come, one per distinct sound |
 | Footswitches | Channels and pedals from a MIDI foot controller |

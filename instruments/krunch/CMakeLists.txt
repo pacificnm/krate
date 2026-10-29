@@ -2,6 +2,8 @@
 
 add_library(krunch_dsp STATIC
     dsp/Cabinet.h
+    dsp/ClassicPedals.h
+    dsp/ClassicPedals.cpp
     dsp/Cabinet.cpp
     dsp/Fft.h
     dsp/Fft.cpp
@@ -22,6 +24,8 @@ add_library(krunch_dsp STATIC
     dsp/PowerAmp.cpp
     dsp/Preamp.h
     dsp/Preamp.cpp
+    dsp/SignaturePedals.h
+    dsp/SignaturePedals.cpp
     dsp/StudioPedals.h
     dsp/StudioPedals.cpp
     dsp/TimePedals.h

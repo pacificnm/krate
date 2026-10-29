@@ -5,7 +5,9 @@
 #include <numbers>
 #include <vector>
 
+#include "dsp/ClassicPedals.h"
 #include "dsp/Fuzz.h"
+#include "dsp/SignaturePedals.h"
 #include "dsp/GreenDrive.h"
 #include "dsp/ModPedals.h"
 #include "dsp/StudioPedals.h"
@@ -79,8 +81,8 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(11));
-        QCOMPARE(pedalTypes()[1]->type, std::string_view("green_drive"));
+        QCOMPARE(pedalTypes().size(), std::size_t(14));
+        QCOMPARE(pedalTypes()[2]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
             QVERIFY(p);
@@ -201,6 +203,134 @@ private slots:
             (std::fabs(f - nearest) <= 3.0 * kRate / double(n) && nearest > 0.0 ? harmonic : other) += std::norm(sum);
         }
         QVERIFY(other / (harmonic + other) < 0.01);
+    }
+
+    // --- Prism, Vibe, Drum Echo ------------------------------------------------------------
+
+    // Every part out, tone flat, level 0 dB: the guitar passes untouched.
+    void prismAllOutIsDry()
+    {
+        Prism p;
+        p.prepare(kRate);
+        for (int k : {Prism::Fuzz, Prism::VibeSpeed, Prism::Echo, Prism::Space})
+            p.setKnob(k, 0.0f);
+        p.setKnob(Prism::Tone, 0.5f);
+        p.setKnob(Prism::Level, 0.5f);
+        const auto x = sine(9600, 220.0, 0.3f), y = run(p, x);
+        float diff = 0.0f;
+        for (std::size_t i = 4800; i < x.size(); ++i)
+            diff = std::max(diff, std::fabs(y[i] - x[i]));
+        QVERIFY2(diff < 1e-5f, qPrintable(QString::number(diff)));
+    }
+
+    void prismFuzzForTheSolos()
+    {
+        const auto distortion = [](float fuzz) {
+            Prism p;
+            p.prepare(kRate);
+            for (int k : {Prism::VibeSpeed, Prism::Echo, Prism::Space})
+                p.setKnob(k, 0.0f);
+            p.setKnob(Prism::Fuzz, fuzz);
+            const auto y = run(p, sine(24000, 220.0, 0.2f));
+            return thd(y, 220.0, 12000, 9600);
+        };
+        QVERIFY(distortion(0.0f) < 0.01);
+        QVERIFY(distortion(0.6f) > 0.2);
+    }
+
+    void prismEchoRepeatsOnEveryHead()
+    {
+        Prism p;
+        p.prepare(kRate);
+        for (int k : {Prism::Fuzz, Prism::VibeSpeed, Prism::Space})
+            p.setKnob(k, 0.0f);
+        p.setKnob(Prism::Echo, 0.8f); // all heads
+        p.setKnob(Prism::Time, 0.3f);
+        std::vector<float> warm(4800, 0.0f);
+        run(p, warm);
+        std::vector<float> y(48000, 0.0f);
+        y[0] = 0.5f;
+        y = run(p, y);
+        const auto head = std::size_t(std::lround(DrumEcho::headSeconds(0.3f) * kRate));
+        for (int h = 1; h <= 4; ++h) {
+            float e = 0.0f;
+            for (std::size_t i = std::size_t(h) * head - 30; i < std::size_t(h) * head + 30; ++i)
+                e = std::max(e, std::fabs(y[i]));
+            QVERIFY2(e > 0.02f, qPrintable(QStringLiteral("head %1: %2").arg(h).arg(e)));
+        }
+    }
+
+    void drumEchoHeads()
+    {
+        QCOMPARE(DrumEcho::headMask(0.0f), 0b0001u);
+        QCOMPARE(DrumEcho::headMask(1.0f / 3.0f), 0b0011u);
+        QCOMPARE(DrumEcho::headMask(2.0f / 3.0f), 0b0101u);
+        QCOMPARE(DrumEcho::headMask(1.0f), 0b1111u);
+        // Heads 1+3 only: echoes at 1x and 3x, not 2x (before any swell repeats them).
+        DrumEcho d;
+        d.prepare(kRate);
+        d.setKnob(DrumEcho::Heads, 2.0f / 3.0f);
+        d.setKnob(DrumEcho::Swell, 0.0f);
+        d.setKnob(DrumEcho::Mix, 1.0f);
+        d.setKnob(DrumEcho::Time, 0.2f);
+        std::vector<float> warm(4800, 0.0f);
+        run(d, warm);
+        std::vector<float> y(48000, 0.0f);
+        y[0] = 0.5f;
+        y = run(d, y);
+        const auto head = std::size_t(std::lround(DrumEcho::headSeconds(0.2f) * kRate));
+        const auto near = [&](std::size_t at) {
+            float e = 0.0f;
+            for (std::size_t i = at - 30; i < at + 30; ++i)
+                e = std::max(e, std::fabs(y[i]));
+            return e;
+        };
+        QVERIFY(near(head) > 0.1f);
+        QVERIFY(near(2 * head) < 0.01f);
+        QVERIFY(near(3 * head) > 0.1f);
+    }
+
+    void drumEchoSwellDoesNotRunAway()
+    {
+        DrumEcho d;
+        d.prepare(kRate);
+        d.setKnob(DrumEcho::Swell, 1.0f);
+        d.setKnob(DrumEcho::Mix, 1.0f);
+        d.setKnob(DrumEcho::Tone, 1.0f);
+        d.setKnob(DrumEcho::Time, 0.0f);
+        const auto y = run(d, sine(48000 * 3, 220.0, 0.8f));
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak) && peak < 4.0f);
+    }
+
+    void vibeThrobs()
+    {
+        Vibe v;
+        v.prepare(kRate);
+        v.setKnob(Vibe::Speed, 0.6f);
+        const auto y = run(v, sine(96000, 600.0, 0.1f));
+        double lo = 1e9, hi = 0.0;
+        for (std::size_t at = 9600; at + 480 < y.size(); at += 480) {
+            const double l = level(y, 600.0, at, 480);
+            lo = std::min(lo, l);
+            hi = std::max(hi, l);
+        }
+        QVERIFY2(db(hi) - db(lo) > 6.0, qPrintable(QStringLiteral("%1 dB").arg(db(hi) - db(lo))));
+        // Vibrato: the swept signal alone keeps its level (an all-pass), no notches.
+        Vibe vib;
+        vib.prepare(kRate);
+        vib.setKnob(Vibe::Mode, 1.0f);
+        vib.setKnob(Vibe::Speed, 0.6f);
+        const auto z = run(vib, sine(96000, 600.0, 0.1f));
+        double vlo = 1e9, vhi = 0.0;
+        for (std::size_t at = 9600; at + 480 < z.size(); at += 480) {
+            const double l = level(z, 600.0, at, 480);
+            vlo = std::min(vlo, l);
+            vhi = std::max(vhi, l);
+        }
+        QVERIFY2(db(vhi) - db(vlo) < 3.0, qPrintable(QStringLiteral("%1 dB").arg(db(vhi) - db(vlo))));
     }
 
     // --- Round Fuzz ---------------------------------------------------------------------

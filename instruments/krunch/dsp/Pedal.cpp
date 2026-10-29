@@ -3,9 +3,11 @@
 #include <algorithm>
 #include <cmath>
 
+#include "dsp/ClassicPedals.h"
 #include "dsp/Fuzz.h"
 #include "dsp/GreenDrive.h"
 #include "dsp/ModPedals.h"
+#include "dsp/SignaturePedals.h"
 #include "dsp/StudioPedals.h"
 #include "dsp/TimePedals.h"
 
@@ -59,9 +61,10 @@ void Pedal::process(float *buffer, std::uint32_t frames) noexcept
 
 std::span<const PedalInfo *const> pedalTypes()
 {
-    static const PedalInfo *const kTypes[] = {&Compressor::kInfo, &GreenDrive::kInfo, &RoundFuzz::kInfo, &Eq5::kInfo, &Eq10::kInfo,
-                                              &Phaser::kInfo, &Flanger::kInfo, &Chorus::kInfo, &Tremolo::kInfo,
-                                              &Delay::kInfo, &Reverb::kInfo};
+    static const PedalInfo *const kTypes[] = {&Prism::kInfo,   &Compressor::kInfo, &GreenDrive::kInfo, &RoundFuzz::kInfo,
+                                              &Eq5::kInfo,     &Eq10::kInfo,       &Phaser::kInfo,     &Flanger::kInfo,
+                                              &Vibe::kInfo,    &Chorus::kInfo,     &Tremolo::kInfo,    &Delay::kInfo,
+                                              &DrumEcho::kInfo, &Reverb::kInfo};
     return kTypes;
 }
 
@@ -69,6 +72,12 @@ std::unique_ptr<Pedal> makePedal(std::string_view type)
 {
     if (type == GreenDrive::kInfo.type)
         return std::make_unique<GreenDrive>();
+    if (type == Prism::kInfo.type)
+        return std::make_unique<Prism>();
+    if (type == Vibe::kInfo.type)
+        return std::make_unique<Vibe>();
+    if (type == DrumEcho::kInfo.type)
+        return std::make_unique<DrumEcho>();
     if (type == RoundFuzz::kInfo.type)
         return std::make_unique<RoundFuzz>();
     if (type == Compressor::kInfo.type)

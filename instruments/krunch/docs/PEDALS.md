@@ -29,6 +29,48 @@ The classic green mid-boost overdrive, modelled on its circuit in broad strokes 
 | `tone` | 0 … 10 | 5 |
 | `level` | −24 … +12 dB | −6 dB |
 
+## Signature pedals
+
+One pedal for one well-known sound: its whole chain inside (real pedals from this board, their knobs set from the signature pedal's), each part brought in by one knob, 0 taking it out (`dsp/SignaturePedals.cpp`).
+
+### Prism
+
+The early-70s spacey, singing lead and clean sound. The rig behind it: a single-coil guitar into very loud, very clean amps, a silicon round fuzz for the solos, a photocell vibe for the slow swirls, a multi-head drum echo and plenty of reverb. Prism is that chain, in that order: Round Fuzz (silicon) → Vibe (chorus) → Drum Echo → Reverb, then a tilt and the level. Use it on a clean channel with headroom (Clean voice, Master up); start in FRONT.
+
+| Knob | What it does | Default |
+| --- | --- | --- |
+| `fuzz` | 0 = clean; up: the round fuzz from a fat lead (its Fuzz at 4.5) to full | off |
+| `vibe` | 0 = off; up: the vibe's speed (0.5 … 8 Hz), at intensity 7.5 | about 1 Hz |
+| `echo` | how much drum echo: mix 15 … 60 %, swell 15 … 70 %; heads 1+3, then every head from halfway (the rhythmic swirl) | 4.5 |
+| `time` | the first head (60 … 450 ms); the others repeat at 2×, 3×, 4× | about 200 ms |
+| `space` | how much reverb: decay and mix together | 4.5 |
+| `tone` | a tilt around 800 Hz: dark … bright (±6 dB) | slightly bright |
+| `level` | −12 … +12 dB | 0 dB |
+
+With every part at 0, Tone centred and Level at 0 dB it passes the guitar untouched.
+
+## Vibe
+
+The classic photocell vibe, in broad strokes (`dsp/ClassicPedals.cpp`): four all-pass stages whose capacitors are far apart (15 nF, 220 nF, 470 pF, 4.7 nF), so the notches are spread unevenly rather than in a neat comb, swept together by a lamp shining on photocells (150 k dark down to 15 k lit, by Intensity). The cells answer brightening in about 10 ms and dimming in about 60 ms, which gives the lopsided, throbbing sweep. **MODE**: Chorus (half and half with the guitar) or Vibrato (the swept signal alone: a pitch wobble, its level steady).
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `speed` | 0.5 … 8 Hz | about 1 Hz |
+| `intensity` | 0 … 10 | 7 |
+| `mode` | Chorus / Vibrato (a switch) | Chorus |
+
+## Drum Echo
+
+The multi-head magnetic drum echo, in broad strokes (`dsp/ClassicPedals.cpp`): four playback heads at one, two, three and four times the first head's time. **HEADS** picks which play (1, 1+2, 1+3, all; with more heads each is a little quieter); **SWELL** feeds them back, darkened by Tone, thinned below 120 Hz and gently saturated, so the repeats build into a rhythmic swell without running away; the drum wobbles slightly (0.15 % at 0.6 Hz) and changes speed over about 200 ms. Starts in the LOOP.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `time` | the first head, 60 … 450 ms | about 200 ms |
+| `heads` | 1, 1+2, 1+3, All (a switch) | All |
+| `swell` | 0 … 100 % | 35 % |
+| `tone` | 1.5 … 9 kHz | about 3.1 kHz |
+| `mix` | 0 … 100 % | 35 % |
+
 ## Round Fuzz
 
 The classic two-transistor round fuzz, in broad strokes (`dsp/Fuzz.cpp`): two transistor stages, each a gain into an asymmetric clipper (saturating softly one way up to 1, cutting off sooner the other way at −0.45, the same slope at rest), at 4×, with the coupling capacitors between and a treble roll-off. **FUZZ** sets the first stage's drive, so it cleans up as you pick lighter or roll your guitar's volume back (under 10 % distortion when quiet). The asymmetry gives the strong second harmonic. **BIAS** moves both transistors' operating point (centre is the classic setting); off centre, quiet notes get stuck and sputter, the gated "dying battery" sound. **TYPE**: Germanium (a softer knee, less gain, rolled off at 4.5 kHz) or Silicon (tanh, more gain, brighter at 7.5 kHz), levelled to each other. At the default Volume it comes in about 3 dB over bypass.
@@ -130,4 +172,4 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
