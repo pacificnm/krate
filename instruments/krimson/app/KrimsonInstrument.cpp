@@ -4,13 +4,14 @@ namespace krimson {
 
 Instance::Instance(const krate::InstrumentContext &context)
     : controller(engine, context.configDir + QStringLiteral("/panel.json"), context.transport, nullptr)
+    , slotSetup(controller, engine, context.configDir + QStringLiteral("/slots.json"), nullptr)
 {
 }
 
 void Instance::triggerAction(const QString &action)
 {
-    if (action.size() == 5 && action.startsWith(u"slot")) // slotA..slotD
-        controller.setEditedSlot(action.at(4).unicode() - u'A');
+    if (action.size() == 5 && action.startsWith(u"slot")) // slotA..slotD: play and edit that slot
+        slotSetup.pressSlot(action.at(4).unicode() - u'A', false);
     // Programs, store, arpeggiator, morph and octave arrive in later milestones.
 }
 

@@ -150,10 +150,13 @@ Item {
         font.pixelSize: 12
         font.bold: true
     }
+    // Slot buttons: click = play and edit that slot; Shift-click = layer it with
+    // the lit ones. LED = lit (the keyboard plays it); dark = the slot being edited.
     Repeater {
         model: ["A", "B", "C", "D"]
 
         PanelButton {
+            id: slotButton
             required property int index
             required property string modelData
             x: 44 + index * 66
@@ -161,12 +164,25 @@ Item {
             width: 56
             height: 34
             faceText: modelData
-            text: "Edit slot " + modelData
-            dark: true
+            text: "Slot " + modelData
+            dark: Krimson.editedSlot === index
             hasLed: true
-            ledOn: Krimson.editedSlot === index
-            onClicked: Krimson.editedSlot = index
+            ledOn: Slots.revision >= 0 && Slots.isLit(index)
+
+            MouseArea { // the click with its modifiers (PanelButton's clicked() has none)
+                anchors.fill: parent
+                onClicked: mouse => Slots.pressSlot(slotButton.index, (mouse.modifiers & Qt.ShiftModifier) !== 0)
+            }
         }
+    }
+    Text {
+        x: 44
+        y: 392
+        width: 260
+        text: "Click: play and edit · Shift-click: layer"
+        color: "#9A9B9E"
+        font.family: Theme.labelFont
+        font.pixelSize: 10
     }
 
     // Keyboard area (wheels and keyboard arrive in C4)

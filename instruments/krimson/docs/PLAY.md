@@ -2,16 +2,18 @@
 
 ## Slots
 
-Four slots, A–D, each a complete sound with its own program, MIDI channel (default 3–6 in the rack, 1–4 standalone), level, pan, and on/off.
+Four slots, A–D, each a complete sound with its own MIDI channel (default 3–6 for A–D, standalone and in the rack), level, pan, on/off and keyboard zone. `SlotController` (the `Slots` QML singleton) runs them; the engine routes MIDI.
 
 | Action | How |
 | --- | --- |
-| Edit a slot | Press its slot button: the panel (and MIDI Learn) shows and edits that slot |
-| Layer | Shift-press more slot buttons: the keys play every lit slot at once (and the panel edits them together) |
-| Split | Set a split key (SHIFT + a key); slots below play from the lower part, the rest from the upper |
-| Per-channel | A slot always plays notes on its own channel, whatever is lit (a sequencer track per slot) |
+| Play and edit one slot | Click its slot button: only that slot is lit (the keyboard plays it) and the panel and MIDI Learn edit it |
+| Layer | Shift-click more slot buttons: every lit slot plays from the keyboard; the last one lit is edited. Shift-click a lit slot to take it out (one stays lit) |
+| Split | A split key, and each slot's zone (whole, lower, upper): a lower slot plays only below the split, an upper one only from it up |
+| Per-channel | A slot always plays notes on its own channel (if it is on), whatever is lit: a sequencer track or a second keyboard per slot |
 
-Notes on the **keyboard channel** (the LX49's, or anything in the rack that reaches Krimson by focus) go to the lit slots. Notes on a slot's own channel go to that slot.
+Routing: a message on a channel that belongs to an on slot goes to that slot; any other channel is the **keyboard**, and goes to the lit slots (notes by zone when a split is set). Mod wheel, pitch bend, sustain and all-notes-off follow the same rule. A note-off goes to every slot holding that key, so changing the lit slots or the split while keys are down never leaves a note stuck. Each slot has its own held keys, sustain, bend, wheel, voice mode and glide.
+
+**Storage**: `~/.config/krimson/slots.json` keeps all four slots' sounds (every slot parameter by key) and setup (channel, on, zone, lit), the split key and the edited slot; saved 2 s after any change and on quit. (`panel.json` holds only the edited slot.)
 
 ## Voice modes (per slot)
 

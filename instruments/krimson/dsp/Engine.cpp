@@ -12,7 +12,7 @@ constexpr std::uint64_t kSlotParamBits = (std::uint64_t(1) << SlotParamCount) - 
 constexpr double kFenvOctaves = 8.0;
 constexpr double kMaxVibratoSemis = 0.7; // the wheel's vibrato at full
 constexpr double kVibratoHz = 5.5;
-constexpr double kOutputTrim = 0.7071; // -3 dB, as Kalliope and K909
+constexpr double kOutputTrim = 1.0;      // with Slot Level's default (0.8, gain 0.64): about -4 dB
 constexpr double kVolumeSmoothingSeconds = 0.01;
 constexpr int kCcModWheel = 1;
 constexpr int kCcSustain = 64;
@@ -20,9 +20,17 @@ constexpr int kCcAllSoundOff = 120;
 constexpr int kCcAllNotesOff = 123;
 constexpr double kMaxUnisonDetuneSemis = 0.35; // Unison Detune at 100 %: the outer voices +/- 35 cents
 constexpr double kUnisonSpread = 0.7;          // stereo position of the outer unison voices
+constexpr int kDefaultFirstChannel = 2;        // slots A..D on MIDI channels 3..6
 } // namespace
 
-Engine::Engine() = default;
+Engine::Engine()
+{
+    for (int slot = 0; slot < SlotCount; ++slot) {
+        m_channel[std::size_t(slot)].store(kDefaultFirstChannel + slot, std::memory_order_relaxed);
+        m_on[std::size_t(slot)].store(true, std::memory_order_relaxed);
+        m_zone[std::size_t(slot)].store(Zone::Whole, std::memory_order_relaxed);
+    }
+}
 
 void Engine::prepare(double sampleRate, std::uint32_t) noexcept
 {
@@ -34,13 +42,33 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
     for (Lfo &lfo : m_lfo2)
         lfo.reset();
     m_vibrato.reset();
-    m_heldCount = 0;
     m_sustained.fill(false);
-    m_sustain = false;
-    m_lastNote = -1;
-    m_mode = voiceMode(editedSlot());
+    for (int slot = 0; slot < SlotCount; ++slot) {
+        m_state[std::size_t(slot)] = SlotState{};
+        m_state[std::size_t(slot)].mode = voiceMode(slot);
+    }
     m_volumeSmoothing = 1.0 - std::exp(-1.0 / (kVolumeSmoothingSeconds * sampleRate));
     m_volume = -1.0;
+}
+
+void Engine::setEditedSlot(int slot) noexcept
+{
+    slot = std::clamp(slot, 0, SlotCount - 1);
+    if (m_edited.exchange(slot, std::memory_order_relaxed) != slot)
+        m_forcedChanges.fetch_or(kSlotParamBits, std::memory_order_relaxed);
+}
+
+void Engine::setSlotChannel(int slot, int channel) noexcept
+{
+    m_channel[std::size_t(slot)].store(channel >= 0 && channel < 16 ? channel : -1, std::memory_order_relaxed);
+}
+
+std::uint64_t Engine::takeParamsChangedByAudio() noexcept
+{
+    std::uint64_t changed = m_global.takeChanged() | m_forcedChanges.exchange(0, std::memory_order_relaxed);
+    for (Store &slot : m_slots)
+        changed |= slot.takeChanged() & kSlotParamBits; // any slot: the edited one is what the panel shows
+    return changed;
 }
 
 SlotSettings Engine::settings(int slot) const noexcept
@@ -89,26 +117,15 @@ SlotSettings Engine::settings(int slot) const noexcept
     s.ampVelocity = v(ParamId::AmpVel);
     s.glideSeconds = units::glideSeconds(v(ParamId::Glide)) / 3.0; // the knob shows the time to get (almost) there
     s.gain = units::gain(v(ParamId::Gain));
-    s.bendSemis = m_bend * units::bendSemitones(v(ParamId::BendRange));
+    const SlotState &state = m_state[std::size_t(std::clamp(slot, 0, SlotCount - 1))];
+    s.bendSemis = state.bend * units::bendSemitones(v(ParamId::BendRange));
     // The wheel: vibrato when Wheel is set to Vibrato (morph arrives in C5).
-    s.vibratoSemis = pick(ParamId::WheelDest, q::kWheelDest) == 1 ? kMaxVibratoSemis * m_wheel : 0.0;
+    s.vibratoSemis = pick(ParamId::WheelDest, q::kWheelDest) == 1 ? kMaxVibratoSemis * state.wheel : 0.0;
+    s.slotGain = units::gain(v(ParamId::SlotLevel));
+    s.slotPan = units::pan(v(ParamId::SlotPan));
     return s;
 }
 
-void Engine::setEditedSlot(int slot) noexcept
-{
-    slot = std::clamp(slot, 0, SlotCount - 1);
-    if (m_edited.exchange(slot, std::memory_order_relaxed) != slot)
-        m_forcedChanges.fetch_or(kSlotParamBits, std::memory_order_relaxed);
-}
-
-std::uint64_t Engine::takeParamsChangedByAudio() noexcept
-{
-    std::uint64_t changed = m_global.takeChanged() | m_forcedChanges.exchange(0, std::memory_order_relaxed);
-    for (Store &slot : m_slots)
-        changed |= slot.takeChanged() & kSlotParamBits; // any slot: the edited one is what the panel shows
-    return changed;
-}
 
 Engine::VoiceMode Engine::voiceMode(int slot) const noexcept
 {
@@ -123,16 +140,38 @@ int Engine::activeVoices() const noexcept
     return n;
 }
 
-int Engine::pickVoice(int note) noexcept
+unsigned Engine::slotsFor(int channel, int note) const noexcept
 {
-    // The same note again: its own voice.
+    unsigned own = 0;
+    for (int slot = 0; slot < SlotCount; ++slot)
+        if (slotOn(slot) && slotChannel(slot) == channel)
+            own |= 1u << slot;
+    if (own)
+        return own; // a slot's own channel
+    // The keyboard: the lit slots, each in its part of a split keyboard.
+    const int split = splitNote();
+    unsigned slots = 0;
+    for (int slot = 0; slot < SlotCount; ++slot) {
+        if (!slotOn(slot) || !(litSlots() & (1u << slot)))
+            continue;
+        const Zone zone = slotZone(slot);
+        if (split >= 0 && note >= 0 && ((zone == Zone::Lower && note >= split) || (zone == Zone::Upper && note < split)))
+            continue;
+        slots |= 1u << slot;
+    }
+    return slots;
+}
+
+int Engine::pickVoice(int slot, int note) noexcept
+{
+    // The same note again in this slot: its own voice.
     for (int v = 0; v < kVoices; ++v)
-        if (m_voices[std::size_t(v)].active() && m_voices[std::size_t(v)].note() == note)
+        if (m_voices[std::size_t(v)].active() && m_voiceSlot[std::size_t(v)] == slot && m_voices[std::size_t(v)].note() == note)
             return v;
     for (int v = 0; v < kVoices; ++v)
         if (!m_voices[std::size_t(v)].active())
             return v;
-    // The oldest released (or pedal-held) voice, else the oldest held one.
+    // The oldest released (or pedal-held) voice of any slot, else the oldest held one.
     int best = -1;
     for (int pass = 0; pass < 2 && best < 0; ++pass)
         for (int v = 0; v < kVoices; ++v) {
@@ -145,127 +184,188 @@ int Engine::pickVoice(int note) noexcept
     return best;
 }
 
-void Engine::startVoice(int v, int note, double glideFrom) noexcept
+void Engine::startVoice(int slot, int v, int note, double glideFrom) noexcept
 {
     Voice &voice = m_voices[std::size_t(v)];
-    m_voiceSlot[std::size_t(v)] = editedSlot();
+    const bool sameSlot = m_voiceSlot[std::size_t(v)] == slot;
+    m_voiceSlot[std::size_t(v)] = slot;
     m_started[std::size_t(v)] = ++m_counter;
     m_sustained[std::size_t(v)] = false;
     voice.setSpread(0.0, 0.0);
-    if (voice.active() && voice.note() != note)
-        voice.steal(note, m_lastVelocity, glideFrom); // fade its old note out first
+    if (voice.active() && (voice.note() != note || !sameSlot))
+        voice.steal(note, m_state[std::size_t(slot)].velocity, glideFrom); // fade its old note out first
     else
-        voice.noteOn(note, m_lastVelocity, true, glideFrom);
+        voice.noteOn(note, m_state[std::size_t(slot)].velocity, true, glideFrom);
 }
 
-void Engine::playMono(bool retrigger) noexcept
+void Engine::playMono(int slot, bool retrigger) noexcept
 {
-    const int note = m_held[std::size_t(m_heldCount - 1)];
-    const double glideFrom = m_lastNote >= 0 ? double(m_lastNote) : -1.0;
-    const int slot = editedSlot();
-    const bool unison = m_mode == VoiceMode::Unison;
+    SlotState &state = m_state[std::size_t(slot)];
+    const int note = state.held[std::size_t(state.heldCount - 1)];
+    const double glideFrom = state.lastNote >= 0 ? double(state.lastNote) : -1.0;
+    const bool unison = state.mode == VoiceMode::Unison;
     const int count = unison ? kUnisonVoices : 1;
     const double detune = kMaxUnisonDetuneSemis * m_slots[std::size_t(slot)].get(int(ParamId::UnisonDetune));
-    for (int v = 0; v < count; ++v) {
+    for (int i = 0; i < count; ++i) {
+        int &v = state.monoVoices[std::size_t(i)];
+        // Keep this slot's voice if it still has it; else take one.
+        const bool kept = v >= 0 && m_voiceSlot[std::size_t(v)] == slot && m_voices[std::size_t(v)].active();
+        if (!kept) {
+            v = pickVoice(slot, -1);
+            m_voiceSlot[std::size_t(v)] = slot;
+        }
         Voice &voice = m_voices[std::size_t(v)];
-        const double position = count > 1 ? 2.0 * v / (count - 1) - 1.0 : 0.0; // -1, 0, +1
+        const double position = count > 1 ? 2.0 * i / (count - 1) - 1.0 : 0.0; // -1, 0, +1
         voice.setSpread(detune * position, unison ? kUnisonSpread * position : 0.0);
-        m_voiceSlot[std::size_t(v)] = slot;
+        m_started[std::size_t(v)] = ++m_counter;
         m_sustained[std::size_t(v)] = false;
-        voice.noteOn(note, m_lastVelocity, retrigger, glideFrom);
+        if (!kept && voice.active())
+            voice.steal(note, state.velocity, glideFrom);
+        else
+            voice.noteOn(note, state.velocity, retrigger || !kept, glideFrom);
     }
-    m_lastNote = note;
+    state.lastNote = note;
 }
 
-void Engine::noteOn(int note, int velocity) noexcept
+void Engine::noteOn(int slot, int note, int velocity) noexcept
 {
-    m_lastVelocity = float(velocity) / 127.0f;
-    for (int i = 0; i < m_heldCount; ++i)
-        if (m_held[std::size_t(i)] == note) {
-            std::copy(m_held.begin() + i + 1, m_held.begin() + m_heldCount, m_held.begin() + i);
-            --m_heldCount;
+    SlotState &state = m_state[std::size_t(slot)];
+    state.velocity = float(velocity) / 127.0f;
+    for (int i = 0; i < state.heldCount; ++i)
+        if (state.held[std::size_t(i)] == note) {
+            std::copy(state.held.begin() + i + 1, state.held.begin() + state.heldCount, state.held.begin() + i);
+            --state.heldCount;
             break;
         }
-    if (m_heldCount == int(m_held.size())) {
-        std::copy(m_held.begin() + 1, m_held.end(), m_held.begin());
-        --m_heldCount;
+    if (state.heldCount == int(state.held.size())) {
+        std::copy(state.held.begin() + 1, state.held.end(), state.held.begin());
+        --state.heldCount;
     }
-    const bool othersHeld = m_heldCount > 0;
-    m_held[std::size_t(m_heldCount++)] = std::uint8_t(note);
+    const bool othersHeld = state.heldCount > 0;
+    state.held[std::size_t(state.heldCount++)] = std::uint8_t(note);
 
-    switch (m_mode) {
+    switch (state.mode) {
     case VoiceMode::Poly: {
-        const double glideFrom = m_lastNote >= 0 ? double(m_lastNote) : -1.0;
-        startVoice(pickVoice(note), note, glideFrom);
-        m_lastNote = note;
+        const double glideFrom = state.lastNote >= 0 ? double(state.lastNote) : -1.0;
+        startVoice(slot, pickVoice(slot, note), note, glideFrom);
+        state.lastNote = note;
         break;
     }
     case VoiceMode::Mono:
     case VoiceMode::Unison:
-        playMono(true);
+        playMono(slot, true);
         break;
     case VoiceMode::Legato:
         if (!othersHeld) // a fresh phrase: no glide into it
-            m_lastNote = -1;
-        playMono(!othersHeld);
+            state.lastNote = -1;
+        playMono(slot, !othersHeld);
         break;
     }
 }
 
-void Engine::releaseVoice(int v) noexcept
+void Engine::releaseVoice(int slot, int v) noexcept
 {
-    if (m_sustain)
+    if (m_state[std::size_t(slot)].sustain)
         m_sustained[std::size_t(v)] = true;
     else
         m_voices[std::size_t(v)].noteOff();
 }
 
-void Engine::noteOff(int note) noexcept
+void Engine::noteOff(int slot, int note) noexcept
 {
-    const bool wasTop = m_heldCount > 0 && m_held[std::size_t(m_heldCount - 1)] == note;
-    for (int i = 0; i < m_heldCount; ++i)
-        if (m_held[std::size_t(i)] == note) {
-            std::copy(m_held.begin() + i + 1, m_held.begin() + m_heldCount, m_held.begin() + i);
-            --m_heldCount;
+    SlotState &state = m_state[std::size_t(slot)];
+    const bool wasTop = state.heldCount > 0 && state.held[std::size_t(state.heldCount - 1)] == note;
+    for (int i = 0; i < state.heldCount; ++i)
+        if (state.held[std::size_t(i)] == note) {
+            std::copy(state.held.begin() + i + 1, state.held.begin() + state.heldCount, state.held.begin() + i);
+            --state.heldCount;
             break;
         }
-    if (m_mode == VoiceMode::Poly) {
+    if (state.mode == VoiceMode::Poly) {
         for (int v = 0; v < kVoices; ++v) {
             const Voice &voice = m_voices[std::size_t(v)];
-            if (voice.gate() && voice.note() == note && !m_sustained[std::size_t(v)])
-                releaseVoice(v);
+            if (m_voiceSlot[std::size_t(v)] == slot && voice.gate() && voice.note() == note && !m_sustained[std::size_t(v)])
+                releaseVoice(slot, v);
         }
         return;
     }
     if (!wasTop)
         return;
-    if (m_heldCount > 0) {
-        playMono(m_mode != VoiceMode::Legato); // back to the previous key (Legato: without retrigger)
+    if (state.heldCount > 0) {
+        playMono(slot, state.mode != VoiceMode::Legato); // back to the previous key (Legato: without retrigger)
         return;
     }
-    const int count = m_mode == VoiceMode::Unison ? kUnisonVoices : 1;
-    for (int v = 0; v < count; ++v)
-        releaseVoice(v);
+    for (int v : state.monoVoices)
+        if (v >= 0 && m_voiceSlot[std::size_t(v)] == slot)
+            releaseVoice(slot, v);
 }
 
-void Engine::setSustain(bool down) noexcept
+void Engine::setSustain(int slot, bool down) noexcept
 {
-    m_sustain = down;
+    m_state[std::size_t(slot)].sustain = down;
     if (down)
         return;
     for (int v = 0; v < kVoices; ++v)
-        if (m_sustained[std::size_t(v)]) {
+        if (m_sustained[std::size_t(v)] && m_voiceSlot[std::size_t(v)] == slot) {
             m_sustained[std::size_t(v)] = false;
             m_voices[std::size_t(v)].noteOff();
         }
 }
 
-void Engine::allNotesOff() noexcept
+void Engine::allNotesOff(int slot) noexcept
 {
-    m_heldCount = 0;
-    m_sustained.fill(false);
-    for (Voice &voice : m_voices)
-        voice.noteOff();
+    m_state[std::size_t(slot)].heldCount = 0;
+    for (int v = 0; v < kVoices; ++v)
+        if (m_voiceSlot[std::size_t(v)] == slot) {
+            m_sustained[std::size_t(v)] = false;
+            m_voices[std::size_t(v)].noteOff();
+        }
+}
+
+void Engine::handleMidi(const krate::MidiEvent &event) noexcept
+{
+    const krate::MidiMessage m = krate::decode(event);
+    const int channel = event.data[0] & 0x0F;
+    const auto forSlots = [&](int note, auto &&action) {
+        const unsigned slots = slotsFor(channel, note);
+        for (int slot = 0; slot < SlotCount; ++slot)
+            if (slots & (1u << slot))
+                action(slot);
+    };
+    switch (m.type) {
+    case krate::MidiMessage::Type::ControlChange:
+        if (const auto r = m_learn.controlChange(m.data1, m.data2); r.param != krate::MidiLearnMap::kUnmapped)
+            store(r.param).setFromAudio(r.param, r.value); // learned knobs edit the edited slot
+        else if (m.data1 == kCcModWheel)
+            forSlots(-1, [&](int slot) { m_state[std::size_t(slot)].wheel = m.data2 / 127.0; });
+        else if (m.data1 == kCcSustain)
+            forSlots(-1, [&](int slot) { setSustain(slot, m.data2 >= 64); });
+        else if (m.data1 == kCcAllNotesOff || m.data1 == kCcAllSoundOff)
+            forSlots(-1, [&](int slot) { allNotesOff(slot); });
+        break;
+    case krate::MidiMessage::Type::NoteOn:
+        forSlots(m.data1, [&](int slot) { noteOn(slot, m.data1, m.data2); });
+        break;
+    case krate::MidiMessage::Type::NoteOff:
+        // To every slot holding that key: the lit slots or the split may have
+        // changed since the note-on, and a stuck note is worse than a stray release.
+        for (int slot = 0; slot < SlotCount; ++slot) {
+            const SlotState &state = m_state[std::size_t(slot)];
+            if (std::find(state.held.begin(), state.held.begin() + state.heldCount, m.data1)
+                != state.held.begin() + state.heldCount)
+                noteOff(slot, m.data1);
+        }
+        break;
+    case krate::MidiMessage::Type::ProgramChange:
+        break; // programs arrive in C7
+    case krate::MidiMessage::Type::Other:
+        if (event.size == 3 && (event.data[0] & 0xF0) == 0xE0) { // pitch bend
+            const int value = (event.data[2] << 7) | event.data[1];
+            const double bend = std::clamp((value - 8192) / 8191.0, -1.0, 1.0);
+            forSlots(-1, [&](int slot) { m_state[std::size_t(slot)].bend = bend; });
+        }
+        break;
+    }
 }
 
 void Engine::render(float *left, float *right, std::uint32_t frames) noexcept
@@ -298,47 +398,17 @@ void Engine::render(float *left, float *right, std::uint32_t frames) noexcept
     }
 }
 
-void Engine::handleMidi(const krate::MidiEvent &event) noexcept
-{
-    const krate::MidiMessage m = krate::decode(event);
-    switch (m.type) {
-    case krate::MidiMessage::Type::ControlChange:
-        if (const auto r = m_learn.controlChange(m.data1, m.data2); r.param != krate::MidiLearnMap::kUnmapped)
-            store(r.param).setFromAudio(r.param, r.value); // learned knobs edit the edited slot
-        else if (m.data1 == kCcModWheel)
-            m_wheel = m.data2 / 127.0;
-        else if (m.data1 == kCcSustain)
-            setSustain(m.data2 >= 64);
-        else if (m.data1 == kCcAllNotesOff || m.data1 == kCcAllSoundOff)
-            allNotesOff();
-        break;
-    case krate::MidiMessage::Type::NoteOn:
-        noteOn(m.data1, m.data2);
-        break;
-    case krate::MidiMessage::Type::NoteOff:
-        noteOff(m.data1);
-        break;
-    case krate::MidiMessage::Type::ProgramChange:
-        break;
-    case krate::MidiMessage::Type::Other:
-        if (event.size == 3 && (event.data[0] & 0xF0) == 0xE0) { // pitch bend
-            const int value = (event.data[2] << 7) | event.data[1];
-            m_bend = std::clamp((value - 8192) / 8191.0, -1.0, 1.0);
-        }
-        break;
-    }
-}
-
 void Engine::process(const krate::AudioBlock &block) noexcept
 {
     krate::ScopedFlushDenormals noDenormals;
     float *left = block.outputs[0];
     float *right = block.outputs[1];
-    if (const VoiceMode mode = voiceMode(editedSlot()); mode != m_mode) {
-        allNotesOff(); // a new voice mode starts from silence (release tails ring out)
-        m_mode = mode;
-        m_lastNote = -1;
-    }
+    for (int slot = 0; slot < SlotCount; ++slot)
+        if (const VoiceMode mode = voiceMode(slot); mode != m_state[std::size_t(slot)].mode) {
+            allNotesOff(slot); // a new voice mode starts from silence (release tails ring out)
+            m_state[std::size_t(slot)].mode = mode;
+            m_state[std::size_t(slot)].lastNote = -1;
+        }
 
     // Render up to each MIDI event, then apply it on its exact frame.
     std::uint32_t done = 0;

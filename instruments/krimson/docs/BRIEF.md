@@ -20,7 +20,7 @@ Related docs: [DSP.md](DSP.md), [PLAY.md](PLAY.md) (slots, voice modes, morph, a
 
 ## Scope (v1)
 
-- **4 slots (A–D)**, each a complete sound: its own program, MIDI channel, level, pan and on/off. Slots can be played together (layered) from one keyboard, split across it, or each from its own channel.
+- **4 slots (A–D)**, each a complete sound: its own program, MIDI channel (3–6 by default), level, pan, on/off and keyboard zone. Slots can be played together (layered) from one keyboard, split across it, or each from its own channel.
 - **16 voices**, shared by the slots as they need them.
 - **Per voice:**
   - **OSC 1:** sine, triangle, saw or pulse (with pulse width).

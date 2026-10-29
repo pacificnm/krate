@@ -14,11 +14,13 @@
 namespace krimson {
 
 // Krimson's realtime core (docs/DSP.md). Four slots, each a full set of sound
-// parameters; the IInstrument parameter table shows the slot being edited
-// (docs/BRIEF.md#parameters-one-slot-at-a-time). C2: 16 voices with Poly,
-// Mono, Legato and Unison, glide, sustain, pitch bend and the mod wheel
-// (vibrato), at 2x and decimated, playing the edited slot. Each voice remembers
-// its slot, so the slots can share the voices in C3.
+// parameters and its own key state (held keys, sustain, bend, wheel, voice
+// mode, glide), sharing 16 voices at 2x. The IInstrument parameter table shows
+// the slot being edited (docs/BRIEF.md#parameters-one-slot-at-a-time).
+//
+// MIDI routing (docs/PLAY.md#slots): a channel that belongs to a slot (and the
+// slot is on) goes to that slot; any other channel is the keyboard, whose notes
+// go to the lit slots, split by the split key when one is set.
 class Engine final : public krate::IInstrument
 {
 public:
@@ -38,12 +40,27 @@ public:
     // it reports every slot parameter as changed, so the panel follows.
     void setEditedSlot(int slot) noexcept;
     int editedSlot() const noexcept { return m_edited.load(std::memory_order_relaxed); }
+    // Any thread: report every parameter as changed (after loading slots from a file).
+    void markAllChanged() noexcept { m_forcedChanges.store(~std::uint64_t(0), std::memory_order_relaxed); }
 
     // Any thread: a given slot's parameter (tests, slot files, the voices).
     float slotParam(int slot, ParamId id) const noexcept { return m_slots[std::size_t(slot)].get(int(id)); }
     void setSlotParam(int slot, ParamId id, float v) noexcept { m_slots[std::size_t(slot)].set(int(id), v); }
     float param(ParamId id) const noexcept { return param(int(id)); }
     void setParam(ParamId id, float v) noexcept { setParam(int(id), v); }
+
+    // Slot setup (any thread; read by the audio thread every event).
+    enum class Zone : std::uint8_t { Whole, Lower, Upper }; // which part of a split keyboard a slot plays
+    void setSlotChannel(int slot, int channel) noexcept;  // 0..15, or -1 for none
+    int slotChannel(int slot) const noexcept { return m_channel[std::size_t(slot)].load(std::memory_order_relaxed); }
+    void setSlotOn(int slot, bool on) noexcept { m_on[std::size_t(slot)].store(on, std::memory_order_relaxed); }
+    bool slotOn(int slot) const noexcept { return m_on[std::size_t(slot)].load(std::memory_order_relaxed); }
+    void setSlotZone(int slot, Zone zone) noexcept { m_zone[std::size_t(slot)].store(zone, std::memory_order_relaxed); }
+    Zone slotZone(int slot) const noexcept { return m_zone[std::size_t(slot)].load(std::memory_order_relaxed); }
+    void setLitSlots(unsigned mask) noexcept { m_lit.store(mask & 0xFu, std::memory_order_relaxed); }
+    unsigned litSlots() const noexcept { return m_lit.load(std::memory_order_relaxed); }
+    void setSplitNote(int note) noexcept { m_split.store(note, std::memory_order_relaxed); } // -1 = no split
+    int splitNote() const noexcept { return m_split.load(std::memory_order_relaxed); }
 
     // A slot's sound in DSP units.
     SlotSettings settings(int slot) const noexcept;
@@ -57,6 +74,7 @@ public:
     bool voiceActive(int v) const noexcept { return m_voices[std::size_t(v)].active(); }
     bool voiceGate(int v) const noexcept { return m_voices[std::size_t(v)].gate(); }
     int voiceNote(int v) const noexcept { return m_voices[std::size_t(v)].note(); }
+    int voiceSlot(int v) const noexcept { return m_voiceSlot[std::size_t(v)]; }
     double voiceLevel(int v) const noexcept { return m_voices[std::size_t(v)].level(); }
 
 private:
@@ -66,17 +84,34 @@ private:
     {
         return isSlotParam(index) ? m_slots[std::size_t(editedSlot())] : m_global;
     }
+
+    // One slot's key state (audio thread only).
+    struct SlotState
+    {
+        std::array<std::uint8_t, 16> held{}; // keys down, oldest first
+        int heldCount = 0;
+        bool sustain = false;
+        double bend = 0.0;  // -1..1
+        double wheel = 0.0; // 0..1
+        int lastNote = -1;  // for glide
+        float velocity = 1.0f;
+        VoiceMode mode = VoiceMode::Poly;
+        std::array<int, kUnisonVoices> monoVoices{-1, -1, -1}; // Mono / Legato / Unison: the voices it plays
+    };
+
     void handleMidi(const krate::MidiEvent &event) noexcept;
-    void noteOn(int note, int velocity) noexcept;
-    void noteOff(int note) noexcept;
-    void setSustain(bool down) noexcept;
-    void allNotesOff() noexcept;
+    // The slots a message on `channel` (about `note`, or -1) reaches, as a bit mask.
+    unsigned slotsFor(int channel, int note) const noexcept;
+    void noteOn(int slot, int note, int velocity) noexcept;
+    void noteOff(int slot, int note) noexcept;
+    void setSustain(int slot, bool down) noexcept;
+    void allNotesOff(int slot) noexcept;
     void render(float *left, float *right, std::uint32_t frames) noexcept;
     VoiceMode voiceMode(int slot) const noexcept;
-    int pickVoice(int note) noexcept;        // Poly: a voice for the note (stealing if needed)
-    void startVoice(int v, int note, double glideFrom) noexcept;
-    void playMono(bool retrigger) noexcept;  // Mono / Legato / Unison: follow the top held key
-    void releaseVoice(int v) noexcept;       // key up: release, or hold for the pedal
+    int pickVoice(int slot, int note) noexcept; // a voice for the note (stealing if needed)
+    void startVoice(int slot, int v, int note, double glideFrom) noexcept;
+    void playMono(int slot, bool retrigger) noexcept; // Mono / Legato / Unison: follow the top held key
+    void releaseVoice(int slot, int v) noexcept;      // key up: release, or hold for the pedal
 
     static constexpr std::uint32_t kChunk = 128;
 
@@ -87,14 +122,19 @@ private:
     krate::MidiLearnMap m_learn{kParams};
     double m_sampleRate = 48000.0;
 
+    // Slot setup.
+    std::array<std::atomic<int>, SlotCount> m_channel{};
+    std::array<std::atomic<bool>, SlotCount> m_on{};
+    std::array<std::atomic<Zone>, SlotCount> m_zone{};
+    std::atomic<unsigned> m_lit{1};
+    std::atomic<int> m_split{-1};
+
+    std::array<SlotState, SlotCount> m_state{};
     std::array<Voice, kVoices> m_voices;
     std::array<int, kVoices> m_voiceSlot{};          // which slot each voice plays
     std::array<std::uint64_t, kVoices> m_started{};  // note-on order, for stealing
     std::array<bool, kVoices> m_sustained{};         // key up, held by the pedal
     std::uint64_t m_counter = 0;
-    VoiceMode m_mode = VoiceMode::Poly;
-    bool m_sustain = false;
-    int m_lastNote = -1;  // for glide
     std::array<Lfo, SlotCount> m_lfo2;   // per slot
     Lfo m_vibrato;                       // the mod wheel's vibrato
     krate::HalfbandDecimator<31> m_decimatorL, m_decimatorR;
@@ -102,11 +142,6 @@ private:
     std::array<std::array<float, kChunk>, SlotCount> m_lfo2Values{};
     std::array<float, kChunk> m_vibratoValues{};
     std::array<SlotSettings, SlotCount> m_settings{};
-    std::array<std::uint8_t, 16> m_held{};
-    int m_heldCount = 0;
-    float m_lastVelocity = 1.0f;
-    double m_bend = 0.0;  // -1..1
-    double m_wheel = 0.0; // 0..1
     double m_volume = -1.0;
     double m_volumeSmoothing = 0.0;
 };

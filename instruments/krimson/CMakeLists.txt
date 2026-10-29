@@ -35,6 +35,8 @@ qt_add_qml_module(krimson_ui
         app/KrimsonController.cpp
         app/KrimsonInstrument.h
         app/KrimsonInstrument.cpp
+        app/SlotController.h
+        app/SlotController.cpp
     QML_FILES
         qml/Main.qml
         qml/Panel.qml
@@ -52,16 +54,20 @@ foreach(test tst_voice tst_voices)
     add_test(NAME krimson_${test} COMMAND krimson_${test})
 endforeach()
 
-add_executable(tst_krimson
-    tests/tst_krimson.cpp
+foreach(test tst_krimson tst_slots)
+add_executable(${test}
+    tests/${test}.cpp
     app/KrimsonController.h
     app/KrimsonController.cpp
     app/KrimsonInstrument.h
     app/KrimsonInstrument.cpp
+    app/SlotController.h
+    app/SlotController.cpp
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
 )
-target_include_directories(tst_krimson PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_compile_options(tst_krimson PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_krimson PRIVATE krimson_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
-add_test(NAME tst_krimson COMMAND tst_krimson)
+target_include_directories(${test} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_compile_options(${test} PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(${test} PRIVATE krimson_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
+add_test(NAME ${test} COMMAND ${test})
+endforeach()

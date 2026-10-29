@@ -53,6 +53,9 @@ struct SlotSettings
 
     double bendSemis = 0.0;
     double vibratoSemis = 0.0; // depth now (wheel to Vibrato)
+
+    double slotGain = 0.64;    // the slot's level
+    double slotPan = 0.0;      // -1..1
 };
 
 // One voice at twice the host rate (docs/DSP.md).
@@ -94,7 +97,7 @@ private:
     double m_cutoff = -1.0; // smoothed, octaves
     double m_pitch = 60.0;  // the sounding pitch (glides toward m_note)
     double m_detune = 0.0;
-    double m_panL = 1.0, m_panR = 1.0;
+    double m_pan = 0.0;     // unison position; the slot's pan adds to it
     bool m_stealing = false;
     double m_fade = 1.0, m_fadeStep = 0.0;
     int m_nextNote = 60;

@@ -2,7 +2,7 @@
 
 A four-part multitimbral virtual-analog synthesizer for the [Krate](../../README.md) suite, aimed at the sound of the classic late-90s red virtual-analog lead synth. It has sync, FM and ring-mod oscillators, a five-mode filter with drive, and the mod-wheel morph. Its 16 voices are shared by four slots, each with its own arpeggiator and effects. Runs standalone (`krimson`) and in the Krate rack (default MIDI channels 3–6).
 
-Status: C2 (16 voices, Poly / Mono / Legato / Unison with glide, playing the edited slot from MIDI; panel frame only). `pw-jack ./build/bin/krimson`; `./build/bin/krimson-render --out-dir build` writes `krimson-sounds.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
+Status: C3 (16 voices shared by four slots A–D: own channels 3–6, layering from the keyboard, split; Poly / Mono / Legato / Unison with glide; slots saved in `~/.config/krimson/slots.json`; panel frame with slot buttons). `pw-jack ./build/bin/krimson`; `./build/bin/krimson-render --out-dir build` writes `krimson-sounds.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
 
 | Doc | Contents |
 | --- | --- |

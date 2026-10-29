@@ -37,7 +37,7 @@ Every continuous parameter of a slot has an optional **morph value**. The morph 
 
 ## Voices and slots
 
-16 voices for the whole instrument, each remembering the slot it plays (C3 lets the slots share them). **Poly**: a note already sounding reuses its voice; else a silent voice; else the oldest released (or pedal-held) voice; else the oldest held one. A taken voice fades out over 2 ms before its new note starts. **Mono**: one voice, last-note priority, retriggering (also when going back to a held key). **Legato**: as Mono without retriggering while keys are held. **Unison**: see above. Changing Voice Mode releases every note; the sustain pedal (CC 64) holds released notes; CC 120 / 123 release everything. Voices are rendered in stereo at 2× (each with its pan) and decimated per side. In C3 each slot keeps its own key list, sustain, bend, wheel, arpeggiator and LFO 2.
+16 voices for the whole instrument, each remembering the slot it plays (C3 lets the slots share them). **Poly**: a note already sounding reuses its voice; else a silent voice; else the oldest released (or pedal-held) voice; else the oldest held one. A taken voice fades out over 2 ms before its new note starts. **Mono**: one voice, last-note priority, retriggering (also when going back to a held key). **Legato**: as Mono without retriggering while keys are held. **Unison**: see above. Changing Voice Mode releases every note; the sustain pedal (CC 64) holds released notes; CC 120 / 123 release everything. Voices are rendered in stereo at 2× (each with its pan) and decimated per side. Each slot keeps its own key list, sustain, bend, wheel, voice mode, glide and LFO 2 (and, from C8, its arpeggiator); Mono, Legato and Unison slots keep the voices they took while they still have them. Each voice is scaled by its slot's level and placed by its slot's pan (plus its unison position).
 
 ## Effects (per slot, then summed)
 
@@ -49,4 +49,4 @@ Every continuous parameter of a slot has an optional **morph value**. The morph 
 
 ## CPU
 
-Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C2 measures 16 voices with sync, FM, drive and full resonance at 9.9 % (one voice: 0.71 %).
+Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C3 measures 16 voices with sync, FM, drive and full resonance at 10.5 % (one voice: 0.71 %).

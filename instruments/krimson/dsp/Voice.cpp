@@ -33,9 +33,7 @@ void Voice::prepare(double sampleRate2x) noexcept
 void Voice::setSpread(double detuneSemis, double pan) noexcept
 {
     m_detune = detuneSemis;
-    pan = std::clamp(pan, -1.0, 1.0);
-    m_panL = std::min(1.0, 1.0 - pan);
-    m_panR = std::min(1.0, 1.0 + pan);
+    m_pan = std::clamp(pan, -1.0, 1.0);
 }
 
 void Voice::kill() noexcept
@@ -137,6 +135,9 @@ void Voice::render(float *outL2x, float *outR2x, std::uint32_t frames, const flo
     const double g1 = std::min(1.0, 2.0 * (1.0 - s.mix));
     const double g2 = std::min(1.0, 2.0 * s.mix);
     const double glide = s.glideSeconds > 0.0 ? 1.0 - std::exp(-1.0 / (s.glideSeconds * hostRate)) : 1.0;
+    const double pan = std::clamp(m_pan + s.slotPan, -1.0, 1.0);
+    const double panL = std::min(1.0, 1.0 - pan) * s.slotGain;
+    const double panR = std::min(1.0, 1.0 + pan) * s.slotGain;
 
     for (std::uint32_t i = 0; i < frames; ++i) {
         // Control rate: once per host frame (a stolen voice may start its note mid-block).
@@ -199,8 +200,8 @@ void Voice::render(float *outL2x, float *outR2x, std::uint32_t frames, const flo
                 fade = std::max(m_fade, 0.0);
             }
             const double out = double(filtered) * amp * s.gain * velocityGain * tremolo * fade;
-            outL2x[2 * i + std::uint32_t(k)] += float(out * m_panL);
-            outR2x[2 * i + std::uint32_t(k)] += float(out * m_panR);
+            outL2x[2 * i + std::uint32_t(k)] += float(out * panL);
+            outR2x[2 * i + std::uint32_t(k)] += float(out * panR);
         }
         if (m_stealing && m_fade <= 0.0) {
             // Faded out: the new note starts on the next frame.
