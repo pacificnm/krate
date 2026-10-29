@@ -16,7 +16,7 @@ Q_LOGGING_CATEGORY(lcLibrary, "krate.library")
 
 namespace {
 
-constexpr int kSchemaVersion = 1;
+constexpr int kSchemaVersion = 2; // 2: songs' backing tracks
 
 // A name that is safe as a folder or file name.
 QString safeName(QString name, const QString &fallback)
@@ -112,10 +112,17 @@ bool SongLibrary::createSchema()
             song_id INTEGER PRIMARY KEY REFERENCES songs (id) ON DELETE CASCADE,
             state TEXT NOT NULL))"),
         QStringLiteral("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)"),
-        QStringLiteral("PRAGMA user_version = %1").arg(kSchemaVersion),
     };
+    // Version 2: each song's backing track (added to a version 1 library as it is).
+    const QStringList toVersion2{
+        QStringLiteral("ALTER TABLE songs ADD COLUMN backing_file TEXT NOT NULL DEFAULT ''"),
+        QStringLiteral("ALTER TABLE songs ADD COLUMN backing_offset REAL NOT NULL DEFAULT 0"),
+    };
+    QStringList all = version < 1 ? statements : QStringList();
+    all += toVersion2;
+    all << QStringLiteral("PRAGMA user_version = %1").arg(kSchemaVersion);
     db.transaction();
-    for (const QString &sql : statements)
+    for (const QString &sql : all)
         if (!q.exec(sql)) {
             m_error = q.lastError().text();
             qCWarning(lcLibrary) << "schema:" << m_error;
@@ -213,11 +220,15 @@ SongLibrary::Song SongLibrary::fromRow(const QSqlQuery &q) const
     s.added = QDateTime::fromString(q.value(7).toString(), Qt::ISODate);
     s.opened = QDateTime::fromString(q.value(8).toString(), Qt::ISODate);
     s.soundsSaved = !q.value(9).toString().isEmpty();
+    const QString backing = q.value(10).toString();
+    s.backingFile = backing.isEmpty() ? QString() : QDir(m_directory).filePath(backing);
+    s.backingOffset = q.value(11).toDouble();
     return s;
 }
 
 namespace {
-const QString kColumns = QStringLiteral("id, artist, album, title, track_number, tab_file, midi_file, added, opened, sounds_saved");
+const QString kColumns = QStringLiteral(
+    "id, artist, album, title, track_number, tab_file, midi_file, added, opened, sounds_saved, backing_file, backing_offset");
 }
 
 std::optional<SongLibrary::Song> SongLibrary::song(qint64 id) const
@@ -273,7 +284,7 @@ bool SongLibrary::remove(qint64 id)
     q.addBindValue(id);
     if (!q.exec())
         return false;
-    for (const QString &file : {s->tabFile, s->midiFile}) {
+    for (const QString &file : {s->tabFile, s->midiFile, s->backingFile}) {
         if (file.isEmpty())
             continue;
         QFile::remove(file);
@@ -288,6 +299,51 @@ bool SongLibrary::remove(qint64 id)
     if (lastSong() == id)
         setLastSong(0);
     return true;
+}
+
+QString SongLibrary::setBacking(qint64 id, const QString &source)
+{
+    const auto s = song(id);
+    if (!s)
+        return {};
+    Details named = s->details;
+    named.title = (named.title.isEmpty() ? QStringLiteral("Song") : named.title) + QStringLiteral(" backing");
+    const QString relative = copyIn(source, named, u'.' + QFileInfo(source).suffix().toLower());
+    if (relative.isEmpty())
+        return {};
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    q.prepare(QStringLiteral("UPDATE songs SET backing_file = ? WHERE id = ?"));
+    q.addBindValue(relative);
+    q.addBindValue(id);
+    if (!q.exec()) {
+        m_error = q.lastError().text();
+        QFile::remove(QDir(m_directory).filePath(relative));
+        return {};
+    }
+    if (!s->backingFile.isEmpty())
+        QFile::remove(s->backingFile); // the one it replaces
+    return QDir(m_directory).filePath(relative);
+}
+
+void SongLibrary::setBackingOffset(qint64 id, double seconds)
+{
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    q.prepare(QStringLiteral("UPDATE songs SET backing_offset = ? WHERE id = ?"));
+    q.addBindValue(seconds);
+    q.addBindValue(id);
+    q.exec();
+}
+
+void SongLibrary::clearBacking(qint64 id)
+{
+    const auto s = song(id);
+    if (!s || s->backingFile.isEmpty())
+        return;
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    q.prepare(QStringLiteral("UPDATE songs SET backing_file = '', backing_offset = 0 WHERE id = ?"));
+    q.addBindValue(id);
+    if (q.exec())
+        QFile::remove(s->backingFile);
 }
 
 void SongLibrary::markOpened(qint64 id)

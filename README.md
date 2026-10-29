@@ -54,3 +54,5 @@ Copyright (C) 2026 Jaimie Garner
 Krate is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See [LICENSE](LICENSE).
 
 It links dynamically against Qt 6 (LGPLv3) and libjack / PipeWire's JACK library (LGPL-2.1 / MIT), all of which are compatible with GPL-3.0-or-later.
+
+Third-party code: `third_party/dr_libs/dr_mp3.h` (MP3 decoding for backing tracks), public domain or MIT No Attribution; see its README.

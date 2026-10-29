@@ -166,6 +166,7 @@ InstrumentEntry entry(const char *id, const char *name, int channel, QList<int> 
     e.playsNotes = playsNotes;
     e.id = QString::fromLatin1(id);
     e.name = QString::fromLatin1(name);
+    e.panelComponent = QStringLiteral("Panel");
     e.defaultMidiChannel = channel;
     e.extraMidiChannels = extra;
     return e;

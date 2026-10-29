@@ -20,14 +20,49 @@ Item {
         onAccepted: Song.open(selectedFiles)
     }
 
+    FileDialog {
+        id: backingDialog
+        title: "A backing track for this song"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["MP3 files (*.mp3)"]
+        onAccepted: Song.loadBacking(selectedFile)
+    }
+
     DropArea {
         id: drop
         anchors.fill: parent
         keys: ["text/uri-list"]
         onDropped: event => {
-            Song.open(event.urls)
+            // An MP3 dropped on an open song is its backing track; anything else opens.
+            const mp3 = event.urls.length === 1 && event.urls[0].toString().toLowerCase().endsWith(".mp3")
+            if (mp3 && Song.loaded)
+                Song.loadBacking(event.urls[0])
+            else
+                Song.open(event.urls)
             event.accept()
         }
+    }
+
+    // "m:ss.mmm" for an offset in seconds (negative: before the recording starts).
+    function clockText(seconds) {
+        const sign = seconds < 0 ? "-" : ""
+        const t = Math.abs(seconds)
+        const m = Math.floor(t / 60)
+        const s = t - m * 60
+        return sign + m + ":" + (s < 10 ? "0" : "") + s.toFixed(3)
+    }
+    // Seconds from "m:ss.mmm" or plain seconds; NaN if it isn't either.
+    function parseClock(text) {
+        const t = text.trim()
+        const negative = t.startsWith("-")
+        const body = negative ? t.slice(1) : t
+        const parts = body.split(":")
+        let seconds = NaN
+        if (parts.length === 1)
+            seconds = Number(parts[0])
+        else if (parts.length === 2 && parts[0] !== "" && parts[1] !== "")
+            seconds = Number(parts[0]) * 60 + Number(parts[1])
+        return negative ? -seconds : seconds
     }
 
     Rectangle { // the deck
@@ -208,11 +243,139 @@ Item {
             }
         }
 
+        // --- Backing track ------------------------------------------------------------------
+        // An MP3 playing along with the song, in sync: BAR 1 AT is where the
+        // song's bar 1 is in the recording. Its level is the mixer's Backing strip.
+        Rectangle {
+            id: backingBar
+            x: 16
+            y: header.y + header.height + 8
+            width: parent.width - 32
+            height: 40
+            radius: 4
+            visible: Song.loaded
+            color: Theme.silverLight
+            border.color: Theme.deckLine
+
+            Row {
+                x: 10
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 8
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "BACKING"
+                    color: Theme.ink
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+                PanelButton {
+                    visible: Song.backingName === "" && !Song.backingLoading
+                    width: 110
+                    height: 28
+                    faceText: "LOAD MP3…"
+                    text: "Choose an MP3 to play along with this song"
+                    onClicked: backingDialog.open()
+                }
+                Text {
+                    visible: Song.backingName === "" || Song.backingLoading
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Song.backingLoading ? "Reading the recording…" : "an MP3 to play along with, in sync (or drop one here)"
+                    color: "#55575B"
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                }
+                Text {
+                    visible: Song.backingName !== "" && !Song.backingLoading
+                    width: 230
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Song.backingName + "  ·  " + screen.clockText(Song.backingSeconds).replace(/\.\d+$/, "")
+                    color: Theme.ink
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                    elide: Text.ElideMiddle
+                }
+
+                Row { // sync
+                    visible: Song.backingName !== "" && !Song.backingLoading
+                    spacing: 4
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "BAR 1 AT"
+                        color: Theme.ink
+                        font.family: Theme.labelFont
+                        font.pixelSize: 11
+                        font.bold: true
+                        rightPadding: 4
+                    }
+                    TextField {
+                        id: offsetField
+                        width: 96
+                        height: 28
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.family: "monospace"
+                        font.pixelSize: 13
+                        horizontalAlignment: TextInput.AlignRight
+                        text: screen.clockText(Song.backingOffset)
+                        onEditingFinished: {
+                            const seconds = screen.parseClock(text)
+                            if (!isNaN(seconds))
+                                Song.backingOffset = seconds
+                            text = Qt.binding(() => screen.clockText(Song.backingOffset))
+                        }
+                        Accessible.name: "Where bar 1 is in the recording"
+                    }
+                    Repeater { // nudges: a beat, a tenth, a hundredth, each way
+                        model: [
+                            { label: "−BEAT", by: -1, beat: true }, { label: "−0.1", by: -0.1 }, { label: "−0.01", by: -0.01 },
+                            { label: "+0.01", by: 0.01 }, { label: "+0.1", by: 0.1 }, { label: "+BEAT", by: 1, beat: true }
+                        ]
+                        PanelButton {
+                            required property var modelData
+                            width: modelData.beat ? 52 : 44
+                            height: 28
+                            faceText: modelData.label
+                            text: "Move the recording " + (modelData.beat ? "a beat" : Math.abs(modelData.by) + " s")
+                                  + (modelData.by < 0 ? " earlier" : " later") + " against the song"
+                            onClicked: Song.nudgeBacking(modelData.beat ? modelData.by * Song.beatSeconds : modelData.by)
+                        }
+                    }
+                }
+                PanelButton {
+                    visible: Song.backingName !== "" && !Song.backingLoading
+                    width: 84
+                    height: 28
+                    faceText: "REPLACE…"
+                    text: "Choose another MP3 for this song"
+                    onClicked: backingDialog.open()
+                }
+                PanelButton {
+                    visible: Song.backingName !== "" && !Song.backingLoading
+                    width: 32
+                    height: 28
+                    faceText: "×"
+                    text: "Remove the backing track from this song"
+                    onClicked: Song.clearBacking()
+                }
+            }
+            Text {
+                anchors.right: parent.right
+                anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                visible: Song.backingName !== "" && !Song.backingLoading && parent.width > 1350
+                text: "level: MIXER › Backing"
+                color: "#55575B"
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+            }
+        }
+
         // --- Tracks ---------------------------------------------------------------------------
         Row { // column headings
             id: headings
             x: 16
-            y: header.y + header.height + 12
+            y: backingBar.y + backingBar.height + 10
             visible: Song.loaded
             spacing: 0
             Text { // folded: just how many

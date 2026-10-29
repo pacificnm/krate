@@ -23,7 +23,7 @@ Window {
     }
     Shortcut {
         sequence: "Tab"
-        onActivated: Rack.focus = (Rack.focus + 1) % Rack.deviceCount
+        onActivated: Rack.focus = Rack.stepFocus(1)
     }
     Shortcut {
         sequence: "M"
@@ -59,7 +59,7 @@ Window {
             height: 40
             faceText: "◂"
             text: "Focus previous instrument"
-            onClicked: Rack.focus = (Rack.focus + Rack.deviceCount - 1) % Rack.deviceCount
+            onClicked: Rack.focus = Rack.stepFocus(-1)
             LearnOverlay { anchors.fill: parent; paramKey: "rack:previous"; round: false }
         }
 
@@ -73,6 +73,7 @@ Window {
                 readonly property bool focused: Rack.focus === index
                 readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown
 
+                visible: Rack.panelComponents[index] !== "" // devices without a panel (the backing track) have no tab
                 width: 150
                 height: 40
                 radius: 4
@@ -116,7 +117,7 @@ Window {
             height: 40
             faceText: "▸"
             text: "Focus next instrument"
-            onClicked: Rack.focus = (Rack.focus + 1) % Rack.deviceCount
+            onClicked: Rack.focus = Rack.stepFocus(1)
             LearnOverlay { anchors.fill: parent; paramKey: "rack:next"; round: false }
         }
 
@@ -214,6 +215,7 @@ Window {
 
                 Loader {
                     id: loader
+                    active: Rack.panelComponents[slot.index] !== ""
                     sourceComponent: Qt.createComponent(Rack.panelModules[slot.index], Rack.panelComponents[slot.index])
                     readonly property Item panel: item as Item
                     // Fit, but don't blow small panels up past 1.25x.

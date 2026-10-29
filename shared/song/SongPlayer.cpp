@@ -130,6 +130,7 @@ void SongPlayer::cue(Tick tick) noexcept
 {
     tick = std::max<Tick>(0, tick);
     m_cueRequest.store(tick, std::memory_order_relaxed);
+    m_cuePending.store(true, std::memory_order_relaxed);
     m_commands.push({Command::Kind::Cue, nullptr, tick});
 }
 
@@ -139,8 +140,11 @@ void SongPlayer::beforeTransport(Transport &transport) noexcept
 {
     if (!m_song || !m_followTempo.load(std::memory_order_relaxed))
         return;
-    // Stopped: where play will start, including a cue that render() hasn't taken yet.
-    const Tick at = m_playing ? m_next : m_cueRequest.load(std::memory_order_relaxed);
+    // Where this block starts: the next tick while playing, or, stopped or
+    // jumping, the cue render() is about to take (so the jump's own block
+    // already runs at the new place's tempo).
+    const bool jumping = m_cuePending.load(std::memory_order_relaxed);
+    const Tick at = m_playing && !jumping ? m_next : m_cueRequest.load(std::memory_order_relaxed);
     const double bpm = m_song->tempo.bpmAt(at) * m_speed.load(std::memory_order_relaxed);
     if (std::abs(bpm - transport.bpm()) > 1e-9)
         transport.setBpm(bpm);
@@ -208,6 +212,8 @@ void SongPlayer::apply(const Command &command, const TransportState &transport) 
         break;
     case Command::Kind::Cue:
         m_cue = command.tick;
+        if (command.tick == m_cueRequest.load(std::memory_order_relaxed))
+            m_cuePending.store(false, std::memory_order_relaxed); // the latest one is taken
         m_position.store(m_cue, std::memory_order_relaxed);
         if (m_playing && m_song) { // jump now
             flushAll(0);
@@ -227,6 +233,7 @@ std::uint32_t SongPlayer::render(const TransportState &transport, std::uint32_t 
     m_outCapacity = capacity;
     while (const auto command = m_commands.pop())
         apply(*command, transport);
+    m_rolling.store(false, std::memory_order_relaxed); // until this block is known to play
     if (!m_song || frames == 0) {
         m_playing = m_playing && transport.playing;
         return m_outCount;
@@ -265,6 +272,13 @@ std::uint32_t SongPlayer::render(const TransportState &transport, std::uint32_t 
     }
 
     const double t0 = (transport.beatAtBlockStart + m_beatOffset) * ppq;
+    {   // The song time here, for a backing track: the tick's seconds, plus the fraction of a tick.
+        const Tick whole = Tick(std::floor(std::max(0.0, t0)));
+        const double fraction = std::max(0.0, t0) - double(whole);
+        m_blockSeconds.store(m_song->tempo.secondsAt(whole) + fraction * 60.0 / (m_song->tempo.bpmAt(whole) * ppq),
+                             std::memory_order_relaxed);
+        m_rolling.store(true, std::memory_order_relaxed);
+    }
     const double ticksPerFrame = transport.bpm / 60.0 / sampleRate * ppq;
     const double t1 = t0 + double(frames) * ticksPerFrame;
     const auto frameOf = [&](Tick tick) {

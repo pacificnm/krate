@@ -57,6 +57,8 @@ public:
     QStringList deviceNames() const { return m_names; }
     QStringList panelModules() const { return m_modules; }
     QStringList panelComponents() const { return m_components; }
+    // The device `step` places on (1 next, -1 previous) that has a panel to show.
+    Q_INVOKABLE int stepFocus(int step) const;
 
     int focus() const { return m_focus; }
     void setFocus(int device);

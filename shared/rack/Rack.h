@@ -120,6 +120,9 @@ public:
     // --- Any thread ------------------------------------------------------------
     void setFocus(int device) noexcept;
     int focus() const noexcept { return m_focus.load(std::memory_order_relaxed); }
+    // Devices without a panel (a backing track) are passed over by focus actions.
+    void setFocusable(int device, bool focusable) noexcept { m_devices[std::size_t(device)].focusable.store(focusable, std::memory_order_relaxed); }
+    bool focusable(int device) const noexcept { return m_devices[std::size_t(device)].focusable.load(std::memory_order_relaxed); }
 
     void setChannelDevice(int channel, int device) noexcept; // device -1 = none (use focus)
     int channelDevice(int channel) const noexcept;
@@ -167,6 +170,7 @@ private:
         std::atomic<float> pan{0.0f};
         std::atomic<bool> mute{false};
         std::atomic<bool> solo{false};
+        std::atomic<bool> focusable{true};
         std::atomic<float> peak{0.0f};
         float gainL = 1.0f; // current (ramped) gains, audio thread only
         float gainR = 1.0f;

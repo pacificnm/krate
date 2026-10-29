@@ -65,6 +65,11 @@ public:
     // Where the song is (the tick at the start of the last block) and whether it ran past its end.
     Tick position() const noexcept { return m_position.load(std::memory_order_relaxed); }
     bool ended() const noexcept { return m_ended.load(std::memory_order_relaxed); }
+    // For devices playing along in the same audio callback (a backing track),
+    // after render(): whether the song is playing, and the song time in seconds
+    // (by its tempo map) at the start of this block.
+    bool rolling() const noexcept { return m_rolling.load(std::memory_order_relaxed); }
+    double blockSeconds() const noexcept { return m_blockSeconds.load(std::memory_order_relaxed); }
 
     // --- Audio thread (IEventSource) --------------------------------------------
     void beforeTransport(Transport &transport) noexcept override;
@@ -108,7 +113,10 @@ private:
     std::atomic<bool> m_followTempo{true};
     std::atomic<Tick> m_position{0};
     std::atomic<Tick> m_cueRequest{0}; // the latest cue asked for (for the tempo before render() takes it)
+    std::atomic<bool> m_cuePending{false}; // asked for, not yet taken: a jump's block runs at the new place's tempo
     std::atomic<bool> m_ended{false};
+    std::atomic<bool> m_rolling{false};
+    std::atomic<double> m_blockSeconds{0.0};
     SpscQueue<Command, 64> m_commands;   // GUI -> audio
     SpscQueue<Song *, 64> m_retired;     // audio -> GUI, for deletion
     Song *m_pending = nullptr;           // GUI side: loads the queue couldn't take yet (it's full)

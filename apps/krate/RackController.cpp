@@ -36,6 +36,8 @@ RackController::RackController(krate::Rack &rack, krate::Transport &transport,
         m_names << e.name;
         m_modules << e.qmlModule;
         m_components << e.panelComponent;
+        if (e.panelComponent.isEmpty()) // no panel to show: focus passes it by
+            rack.setFocusable(int(m_modules.size() - 1), false);
         m_strips.append(Strip{});
         m_meters.append(0.0);
     }
@@ -58,9 +60,23 @@ RackController *RackController::create(QQmlEngine *, QJSEngine *)
     return s_instance;
 }
 
+int RackController::stepFocus(int step) const
+{
+    const int count = deviceCount();
+    if (count == 0)
+        return m_focus;
+    int next = m_focus;
+    for (int i = 0; i < count; ++i) {
+        next = ((next + step) % count + count) % count;
+        if (!m_components.value(next).isEmpty())
+            return next;
+    }
+    return m_focus;
+}
+
 void RackController::setFocus(int device)
 {
-    if (device < 0 || device >= deviceCount() || device == m_focus)
+    if (device < 0 || device >= deviceCount() || device == m_focus || m_components.value(device).isEmpty())
         return;
     m_rack.setFocus(device);
     m_focus = device;

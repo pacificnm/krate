@@ -85,8 +85,10 @@ struct Fixture
         ea.id = "alpha";
         ea.name = "Alpha";
         ea.actions = {"pattern1", "runstop"};
+        ea.panelComponent = "Panel"; // instruments with panels: they take focus
         eb.id = "beta";
         eb.name = "Beta";
+        eb.panelComponent = "Panel";
         std::vector<RackMidiLearn::Device> devices;
         if (!reversed) {
             rack.addDevice(a, 0);
@@ -471,6 +473,24 @@ private slots:
         QCOMPARE(f.controller->fader(0), RackController::kUnityFader);
         QCOMPARE(int(f.rack.ccMapping(0, 5).kind), int(Kind::None));
         QCOMPARE(f.rack.channelDevice(0), 0); // registry default kept
+    }
+
+    // A device without a panel (the backing track) is passed over by the
+    // rack's focus actions (learned buttons).
+    void panelLessDevicesDontTakeFocus()
+    {
+        Fixture f;
+        f.rack.setFocusable(1, false);
+        f.controller->setFocus(0);
+        f.rack.setNoteMapping(0, 60, {krate::Rack::Mapping::Kind::FocusAction, -1, krate::Rack::kFocusNext});
+        f.send({noteOn(0, 60)});
+        QCOMPARE(f.rack.focus(), 0); // the only other device can't take it
+        f.rack.setNoteMapping(0, 61, {krate::Rack::Mapping::Kind::FocusAction, -1, 1}); // straight to it: refused
+        f.send({noteOn(0, 61)});
+        QCOMPARE(f.rack.focus(), 0);
+        f.rack.setFocusable(1, true);
+        f.send({noteOn(0, 60)});
+        QCOMPARE(f.rack.focus(), 1);
     }
 };
 

@@ -8,6 +8,8 @@ qt_add_qml_module(krate
     IMPORTS Krate
     DEPENDENCIES QtQuick # TabView is a QQuickPaintedItem
     SOURCES
+        BackingInstrument.h
+        BackingInstrument.cpp
         RackController.h
         RackController.cpp
         RackMidiLearn.h

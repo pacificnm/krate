@@ -10,6 +10,9 @@
 #include <QJsonObject>
 #include <QFileInfo>
 #include <QJSEngine>
+#include <QCoreApplication>
+#include <QPointer>
+#include <QThread>
 #include <QLoggingCategory>
 
 #include "RackController.h"
@@ -86,6 +89,12 @@ SongController::SongController(s::SongPlayer &player, RackController &rack, cons
 
 SongController::~SongController()
 {
+    if (m_backing)
+        m_backing->setClip(nullptr); // the host has stopped by now; nothing plays it
+    for (QThread *reader : m_readers) {
+        reader->wait();
+        delete reader;
+    }
     restoreOwned(); // quitting with a song open: the instruments it changed keep (and save) the sounds from before it
     setSequencers(true);
     s_instance = nullptr;
@@ -352,6 +361,12 @@ bool SongController::load(const QString &tabPath, const QString &midiPath, qint6
     pollPosition();
     if (m_songId)
         m_library.markOpened(m_songId);
+    // Its backing track, if it has one.
+    const auto entry2 = m_songId ? m_library.song(m_songId) : std::nullopt;
+    m_backingOffset = entry2 ? entry2->backingOffset : 0.0;
+    if (m_backing)
+        m_backing->setOffset(m_backingOffset);
+    startBacking(entry2 ? entry2->backingFile : QString());
     ++m_libraryRevision; // a new song in it, or another one open
     emit libraryChanged();
     emit songChanged();
@@ -391,6 +406,7 @@ void SongController::close()
     m_details = {};
     m_soundsSaved = false;
     restoreOwned(); // your sounds and mixer, as they were before the song
+    startBacking({});
     setSequencers(true);
     setError({});
     m_library.setLastSong(0); // nothing reopens next time
@@ -573,6 +589,8 @@ void SongController::jumpToBar(int writtenBar)
 
 void SongController::pollPosition()
 {
+    if (!m_retiredClips.empty() && m_backing) // the audio thread has moved on from old clips
+        std::erase_if(m_retiredClips, [this](const RetiredClip &r) { return m_backing->blocksProcessed() >= r.after + 2; });
     if (!m_song)
         return;
     if (m_player.ended() && m_rack.playing()) { // the end: stop, ready to play again from the top
@@ -601,6 +619,122 @@ void SongController::setSequencers(bool enabled)
     for (krate::InstrumentInstance *instance : m_instances)
         if (instance)
             instance->instrument().setSequencerSuspended(!enabled);
+}
+
+// --- Backing track -------------------------------------------------------------------
+
+QString SongController::backingName() const
+{
+    return m_backingPath.isEmpty() ? QString() : QFileInfo(m_backingPath).fileName();
+}
+
+qreal SongController::beatSeconds() const
+{
+    return m_song ? 60.0 / m_song->tempo.bpmAt(0) : 0.5;
+}
+
+void SongController::setBackingOffset(qreal seconds)
+{
+    if (!m_song)
+        return;
+    seconds = std::round(seconds * 1000.0) / 1000.0; // to the millisecond
+    if (seconds == m_backingOffset)
+        return;
+    m_backingOffset = seconds;
+    if (m_backing)
+        m_backing->setOffset(seconds);
+    if (m_songId)
+        m_library.setBackingOffset(m_songId, seconds);
+    emit backingChanged();
+}
+
+void SongController::loadBacking(const QUrl &url)
+{
+    if (!m_song || !m_songId)
+        return;
+    const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+    if (!path.endsWith(u".mp3", Qt::CaseInsensitive)) {
+        setError(QStringLiteral("%1: a backing track is an MP3 file").arg(QFileInfo(path).fileName()));
+        return;
+    }
+    const QString copy = m_library.setBacking(m_songId, path);
+    if (copy.isEmpty()) {
+        setError(m_library.lastError());
+        return;
+    }
+    setError({});
+    startBacking(copy);
+}
+
+void SongController::clearBacking()
+{
+    if (m_songId)
+        m_library.clearBacking(m_songId);
+    m_backingOffset = 0.0;
+    if (m_backing)
+        m_backing->setOffset(0.0);
+    startBacking({});
+}
+
+void SongController::startBacking(const QString &path)
+{
+    const int generation = ++m_backingGeneration;
+    useBacking(nullptr, {}); // the old one stops now
+    m_backingPath = path;
+    if (path.isEmpty()) {
+        emit backingChanged();
+        return;
+    }
+    // Decoding a whole song takes a moment: off the GUI thread.
+    ++m_backingLoading;
+    emit backingChanged();
+    QPointer<SongController> self(this);
+    QThread *reader = QThread::create([self, path, generation] {
+        auto clip = std::make_unique<s::AudioClip>();
+        std::string error;
+        const bool ok = s::decodeMp3(path.toStdString(), clip.get(), &error);
+        QMetaObject::invokeMethod(
+            QCoreApplication::instance(), // back on the GUI thread
+            [self, path, generation, ok, error, clip = std::shared_ptr<s::AudioClip>(clip.release())]() mutable {
+                if (!self)
+                    return;
+                --self->m_backingLoading;
+                if (generation != self->m_backingGeneration) { // a newer one was asked for meanwhile
+                    emit self->backingChanged();
+                    return;
+                }
+                if (!ok) {
+                    self->setError(QStringLiteral("%1: %2").arg(QFileInfo(path).fileName(), QString::fromStdString(error)));
+                    self->m_backingPath.clear();
+                    emit self->backingChanged();
+                    return;
+                }
+                self->useBacking(std::make_unique<s::AudioClip>(std::move(*clip)), path);
+            },
+            Qt::QueuedConnection);
+    });
+    m_readers.push_back(reader);
+    connect(reader, &QThread::finished, this, [this, reader] {
+        std::erase(m_readers, reader);
+        reader->deleteLater();
+    });
+    reader->start();
+}
+
+void SongController::useBacking(std::unique_ptr<s::AudioClip> clip, const QString &path)
+{
+    if (m_backing)
+        m_backing->setClip(clip.get());
+    const std::uint64_t blocks = m_backing ? m_backing->blocksProcessed() : 0;
+    if (m_backingClip) // the audio thread may still be reading it: free it two blocks on
+        m_retiredClips.push_back({std::move(m_backingClip), blocks});
+    m_backingClip = std::move(clip);
+    if (!path.isEmpty())
+        m_backingPath = path;
+    std::erase_if(m_retiredClips, [this](const RetiredClip &r) {
+        return !m_backing || m_backing->blocksProcessed() >= r.after + 2;
+    });
+    emit backingChanged();
 }
 
 SongController::Snapshot SongController::capture() const

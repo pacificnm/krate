@@ -13,6 +13,7 @@
 #include <QQuickStyle>
 #include <QStandardPaths>
 
+#include "BackingInstrument.h"
 #include "RackController.h"
 #include "RackMidiLearn.h"
 #include "RackRunControl.h"
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
 
     // The instruments in this rack: one registry line each
     // (docs/SHARED_FOUNDATIONS.MD#adding-instruments).
-    const QList<krate::InstrumentEntry> entries = {
+    QList<krate::InstrumentEntry> entries = {
         k303::registryEntry(),
         k909::registryEntry(),
         kalliope::registryEntry(),
@@ -66,6 +67,8 @@ int main(int argc, char *argv[])
     krate::Transport transport;
     krate::Rack rack;
     krate::song::SongPlayer songPlayer; // plays a loaded song into the rack (docs/SONG_PLAYER.md)
+    // Last: the Song screen's backing track (a mixer strip, no panel).
+    entries.append(backingEntry(songPlayer));
     std::vector<std::unique_ptr<krate::InstrumentInstance>> instances;
     std::vector<std::string> ids;
     // Each instrument's own RUN / STOP: just its sequencer, on the rack's transport.
@@ -128,6 +131,7 @@ int main(int argc, char *argv[])
     for (const auto &instance : instances)
         songInstances.push_back(instance.get());
     SongController songController(songPlayer, rackController, entries, std::move(songInstances), library, nullptr);
+    songController.setBackingTrack(&static_cast<BackingInstance *>(instances.back().get())->track);
     if (const QString old = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/songs.json");
         QFileInfo::exists(old))
         songController.importSongsJson(old); // from before the library

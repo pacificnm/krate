@@ -168,15 +168,20 @@ bool Rack::runAction(int action) noexcept
     if (m_count == 0)
         return false;
     const int current = m_focus.load(std::memory_order_relaxed);
+    const auto focusable = [this](int d) { return m_devices[std::size_t(d)].focusable.load(std::memory_order_relaxed); };
     int next = current;
-    if (action == kFocusNext)
-        next = (current + 1) % m_count;
-    else if (action == kFocusPrevious)
-        next = (current + m_count - 1) % m_count;
-    else if (action >= 0 && action < m_count)
+    if (action == kFocusNext || action == kFocusPrevious) { // the next one that can take focus
+        const int step = action == kFocusNext ? 1 : m_count - 1;
+        for (int i = 0; i < m_count; ++i) {
+            next = (next + step) % m_count;
+            if (focusable(next))
+                break;
+        }
+    } else if (action >= 0 && action < m_count && focusable(action)) {
         next = action;
-    else
+    } else {
         return false;
+    }
     m_focus.store(next, std::memory_order_relaxed);
     return true;
 }

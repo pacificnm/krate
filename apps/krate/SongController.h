@@ -14,11 +14,13 @@
 
 #include "SongLibrary.h"
 #include "app/InstrumentRegistry.h"
+#include "song/BackingTrack.h"
 #include "song/Score.h"
 #include "song/Song.h"
 #include "song/SongPlayer.h"
 
 class QQmlEngine;
+class QThread;
 class QJSEngine;
 class RackController;
 namespace krate {
@@ -66,6 +68,16 @@ class SongController : public QObject
     Q_PROPERTY(QString time READ time NOTIFY positionChanged)  // "1:23 / 5:34"
     Q_PROPERTY(qint64 tick READ tick NOTIFY tickChanged)       // the song position, in the score's ticks as played
 
+    // The song's backing track (docs/SONG_PLAYER.md#backing-track): its file's
+    // name ("" = none), its length, whether it's still being read, and where
+    // bar 1 is in it (seconds; kept with the song).
+    Q_PROPERTY(QString backingName READ backingName NOTIFY backingChanged)
+    Q_PROPERTY(qreal backingSeconds READ backingSeconds NOTIFY backingChanged)
+    Q_PROPERTY(bool backingLoading READ backingLoading NOTIFY backingChanged)
+    Q_PROPERTY(qreal backingOffset READ backingOffset WRITE setBackingOffset NOTIFY backingChanged)
+    // A beat at the song's opening tempo, in seconds (for nudging by a beat).
+    Q_PROPERTY(qreal beatSeconds READ beatSeconds NOTIFY songChanged)
+
 public:
     // An instrument a track can play on.
     struct Choice
@@ -106,6 +118,20 @@ public:
     int barCount() const;
     QString time() const { return m_time; }
     qint64 tick() const { return m_tick; }
+    QString backingName() const;
+    qreal backingSeconds() const { return m_backingClip ? m_backingClip->seconds() : 0.0; }
+    bool backingLoading() const { return m_backingLoading > 0; }
+    qreal backingOffset() const { return m_backingOffset; }
+    void setBackingOffset(qreal seconds);
+    qreal beatSeconds() const;
+
+    // The rack's backing-track device (before the GUI; tests may leave it out).
+    void setBackingTrack(krate::song::BackingTrack *backing) { m_backing = backing; }
+    // An MP3 (a file:// URL or a path) as the open song's backing track: copied
+    // into the library beside the song, then read in the background.
+    Q_INVOKABLE void loadBacking(const QUrl &url);
+    Q_INVOKABLE void clearBacking();
+    Q_INVOKABLE void nudgeBacking(qreal seconds) { setBackingOffset(m_backingOffset + seconds); }
 
     // Files from the dialog or a drop; a lone .gp or .mid also brings its
     // namesake of the other kind from the same folder.
@@ -151,6 +177,7 @@ signals:
     void tickChanged();
     void errorChanged();
     void libraryChanged();
+    void backingChanged();
 
 private:
     struct TrackSettings
@@ -171,6 +198,9 @@ private:
     void loadSettings();
     void saveSettings() const;
     void setSequencers(bool enabled);
+    // Reads `path` in the background and hands the clip to the backing device ("" = none).
+    void startBacking(const QString &path);
+    void useBacking(std::unique_ptr<krate::song::AudioClip> clip, const QString &path);
 
     // Every instrument's sound (by id) and the mixer.
     struct Snapshot
@@ -195,6 +225,20 @@ private:
     bool m_soundsSaved = false;
     int m_libraryRevision = 0;
     std::optional<Snapshot> m_before; // the sounds and mixer from before the open song
+
+    krate::song::BackingTrack *m_backing = nullptr;
+    std::unique_ptr<krate::song::AudioClip> m_backingClip;
+    QString m_backingPath;     // the library's copy being played (or read)
+    double m_backingOffset = 0.0;
+    int m_backingLoading = 0;  // reads under way
+    int m_backingGeneration = 0; // a newer read makes older results stale
+    struct RetiredClip
+    {
+        std::unique_ptr<krate::song::AudioClip> clip;
+        std::uint64_t after;
+    };
+    std::vector<RetiredClip> m_retiredClips;
+    std::vector<QThread *> m_readers;
     // What the open song owns (its saved sounds, or SAVE): only these go back
     // when it closes; your changes to everything else stay.
     QStringList m_ownedSounds;

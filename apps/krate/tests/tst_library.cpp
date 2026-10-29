@@ -3,6 +3,8 @@
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QTemporaryDir>
 
 #include "SongLibrary.h"
@@ -166,6 +168,71 @@ private slots:
         SongLibrary b(home.filePath("library"));
         a.add({}, write(downloads, "1.mid", "1"), details("A", "B", "C"));
         QCOMPARE(b.songs().size(), 1);
+    }
+
+    // A song's backing track: copied in beside the song, replaced, its offset kept, gone with the song.
+    void backingTracks()
+    {
+        QTemporaryDir downloads, home;
+        SongLibrary lib(home.filePath("library"));
+        const auto song = lib.add(write(downloads, "a.gp", "tab"), {}, details("The Band", "Album", "Tune"));
+        QVERIFY(song.has_value());
+        QVERIFY(lib.song(song->id)->backingFile.isEmpty());
+
+        const QString first = lib.setBacking(song->id, write(downloads, "Take One.MP3", "mp3 one"));
+        QCOMPARE(first, home.filePath("library/The Band/Album/Tune backing.mp3"));
+        QCOMPARE(lib.song(song->id)->backingFile, first);
+        lib.setBackingOffset(song->id, 3.25);
+        QCOMPARE(lib.song(song->id)->backingOffset, 3.25);
+
+        // Another file replaces it (the old copy goes).
+        const QString second = lib.setBacking(song->id, write(downloads, "take2.mp3", "mp3 two"));
+        QVERIFY(!second.isEmpty());
+        QCOMPARE(lib.song(song->id)->backingFile, second);
+        QVERIFY(QFile::exists(second));
+        QVERIFY(first == second || !QFile::exists(first));
+        QFile f(second);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QCOMPARE(f.readAll(), QByteArray("mp3 two"));
+        f.close();
+
+        lib.clearBacking(song->id);
+        QVERIFY(lib.song(song->id)->backingFile.isEmpty());
+        QCOMPARE(lib.song(song->id)->backingOffset, 0.0);
+        QVERIFY(!QFile::exists(second));
+
+        // Removing the song takes its backing track with it.
+        const QString third = lib.setBacking(song->id, write(downloads, "t3.mp3", "mp3 three"));
+        QVERIFY(lib.remove(song->id));
+        QVERIFY(!QFile::exists(third));
+    }
+
+    // A library from before backing tracks (schema 1) opens and gains them, its songs kept.
+    void upgradesAnOlderLibrary()
+    {
+        QTemporaryDir downloads, home;
+        qint64 id = 0;
+        {
+            SongLibrary lib(home.filePath("library"));
+            id = lib.add(write(downloads, "a.gp", "tab"), {}, details("A", "B", "C"))->id;
+        }
+        {   // Turn it back into a version 1 library: no backing columns.
+            QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), QStringLiteral("downgrade"));
+            db.setDatabaseName(home.filePath("library/library.db"));
+            QVERIFY(db.open());
+            QSqlQuery q(db);
+            QVERIFY(q.exec(QStringLiteral("ALTER TABLE songs DROP COLUMN backing_file")));
+            QVERIFY(q.exec(QStringLiteral("ALTER TABLE songs DROP COLUMN backing_offset")));
+            QVERIFY(q.exec(QStringLiteral("PRAGMA user_version = 1")));
+            db.close();
+        }
+        QSqlDatabase::removeDatabase(QStringLiteral("downgrade"));
+        SongLibrary lib(home.filePath("library"));
+        QVERIFY(lib.isOpen());
+        QCOMPARE(lib.song(id)->details.title, QStringLiteral("C"));
+        QVERIFY(!lib.setBacking(id, write(downloads, "b.mp3", "mp3")).isEmpty());
+        lib.setBackingOffset(id, -1.5);
+        QCOMPARE(lib.song(id)->backingOffset, -1.5);
     }
 };
 

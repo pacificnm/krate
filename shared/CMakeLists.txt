@@ -60,6 +60,8 @@ target_compile_options(krate_rack PRIVATE ${KRATE_WARNINGS})
 
 # --- krate_song: songs to play along with (tempo map, MIDI files, .gp tab files, the player); no Qt
 add_library(krate_song STATIC
+    song/BackingTrack.h
+    song/BackingTrack.cpp
     song/Song.h
     song/Song.cpp
     song/MidiFile.h
@@ -78,7 +80,7 @@ add_library(krate_song STATIC
     song/TabLayout.h
     song/TabLayout.cpp
 )
-target_include_directories(krate_song PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(krate_song PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ${PROJECT_SOURCE_DIR}/third_party/dr_libs)
 target_link_libraries(krate_song PUBLIC krate_core PRIVATE ZLIB::ZLIB)
 target_compile_options(krate_song PRIVATE ${KRATE_WARNINGS})
 
@@ -178,6 +180,12 @@ add_executable(tst_songplayer tests/tst_songplayer.cpp)
 target_compile_options(tst_songplayer PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_songplayer PRIVATE krate_song krate_rack Qt6::Test)
 add_test(NAME tst_songplayer COMMAND tst_songplayer)
+
+add_executable(tst_backingtrack tests/tst_backingtrack.cpp)
+target_compile_options(tst_backingtrack PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(tst_backingtrack PRIVATE KRATE_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
+target_link_libraries(tst_backingtrack PRIVATE krate_song Qt6::Test)
+add_test(NAME tst_backingtrack COMMAND tst_backingtrack)
 
 add_executable(tst_tablayout tests/tst_tablayout.cpp)
 target_compile_options(tst_tablayout PRIVATE -Wall -Wextra -Wpedantic)

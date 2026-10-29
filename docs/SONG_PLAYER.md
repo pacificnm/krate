@@ -40,6 +40,18 @@ Every song you open is kept in Krate's **song library**, by artist, album and tr
 - The **library list** on the Song screen: artists, their albums, the songs in track order; a search box (artist, album or title); open a song by clicking it; edit its details; remove it (which deletes its copied files).
 - **Storage**: one SQLite database, `~/.local/share/krate/library/library.db` (Qt SQL), with tables for songs, their tracks' setup, their instrument sounds and their mixer, and the last song open (which reopens with the rack). It replaces S4's `songs.json`.
 
+## Backing track
+
+A song can have a recording to play along with: an MP3, in sync with the tab and the MIDI tracks.
+
+- **Load**: **LOAD MP3…** on the Song screen's BACKING bar, or drop an MP3 on an open song. It's copied into the library beside the song (`<artist>/<album>/<title> backing.mp3`, replacing an earlier one); **REPLACE…** chooses another, **×** removes it (and its copy). Decoding (dr_mp3, `third_party/dr_libs`) runs off the GUI thread; the bar says so meanwhile.
+- **Sync**: **BAR 1 AT** is where the song's bar 1 is in the recording (type seconds or m:ss.mmm; negative if the recording starts after bar 1); nudge it by a beat (at the song's opening tempo), 0.1 s or 0.01 s. Kept with the song, as is the file.
+- **Level**: the mixer's **Backing** strip (fader, pan, mute, solo), kept with the song's mixer when you SAVE.
+- **How it plays** (`shared/song/BackingTrack.cpp`): the backing track is a rack device after the instruments (a mixer strip and a `backing_L/R` output, no panel or tab; focus passes it by). Each block it asks the song player for the song's time at the block's start (`SongPlayer::blockSeconds()`: the fractional tick through the tempo map) and plays the recording from there plus the offset, reading between samples with a 4-point curve (so a 44.1 kHz file plays right at 48 kHz). So it starts, stops and jumps with the song, follows tempo changes (the tempo map is the song's time) and the speed (as varispeed: slower is also lower in pitch); a start or a jump fades in over 5 ms. Silent while the song isn't playing.
+- A jump while playing now takes its tempo from where it lands for its first block too (before, that block ran at the old place's tempo: across a tempo change everything landed a block off).
+- Schema version 2 of `library.db`: `songs.backing_file`, `songs.backing_offset` (a version 1 library is upgraded as it opens).
+- Tests: `tst_backingtrack` (decoding an MP3; in sync with the offset to within 2 samples; after a jump through a tempo change; at half speed; silent when stopped; fading in), `tst_library` (copies, replacing, the offset, removal, the upgrade).
+
 ## Not in the first version
 
 Standard notation above the tab; editing tabs; a fallback sound for unassigned tracks; audio backing tracks; pitch-shifting audio; per-track MIDI out. (See *Later*.)

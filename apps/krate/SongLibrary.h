@@ -27,6 +27,8 @@ public:
         QString tabFile, midiFile; // absolute paths of the library's copies ("" = none)
         QDateTime added, opened;
         bool soundsSaved = false;
+        QString backingFile;       // the backing track's copy ("" = none)
+        double backingOffset = 0.0; // where bar 1 is in it, seconds
     };
 
     struct TrackSetup
@@ -65,6 +67,13 @@ public:
 
     // Sounds (instrument id -> its sound) and the mixer, saved together.
     void saveSounds(qint64 id, const QJsonObject &sounds, const QJsonObject &mixer);
+
+    // The song's backing track (docs/SONG_PLAYER.md#backing-track): a copy of
+    // the file in the song's folder (replacing any earlier one) and where bar 1
+    // is in it. Returns the copy's path ("" on failure, see error()).
+    QString setBacking(qint64 id, const QString &source);
+    void setBackingOffset(qint64 id, double seconds);
+    void clearBacking(qint64 id); // deletes the copy
     QJsonObject sounds(qint64 id) const;
     QJsonObject mixer(qint64 id) const;
 
