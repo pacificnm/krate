@@ -53,6 +53,7 @@ void RackSession::load()
         for (const auto &port : json.value(u"audioInputs").toArray())
             m_audioInputs << port.toString();
         m_bufferSize = json.value(u"bufferSize").toInt(0);
+        m_outputDevice = json.value(u"outputDevice").toString();
         if (const double bpm = json.value(u"tempo").toDouble(0); bpm > 0)
             m_controller.setBpm(bpm);
         m_controller.setFader(-1, json.value(u"master").toDouble(RackController::kUnityFader));
@@ -117,6 +118,14 @@ void RackSession::setBufferSize(int frames)
     changed();
 }
 
+void RackSession::setOutputDevice(const QString &device)
+{
+    if (device == m_outputDevice)
+        return;
+    m_outputDevice = device;
+    changed();
+}
+
 void RackSession::save()
 {
     m_saveTimer.stop();
@@ -144,6 +153,7 @@ void RackSession::save()
         {QStringLiteral("midiInput"), m_midiInput},
         {QStringLiteral("audioInputs"), QJsonArray::fromStringList(m_audioInputs)},
         {QStringLiteral("bufferSize"), m_bufferSize},
+        {QStringLiteral("outputDevice"), m_outputDevice},
         {QStringLiteral("master"), m_controller.fader(-1)},
         {QStringLiteral("devices"), devices},
         {QStringLiteral("mappings"), m_learn.saveMappings()},

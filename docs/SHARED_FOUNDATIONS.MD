@@ -181,11 +181,11 @@ QML singletons: k303 uses singletons (`Synth`, `Pattern`, `MidiLearn`). That wor
 
 ### Audio outputs
 
-JACK ports in the rack: `<device>:out_L` / `<device>:out_R` for every device (pre-mixer, post-device), plus `master_L` / `master_R` (post-mixer, post-limiter). Auto-connect sends only the master pair to the speakers; the per-device pairs are there for recording or mixing in a DAW.
+JACK ports in the rack: `<device>:out_L` / `<device>:out_R` for every device (pre-mixer, post-device), plus `master_L` / `master_R` (post-mixer, post-limiter). Auto-connect sends only the master pair to the speakers (the device chosen under **AUDIO**, or the first hardware outputs); the per-device pairs are there for recording or mixing in a DAW.
 
 ### Audio inputs
 
-The rack has two audio inputs, `in_1` and `in_2`: an audio interface's two inputs, for a guitar. Each is fed by one capture port chosen under **AUDIO IN** in the transport bar (saved in `rack.json` as `"audioInputs"`, reconnected whenever that device appears). Every device with `inputChannels() > 0` gets both, re-based per chunk like its MIDI; inputs it asks for beyond the rack's are silent, and hosts without inputs (`krate-render`, tests) give it none (`inputs == nullptr`). The same popup sets the buffer size asked of the server (`"bufferSize"` in `rack.json`; `jack_set_buffer_size`, which PipeWire honours while Krate runs) and shows the delay from input to speakers, the capture plus playback latency the server reports.
+The rack has two audio inputs, `in_1` and `in_2`: an audio interface's two inputs, for a guitar. Each is fed by one capture port chosen under **AUDIO** in the transport bar (saved in `rack.json` as `"audioInputs"`, reconnected whenever that device appears). Every device with `inputChannels() > 0` gets both, re-based per chunk like its MIDI; inputs it asks for beyond the rack's are silent, and hosts without inputs (`krate-render`, tests) give it none (`inputs == nullptr`). The same popup picks the playback device the master goes to (`"outputDevice"`; by default the first hardware outputs), sets the buffer size asked of the server (`"bufferSize"` in `rack.json`; `jack_set_buffer_size`, which PipeWire honours while Krate runs) and shows the delay from input to speakers, the capture plus playback latency the server reports.
 
 ### MIDI routing
 

@@ -25,7 +25,11 @@ public:
     virtual std::uint32_t xrunCount() const = 0;
     virtual float takePeak() noexcept = 0; // master output peak since last call
 
-    virtual std::vector<std::string> connectToPlayback() = 0;
+    // Connects the speaker outputs to a playback device's ports (`device`: a
+    // client name from playbackDevices(); "" = the first hardware outputs),
+    // replacing earlier connections. Returns the ports connected to.
+    virtual std::vector<std::string> connectToPlayback(const std::string &device = {}) = 0;
+    virtual std::vector<std::string> playbackDevices() const { return {}; } // hardware outputs, by device
     virtual std::vector<std::string> midiSourcePorts() const = 0;
     virtual bool connectMidiFrom(const std::string &port) = 0;
     virtual bool midiInputConnected() const = 0;
@@ -34,7 +38,7 @@ public:
     // Audio inputs (in_1, ...), each fed by one capture port of the audio
     // interface (a guitar). Hosts without inputs keep the defaults.
     virtual int inputCount() const { return 0; }
-    virtual std::vector<std::string> captureSourcePorts() const { return {}; } // physical capture ports
+    virtual std::vector<std::string> captureSourcePorts() const { return {}; } // the interfaces' capture ports
     // Connects input `input` to `port` alone ("" disconnects it).
     virtual bool connectInput(int input, const std::string &port) { (void)input; (void)port; return false; }
     virtual bool inputConnected(int input) const { (void)input; return false; }

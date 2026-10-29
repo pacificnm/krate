@@ -118,12 +118,12 @@ Rectangle {
             PanelButton {
                 width: 58
                 height: 30
-                text: "Audio inputs: which input of your audio interface the guitar is on, and the buffer size"
+                text: "Audio: where Krate plays to, which input of your audio interface the guitar is on, and the buffer size"
                 hasLed: true
                 ledOn: audioPopup.opened || (Host.inputsConnected[0] ?? false) || (Host.inputsConnected[1] ?? false)
                 onClicked: audioPopup.opened ? audioPopup.close() : audioPopup.open()
             }
-            PanelLabel { width: 58; text: "AUDIO IN"; font.pixelSize: 10 }
+            PanelLabel { width: 58; text: "AUDIO"; font.pixelSize: 10 }
         }
     }
 
@@ -132,7 +132,7 @@ Rectangle {
         id: audioPopup
         x: parent.width - width - 200
         y: parent.height + 4
-        width: 460
+        width: 560
         padding: 14
         background: Rectangle {
             radius: 6
@@ -144,11 +144,40 @@ Rectangle {
             width: parent.width
             spacing: 10
             Text {
-                text: "AUDIO INPUTS"
+                text: "AUDIO"
                 color: Theme.ink
                 font.family: Theme.labelFont
                 font.pixelSize: 13
                 font.bold: true
+            }
+            Row {
+                id: outputRow
+                // Every playback device, plus the chosen one while it's unplugged.
+                readonly property var choices: {
+                    const list = [{ device: "", label: "First outputs found" }]
+                    for (const d of Host.outputDevices)
+                        list.push({ device: d, label: d })
+                    if (Host.outputDevice !== "" && Host.outputDevices.indexOf(Host.outputDevice) < 0)
+                        list.push({ device: Host.outputDevice, label: Host.outputDevice + " (unplugged)" })
+                    return list
+                }
+                spacing: 8
+                Text {
+                    width: 56
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Output"
+                    color: Theme.ink
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                }
+                ComboBox {
+                    width: 368
+                    model: outputRow.choices
+                    textRole: "label"
+                    currentIndex: outputRow.choices.findIndex(c => c.device === Host.outputDevice)
+                    onActivated: index => Host.outputDevice = outputRow.choices[index].device
+                    Accessible.name: "Output"
+                }
             }
             Repeater {
                 model: Host.inputCount
@@ -175,10 +204,9 @@ Rectangle {
                         font.pixelSize: 12
                     }
                     ComboBox {
-                        width: 268
+                        width: 368
                         model: inputRow.choices
                         textRole: "label"
-                        valueRole: "port"
                         currentIndex: inputRow.choices.findIndex(c => c.port === inputRow.port)
                         onActivated: index => Host.setInputPort(inputRow.index, inputRow.choices[index].port)
                         Accessible.name: "Input " + (inputRow.index + 1)
@@ -215,7 +243,7 @@ Rectangle {
                 ComboBox {
                     id: bufferBox
                     readonly property var sizes: [0, 64, 128, 256, 512, 1024]
-                    width: 268
+                    width: 368
                     model: sizes.map(n => n === 0 ? "The audio server's own" : n + " frames")
                     currentIndex: Math.max(0, sizes.indexOf(Host.requestedBufferSize))
                     onActivated: index => Host.requestedBufferSize = sizes[index]

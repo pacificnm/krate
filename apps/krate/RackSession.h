@@ -34,6 +34,8 @@ public:
     void setAudioInputs(const QStringList &ports);
     int bufferSize() const { return m_bufferSize; }
     void setBufferSize(int frames);
+    QString outputDevice() const { return m_outputDevice; } // "" = the first hardware outputs
+    void setOutputDevice(const QString &device);
 
 private:
     void changed() { m_saveTimer.start(); }
@@ -46,5 +48,6 @@ private:
     QString m_midiInput = QStringLiteral("Impact LX49");
     QStringList m_audioInputs;
     int m_bufferSize = 0;
+    QString m_outputDevice;
     QTimer m_saveTimer;
 };

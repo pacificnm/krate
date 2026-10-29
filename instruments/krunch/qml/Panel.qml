@@ -181,7 +181,7 @@ Item {
                 width: parent.width
                 visible: !panel.inputConnected
                 text: panel.inputPort === ""
-                      ? "Plug the guitar into your audio interface's instrument input, then choose that input under AUDIO IN in the top bar (as input " + (panel.input + 1) + ")."
+                      ? "Plug the guitar into your audio interface's instrument input, then choose that input under AUDIO in the top bar (as input " + (panel.input + 1) + ")."
                       : "Krunch connects as soon as that device appears. Is it plugged in?"
                 color: "#B9B2A0"
                 font.family: Theme.labelFont
@@ -201,7 +201,7 @@ Item {
             Text {
                 width: parent.width
                 visible: Host.audioConnected && Host.latencyMs > 12
-                text: "Too slow to play through: set a smaller buffer (128 or 64) under AUDIO IN."
+                text: "Too slow to play through: set a smaller buffer (128 or 64) under AUDIO."
                 color: "#B9B2A0"
                 font.family: Theme.labelFont
                 font.pixelSize: 14

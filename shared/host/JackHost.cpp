@@ -102,32 +102,64 @@ void JackHost::close()
     m_midiIn = nullptr;
 }
 
-std::vector<std::string> JackHost::connectToPlayback()
+namespace {
+
+std::vector<std::string> portList(jack_client_t *client, unsigned long flags)
+{
+    std::vector<std::string> result;
+    if (const char **ports = jack_get_ports(client, nullptr, JACK_DEFAULT_AUDIO_TYPE, flags)) {
+        for (int i = 0; ports[i]; ++i)
+            result.emplace_back(ports[i]);
+        jack_free(ports);
+    }
+    return result;
+}
+
+std::string clientOf(const std::string &port) { return port.substr(0, port.find(':')); }
+
+} // namespace
+
+std::vector<std::string> JackHost::connectToPlayback(const std::string &device)
 {
     std::vector<std::string> connected;
     if (!m_client)
         return connected;
 
-    const char **ports = jack_get_ports(m_client, nullptr, JACK_DEFAULT_AUDIO_TYPE,
-                                        JackPortIsPhysical | JackPortIsInput);
-    if (!ports)
+    std::vector<std::string> ports;
+    for (const auto &port : portList(m_client, JackPortIsPhysical | JackPortIsInput))
+        if (device.empty() || clientOf(port) == device)
+            ports.push_back(port);
+    if (ports.empty())
         return connected;
 
-    int available = 0;
-    while (ports[available])
-        ++available;
     // Output c goes to the playback port the processor names; with fewer playback
     // ports, wrap around (a mono device gets every channel).
-    for (int c = 0; c < m_channels && available > 0; ++c) {
+    for (int c = 0; c < m_channels; ++c) {
         const int channel = m_processor.playbackChannel(c);
         if (channel < 0)
             continue;
-        const char *target = ports[channel % available];
-        if (jack_connect(m_client, jack_port_name(m_outs[std::size_t(c)]), target) == 0)
-            connected.emplace_back(target);
+        jack_port_t *out = m_outs[std::size_t(c)];
+        if (const char **old = jack_port_get_connections(out)) { // a different device before
+            for (int i = 0; old[i]; ++i)
+                jack_disconnect(m_client, jack_port_name(out), old[i]);
+            jack_free(old);
+        }
+        const std::string &target = ports[std::size_t(channel) % ports.size()];
+        if (jack_connect(m_client, jack_port_name(out), target.c_str()) == 0)
+            connected.push_back(target);
     }
-    jack_free(ports);
     return connected;
+}
+
+std::vector<std::string> JackHost::playbackDevices() const
+{
+    std::vector<std::string> devices;
+    if (!m_client)
+        return devices;
+    for (const auto &port : portList(m_client, JackPortIsPhysical | JackPortIsInput))
+        if (const std::string client = clientOf(port); std::find(devices.begin(), devices.end(), client) == devices.end())
+            devices.push_back(client);
+    return devices;
 }
 
 std::vector<std::string> JackHost::midiSourcePorts() const
@@ -156,15 +188,19 @@ bool JackHost::midiInputConnected() const
 
 std::vector<std::string> JackHost::captureSourcePorts() const
 {
+    // Hardware capture ports, and PipeWire's per-input sources (a USB interface's
+    // "Input 1 Mic/Inst/Line:capture_MONO"), which are not marked physical.
     std::vector<std::string> result;
     if (!m_client)
         return result;
-    const char **ports = jack_get_ports(m_client, nullptr, JACK_DEFAULT_AUDIO_TYPE, JackPortIsPhysical | JackPortIsOutput);
-    if (!ports)
-        return result;
-    for (int i = 0; ports[i]; ++i)
-        result.emplace_back(ports[i]);
-    jack_free(ports);
+    for (const auto &port : portList(m_client, JackPortIsOutput)) {
+        const std::string name = port.substr(port.find(':') + 1);
+        const jack_port_t *p = jack_port_by_name(m_client, port.c_str());
+        if (name.starts_with("capture_") || (p && (jack_port_flags(p) & JackPortIsPhysical)))
+            result.push_back(port);
+    }
+    std::stable_partition(result.begin(), result.end(), // the named per-input sources first
+                          [](const std::string &port) { return port.ends_with(":capture_MONO"); });
     return result;
 }
 

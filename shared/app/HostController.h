@@ -44,6 +44,9 @@ class HostController : public QObject
     Q_PROPERTY(QVariantList inputLevels READ inputLevels NOTIFY inputLevelsChanged) // 0..1 each, -60..0 dB
     // Frames per block asked of the server (0 = the server's own); smaller is less delay.
     Q_PROPERTY(int requestedBufferSize READ requestedBufferSize WRITE setRequestedBufferSize NOTIFY requestedBufferSizeChanged)
+    // Where the rack's master goes: a playback device ("" = the first hardware outputs).
+    Q_PROPERTY(QStringList outputDevices READ outputDevices NOTIFY capturePortsChanged)
+    Q_PROPERTY(QString outputDevice READ outputDevice WRITE setOutputDevice NOTIFY outputDeviceChanged)
     // From an input to the speakers, as the server reports it.
     Q_PROPERTY(qreal latencyMs READ latencyMs NOTIFY audioStatusChanged)
 
@@ -80,6 +83,9 @@ public:
     int requestedBufferSize() const { return m_requestedBufferSize; }
     void setRequestedBufferSize(int frames);
     qreal latencyMs() const;
+    QStringList outputDevices() const { return m_outputDevices; }
+    QString outputDevice() const { return m_outputDevice; }
+    void setOutputDevice(const QString &device);
 
 public slots:
     void connectAudio();
@@ -92,12 +98,14 @@ signals:
     void inputPortsChanged();
     void inputLevelsChanged();
     void requestedBufferSizeChanged();
+    void outputDeviceChanged();
 
 private:
     void poll();
     void connectMidiInput();
     void connectInputs();
     void refreshCapturePorts();
+    void connectOutputs();
     void setAudioStatus(const QString &status);
 
     static inline HostController *s_instance = nullptr;
@@ -114,6 +122,9 @@ private:
     int m_lastSampleRate = 0;
     int m_lastBufferSize = 0;
     QStringList m_capturePorts;
+    QStringList m_outputDevices;
+    QString m_outputDevice;
+    QString m_connectedOutput; // the device the outputs went to ("" = the first hardware outputs)
     QStringList m_inputPorts;
     QList<qreal> m_inputLevels;
     int m_requestedBufferSize = 0;

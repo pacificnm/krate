@@ -141,6 +141,9 @@ int main(int argc, char *argv[])
     host.setMidiInputMatch(session.midiInput());
     host.setRequestedBufferSize(session.bufferSize());
     host.setInputPorts(session.audioInputs());
+    host.setOutputDevice(session.outputDevice());
+    QObject::connect(&host, &krate::HostController::outputDeviceChanged, &session,
+                     [&session, &host] { session.setOutputDevice(host.outputDevice()); });
     QObject::connect(&host, &krate::HostController::inputPortsChanged, &session,
                      [&session, &host] { session.setAudioInputs(host.inputPorts()); });
     QObject::connect(&host, &krate::HostController::requestedBufferSizeChanged, &session,

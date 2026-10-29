@@ -76,17 +76,13 @@ void HostController::connectAudio()
     }
 
     m_retryTimer.stop();
-    const auto ports = m_host.connectToPlayback();
-    if (ports.empty())
-        qCWarning(lcHost) << "connected to JACK, but found no playback ports to connect to";
-    for (const auto &port : ports)
-        qCInfo(lcHost) << "output ->" << port.c_str();
+    refreshCapturePorts();
+    connectOutputs();
 
     if (m_requestedBufferSize > 0)
         m_host.setBufferSize(std::uint32_t(m_requestedBufferSize));
     m_lastXruns = -1; // force a status refresh
     connectMidiInput();
-    refreshCapturePorts();
     connectInputs();
     poll();
 }
@@ -161,9 +157,14 @@ QString HostController::portLabel(const QString &port)
         device.remove(serial);
         device.replace(u'_', u' ');
     }
+    if (channel == u"capture_MONO") // a source for one input: its name says which
+        return device;
     static const QRegularExpression stereo(QStringLiteral("^capture_F([LR])$"));
+    static const QRegularExpression aux(QStringLiteral("^capture_AUX(\\d+)$"));
     if (const auto m = stereo.match(channel); m.hasMatch())
         channel = m.captured(1) == u"L" ? QStringLiteral("in 1") : QStringLiteral("in 2");
+    else if (const auto n = aux.match(channel); n.hasMatch())
+        channel = QStringLiteral("in %1").arg(n.captured(1).toInt() + 1);
     else
         channel.replace(QStringLiteral("capture_"), QStringLiteral("in "));
     return device + QStringLiteral(" · ") + channel;
@@ -204,14 +205,41 @@ qreal HostController::latencyMs() const
 
 void HostController::refreshCapturePorts()
 {
-    QStringList ports;
-    if (m_host.isOpen())
+    QStringList ports, devices;
+    if (m_host.isOpen()) {
         for (const auto &port : m_host.captureSourcePorts())
             ports << QString::fromStdString(port);
-    if (ports != m_capturePorts) {
+        for (const auto &device : m_host.playbackDevices())
+            devices << QString::fromStdString(device);
+    }
+    if (ports != m_capturePorts || devices != m_outputDevices) {
         m_capturePorts = ports;
+        m_outputDevices = devices;
         emit capturePortsChanged();
     }
+}
+
+void HostController::setOutputDevice(const QString &device)
+{
+    if (device == m_outputDevice)
+        return;
+    m_outputDevice = device;
+    emit outputDeviceChanged();
+    connectOutputs();
+}
+
+void HostController::connectOutputs()
+{
+    if (!m_host.isOpen())
+        return;
+    // The chosen device once it's there; until then (or with none chosen) the first hardware outputs.
+    const bool present = m_outputDevices.contains(m_outputDevice);
+    const auto ports = m_host.connectToPlayback(present ? m_outputDevice.toStdString() : std::string());
+    if (ports.empty())
+        qCWarning(lcHost) << "found no playback ports to connect to";
+    for (const auto &port : ports)
+        qCInfo(lcHost) << "output ->" << port.c_str();
+    m_connectedOutput = present ? m_outputDevice : QString();
 }
 
 void HostController::connectInputs()
@@ -249,6 +277,8 @@ void HostController::poll()
         connectMidiInput();
         refreshCapturePorts();
         connectInputs();
+        if (m_connectedOutput != m_outputDevice && m_outputDevices.contains(m_outputDevice))
+            connectOutputs(); // the chosen device came back
     }
 
     if (m_host.isOpen()) {

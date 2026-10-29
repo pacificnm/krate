@@ -48,9 +48,10 @@ public:
     // Master output peak since the last call (0..1), for the level meter.
     float takePeak() noexcept override { return m_processor.takePeak(); }
 
-    // Connects each output the processor routes to the speakers to that physical
-    // playback port (a mono device gets every channel). Returns the ports connected to.
-    std::vector<std::string> connectToPlayback() override;
+    // Connects each output the processor routes to the speakers to that playback
+    // port of `device` (or of the hardware, ""); a mono device gets every channel.
+    std::vector<std::string> connectToPlayback(const std::string &device = {}) override;
+    std::vector<std::string> playbackDevices() const override;
 
     // MIDI output ports of other clients (candidates to feed midi_in).
     std::vector<std::string> midiSourcePorts() const override;
