@@ -281,6 +281,18 @@ private slots:
         f.song->jumpToBar(7);
         QVERIFY(f.song->score());
         QCOMPARE(f.song->score()->playStarts.front(), song::Tick(0));
+        // The view follows a clicked track; picking "my track" brings it into view too.
+        QCOMPARE(f.song->viewTrack(), 0); // the guitar is yours, and in view
+        f.song->setViewTrack(1);
+        QVERIFY(f.track(1).value("viewed").toBool());
+        QVERIFY(!f.track(0).value("viewed").toBool());
+        QVERIFY(f.track(1).value("hasTab").toBool());
+        f.song->setMyTrack(0);
+        QCOMPARE(f.song->viewTrack(), 1); // already yours: nothing moves
+        f.song->setMyTrack(1);
+        QCOMPARE(f.song->viewTrack(), 1);
+        f.song->setViewTrack(9); // no such track
+        QCOMPARE(f.song->viewTrack(), 1);
         // From the tab instead: its two half notes.
         f.song->setFromMidi(1, false);
         QCOMPARE(f.song->song()->tracks[1].noteCount, 2);

@@ -16,6 +16,7 @@ namespace krate::song {
 
 struct TabStyle
 {
+    double noteGap = 8.0;    // notation: between staff lines
     double lineGap = 13.0;   // between strings
     double fretSize = 12.0;  // fret numbers' font size
     double smallSize = 10.0; // bar numbers, techniques, tuning
@@ -27,14 +28,17 @@ struct TabStyle
 
 struct TabItem
 {
-    enum class Kind : std::uint8_t { Line, Text, Dot } kind = Kind::Line;
+    enum class Kind : std::uint8_t { Line, Text, Dot, Note } kind = Kind::Line;
     enum class Tone : std::uint8_t { Ink, Faint, Accent } tone = Tone::Ink;
-    double x1 = 0, y1 = 0, x2 = 0, y2 = 0; // Line: ends; Text: centre (x1, y1); Dot: centre, radius x2
+    double x1 = 0, y1 = 0, x2 = 0, y2 = 0; // Line: ends; Text: centre (x1, y1); Dot: centre, radius x2;
+                                           // Note: a note head, centre (x1, y1), radii x2 and y2
     double width = 1.0;                    // Line thickness
     std::string text;                      // UTF-8
     double size = 12.0;
     bool bold = false;
     bool knockout = false; // Text: clear the staff lines behind it
+    bool music = false;    // Text: in a music font (clefs, rests, accidentals)
+    bool filled = true;    // Note: a black head (quarter and shorter) or a white one
 };
 
 struct TabBarBox
@@ -65,6 +69,13 @@ struct TabLayoutResult
 
 // Empty for drum tracks and tracks without strings.
 TabLayoutResult layoutTab(const Score &score, int track, double width, const TabStyle &style = {});
+
+// The same track as standard notation: a five-line staff with a treble or
+// bass clef chosen from its range (guitar and bass written an octave up, as
+// usual), note heads by pitch with sharps and naturals, ledger lines, stems,
+// flags, beams, dots and rests; drum tracks on a percussion staff (x heads
+// for cymbals and hi-hats). Bars, cursor and clicks work as in tab.
+TabLayoutResult layoutNotation(const Score &score, int track, double width, const TabStyle &style = {});
 
 struct TabCursor
 {

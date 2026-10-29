@@ -58,6 +58,8 @@ class SongController : public QObject
     Q_PROPERTY(QStringList instrumentChoices READ instrumentChoices CONSTANT) // index 0 = none
     Q_PROPERTY(QVariantList tracks READ tracks NOTIFY tracksChanged)
     Q_PROPERTY(int myTrack READ myTrack WRITE setMyTrack NOTIFY tracksChanged)
+    // The track the tab / notes view shows (click a track to see it); "my track" when a song opens.
+    Q_PROPERTY(int viewTrack READ viewTrack WRITE setViewTrack NOTIFY tracksChanged)
     Q_PROPERTY(int bar READ bar NOTIFY positionChanged)        // 1-based
     Q_PROPERTY(int beat READ beat NOTIFY positionChanged)      // 1-based
     Q_PROPERTY(int barCount READ barCount NOTIFY songChanged)
@@ -97,6 +99,8 @@ public:
     QVariantList tracks() const;
     int myTrack() const { return m_myTrack; }
     void setMyTrack(int track);
+    int viewTrack() const { return m_viewTrack; }
+    void setViewTrack(int track);
     int bar() const { return m_bar; }
     int beat() const { return m_beat; }
     int barCount() const;
@@ -197,6 +201,7 @@ private:
     QString m_tabPath, m_midiPath, m_error;
     std::vector<TrackSettings> m_tracks;
     int m_myTrack = -1;
+    int m_viewTrack = -1;
 
     QTimer m_timer;
     int m_bar = 1, m_beat = 1;

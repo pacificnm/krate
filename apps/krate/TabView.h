@@ -20,6 +20,8 @@ class TabView : public QQuickPaintedItem
 
     Q_PROPERTY(SongController *song READ song WRITE setSong NOTIFY songChanged)
     Q_PROPERTY(qreal scroll READ scroll WRITE setScroll NOTIFY scrollChanged)
+    // Standard notation instead of tab (drum tracks have notation only).
+    Q_PROPERTY(bool notation READ notation WRITE setNotation NOTIFY notationChanged)
     Q_PROPERTY(qreal contentHeight READ contentHeight NOTIFY layoutChanged)
     Q_PROPERTY(QString message READ message NOTIFY layoutChanged) // why there's no tab ("" when there is)
     Q_PROPERTY(bool cursorVisible READ cursorVisible NOTIFY cursorChanged)
@@ -35,6 +37,8 @@ public:
     void setSong(SongController *song);
     qreal scroll() const { return m_scroll; }
     void setScroll(qreal scroll);
+    bool notation() const { return m_notation; }
+    void setNotation(bool notation);
     qreal contentHeight() const { return m_layout.height; }
     QString message() const { return m_message; }
     bool cursorVisible() const { return m_cursor.system >= 0; }
@@ -53,6 +57,7 @@ public:
 signals:
     void songChanged();
     void scrollChanged();
+    void notationChanged();
     void layoutChanged();
     void cursorChanged();
 
@@ -69,5 +74,7 @@ private:
     krate::song::TabCursor m_cursor;
     QString m_message;
     int m_track = -2;
+    bool m_notation = false;
+    bool m_laidOutNotation = false;
     qreal m_width = 0.0;
 };

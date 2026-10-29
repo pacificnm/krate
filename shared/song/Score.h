@@ -63,6 +63,7 @@ struct ScoreTrack
 {
     std::string name;
     std::string instrument;
+    std::string type;        // the file's instrument type ("electricGuitar", "electricBass", "drumKit"...)
     std::vector<int> tuning; // MIDI pitch per string, lowest string first; empty for drums
     int capo = 0;
     bool drums = false;

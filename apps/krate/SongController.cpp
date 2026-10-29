@@ -157,9 +157,20 @@ QVariantList SongController::tracks() const
             {QStringLiteral("fromMidi"), st.fromMidi && lineUp(int(t))},
             {QStringLiteral("canMidi"), m_tab.has_value() && lineUp(int(t))},
             {QStringLiteral("mine"), int(t) == m_myTrack},
+            {QStringLiteral("viewed"), int(t) == m_viewTrack},
+            {QStringLiteral("hasTab"), score && !score->drums && !score->tuning.empty()},
+            {QStringLiteral("drums"), score ? score->drums : track.drums},
         };
     }
     return out;
+}
+
+void SongController::setViewTrack(int track)
+{
+    if (!m_song || track < -1 || track >= int(m_song->tracks.size()) || track == m_viewTrack)
+        return;
+    m_viewTrack = track;
+    emit tracksChanged();
 }
 
 void SongController::setMyTrack(int track)
@@ -167,6 +178,8 @@ void SongController::setMyTrack(int track)
     if (!m_song || track < -1 || track >= int(m_song->tracks.size()) || track == m_myTrack)
         return;
     m_myTrack = track;
+    if (track >= 0)
+        m_viewTrack = track; // your part comes into view
     emit tracksChanged();
     saveSettings();
 }
@@ -333,6 +346,7 @@ bool SongController::load(const QString &tabPath, const QString &midiPath, qint6
     rebuild();
     m_player.cue(0);
     setSequencers(false);
+    m_viewTrack = m_myTrack;
     m_bar = m_beat = 1;
     pollPosition();
     if (m_songId)
@@ -371,6 +385,7 @@ void SongController::close()
     m_midiPath.clear();
     m_tracks.clear();
     m_myTrack = -1;
+    m_viewTrack = -1;
     m_songId = 0;
     m_details = {};
     m_soundsSaved = false;
@@ -728,6 +743,7 @@ void SongController::importSongsJson(const QString &path)
                 applyTrack(int(t));
             }
             m_myTrack = std::clamp(saved.value(u"myTrack").toInt(-1), -1, int(m_tracks.size()) - 1);
+            m_viewTrack = m_myTrack;
             emit tracksChanged();
             saveSettings();
         }

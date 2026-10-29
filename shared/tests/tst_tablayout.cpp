@@ -44,9 +44,11 @@ Score makeScore(int bars = 4)
         b.time = {0, m < 2 || m >= 4 ? 4 : 3, 4};
         s.bars.push_back(b);
     }
-    s.bars[0].repeatStart = true;
-    s.bars[1].repeatEnd = true;
-    s.bars[1].repeatCount = 3;
+    if (bars > 1) { // bars 1-2 repeat, three times
+        s.bars[0].repeatStart = true;
+        s.bars[1].repeatEnd = true;
+        s.bars[1].repeatCount = 3;
+    }
     if (bars > 3)
         s.bars[3].endings = 0b01;
     ScoreTrack t;
@@ -235,6 +237,117 @@ private slots:
         QVERIFY(layoutTab(s, 3, 800.0).systems.empty()); // no such track
         s.tracks[0].tuning.clear();
         QVERIFY(layoutTab(s, 0, 800.0).systems.empty());
+    }
+
+    // --- Notation ---------------------------------------------------------------
+
+    static std::vector<const TabItem *> items(const TabLayoutResult &l, TabItem::Kind kind)
+    {
+        std::vector<const TabItem *> out;
+        for (const TabSystem &s : l.systems)
+            for (const TabItem &i : s.items)
+                if (i.kind == kind)
+                    out.push_back(&i);
+        return out;
+    }
+
+    // One 4/4 bar of four quarter notes with the given pitches.
+    static Score oneBar(std::vector<int> pitches, const std::string &type = "keys", bool drums = false)
+    {
+        Score s = makeScore(1);
+        s.tracks[0].type = type;
+        s.tracks[0].drums = drums;
+        auto &voice = s.tracks[0].bars[0].voices[0];
+        for (std::size_t k = 0; k < voice.size(); ++k) {
+            ScoreNote n;
+            n.pitch = pitches[k];
+            voice[k].notes = {n};
+        }
+        return s;
+    }
+
+    void notationStaffAndClef()
+    {
+        const TabStyle style;
+        TabLayoutResult l = layoutNotation(oneBar({60, 62, 64, 65}), 0, 900.0);
+        QCOMPARE(l.strings, 5);
+        const TabSystem &sys = l.systems.front();
+        QCOMPARE(sys.staffBottom - sys.staffTop, 4 * style.noteGap);
+        QCOMPARE(texts(l, "\U0001D11E").size(), std::size_t(1)); // treble clef
+        QCOMPARE(items(l, TabItem::Kind::Note).size(), std::size_t(4));
+        // E4 sits on the bottom line, F4 a half-gap above, middle C a ledger line below.
+        const auto heads = items(l, TabItem::Kind::Note);
+        QCOMPARE(heads[2]->y1, sys.staffBottom);
+        QCOMPARE(heads[3]->y1, sys.staffBottom - style.noteGap / 2.0);
+        QCOMPARE(heads[0]->y1, sys.staffBottom + style.noteGap);
+        QVERIFY(heads[0]->filled); // quarter notes
+        // Low notes get the bass clef; guitar is written an octave up (so a low E is treble).
+        QCOMPARE(texts(layoutNotation(oneBar({36, 40, 43, 45}), 0, 900.0), "\U0001D122").size(), std::size_t(1));
+        const TabLayoutResult guitar = layoutNotation(oneBar({52, 55, 57, 59}, "electricGuitar"), 0, 900.0);
+        QCOMPARE(texts(guitar, "\U0001D11E").size(), std::size_t(1));
+        QCOMPARE(items(guitar, TabItem::Kind::Note)[0]->y1, guitar.systems[0].staffBottom); // E3 written as E4
+        // Tab of the same track still works; notation also covers tracks without strings.
+        Score noStrings = oneBar({60, 62, 64, 65});
+        noStrings.tracks[0].tuning.clear();
+        QVERIFY(layoutTab(noStrings, 0, 900.0).systems.empty());
+        QVERIFY(!layoutNotation(noStrings, 0, 900.0).systems.empty());
+    }
+
+    void accidentalsLedgerLinesAndRests()
+    {
+        // F#4, F#4 (no second sharp), F4 (natural), and a rest.
+        Score s = oneBar({66, 66, 65, 0});
+        s.tracks[0].bars[0].voices[0][3].notes.clear();
+        TabLayoutResult l = layoutNotation(s, 0, 900.0);
+        QCOMPARE(texts(l, "\u266F").size(), std::size_t(1));
+        QCOMPARE(texts(l, "\u266E").size(), std::size_t(1));
+        QCOMPARE(texts(l, "\U0001D13D").size(), std::size_t(1)); // a quarter rest
+        for (const TabItem *t : texts(l, "\U0001D13D"))
+            QVERIFY(t->music);
+        // A5 (81) is a ledger line above the treble staff; C6 (84) two (A5's and C6's).
+        const auto ledgers = [](const TabLayoutResult &r) {
+            int n = 0;
+            for (const TabItem *i : items(r, TabItem::Kind::Line))
+                if (i->y1 == i->y2 && i->x2 - i->x1 < 20.0)
+                    ++n;
+            return n;
+        };
+        QCOMPARE(ledgers(layoutNotation(oneBar({81, 64, 64, 64}), 0, 900.0)), 1);
+        QCOMPARE(ledgers(layoutNotation(oneBar({84, 64, 64, 64}), 0, 900.0)), 2);
+        QCOMPARE(ledgers(layoutNotation(oneBar({69, 64, 64, 64}), 0, 900.0)), 0); // A4: in the staff
+        // Half notes are white heads.
+        Score halves = oneBar({64, 64, 64, 64});
+        halves.tracks[0].bars[0].voices[0] = {beat(0, 2, {}), beat(1920, 2, {})};
+        halves.tracks[0].bars[0].voices[0][0].notes = {ScoreNote{0, 0, 64, 0, {}}};
+        halves.tracks[0].bars[0].voices[0][1].notes = {ScoreNote{0, 0, 65, 0, {}}};
+        for (const TabItem *h : items(layoutNotation(halves, 0, 900.0), TabItem::Kind::Note))
+            QVERIFY(!h->filled);
+    }
+
+    void drumNotation()
+    {
+        Score s = oneBar({36, 38, 42, 46}, "drumKit", true);
+        s.tracks[0].tuning.clear();
+        QVERIFY(layoutTab(s, 0, 900.0).systems.empty()); // no tab for drums
+        const TabLayoutResult l = layoutNotation(s, 0, 900.0);
+        QCOMPARE(texts(l, "\U0001D125").size(), std::size_t(1)); // percussion clef
+        QCOMPARE(items(l, TabItem::Kind::Note).size(), std::size_t(2)); // kick and snare heads
+        QCOMPARE(texts(l, "o").size(), std::size_t(1));                  // the open hi-hat
+        const TabSystem &sys = l.systems.front();
+        const auto heads = items(l, TabItem::Kind::Note);
+        QCOMPARE(heads[0]->y1, sys.staffBottom - TabStyle{}.noteGap / 2.0); // kick in the bottom space
+        QCOMPARE(heads[1]->y1, sys.staffTop + 1.5 * TabStyle{}.noteGap);    // snare in the third space
+    }
+
+    void notationCursorAndClicks()
+    {
+        Score s = makeScore();
+        const TabLayoutResult l = layoutNotation(s, 0, 1600.0);
+        const TabCursor c = cursorAt(s, l, s.playStarts[7]);
+        QCOMPARE(c.bar, 3);
+        const auto [system, index] = l.barPlace[3];
+        const TabBarBox &box = l.systems[std::size_t(system)].bars[std::size_t(index)];
+        QCOMPARE(barAt(l, (box.x0 + box.x1) / 2.0, l.systems[std::size_t(system)].staffTop), 3);
     }
 
     void longSongsAreQuick()

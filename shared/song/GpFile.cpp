@@ -424,6 +424,7 @@ GpFileResult readGpFile(std::span<const std::uint8_t> data)
                 type = set->childText("Type");
             }
             track.drums = type == "drumKit";
+            track.type = std::string(type);
             std::vector<const Node *> places{&t};
             if (const Node *staves = t.child("Staves"))
                 for (const Node &s : staves->children)

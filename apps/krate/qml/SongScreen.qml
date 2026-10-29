@@ -290,6 +290,20 @@ Item {
                 border.color: modelData.mine ? Theme.labelOrange : Theme.deckLine
                 border.width: modelData.mine ? 2 : 1
 
+                MouseArea { // click the row (not its controls) to see this track's tab or notes
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Song.viewTrack = row.index
+                }
+                Rectangle { // the track in view
+                    visible: row.modelData.viewed
+                    x: 0
+                    width: 5
+                    height: parent.height
+                    radius: 2
+                    color: Theme.accentUi
+                }
+
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 0
@@ -415,14 +429,62 @@ Item {
                 border.color: Theme.deckLine
             }
 
+            // What's in view: the track, and tab or notes (drums: notes only).
+            readonly property var viewed: Song.viewTrack >= 0 && Song.viewTrack < Song.tracks.length ? Song.tracks[Song.viewTrack] : null
+            property bool notesWanted: false
+            readonly property bool notes: viewed !== null && (notesWanted || !viewed.hasTab)
+
+            Row {
+                id: viewBar
+                x: 10
+                y: 6
+                height: 24
+                spacing: 8
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: tabArea.viewed ? tabArea.viewed.name : ""
+                    color: Theme.ink
+                    font.family: Theme.labelFont
+                    font.pixelSize: 13
+                    font.bold: true
+                    elide: Text.ElideRight
+                    width: Math.min(implicitWidth, tabArea.width - 200)
+                }
+            }
+            Row {
+                anchors.right: parent.right
+                anchors.rightMargin: 10
+                y: 4
+                spacing: 4
+                PanelButton {
+                    width: 56
+                    height: 24
+                    faceText: "TAB"
+                    text: "Show tab"
+                    enabled: tabArea.viewed !== null && tabArea.viewed.hasTab
+                    opacity: enabled ? 1.0 : 0.4
+                    dark: !tabArea.notes
+                    onClicked: tabArea.notesWanted = false
+                }
+                PanelButton {
+                    width: 64
+                    height: 24
+                    faceText: "NOTES"
+                    text: "Show notation"
+                    dark: tabArea.notes
+                    onClicked: tabArea.notesWanted = true
+                }
+            }
+
             TabView {
                 id: tab
                 x: 8
-                y: 6
+                y: viewBar.y + viewBar.height + 4
                 width: parent.width - 16
-                height: parent.height - 12
+                height: parent.height - y - 6
                 song: Song
                 scroll: flick.contentY
+                notation: tabArea.notes
             }
 
             Flickable { // scrolling and clicks; the TabView under it draws

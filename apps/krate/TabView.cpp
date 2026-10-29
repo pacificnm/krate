@@ -50,6 +50,15 @@ void TabView::setSong(SongController *song)
     relayout();
 }
 
+void TabView::setNotation(bool notation)
+{
+    if (notation == m_notation)
+        return;
+    m_notation = notation;
+    emit notationChanged();
+    relayout();
+}
+
 void TabView::setScroll(qreal scroll)
 {
     if (qFuzzyCompare(scroll, m_scroll))
@@ -87,20 +96,25 @@ void TabView::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometr
 void TabView::relayout()
 {
     const krate::song::Score *score = m_song ? m_song->score() : nullptr;
-    const int track = m_song ? m_song->myTrack() : -1;
-    if (m_track == track && qFuzzyCompare(width(), m_width) && !(m_layout.systems.empty() && score))
+    const int track = m_song ? m_song->viewTrack() : -1;
+    if (m_track == track && qFuzzyCompare(width(), m_width) && m_laidOutNotation == m_notation
+        && !(m_layout.systems.empty() && score))
         return; // a level or mute changed: the tab is the same
     m_track = track;
     m_width = width();
+    m_laidOutNotation = m_notation;
     m_layout = {};
     if (!m_song || !m_song->loaded())
         m_message.clear();
     else if (!score)
         m_message = tr("No tab: open the song's .gp file to see it");
     else if (track < 0)
-        m_message = tr("Pick your track (MINE) to see its tab");
-    else if (score->tracks[std::size_t(track)].drums)
-        m_message = tr("Drum tracks have no tab view");
+        m_message = tr("Click a track to see it");
+    else if (m_notation) {
+        m_layout = krate::song::layoutNotation(*score, track, width());
+        m_message = m_layout.systems.empty() ? tr("This track has no notes") : QString();
+    } else if (score->tracks[std::size_t(track)].drums)
+        m_message = tr("Drum tracks have no tab: press NOTES");
     else {
         m_layout = krate::song::layoutTab(*score, track, width());
         m_message = m_layout.systems.empty() ? tr("This track has no tab") : QString();
@@ -134,6 +148,8 @@ void TabView::paint(QPainter *painter)
     const qreal top = m_scroll, bottom = m_scroll + height();
     painter->translate(0.0, -m_scroll);
     QFont font(QStringLiteral("sans-serif"));
+    QFont music(QStringLiteral("Noto Music")); // clefs, rests, sharps; falls back to any font that has them
+    music.setStyleHint(QFont::Serif);
     for (const auto &system : m_layout.systems) {
         if (system.top + system.height < top || system.top > bottom)
             continue;
@@ -149,12 +165,23 @@ void TabView::paint(QPainter *painter)
                 painter->setBrush(color);
                 painter->drawEllipse(QPointF(item.x1, item.y1), item.x2, item.x2);
                 break;
+            case TabItem::Kind::Note: { // a note head, tilted as engraved
+                painter->save();
+                painter->translate(item.x1, item.y1);
+                painter->rotate(-20.0);
+                painter->setPen(QPen(color, item.filled ? 1.0 : 1.4));
+                painter->setBrush(item.filled ? QBrush(color) : QBrush(Qt::NoBrush));
+                painter->drawEllipse(QPointF(0, 0), item.x2, item.y2);
+                painter->restore();
+                break;
+            }
             case TabItem::Kind::Text: {
-                font.setPixelSize(int(item.size));
-                font.setBold(item.bold);
-                painter->setFont(font);
+                QFont &f = item.music ? music : font;
+                f.setPixelSize(int(item.size));
+                f.setBold(item.bold);
+                painter->setFont(f);
                 const QString text = QString::fromStdString(item.text);
-                const QFontMetricsF metrics(font);
+                const QFontMetricsF metrics(f);
                 const qreal w = metrics.horizontalAdvance(text);
                 const QRectF box(item.x1 - w / 2.0 - 1.5, item.y1 - metrics.height() / 2.0, w + 3.0, metrics.height());
                 if (item.knockout)
