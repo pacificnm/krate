@@ -6,6 +6,8 @@ set(KALLIOPE_WARNINGS -Wall -Wextra -Wpedantic -Werror)
 add_library(kalliope_dsp STATIC
     dsp/Engine.h
     dsp/Engine.cpp
+    dsp/Effects.h
+    dsp/Effects.cpp
     dsp/Envelope.h
     dsp/Filters.h
     dsp/Filters.cpp
@@ -50,7 +52,7 @@ target_link_libraries(kalliope_ui PUBLIC kalliope_dsp krate_host krate_app krate
 target_compile_options(kalliope_ui PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests
-foreach(test tst_voice tst_voices)
+foreach(test tst_voice tst_voices tst_fx)
     add_executable(kalliope_${test} tests/${test}.cpp)
     target_compile_options(kalliope_${test} PRIVATE -Wall -Wextra -Wpedantic)
     target_link_libraries(kalliope_${test} PRIVATE kalliope_dsp krate_testing Qt6::Test)

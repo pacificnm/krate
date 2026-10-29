@@ -140,6 +140,7 @@ private slots:
     {
         Engine engine;
         engine.prepare(48000.0, 128);
+        engine.setParam(ParamId::Chorus, 0.0f); // dry: both sides the same
         engine.midiLearnMap()->setMapping(21, int(ParamId::Cutoff));
         engine.midiLearnMap()->setMapping(22, int(ParamId::KeyMode));
         std::array<float, 128> left, right;
@@ -151,7 +152,7 @@ private slots:
         krate::processStereo(engine, left.data(), right.data(), 128, midi.data(), 3);
         float peak = 0.0f;
         for (std::size_t i = 0; i < left.size(); ++i) {
-            QCOMPARE(left[i], right[i]); // mono until the chorus
+            QCOMPARE(left[i], right[i]); // no chorus: mono
             peak = std::max(peak, std::fabs(left[i]));
         }
         QVERIFY(peak > 0.0f);

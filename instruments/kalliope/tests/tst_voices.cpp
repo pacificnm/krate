@@ -25,6 +25,7 @@ class TestVoices : public QObject
         explicit Rig(int keyMode = 0)
         {
             engine.prepare(kRate, kBlock);
+            engine.setParam(ParamId::Chorus, 0.0f); // the voices alone (effects: tst_fx)
             engine.setParam(ParamId::KeyMode, position(keyMode, positions::kKeyMode));
             engine.setParam(ParamId::Env2R, 0.3f); // ~16 ms release
         }

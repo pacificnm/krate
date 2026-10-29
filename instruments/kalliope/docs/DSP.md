@@ -15,7 +15,7 @@ Realtime-safe throughout: no allocation, locks or I/O in `process()`; buffers ar
                                                                                ▲ ENV-2 × level × LFO tremolo × velocity
 ```
 
-Voices are summed (mono), then the chorus makes stereo, then the delay, then Volume. The host's master stage soft-clips (as for every Krate instrument).
+Voices are summed (mono), then the chorus makes stereo, then the delay, then Volume and the output trim. The host's master stage soft-clips (as for every Krate instrument).
 
 ## Oversampling
 
@@ -42,9 +42,9 @@ Each voice runs at **2× the host rate**; the voices are summed at 2× and the s
 
 | Effect | Design |
 | --- | --- |
-| **Chorus** | Two modulated delay lines (one per side, LFOs in quadrature), linear-interpolated. I: 0.5 Hz, ±2 ms around 7 ms; II: 0.85 Hz, ±3 ms. Wet and dry mixed equally |
-| **Delay** | Stereo ping-pong, delay time from the transport's tempo and `delay_time`'s note value; feedback through a gentle low-pass (4 kHz) so repeats darken; buffer sized in `prepare()` for 2 s at the sample rate |
+| **Chorus** | `Chorus`: one short delay line read at two modulated taps (left and right, sine LFOs a quarter cycle apart), linear-interpolated, each mixed with the dry signal at equal parts × 0.707. I: 0.5 Hz, ±2 ms around 7 ms; II: 0.85 Hz, ±3 ms; Off: both sides dry. This is what makes Kalliope stereo |
+| **Delay** | `Delay`: stereo ping-pong; the input (mid of the chorus output) enters the left line, each line feeds the other, so echoes alternate left, right, left…; feedback 0–90% through a one-pole low-pass at 4 kHz so repeats darken. Time = the `delay_time` note value (1/16 … 1/2) at the transport's tempo (the Tempo knob when there is none, as in `kalliope-render`), smoothed over 50 ms so tempo changes glide. The buffer (2 s at up to 192 kHz) is allocated once, when the engine is constructed |
 
 ## Levels and CPU
 
-The engine applies Volume and a −3 dB output trim: single notes sit around −15 dBFS and a four-note pad peaks around −4 dBFS at the default levels, under the host's soft clip. Eight voices at full resonance stay bounded (tested). Budget: 8 voices, 2× oversampled, chorus and delay under 10% of a core at 48 kHz / 64 frames (`kalliope-render --bench`). P2 measures all 8 voices held with sync, cross mod and full resonance at 3.8% (one voice: 0.55%). Silent voices are skipped.
+The engine applies Volume and a −3 dB output trim: single notes sit around −15 dBFS and a four-note pad peaks around −4 dBFS at the default levels, under the host's soft clip. Eight voices at full resonance stay bounded (tested). Budget: 8 voices, 2× oversampled, chorus and delay under 10% of a core at 48 kHz / 64 frames (`kalliope-render --bench`). P4 measures all 8 voices held with sync, cross mod and full resonance, chorus II and the delay at 4.0% (one voice: 0.55%). Silent voices are skipped.

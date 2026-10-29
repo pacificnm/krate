@@ -23,6 +23,8 @@ constexpr int kCcSustain = 64;
 constexpr int kCcAllSoundOff = 120;
 constexpr int kCcAllNotesOff = 123;
 constexpr double kUnisonDetuneCents = 12.0; // voices spread -12 .. +12 cents
+// Delay Time positions in beats: 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2.
+constexpr double kDelayBeats[] = {0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0};
 } // namespace
 
 void Engine::prepare(double sampleRate, std::uint32_t) noexcept
@@ -37,6 +39,8 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
     applyKeyMode(m_mode);
     m_decimator.reset();
     m_lfo.reset();
+    m_chorus.prepare(sampleRate);
+    m_delay.prepare(sampleRate);
     m_volumeSmoothing = 1.0 - std::exp(-1.0 / (kVolumeSmoothingSeconds * sampleRate));
     m_volume = -1.0;
 }
@@ -341,13 +345,20 @@ void Engine::process(const krate::AudioBlock &block) noexcept
 
     publishHeld();
 
+    // The voices are mono: the chorus makes them stereo, then the delay, then Volume.
+    m_chorus.process(left, left, right, block.frames, units::index(m_params.get(int(ParamId::Chorus)), positions::kChorus));
+    const double bpm = block.transport ? block.transport->bpm : units::tempoBpm(m_params.get(int(ParamId::Tempo)));
+    const double beats = kDelayBeats[units::index(m_params.get(int(ParamId::DelayTime)), positions::kDelayTime)];
+    m_delay.process(left, right, block.frames, beats * 60.0 / std::max(bpm, 1.0),
+                    m_params.get(int(ParamId::DelayLevel)), units::delayFeedback(m_params.get(int(ParamId::DelayFb))));
+
     const double target = kOutputTrim * units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)
         m_volume = target;
     for (std::uint32_t i = 0; i < block.frames; ++i) {
         m_volume += (target - m_volume) * m_volumeSmoothing;
         left[i] = float(left[i] * m_volume);
-        right[i] = left[i]; // mono until the chorus (P4)
+        right[i] = float(right[i] * m_volume);
     }
 }
 

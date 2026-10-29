@@ -9,15 +9,17 @@
 #include "core/ParamValues.h"
 #include "core/SpscQueue.h"
 #include "dsp/HalfbandDecimator.h"
+#include "kalliope/dsp/Effects.h"
 #include "kalliope/dsp/Lfo.h"
 #include "kalliope/dsp/Params.h"
 #include "kalliope/dsp/Voice.h"
 
 namespace kalliope {
 
-// Kalliope's realtime core (docs/DSP.md): eight voices at 2x, decimated once;
-// Poly, Unison and Solo key modes (docs/PLAY.md#key-modes), sustain pedal,
-// pitch bend, mod wheel, MIDI Learn. Effects arrive in P4.
+// Kalliope's realtime core (docs/DSP.md): eight voices at 2x, decimated once,
+// then the stereo chorus and the tempo-synced ping-pong delay; Poly, Unison and
+// Solo key modes (docs/PLAY.md#key-modes), sustain pedal, pitch bend, mod
+// wheel, MIDI Learn. The delay's buffer is allocated here, at construction.
 class Engine final : public krate::IInstrument
 {
 public:
@@ -89,6 +91,8 @@ private:
     bool m_sustain = false;
     std::uint32_t m_phaseSeed = 0x9E3779B9u; // start phases of new Poly notes (deterministic)
     Lfo m_lfo;
+    Chorus m_chorus;
+    Delay m_delay;
     krate::HalfbandDecimator<31> m_decimator;
     std::array<float, 2 * kChunk> m_buffer2x{};
     std::array<float, kChunk> m_lfoValues{};

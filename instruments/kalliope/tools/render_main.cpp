@@ -4,9 +4,10 @@
 //   kalliope-render --bench [--rate HZ]
 //
 // Writes DIR/kalliope-sounds.wav: a few hard-coded sounds in turn (brass, PWM
-// pad, sync lead, cross-mod bell, resonant sweep), each playing a short phrase
-// through MIDI notes on the IInstrument interface, as a host would. <param>
-// overrides apply on top of every sound.
+// pad with chorus II, sync lead and cross-mod bell with delay, resonant sweep),
+// each playing a short phrase through MIDI notes on the IInstrument interface,
+// as a host would (tempo from the Tempo parameter: there is no transport).
+// <param> overrides apply on top of every sound.
 
 #include <algorithm>
 #include <chrono>
@@ -83,18 +84,19 @@ std::vector<Sound> sounds()
         {"pwm pad", {{ParamId::Vco1Wave, pos(2, p::kVco1Wave)}, {ParamId::Vco2Wave, pos(2, p::kVco2Wave)},
                      {ParamId::Vco2Fine, 0.53f}, {ParamId::Pwm, 0.7f}, {ParamId::PwmSrc, pos(0, p::kPwmSrc)},
                      {ParamId::LfoRate, 0.35f}, {ParamId::Cutoff, 0.55f}, {ParamId::VcfEnv, 0.1f},
-                     {ParamId::Env2A, 0.6f}, {ParamId::Env2R, 0.65f}},
+                     {ParamId::Env2A, 0.6f}, {ParamId::Env2R, 0.65f}, {ParamId::Chorus, 1.0f}},
          chords({{57, 60, 64}, {55, 59, 62}, {53, 57, 60, 64}}, 1.2, 1.1)},
         {"sync lead", {{ParamId::Vco1Wave, pos(1, p::kVco1Wave)}, {ParamId::Vco2Wave, pos(1, p::kVco2Wave)},
                        {ParamId::Sync, 1.0f}, {ParamId::Mix, 1.0f}, {ParamId::ModEnv, 0.6f},
                        {ParamId::ModDest, pos(2, p::kModDest)}, {ParamId::Env1D, 0.55f}, {ParamId::Env1S, 0.0f},
-                       {ParamId::Cutoff, 0.8f}, {ParamId::VcfEnv, 0.0f}},
+                       {ParamId::Cutoff, 0.8f}, {ParamId::VcfEnv, 0.0f}, {ParamId::DelayLevel, 0.45f},
+                       {ParamId::DelayTime, pos(3, p::kDelayTime)}, {ParamId::DelayFb, 0.45f}},
          line({60, 63, 67, 72, 70, 67}, 0.3, 0.25)},
         {"cross-mod bell", {{ParamId::Vco1Wave, pos(0, p::kVco1Wave)}, {ParamId::Vco2Wave, pos(0, p::kVco2Wave)},
                             {ParamId::Vco2Range, pos(4, p::kVco2Range)}, {ParamId::Vco2Fine, 0.62f},
                             {ParamId::CrossMod, 0.45f}, {ParamId::Mix, 0.0f}, {ParamId::Cutoff, 0.85f},
                             {ParamId::VcfEnv, 0.0f}, {ParamId::Env2D, 0.6f}, {ParamId::Env2S, 0.0f},
-                            {ParamId::Env2R, 0.6f}},
+                            {ParamId::Env2R, 0.6f}, {ParamId::DelayLevel, 0.35f}, {ParamId::DelayFb, 0.5f}},
          line({72, 79, 76, 84}, 0.6, 0.1)},
         {"resonant sweep", {{ParamId::Vco1Wave, pos(1, p::kVco1Wave)}, {ParamId::Vco1Range, pos(0, p::kVco1Range)},
                             {ParamId::Mix, 0.0f}, {ParamId::Cutoff, 0.2f}, {ParamId::Res, 0.85f},
@@ -183,12 +185,15 @@ int main(int argc, char **argv)
 
     krate::MasterStage master;
     if (bench) {
-        // The heaviest case: all eight voices held with sync, cross mod and full resonance, 60 s.
+        // The heaviest case: all eight voices held with sync, cross mod and full
+        // resonance, chorus II and the delay, 60 s.
         kalliope::Engine engine;
         engine.prepare(rate, kBlock);
         engine.setParam(ParamId::Sync, 1.0f);
         engine.setParam(ParamId::CrossMod, 0.5f);
         engine.setParam(ParamId::Res, 1.0f);
+        engine.setParam(ParamId::Chorus, 1.0f);
+        engine.setParam(ParamId::DelayLevel, 0.5f);
         std::vector<float> out;
         out.reserve(std::size_t(rate) * 60 * 2 + 2 * kBlock);
         const auto t0 = std::chrono::steady_clock::now();
@@ -197,7 +202,7 @@ int main(int argc, char **argv)
             chord.push_back({0.0, note, 100});
         play(engine, master, chord, 60.0, rate, out);
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-        std::printf("rendered 60 s of 8 voices at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
+        std::printf("rendered 60 s of 8 voices with chorus and delay at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
                     seconds, seconds / 60.0 * 100.0);
         return 0;
     }
@@ -214,7 +219,7 @@ int main(int argc, char **argv)
         double length = 0.0;
         for (const NoteEvent &e : sound.phrase)
             length = std::max(length, e.time);
-        const float peak = play(engine, master, sound.phrase, length + 1.5, rate, out);
+        const float peak = play(engine, master, sound.phrase, length + 2.5, rate, out);
         std::printf("  %-15s %6.1f dB\n", sound.name, 20.0 * std::log10(std::max(peak, 1e-9f)));
     }
     const std::string path = outDir + "/kalliope-sounds.wav";

@@ -42,6 +42,7 @@ std::vector<float> render(Engine &engine, std::vector<Event> events, double seco
 Engine &plain(Engine &e, bool vco2 = false)
 {
     e.prepare(kRate, kBlock);
+    e.setParam(ParamId::Chorus, 0.0f); // the voice alone (effects: tst_fx)
     e.setParam(ParamId::Mix, vco2 ? 1.0f : 0.0f);
     e.setParam(ParamId::Cutoff, 1.0f);
     e.setParam(ParamId::Res, 0.0f);
