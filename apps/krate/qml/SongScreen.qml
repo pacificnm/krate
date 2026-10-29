@@ -40,6 +40,8 @@ Item {
 
     // The library on the left (always there while no song is open).
     property bool libraryShown: !Song.loaded
+    // The track list folded away, so the tab gets the whole screen.
+    property bool tracksCollapsed: false
 
     LibraryPanel {
         id: library
@@ -213,9 +215,17 @@ Item {
             y: header.y + header.height + 12
             visible: Song.loaded
             spacing: 0
+            Text { // folded: just how many
+                visible: screen.tracksCollapsed
+                text: Song.tracks.length + " TRACKS"
+                color: "#55575B"
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+                font.bold: true
+            }
             Repeater {
-                model: [["MINE", 56], ["TRACK", list.nameWidth], ["PART", 70], ["NOTES", 64], ["INSTRUMENT", 170], ["LEVEL", 150],
-                        ["", 92], ["FROM", 80]]
+                model: screen.tracksCollapsed ? [] : [["MINE", 56], ["TRACK", list.nameWidth], ["PART", 70], ["NOTES", 64],
+                                                     ["INSTRUMENT", 170], ["LEVEL", 150], ["", 92], ["FROM", 80]]
                 Text {
                     required property var modelData
                     width: modelData[1]
@@ -228,15 +238,42 @@ Item {
             }
         }
 
+        Rectangle { // fold / unfold the tracks, to the right of FROM
+            id: collapseToggle
+            x: parent.width - 16 - width
+            y: headings.y + (headings.height - height) / 2
+            width: 26
+            height: 20
+            radius: 3
+            visible: Song.loaded
+            color: toggleArea.containsMouse ? Theme.silverLight : "transparent"
+            border.color: Theme.deckLine
+            Text {
+                anchors.centerIn: parent
+                text: screen.tracksCollapsed ? "\u25BE" : "\u25B4" // ▾ show / ▴ hide
+                color: Theme.ink
+                font.pixelSize: 12
+            }
+            MouseArea {
+                id: toggleArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: screen.tracksCollapsed = !screen.tracksCollapsed
+            }
+            Accessible.role: Accessible.Button
+            Accessible.name: screen.tracksCollapsed ? "Show the tracks" : "Hide the tracks"
+        }
+
         ListView {
             id: list
-            readonly property int nameWidth: Math.max(160, width - 56 - 70 - 64 - 170 - 150 - 92 - 80)
+            readonly property int nameWidth: Math.max(160, width - 56 - 70 - 64 - 170 - 150 - 92 - 80 - 30)
             x: 16
             y: headings.y + headings.height + 6
             width: parent.width - 32
-            // The tracks take what they need, up to about a third; the tab gets the rest.
-            height: Math.min(contentHeight, Math.max(96, parent.height * 0.34))
-            visible: Song.loaded
+            // The tracks take what they need, up to about a third; the tab gets the rest (all of it, folded).
+            height: screen.tracksCollapsed ? 0 : Math.min(contentHeight, Math.max(96, parent.height * 0.34))
+            visible: Song.loaded && !screen.tracksCollapsed
             clip: true
             spacing: 4
             model: Song.tracks
@@ -366,7 +403,7 @@ Item {
         Item {
             id: tabArea
             x: 16
-            y: list.y + list.height + 10
+            y: list.y + list.height + (screen.tracksCollapsed ? 0 : 10)
             width: parent.width - 32
             height: parent.height - y - 16
             visible: Song.loaded
