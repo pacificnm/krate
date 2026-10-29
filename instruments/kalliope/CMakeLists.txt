@@ -6,8 +6,6 @@ set(KALLIOPE_WARNINGS -Wall -Wextra -Wpedantic -Werror)
 add_library(kalliope_dsp STATIC
     dsp/Engine.h
     dsp/Engine.cpp
-    dsp/Effects.h
-    dsp/Effects.cpp
     dsp/Filters.h
     dsp/Filters.cpp
     dsp/Params.h

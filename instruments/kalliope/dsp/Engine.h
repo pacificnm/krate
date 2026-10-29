@@ -10,15 +10,17 @@
 #include "core/ParamValues.h"
 #include "core/SpscQueue.h"
 #include "core/StepClock.h"
+#include "dsp/Effects.h"
 #include "dsp/HalfbandDecimator.h"
 #include "dsp/Lfo.h"
-#include "kalliope/dsp/Effects.h"
 #include "kalliope/dsp/Params.h"
 #include "kalliope/dsp/Sequence.h"
 #include "kalliope/dsp/Voice.h"
 
 namespace kalliope {
 
+using krate::Chorus;
+using krate::Delay;
 using krate::Lfo;
 
 // Kalliope's realtime core (docs/DSP.md): eight voices at 2x, decimated once,

@@ -4,10 +4,12 @@
 #include <numbers>
 #include <vector>
 
-#include "kalliope/dsp/Effects.h"
+#include "dsp/Effects.h"
 #include "kalliope/dsp/Engine.h"
 
 using namespace kalliope;
+using krate::Chorus;
+using krate::Delay;
 
 // Chorus and delay (docs/DSP.md#effects).
 class TestFx : public QObject

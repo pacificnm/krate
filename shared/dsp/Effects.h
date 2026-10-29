@@ -4,16 +4,22 @@
 #include <cstdint>
 #include <vector>
 
-namespace kalliope {
+namespace krate {
 
-// Stereo chorus from a mono input (docs/DSP.md#effects): two modulated delay
-// lines, one per side, their LFOs a quarter cycle apart, mixed with the dry
-// signal. Mode 0 = off (both sides dry), 1 = I, 2 = II. Realtime-safe.
+// Stereo chorus (Kalliope's and Krimson's docs/DSP.md#effects): a modulated
+// delay line read at two taps (one per side, their LFOs a quarter cycle apart),
+// each mixed with the dry signal. Modes: 0 off (dry), 1 I, 2 II, 3 Ensemble
+// (three slower, deeper taps, two per side). Realtime-safe.
 class Chorus
 {
 public:
+    enum Mode { Off = 0, I = 1, II = 2, Ensemble = 3 };
+
     void prepare(double sampleRate) noexcept;
+    // A mono input into two sides (Kalliope).
     void process(const float *in, float *left, float *right, std::uint32_t frames, int mode) noexcept;
+    // A stereo signal in place: the delay line takes its mid, each side keeps its dry (Krimson).
+    void processStereo(float *left, float *right, std::uint32_t frames, int mode) noexcept;
 
 private:
     static constexpr std::size_t kSize = 8192; // > 15 ms at 192 kHz; power of two
@@ -25,7 +31,7 @@ private:
     double m_phase = 0.0;
 };
 
-// Tempo-synced stereo ping-pong delay (docs/DSP.md#effects). The first echo is
+// Tempo-synced stereo ping-pong delay (Kalliope's and Krimson's docs/DSP.md#effects). The first echo is
 // on the left, the next on the right, and so on; the feedback path darkens each
 // repeat (one-pole low-pass at 4 kHz). The buffer is allocated once, in the
 // constructor; process() never allocates.
@@ -50,4 +56,4 @@ private:
     double m_lpLeft = 0.0, m_lpRight = 0.0;
 };
 
-} // namespace kalliope
+} // namespace krate

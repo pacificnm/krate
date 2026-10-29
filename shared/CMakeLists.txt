@@ -21,11 +21,13 @@ target_include_directories(krate_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(krate_core PRIVATE ${KRATE_WARNINGS})
 
 # --- krate_dsp: DSP building blocks shared by instruments (oversampling
-# decimator, PolyBLEP, band-limited oscillator, ADSR, LFO); no Qt, no JACK.
+# decimator, PolyBLEP, band-limited oscillator, ADSR, LFO, chorus, delay, reverb); no Qt, no JACK.
 # Named so they never collide with an instrument's own dsp/ files (k303 has dsp/Oscillator.h).
 add_library(krate_dsp STATIC
     dsp/BlepOscillator.h
     dsp/BlepOscillator.cpp
+    dsp/Effects.h
+    dsp/Effects.cpp
     dsp/Envelope.h
     dsp/HalfbandDecimator.h
     dsp/Lfo.h

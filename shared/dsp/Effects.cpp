@@ -1,10 +1,10 @@
-#include "kalliope/dsp/Effects.h"
+#include "dsp/Effects.h"
 
 #include <algorithm>
 #include <cmath>
 #include <numbers>
 
-namespace kalliope {
+namespace krate {
 
 namespace {
 struct ChorusMode
@@ -33,6 +33,45 @@ float Chorus::read(double delaySamples) const noexcept
     const auto i0 = std::size_t(std::int64_t(floorPos) & std::int64_t(kSize - 1));
     const auto i1 = (i0 + 1) & (kSize - 1);
     return float(m_line[i0] * (1.0 - frac) + m_line[i1] * frac);
+}
+
+void Chorus::processStereo(float *left, float *right, std::uint32_t frames, int mode) noexcept
+{
+    constexpr double kEnsembleRateHz = 0.6, kEnsembleCentreMs = 10.0, kEnsembleDepthMs = 4.0;
+    constexpr double kThird = 1.0 / 3.0;
+    mode = std::clamp(mode, 0, 3);
+    if (mode == Off) {
+        for (std::uint32_t i = 0; i < frames; ++i) { // keep the line filled, so turning it on is smooth
+            m_line[m_write] = 0.5f * (left[i] + right[i]);
+            m_write = (m_write + 1) & (kSize - 1);
+        }
+        return;
+    }
+    const double msToSamples = m_rate / 1000.0;
+    const ChorusMode &m = kModes[mode == Ensemble ? 1 : mode];
+    for (std::uint32_t i = 0; i < frames; ++i) {
+        m_line[m_write] = 0.5f * (left[i] + right[i]);
+        const double a = 2.0 * std::numbers::pi * m_phase;
+        double wetL, wetR;
+        if (mode == Ensemble) {
+            const auto tap = [&](double offset) {
+                return read((kEnsembleCentreMs + kEnsembleDepthMs * std::sin(a + 2.0 * std::numbers::pi * offset))
+                            * msToSamples);
+            };
+            const double t0 = tap(0.0), t1 = tap(kThird), t2 = tap(2.0 * kThird);
+            wetL = 0.5 * (t0 + t1);
+            wetR = 0.5 * (t1 + t2);
+            m_phase += kEnsembleRateHz / m_rate;
+        } else {
+            wetL = read((m.centreMs + m.depthMs * std::sin(a)) * msToSamples);
+            wetR = read((m.centreMs + m.depthMs * std::cos(a)) * msToSamples);
+            m_phase += m.rateHz / m_rate;
+        }
+        m_phase -= std::floor(m_phase);
+        left[i] = float(kChorusMix * (double(left[i]) + wetL));
+        right[i] = float(kChorusMix * (double(right[i]) + wetR));
+        m_write = (m_write + 1) & (kSize - 1);
+    }
 }
 
 void Chorus::process(const float *in, float *left, float *right, std::uint32_t frames, int mode) noexcept
@@ -114,4 +153,4 @@ void Delay::process(float *left, float *right, std::uint32_t frames, double seco
     }
 }
 
-} // namespace kalliope
+} // namespace krate
