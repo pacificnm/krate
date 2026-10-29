@@ -793,7 +793,7 @@ Item {
         y: 540
         width: 1360
         height: 320
-        baseNote: 36 + 12 * octave.shift // 49 keys, C2-C6 at octave 0: key for key with a 49-key controller
+        baseNote: 48 + 12 * octave.shift
         litColor: "#E2343A"
     }
 

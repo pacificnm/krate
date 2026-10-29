@@ -908,7 +908,7 @@ Item {
         y: 806
         width: 960
         height: 250
-        baseNote: 36 + 12 * panel.octave // 49 keys, C2-C6 at octave 0
+        baseNote: 48 + 12 * panel.octave
     }
 
     // Utilities: clear all MIDI mappings, audio (click to reconnect), MIDI Learn
