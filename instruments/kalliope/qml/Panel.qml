@@ -908,7 +908,7 @@ Item {
         y: 806
         width: 960
         height: 250
-        baseNote: 47 + 12 * panel.octave // 49 keys, key for key with the LX49 (lowest key: 47 at octave 0)
+        baseNote: 36 + 12 * panel.octave // 49 keys, C2-C6 at octave 0
     }
 
     // Utilities: clear all MIDI mappings, audio (click to reconnect), MIDI Learn
