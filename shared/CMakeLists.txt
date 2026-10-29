@@ -57,6 +57,16 @@ add_library(krate_rack STATIC
 target_link_libraries(krate_rack PUBLIC krate_core)
 target_compile_options(krate_rack PRIVATE ${KRATE_WARNINGS})
 
+# --- krate_song: songs to play along with (tempo map, MIDI files); no Qt
+add_library(krate_song STATIC
+    song/Song.h
+    song/Song.cpp
+    song/MidiFile.h
+    song/MidiFile.cpp
+)
+target_include_directories(krate_song PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(krate_song PRIVATE ${KRATE_WARNINGS})
+
 # --- krate_app: Qt helpers for any instrument app (files, screenshot hook)
 add_library(krate_app STATIC
     app/JsonFile.h
@@ -120,3 +130,8 @@ add_executable(tst_rack tests/tst_rack.cpp)
 target_compile_options(tst_rack PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_rack PRIVATE krate_rack krate_testing Qt6::Test)
 add_test(NAME tst_rack COMMAND tst_rack)
+
+add_executable(tst_midifile tests/tst_midifile.cpp)
+target_compile_options(tst_midifile PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_midifile PRIVATE krate_song Qt6::Test)
+add_test(NAME tst_midifile COMMAND tst_midifile)

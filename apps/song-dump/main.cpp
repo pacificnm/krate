@@ -16,6 +16,8 @@
 
 #include <zlib.h>
 
+#include "song/MidiFile.h"
+
 #include <cstdio>
 #include <map>
 #include <memory>
@@ -494,6 +496,21 @@ void dumpMidi(const QString &path)
             std::printf("\n");
         }
     }
+
+    // What Krate's reader (krate_song) makes of it.
+    const auto result = krate::song::readMidiFile(path.toStdString());
+    if (!result.song) {
+        std::printf("\nKrate's reader: %s\n", result.error.c_str());
+        return;
+    }
+    const krate::song::Song &song = *result.song;
+    const auto end = song.tempo.barAt(std::max<krate::song::Tick>(0, song.length - 1)); // the last bar with something in it
+    std::printf("\nKrate's reader: \"%s\", %zu parts, %d bars, %.1f s, %zu tempo changes, %zu time signatures\n",
+                song.title.c_str(), song.tracks.size(), end.bar + 1, song.tempo.secondsAt(song.length),
+                song.tempo.tempos().size(), song.tempo.timeSignatures().size());
+    for (const auto &t : song.tracks)
+        std::printf("  \"%s\" ch %d%s program %d: %d notes, %zu events\n", t.name.c_str(), t.channel + 1,
+                    t.drums ? " (drums)" : "", t.program, t.noteCount, t.events.size());
 }
 
 } // namespace
