@@ -77,34 +77,74 @@ struct Part
     int program = -1;
 };
 
-// Pairs note-ons and note-offs per key: a note-on on a sounding key ends the
-// earlier note first, and notes still on at the end are ended there.
+// Pairs note-ons and note-offs per channel and key: a note-on on a sounding
+// key ends the earlier note first, and notes still on at the end are ended
+// there. Also counts the notes and finds the track's main channel.
 void closeNotes(Track &track, Tick end)
 {
-    std::array<int, 128> on{};
+    std::array<std::array<std::uint8_t, 128>, 16> on{};
+    std::array<int, 16> perChannel{};
     std::vector<Event> out;
     out.reserve(track.events.size());
     for (const Event &e : track.events) {
+        std::uint8_t &count = on[std::size_t(e.channel())][e.data1];
         if (e.type() == 0x90) {
-            if (on[e.data1] > 0) {
-                out.push_back({e.tick, std::uint8_t(0x80 | track.channel), e.data1, 0});
-                --on[e.data1];
+            if (count > 0) {
+                out.push_back({e.tick, std::uint8_t(0x80 | e.channel()), e.data1, 0});
+                --count;
             }
-            ++on[e.data1];
+            ++count;
             ++track.noteCount;
+            ++perChannel[std::size_t(e.channel())];
             track.lowestNote = track.lowestNote < 0 ? e.data1 : std::min<int>(track.lowestNote, e.data1);
             track.highestNote = std::max<int>(track.highestNote, e.data1);
         } else if (e.type() == 0x80) {
-            if (on[e.data1] == 0)
+            if (count == 0)
                 continue; // a stray note-off
-            --on[e.data1];
+            --count;
         }
         out.push_back(e);
     }
-    for (int key = 0; key < 128; ++key)
-        for (; on[std::size_t(key)] > 0; --on[std::size_t(key)])
-            out.push_back({end, std::uint8_t(0x80 | track.channel), std::uint8_t(key), 0});
+    for (int channel = 0; channel < 16; ++channel)
+        for (int key = 0; key < 128; ++key)
+            for (std::uint8_t &count = on[std::size_t(channel)][std::size_t(key)]; count > 0; --count)
+                out.push_back({end, std::uint8_t(0x80 | channel), std::uint8_t(key), 0});
     track.events = std::move(out);
+    track.channel = int(std::max_element(perChannel.begin(), perChannel.end()) - perChannel.begin());
+    track.drums = track.noteCount > 0 && perChannel[std::size_t(kDrumChannel)] == track.noteCount;
+}
+
+// Names in files are often Latin-1; the rest of Krate expects UTF-8.
+std::string toUtf8(const std::string &s)
+{
+    // Valid UTF-8 (which includes plain ASCII) is kept as it is.
+    std::size_t i = 0;
+    bool valid = true;
+    while (i < s.size() && valid) {
+        const auto c = std::uint8_t(s[i]);
+        const int extra = c < 0x80 ? 0 : (c >> 5) == 0x6 ? 1 : (c >> 4) == 0xE ? 2 : (c >> 3) == 0x1E ? 3 : -1;
+        if (extra < 0 || i + std::size_t(extra) >= s.size() + (extra == 0 ? 1 : 0)) {
+            valid = false;
+            break;
+        }
+        for (int k = 1; k <= extra; ++k)
+            if ((std::uint8_t(s[i + std::size_t(k)]) & 0xC0) != 0x80)
+                valid = false;
+        i += std::size_t(extra) + 1;
+    }
+    if (valid)
+        return s;
+    std::string out;
+    for (const char ch : s) {
+        const auto c = std::uint8_t(ch);
+        if (c < 0x80) {
+            out += char(c);
+        } else {
+            out += char(0xC0 | (c >> 6));
+            out += char(0x80 | (c & 0x3F));
+        }
+    }
+    return out;
 }
 
 } // namespace
@@ -133,7 +173,7 @@ MidiFileResult readMidiFile(std::span<const std::uint8_t> data)
     struct Named
     {
         std::string name, instrument;
-        std::map<int, Part> parts; // by channel
+        std::map<int, Part> parts; // by channel (format 0 splits them)
     };
     std::vector<Named> fileTracks;
     Tick songEnd = 0;
@@ -238,24 +278,45 @@ MidiFileResult readMidiFile(std::span<const std::uint8_t> data)
         return {std::nullopt, "the MIDI file has no tracks"};
 
     // Format 1's first track names the song when it has no notes (the conductor track).
-    if (format == 1 && fileTracks.front().parts.empty())
-        song.title = fileTracks.front().name;
+    if (format == 1) {
+        bool notes = false;
+        for (const auto &[channel, part] : fileTracks.front().parts)
+            for (const Event &e : part.events)
+                notes = notes || e.type() == 0x90;
+        if (!notes)
+            song.title = toUtf8(fileTracks.front().name);
+    }
 
-    for (Named &file : fileTracks) {
-        for (auto &[channel, part] : file.parts) {
-            Track track;
-            track.name = file.name;
-            if (file.parts.size() > 1 || track.name.empty())
-                track.name += (track.name.empty() ? "" : " ") + std::string("ch ") + std::to_string(channel + 1);
-            track.instrument = file.instrument;
-            track.channel = channel;
-            track.program = part.program;
-            track.drums = channel == kDrumChannel;
-            track.events = std::move(part.events);
-            closeNotes(track, songEnd);
-            if (!track.events.empty())
-                song.tracks.push_back(std::move(track));
+    const auto addTrack = [&](Track track) {
+        closeNotes(track, songEnd);
+        if (track.noteCount > 0)
+            song.tracks.push_back(std::move(track));
+    };
+    for (std::size_t t = 0; t < fileTracks.size(); ++t) {
+        Named &file = fileTracks[t];
+        const std::string name = file.name.empty() ? "Track " + std::to_string(t + 1) : toUtf8(file.name);
+        if (format == 0) { // the whole band in one track: a part per channel
+            for (auto &[channel, part] : file.parts) {
+                Track track;
+                track.name = name + " ch " + std::to_string(channel + 1);
+                track.instrument = toUtf8(file.instrument);
+                track.program = part.program;
+                track.events = std::move(part.events);
+                addTrack(std::move(track));
+            }
+            continue;
         }
+        Track track;
+        track.name = name;
+        track.instrument = toUtf8(file.instrument);
+        for (auto &[channel, part] : file.parts) {
+            if (track.program < 0)
+                track.program = part.program;
+            track.events.insert(track.events.end(), part.events.begin(), part.events.end());
+        }
+        std::stable_sort(track.events.begin(), track.events.end(),
+                         [](const Event &a, const Event &b) { return a.tick < b.tick; });
+        addTrack(std::move(track));
     }
     song.length = songEnd;
     return {std::move(song), {}};

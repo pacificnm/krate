@@ -218,7 +218,45 @@ private slots:
                                                      {0x90, 200}, {0xB0, 500}, {0x80, 500}};
         QCOMPARE(seen, want);
         QCOMPARE(result.song->tracks.at(0).noteCount, 3);
-        QCOMPARE(result.song->tracks.at(0).name, std::string("ch 1"));
+        QCOMPARE(result.song->tracks.at(0).name, std::string("Track 1")); // unnamed
+    }
+
+    // Files from tab software put each string on its own channel: one track
+    // stays one part, its events keep their channels, and set-up messages on
+    // channels with no notes are kept with it. Latin-1 names become UTF-8.
+    void stringsOnChannelsStayOneTrack()
+    {
+        TrackBuilder bass;
+        bass.meta(0, 0x03, "Bass G\xfcnter") // Latin-1 u-umlaut
+            .event(0, {0xB0, 7, 100})          // set-up on channel 1, no notes there
+            .event(0, {0xE1, 0, 64})
+            .event(0, {0x91, 28, 100})         // E string
+            .event(0, {0x92, 33, 100})         // A string
+            .event(240, {0x81, 28, 0})
+            .event(0, {0xE2, 0, 80})           // bend on the A string only
+            .event(240, {0x82, 33, 0});
+        TrackBuilder setupOnly; // no notes at all: dropped
+        setupOnly.meta(0, 0x03, "Empty").event(0, {0xB3, 7, 100});
+        const auto result = read(smf(1, 480, {bass, setupOnly}));
+        QVERIFY2(result.song, result.error.c_str());
+        const Song &song = *result.song;
+        QCOMPARE(song.tracks.size(), std::size_t(1));
+        const Track &t = song.tracks[0];
+        QCOMPARE(t.name, std::string("Bass G\xc3\xbcnter"));
+        QCOMPARE(t.noteCount, 2);
+        QCOMPARE(t.events.size(), std::size_t(7));
+        QCOMPARE(t.channel, 1); // the first channel with the most notes
+        QVERIFY(!t.drums);
+        int bendChannel = -1;
+        for (const Event &e : t.events)
+            if (e.type() == 0xE0 && e.tick == 240)
+                bendChannel = e.channel();
+        QCOMPARE(bendChannel, 2);
+        QCOMPARE(song.title, std::string()); // the first track has notes: no conductor
+        // Valid UTF-8 stays as it is.
+        TrackBuilder named;
+        named.meta(0, 0x03, "Caf\xc3\xa9").event(0, {0x90, 60, 1}).event(1, {0x80, 60, 0});
+        QCOMPARE(read(smf(1, 480, {named})).song->tracks.at(0).name, std::string("Caf\xc3\xa9"));
     }
 
     void skipsWhatItDoesNotUse()

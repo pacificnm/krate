@@ -80,11 +80,11 @@ struct Event
 
 struct Track
 {
-    std::string name;       // as in the file (bytes; usually ASCII or UTF-8)
+    std::string name;       // UTF-8
     std::string instrument; // the file's instrument name, if any
-    int channel = 0;        // 0..15 (the file's; a track is one channel)
+    int channel = 0;        // 0..15: the channel most of its notes are on (files from tab software use one per string)
     int program = -1;       // the first program change, -1 = none
-    bool drums = false;     // channel 10, the drum-kit channel
+    bool drums = false;     // its notes are on channel 10, the drum-kit channel
     std::vector<Event> events; // in tick order; every note-on has its note-off
     int noteCount = 0;
     int lowestNote = -1, highestNote = -1;
@@ -94,7 +94,7 @@ struct Song
 {
     std::string title;
     TempoMap tempo;
-    std::vector<Track> tracks; // only tracks with notes or controllers
+    std::vector<Track> tracks; // only tracks with notes
     Tick length = 0;           // the last event's tick
 };
 
