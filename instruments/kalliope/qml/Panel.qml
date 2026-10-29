@@ -902,7 +902,8 @@ Item {
         }
     }
 
-    Keyboard {
+    PianoKeyboard {
+        instrument: Kalliope
         x: 320
         y: 806
         width: 960

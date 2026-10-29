@@ -141,8 +141,8 @@ shared/
   host/      krate_host   JackHost (standalone); later RackHost                                   -- JACK, no Qt
   app/       krate_app    JsonFile, MidiMapFile, PanelFile, ScreenshotHook                        -- Qt
              krate_qml    MidiLearnController (QML singleton MidiLearn)
-  qml/       krate_qml    QML module "Krate": Knob, PanelSlider, PanelSwitch, PanelButton (tint),
-                          Led, LcdField, PanelLabel, LearnOverlay, Theme
+  qml/       krate_qml    QML module "Krate": Knob, RingKnob, PanelSlider, PanelSwitch, PanelButton (tint),
+                          PianoKeyboard, Led, LcdField, PanelLabel, LearnOverlay, Theme
   tests/     tst_queue; TestHost.h (drives any IInstrument with a Transport)
 instruments/
   k303/      dsp/ (k303_dsp: Engine : IInstrument), app/ + qml/ (k303_ui: QML module "K303"),

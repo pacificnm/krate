@@ -92,6 +92,8 @@ qt_add_qml_module(krate_qml
         qml/PanelLabel.qml
         qml/PanelSlider.qml
         qml/PanelSwitch.qml
+        qml/PianoKeyboard.qml
+        qml/RingKnob.qml
         qml/Theme.qml
 )
 # Generated type registration includes headers by bare name.

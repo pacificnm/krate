@@ -21,6 +21,7 @@ constexpr int kCcAllNotesOff = 123;
 constexpr double kMaxUnisonDetuneSemis = 0.35; // Unison Detune at 100 %: the outer voices +/- 35 cents
 constexpr double kUnisonSpread = 0.7;          // stereo position of the outer unison voices
 constexpr int kDefaultFirstChannel = 2;        // slots A..D on MIDI channels 3..6
+constexpr std::int8_t kKeyUp = -128;
 } // namespace
 
 Engine::Engine()
@@ -43,6 +44,8 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
         lfo.reset();
     m_vibrato.reset();
     m_sustained.fill(false);
+    for (auto &channel : m_keyShift)
+        channel.fill(kKeyUp);
     for (int slot = 0; slot < SlotCount; ++slot) {
         m_state[std::size_t(slot)] = SlotState{};
         m_state[std::size_t(slot)].mode = voiceMode(slot);
@@ -322,10 +325,38 @@ void Engine::allNotesOff(int slot) noexcept
         }
 }
 
-void Engine::handleMidi(const krate::MidiEvent &event) noexcept
+void Engine::publishHeld() noexcept
 {
-    const krate::MidiMessage m = krate::decode(event);
-    const int channel = event.data[0] & 0x0F;
+    std::uint64_t mask[2] = {0, 0};
+    for (const SlotState &state : m_state)
+        for (int i = 0; i < state.heldCount; ++i) {
+            const int n = state.held[std::size_t(i)];
+            mask[n / 64] |= std::uint64_t(1) << (n % 64);
+        }
+    m_heldMask[0].store(mask[0], std::memory_order_relaxed);
+    m_heldMask[1].store(mask[1], std::memory_order_relaxed);
+}
+
+void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
+{
+    krate::MidiMessage m = krate::decode(event);
+    const int midiChannel = event.data[0] & 0x0F;
+    const int channel = keyboard ? -1 : midiChannel;
+    // Octave shifts MIDI keys (the on-screen keyboard already shows the shifted range).
+    if (!keyboard && m.type == krate::MidiMessage::Type::NoteOn) {
+        const int shift = 12 * units::octaveShift(m_global.get(int(ParamId::Octave)));
+        const int note = m.data1 + shift;
+        if (note < 0 || note > 127)
+            return;
+        m_keyShift[std::size_t(midiChannel)][m.data1] = std::int8_t(shift);
+        m.data1 = note;
+    } else if (!keyboard && m.type == krate::MidiMessage::Type::NoteOff) {
+        const int shift = m_keyShift[std::size_t(midiChannel)][m.data1];
+        if (shift == kKeyUp)
+            return;
+        m_keyShift[std::size_t(midiChannel)][m.data1] = kKeyUp;
+        m.data1 = m.data1 + shift;
+    }
     const auto forSlots = [&](int note, auto &&action) {
         const unsigned slots = slotsFor(channel, note);
         for (int slot = 0; slot < SlotCount; ++slot)
@@ -410,6 +441,10 @@ void Engine::process(const krate::AudioBlock &block) noexcept
             m_state[std::size_t(slot)].lastNote = -1;
         }
 
+    // The on-screen keyboard and wheels, at the start of the block.
+    while (const auto event = m_gui.pop())
+        handleMidi(*event, true);
+
     // Render up to each MIDI event, then apply it on its exact frame.
     std::uint32_t done = 0;
     for (std::uint32_t e = 0; e <= block.midiCount; ++e) {
@@ -423,6 +458,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         if (e < block.midiCount)
             handleMidi(block.midi[e]);
     }
+    publishHeld();
 
     const double target = kOutputTrim * units::gain(m_global.get(int(ParamId::Volume)));
     if (m_volume < 0.0)

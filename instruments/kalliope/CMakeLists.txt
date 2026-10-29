@@ -48,7 +48,6 @@ qt_add_qml_module(kalliope_ui
         app/SequenceFile.h
         app/SequenceFile.cpp
     QML_FILES
-        qml/Keyboard.qml
         qml/Main.qml
         qml/Panel.qml
 )

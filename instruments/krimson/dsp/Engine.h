@@ -7,6 +7,7 @@
 #include "core/Instrument.h"
 #include "core/Midi.h"
 #include "core/ParamValues.h"
+#include "core/SpscQueue.h"
 #include "dsp/HalfbandDecimator.h"
 #include "krimson/dsp/Params.h"
 #include "krimson/dsp/Voice.h"
@@ -65,6 +66,21 @@ public:
     // A slot's sound in DSP units.
     SlotSettings settings(int slot) const noexcept;
 
+    // GUI thread: the on-screen keyboard and wheels, played as the keyboard
+    // (the lit slots), at the next block. status: 0x90 note on, 0x80 note off,
+    // 0xB0 control change, 0xE0 pitch bend. False if the queue is full.
+    bool postKeyboard(std::uint8_t status, std::uint8_t d1, std::uint8_t d2) noexcept
+    {
+        return m_gui.push({0, 3, {status, d1, d2}});
+    }
+    // Any thread: is `note` held in any slot? Updated every block.
+    bool noteHeld(int note) const noexcept
+    {
+        if (note < 0 || note > 127)
+            return false;
+        return (m_heldMask[std::size_t(note / 64)].load(std::memory_order_relaxed) >> (note % 64)) & 1u;
+    }
+
     static constexpr int kVoices = 16;
     static constexpr int kUnisonVoices = 3; // voices stacked per note in Unison
     enum class VoiceMode { Poly, Mono, Legato, Unison };
@@ -99,8 +115,11 @@ private:
         std::array<int, kUnisonVoices> monoVoices{-1, -1, -1}; // Mono / Legato / Unison: the voices it plays
     };
 
-    void handleMidi(const krate::MidiEvent &event) noexcept;
-    // The slots a message on `channel` (about `note`, or -1) reaches, as a bit mask.
+    // keyboard: from the on-screen keyboard (the lit slots, whatever the channel; no Octave shift).
+    void handleMidi(const krate::MidiEvent &event, bool keyboard = false) noexcept;
+    void publishHeld() noexcept;
+    // The slots a message on `channel` (about `note`, or -1) reaches, as a bit mask
+    // (channel -1: the keyboard).
     unsigned slotsFor(int channel, int note) const noexcept;
     void noteOn(int slot, int note, int velocity) noexcept;
     void noteOff(int slot, int note) noexcept;
@@ -144,6 +163,12 @@ private:
     std::array<SlotSettings, SlotCount> m_settings{};
     double m_volume = -1.0;
     double m_volumeSmoothing = 0.0;
+
+    krate::SpscQueue<krate::MidiEvent, 256> m_gui;
+    std::array<std::atomic<std::uint64_t>, 2> m_heldMask{};
+    // Octave: the shift each MIDI key went down with, per channel and note, so
+    // its note-off matches even if Octave changed while it was held (-128 = up).
+    std::array<std::array<std::int8_t, 128>, 16> m_keyShift{};
 };
 
 } // namespace krimson

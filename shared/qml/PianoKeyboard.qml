@@ -3,11 +3,15 @@ pragma ComponentBehavior: Bound
 import QtQuick
 
 // Two-octave keyboard (C to C) played with the mouse: press and glide across
-// keys; keys held from MIDI light up too (docs/UI.md).
+// keys; keys held from MIDI light up too. `instrument` is the instrument's
+// controller singleton, which provides noteOn(n), noteOff(n), noteHeld(n) and
+// notesRevision (Kalliope, Krimson).
 Item {
     id: keyboard
 
+    required property var instrument
     property int baseNote: 48 // lowest C
+    property color litColor: "#E2701F"
     readonly property int whiteCount: 15
     readonly property real whiteWidth: width / whiteCount
     readonly property real blackWidth: whiteWidth * 0.6
@@ -17,7 +21,7 @@ Item {
 
     function whiteNote(i) { return baseNote + 12 * Math.floor(i / 7) + whiteOffsets[i % 7] }
     function hasBlackAfter(i) { return i < whiteCount - 1 && [0, 1, 3, 4, 5].indexOf(i % 7) >= 0 }
-    function lit(note) { return note === mouseNote || (Kalliope.notesRevision >= 0 && Kalliope.noteHeld(note)) }
+    function lit(note) { return note === mouseNote || (instrument.notesRevision >= 0 && instrument.noteHeld(note)) }
 
     // The key under a point: black keys first (they sit on top).
     function noteAt(px, py) {
@@ -38,10 +42,10 @@ Item {
         if (note === mouseNote)
             return
         if (mouseNote >= 0)
-            Kalliope.noteOff(mouseNote)
+            instrument.noteOff(mouseNote)
         mouseNote = note
         if (note >= 0)
-            Kalliope.noteOn(note)
+            instrument.noteOn(note)
     }
 
     Accessible.role: Accessible.Grouping
@@ -60,8 +64,8 @@ Item {
             radius: 3
             border.color: "#2A2B2D"
             gradient: Gradient {
-                GradientStop { position: 0.0; color: keyboard.lit(whiteKey.note) ? "#F3B27A" : "#F4F4F2" }
-                GradientStop { position: 1.0; color: keyboard.lit(whiteKey.note) ? "#E2701F" : "#D4D4D0" }
+                GradientStop { position: 0.0; color: keyboard.lit(whiteKey.note) ? Qt.lighter(keyboard.litColor, 1.5) : "#F4F4F2" }
+                GradientStop { position: 1.0; color: keyboard.lit(whiteKey.note) ? keyboard.litColor : "#D4D4D0" }
             }
         }
     }
@@ -79,8 +83,8 @@ Item {
             radius: 2
             border.color: "#000"
             gradient: Gradient {
-                GradientStop { position: 0.0; color: keyboard.lit(blackKey.note) ? "#E2701F" : "#2A2B2E" }
-                GradientStop { position: 1.0; color: keyboard.lit(blackKey.note) ? "#9A4410" : "#0B0B0C" }
+                GradientStop { position: 0.0; color: keyboard.lit(blackKey.note) ? keyboard.litColor : "#2A2B2E" }
+                GradientStop { position: 1.0; color: keyboard.lit(blackKey.note) ? Qt.darker(keyboard.litColor, 1.6) : "#0B0B0C" }
             }
         }
     }

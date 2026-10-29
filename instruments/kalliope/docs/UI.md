@@ -39,7 +39,7 @@ Upper deck (sound) 250–540, function deck 560–760, keyboard deck 780–1076.
 | Step buttons | In SEQ mode, the BANK and PATCH rows become steps 1–16 | Yellow = notes, amber = tie, grey = rest, dim = past the pattern's length, white = playing, blinking red = the record cursor. Click to record into a step; Shift-click to make it the last |
 | Arp, delay, play and master knobs | `Knob`, value under it | Arp mode/range/rate, delay level/time/feedback, velocity, bend range, Tempo (standalone), Volume |
 | UNMAP, AUDIO, LEARN | As k303 and K909 | Plus the audio status line and output meter |
-| Keyboard | `Keyboard.qml`: two octaves, ◂ OCTAVE ▸ (the Octave parameter, −3 … +3: the keyboard shows C0 … C6 and MIDI keys from the LX49 shift by the same amount, on top of the LX49's own octave buttons) | Mouse: press and glide; keys held from MIDI light up where they sound. Notes go to the engine through a lock-free queue. The octave buttons learn as actions `octave_down` / `octave_up`, the display as the Octave parameter |
+| Keyboard | `PianoKeyboard` (shared in the `Krate` module since Krimson's panel): two octaves, ◂ OCTAVE ▸ (the Octave parameter, −3 … +3: the keyboard shows C0 … C6 and MIDI keys from the LX49 shift by the same amount, on top of the LX49's own octave buttons) | Mouse: press and glide; keys held from MIDI light up where they sound. Notes go to the engine through a lock-free queue. The octave buttons learn as actions `octave_down` / `octave_up`, the display as the Octave parameter |
 
 Keyboard shortcuts (standalone): Space run/stop (for the arpeggiator), L learn, Esc leaves learn, Z/X octave down/up.
 

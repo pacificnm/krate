@@ -87,6 +87,43 @@ private slots:
         QCOMPARE(engine.slotParam(0, ParamId::Res), paramDescriptor(ParamId::Res).defaultValue);
     }
 
+    // The on-screen keyboard and wheels play the lit slots; Octave shifts MIDI keys
+    // only, and a key's note-off matches its note-on even if Octave changed.
+    void keyboardWheelsAndOctave()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        k.engine.prepare(48000.0, 64);
+        std::array<float, 64> l, r;
+        const auto block = [&](const krate::MidiEvent *e = nullptr) {
+            krate::processStereo(k.engine, l.data(), r.data(), 64, e, e ? 1 : 0);
+        };
+        k.slotSetup.pressSlot(1, false); // B lit
+        k.controller.noteOn(64);
+        block();
+        QVERIFY(k.controller.noteHeld(64));
+        QCOMPARE(k.engine.voiceSlot(0), 1);
+        k.controller.noteOff(64);
+        k.controller.pitchBend(1.0);
+        k.controller.modWheel(0.5);
+        block();
+        QVERIFY(!k.controller.noteHeld(64));
+        QVERIFY(k.engine.settings(1).bendSemis > 1.9);
+
+        k.controller.setValue(QStringLiteral("octave"), position(4, positions::kOctave)); // +1
+        const krate::MidiEvent on{0, 3, {0x90, 60, 100}}, off{0, 3, {0x80, 60, 0}};
+        block(&on);
+        QVERIFY(k.engine.noteHeld(72));
+        k.controller.setValue(QStringLiteral("octave"), position(3, positions::kOctave)); // 0, while held
+        block(&off);
+        QVERIFY(!k.engine.noteHeld(72));
+        k.controller.noteOn(60); // on-screen: as shown, not shifted
+        block();
+        QVERIFY(k.engine.noteHeld(60));
+    }
+
     void controllerSwitchesSlotsAndDrivesTheTransport()
     {
         QTemporaryDir dir;

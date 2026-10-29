@@ -5,28 +5,36 @@ A fixed-size panel drawn at **1600 × 900** design pixels, scaled to the window.
 ## Layout (left to right, as the reference)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ MASTER ◯   ┌ARPEGGIATOR┐┌VIBRATO┐┌MOD ENV┐┌──OSCILLATORS──┐┌──FILTER──┐┌AMP ENV┐┌DELAY·FX┐┌OUTPUT┐  Krimson │
-│ MORPH [W][V]│RUN ◯rate  ││LFO 1  ││ ◯A    ││◯LFO1  [wave]  ││◯LFO amt  ││ ◯A    ││◯tempo  ││◯level│  VIRTUAL │
-│ PROGRAM [11]│range hold ││◯rate  ││ ◯D    ││◯mod ENV [88]  ││◯env amt  ││ ◯D    ││◯fb     ││◯pan  │  ANALOG  │
-│ [A][B][C][D]│VOICE MODE ││◯amt   ││ ◯amt  ││◯OSC2  ◯mix    ││◯freq ◯res││ ◯S ◯R ││CHORUS  ││REVERB│          │
-│ OCTAVE ◂ ▸  │◯glide     ││LFO 2  ││ dest  ││ sync fm ring  ││type drive││ vel   ││◯rev    ││      │          │
-├─────────────┴───────────┴┴───────┴┴───────┴┴───────────────┴┴──────────┴┴───────┴┴────────┴┴──────┴──────────┤
-│ wheels  │                         keyboard (mouse-playable, lights MIDI notes)                                │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Krate                                                                   Krimson  VIRTUAL ANALOG SYNTHESIZER│
+│┌────────────────┬──────────┬───────────┬────────┬─────────────┬─────────────┬────────┬──────┬───────┐     │
+││MASTER TEMPO OCT│ARP·VOICE │LFO1 · LFO2│MOD ENV │ OSCILLATORS │   FILTER    │AMP ENV │  FX  │OUTPUT │     │
+││WHEEL  PROGRAM  │ARP HOLD  │◯rate ◯rate│ ◯att   │OSC1 ▪ OSC2 ▪│TYPE ▪ ◯FREQ │◯A ◯D   │CHORUS│◯level │     │
+││[A][B][C][D]    │◯mode..   │◯amt  ◯amt │ ◯dec   │◯pw  ◯semi   │◯res ◯drive  │◯S ◯R   │◯dly  │◯pan   │     │
+││SLOT SETUP      │VOICE ▪   │WAVE ▪ DEST│ ◯amt   │◯mix ◯fine   │◯env ◯vel    │◯vel    │◯time │       │     │
+││CH ZONE SPLIT ON│◯glide◯det│DEST ▪     │ DEST ▪ │◯fm  [KBD]   │KBD ▪ fenv   │◯gain   │◯rev  │       │     │
+││                │◯bend     │           │        │[SYNC][RING] │ ◯A◯D◯S◯R    │        │      │       │     │
+│└────────────────┴──────────┴───────────┴────────┴─────────────┴─────────────┴────────┴──────┴───────┘     │
+│ PITCH MOD │                     keyboard (mouse-playable, lights held keys)                               │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Exact coordinates are settled in C4 against screenshots. A section model in `Panel.qml` (key, label, kind, position) drives the controls, as in Kalliope.
+▪ = a list of choices with an LED each, ◯ = a ring knob, [ ] = a button.
 
 ## Controls
 
 | Control | Kind |
 | --- | --- |
-| Knobs | A new shared `RingKnob`: a black knob with an LED ring for its value, plus a second, dimmer arc showing the morph range when one is set |
-| Selectors | Buttons that step through a list, with LEDs beside the choices (wave, filter type, LFO wave and destination), as on the reference |
-| Displays | Program (bank 1–8 and program 1–8, a dot while edited), OSC 2 semitone, the edited slot |
-| Slot buttons A–D | Lit = edited and playing; Shift-click to layer |
-| Wheels | Pitch bend and mod wheel shown (from MIDI), mouse-draggable |
-| Keyboard | As Kalliope's, with the octave buttons |
+| Knobs | `RingKnob` (new, shared in the `Krate` module): a black knob inside an LED ring showing its value (bipolar knobs light from the top), with a second, blue arc reserved for the morph range (C5); label above, value under |
+| Choices | Waves, filter type, key tracking, LFO waves and destinations, voice mode, wheel, chorus: a list with an LED per choice; click a choice to pick it; learnable as one control |
+| Switches | Sync, Ring, OSC 2 KBD, ARP, HOLD, slot ON: small buttons, red when on |
+| Slot buttons A–D | Click: play and edit that slot; Shift-click: layer; LED = lit (the keyboard plays it); highlighted = the slot being edited; learnable as actions `slotA`…`slotD` |
+| Slot setup | The edited slot's MIDI channel (or none), zone (whole, lower, upper), on/off, and the split key (or off) |
+| Program display | `--` until programs (C7) |
+| Wheels | Pitch (springs back) and mod, mouse-draggable; they act on the lit slots |
+| Keyboard | `PianoKeyboard` (shared with Kalliope, moved to the `Krate` module): two octaves from C3 shifted by Octave, mouse-playable, lights keys held in any slot |
+| Master level, Tempo (standalone), Octave | As Kalliope's |
+
+Every control edits the edited slot and its value comes back when you switch slots. Keyboard shortcuts (standalone): Space run/stop, L learn, Esc leaves learn.
 
 Rack: Tempo hidden in the rack, the rest as standalone.
