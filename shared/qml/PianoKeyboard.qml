@@ -139,7 +139,7 @@ Item {
         x: 6
         y: 4
         z: 10
-        text: "showing C" + (Math.floor(keyboard.shownBase / 12) - 1) + "–C" + (Math.floor(keyboard.shownBase / 12) - 1 + keyboard.octaves)
+        text: "notes " + keyboard.shownBase + "–" + (keyboard.shownBase + 12 * keyboard.octaves)
         color: "#2A2B2D"
         font.pixelSize: Math.max(10, keyboard.height * 0.05)
         font.bold: true
