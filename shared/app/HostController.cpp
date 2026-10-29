@@ -26,6 +26,10 @@ HostController::HostController(AudioHost &host, const QString &clientName, QObje
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
+    for (int i = 0; i < m_host.inputCount(); ++i) {
+        m_inputPorts << QString();
+        m_inputLevels << 0.0;
+    }
 
     m_pollTimer.setInterval(kPollIntervalMs);
     connect(&m_pollTimer, &QTimer::timeout, this, &HostController::poll);
@@ -78,8 +82,12 @@ void HostController::connectAudio()
     for (const auto &port : ports)
         qCInfo(lcHost) << "output ->" << port.c_str();
 
+    if (m_requestedBufferSize > 0)
+        m_host.setBufferSize(std::uint32_t(m_requestedBufferSize));
     m_lastXruns = -1; // force a status refresh
     connectMidiInput();
+    refreshCapturePorts();
+    connectInputs();
     poll();
 }
 
@@ -115,6 +123,118 @@ void HostController::connectMidiInput()
     }
 }
 
+int HostController::inputCount() const { return m_host.inputCount(); }
+
+void HostController::setInputPorts(const QStringList &ports)
+{
+    for (int i = 0; i < m_inputPorts.size(); ++i)
+        m_inputPorts[i] = ports.value(i);
+    emit inputPortsChanged();
+    connectInputs();
+}
+
+void HostController::setInputPort(int input, const QString &port)
+{
+    if (input < 0 || input >= m_inputPorts.size() || m_inputPorts[input] == port)
+        return;
+    m_inputPorts[input] = port;
+    emit inputPortsChanged();
+    if (m_host.isOpen())
+        m_host.connectInput(input, port.toStdString());
+    m_lastXruns = -1; // refresh "connected"
+}
+
+QString HostController::portLabel(const QString &port)
+{
+    if (port.isEmpty())
+        return QStringLiteral("None");
+    QString device = port.section(u':', 0, 0);
+    QString channel = port.section(u':', 1);
+    // PipeWire's JACK ports carry the device's description ("USB Audio Interface");
+    // some setups use its node name instead (alsa_input.usb-Maker_Device-00.analog-stereo).
+    if (device.startsWith(u"alsa_input.")) {
+        device = device.mid(11).section(u'.', 0, 0);
+        for (const auto prefix : {u"usb-", u"pci-"})
+            if (device.startsWith(prefix))
+                device = device.mid(4);
+        static const QRegularExpression serial(QStringLiteral("-\\d+$"));
+        device.remove(serial);
+        device.replace(u'_', u' ');
+    }
+    static const QRegularExpression stereo(QStringLiteral("^capture_F([LR])$"));
+    if (const auto m = stereo.match(channel); m.hasMatch())
+        channel = m.captured(1) == u"L" ? QStringLiteral("in 1") : QStringLiteral("in 2");
+    else
+        channel.replace(QStringLiteral("capture_"), QStringLiteral("in "));
+    return device + QStringLiteral(" · ") + channel;
+}
+
+QVariantList HostController::inputsConnected() const
+{
+    QVariantList result;
+    for (int i = 0; i < m_inputPorts.size(); ++i)
+        result << (m_host.isOpen() && m_host.inputConnected(i));
+    return result;
+}
+
+QVariantList HostController::inputLevels() const
+{
+    QVariantList result;
+    for (qreal level : m_inputLevels)
+        result << level;
+    return result;
+}
+
+void HostController::setRequestedBufferSize(int frames)
+{
+    frames = std::max(0, frames);
+    if (frames == m_requestedBufferSize)
+        return;
+    m_requestedBufferSize = frames;
+    emit requestedBufferSizeChanged();
+    if (m_host.isOpen() && frames > 0)
+        m_host.setBufferSize(std::uint32_t(frames));
+}
+
+qreal HostController::latencyMs() const
+{
+    const int rate = sampleRate();
+    return rate > 0 ? 1000.0 * m_host.roundTripFrames() / rate : 0.0;
+}
+
+void HostController::refreshCapturePorts()
+{
+    QStringList ports;
+    if (m_host.isOpen())
+        for (const auto &port : m_host.captureSourcePorts())
+            ports << QString::fromStdString(port);
+    if (ports != m_capturePorts) {
+        m_capturePorts = ports;
+        emit capturePortsChanged();
+    }
+}
+
+void HostController::connectInputs()
+{
+    if (!m_host.isOpen())
+        return;
+    // Only ports that exist: a device plugged in later connects on its port change.
+    for (int i = 0; i < m_inputPorts.size(); ++i)
+        if (m_inputPorts[i].isEmpty() || m_capturePorts.contains(m_inputPorts[i]))
+            m_host.connectInput(i, m_inputPorts[i].toStdString());
+    m_lastXruns = -1; // refresh "connected"
+}
+
+namespace {
+qreal meterLevel(float peak, qreal previous)
+{
+    // Peak in dB mapped to 0..1 over kMeterFloorDb..0, with a steady fall.
+    const qreal db = peak > 0.0f ? 20.0 * std::log10(qreal(peak)) : kMeterFloorDb;
+    const qreal target = qBound(0.0, 1.0 - db / kMeterFloorDb, 1.0);
+    return std::max(target, previous - kMeterFallPerPoll);
+}
+} // namespace
+
 void HostController::poll()
 {
     if (m_host.isOpen() && m_host.serverGone()) {
@@ -125,8 +245,11 @@ void HostController::poll()
         m_retryTimer.start();
     }
 
-    if (m_host.isOpen() && m_host.takePortsChanged())
+    if (m_host.isOpen() && m_host.takePortsChanged()) {
         connectMidiInput();
+        refreshCapturePorts();
+        connectInputs();
+    }
 
     if (m_host.isOpen()) {
         const bool midi = m_host.midiInputConnected();
@@ -137,7 +260,9 @@ void HostController::poll()
         const int xruns = xrunCount();
         const int rate = sampleRate();
         const int buffer = bufferSize();
-        if (xruns != m_lastXruns || rate != m_lastSampleRate || buffer != m_lastBufferSize) {
+        const std::uint32_t latency = m_host.roundTripFrames();
+        if (xruns != m_lastXruns || rate != m_lastSampleRate || buffer != m_lastBufferSize || latency != m_lastLatency) {
+            m_lastLatency = latency;
             m_lastXruns = xruns;
             m_lastSampleRate = rate;
             m_lastBufferSize = buffer;
@@ -149,11 +274,18 @@ void HostController::poll()
         }
     }
 
-    // Meter: peak in dB mapped to 0..1 over kMeterFloorDb..0, with a steady fall.
-    const float peak = m_host.takePeak(); // master output, after the soft clip
-    const qreal db = peak > 0.0f ? 20.0 * std::log10(qreal(peak)) : kMeterFloorDb;
-    const qreal target = qBound(0.0, 1.0 - db / kMeterFloorDb, 1.0);
-    const qreal level = std::max(target, m_outputLevel - kMeterFallPerPoll);
+    bool inputsMoved = false;
+    for (int i = 0; i < m_inputLevels.size(); ++i) {
+        const qreal level = meterLevel(m_host.takeInputPeak(i), m_inputLevels[i]);
+        if (!qFuzzyCompare(level + 1.0, m_inputLevels[i] + 1.0)) {
+            m_inputLevels[i] = level;
+            inputsMoved = true;
+        }
+    }
+    if (inputsMoved)
+        emit inputLevelsChanged();
+
+    const qreal level = meterLevel(m_host.takePeak(), m_outputLevel); // master output, after the soft clip
     if (!qFuzzyCompare(level + 1.0, m_outputLevel + 1.0)) {
         m_outputLevel = level;
         emit outputLevelChanged();

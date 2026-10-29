@@ -30,6 +30,20 @@ public:
     virtual bool connectMidiFrom(const std::string &port) = 0;
     virtual bool midiInputConnected() const = 0;
     virtual bool takePortsChanged() = 0;
+
+    // Audio inputs (in_1, ...), each fed by one capture port of the audio
+    // interface (a guitar). Hosts without inputs keep the defaults.
+    virtual int inputCount() const { return 0; }
+    virtual std::vector<std::string> captureSourcePorts() const { return {}; } // physical capture ports
+    // Connects input `input` to `port` alone ("" disconnects it).
+    virtual bool connectInput(int input, const std::string &port) { (void)input; (void)port; return false; }
+    virtual bool inputConnected(int input) const { (void)input; return false; }
+    virtual float takeInputPeak(int input) noexcept { (void)input; return 0.0f; } // since last call
+
+    // Asks the server for this many frames per block (smaller = less delay, more CPU).
+    virtual bool setBufferSize(std::uint32_t frames) { (void)frames; return false; }
+    // Frames from an input to the speakers: capture + playback latency as the server reports them.
+    virtual std::uint32_t roundTripFrames() const { return 0; }
 };
 
 } // namespace krate

@@ -17,12 +17,13 @@ namespace krate {
 // standalone apps) or the whole rack (RackProcessor, the krate app)
 // (docs/SHARED_FOUNDATIONS.MD#threads-standalone-and-rack). Per block, in the
 // JACK realtime callback: read MIDI, hand it with the output buffers to the
-// processor. Public methods are for the GUI thread; the callbacks only touch
+// processor, with the input buffers. Public methods are for the GUI thread; the callbacks only touch
 // atomics and the processor.
 class JackHost final : public AudioHost
 {
 public:
     static constexpr int kMaxChannels = 32;
+    static constexpr int kMaxInputs = 8;
 
     explicit JackHost(JackProcessor &processor);
     ~JackHost();
@@ -31,7 +32,7 @@ public:
     JackHost &operator=(const JackHost &) = delete;
 
     // Opens the client without starting a server, registers the processor's
-    // output ports and midi_in, then activates.
+    // output and input ports and midi_in, then activates.
     // On failure returns false and fills *error.
     bool open(const char *clientName, std::string *error) override;
     void close() override;
@@ -58,6 +59,14 @@ public:
     // True once after ports appear or disappear (e.g. a controller is plugged in).
     bool takePortsChanged() override { return m_portsChanged.exchange(false, std::memory_order_relaxed); }
 
+    int inputCount() const override { return m_inputs; }
+    std::vector<std::string> captureSourcePorts() const override;
+    bool connectInput(int input, const std::string &port) override;
+    bool inputConnected(int input) const override;
+    float takeInputPeak(int input) noexcept override;
+    bool setBufferSize(std::uint32_t frames) override;
+    std::uint32_t roundTripFrames() const override;
+
 private:
     static int onProcess(jack_nframes_t frames, void *arg);
     static int onXrun(void *arg);
@@ -68,8 +77,11 @@ private:
 
     JackProcessor &m_processor;
     const int m_channels;
+    const int m_inputs;
     jack_client_t *m_client = nullptr;
     std::array<jack_port_t *, kMaxChannels> m_outs{};
+    std::array<jack_port_t *, kMaxInputs> m_ins{};
+    std::array<std::atomic<float>, kMaxInputs> m_inputPeaks{};
     jack_port_t *m_midiIn = nullptr;
 
     std::uint32_t m_preparedRate = 0; // realtime thread only

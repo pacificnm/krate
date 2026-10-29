@@ -14,6 +14,7 @@ namespace krate {
 // with an optional event source (the song player) playing into it.
 // Outputs: master_L, master_R (to the speakers), then <device>_L, <device>_R
 // for every device (its own output, before the mixer: for recording or a DAW).
+// Inputs: in_1, in_2 (an audio interface's two inputs) for the devices that play audio in.
 class RackProcessor final : public JackProcessor
 {
 public:
@@ -38,10 +39,12 @@ public:
     }
     int playbackChannel(int index) const override { return index < 2 ? index : -1; }
 
+    int inputCount() const override { return Rack::kInputs; }
+
     void prepare(double sampleRate, std::uint32_t) noexcept override { m_rack.prepare(sampleRate); }
 
-    void process(float *const *outputs, std::uint32_t frames, const MidiEvent *midi, std::uint32_t midiCount,
-                 double sampleRate) noexcept override
+    void process(const float *const *inputs, float *const *outputs, std::uint32_t frames, const MidiEvent *midi,
+                 std::uint32_t midiCount, double sampleRate) noexcept override
     {
         if (m_source)
             m_source->beforeTransport(m_transport);
@@ -56,6 +59,7 @@ public:
                                                      std::uint32_t(m_sourceEvents.size()));
         }
         block.transport = &transport;
+        block.inputs = inputs;
         block.masterL = outputs[0];
         block.masterR = outputs[1];
         block.deviceOutputs = outputs + 2;

@@ -60,12 +60,12 @@ SongController::SongController(s::SongPlayer &player, RackController &rack, cons
     s_instance = this;
 
     // Every instrument that plays notes; one choice per channel for
-    // instruments with several (Krimson's slots A-D). The metronome plays none.
+    // instruments with several (Krimson's slots A-D). The metronome and the amp play none.
     for (const krate::InstrumentEntry &e : entries)
         m_ids << e.id;
     for (qsizetype i = 0; i < entries.size(); ++i) {
         const krate::InstrumentEntry &e = entries[i];
-        if (e.id == u"klick")
+        if (!e.playsNotes)
             continue;
         if (e.extraMidiChannels.isEmpty()) {
             m_choices.push_back({e.name, e.id, int(i), std::max(0, e.defaultMidiChannel), e.id == u"k909"});

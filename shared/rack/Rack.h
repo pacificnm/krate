@@ -24,6 +24,8 @@ struct RackBlock
     const DeviceEvent *deviceMidi = nullptr;
     std::uint32_t deviceMidiCount = 0;
     const TransportState *transport = nullptr; // shared by every device
+    // Rack::kInputs buffers, `frames` long (the audio interface's inputs), or nullptr.
+    const float *const *inputs = nullptr;
     float *masterL = nullptr;
     float *masterR = nullptr;
     // Optional per-device outputs: 2 buffers per device (L, R) in device order,
@@ -44,6 +46,7 @@ class Rack
 public:
     static constexpr int kMaxDevices = 8;
     static constexpr int kChannels = 16;
+    static constexpr int kInputs = 2;           // audio inputs, given to every device that has inputs
     static constexpr int kAnyChannel = 16;      // CC map row matching any channel
     static constexpr std::uint32_t kMaxEventsPerDevice = 256;
 
@@ -181,6 +184,7 @@ private:
     int resolveFollowFocus(const Mapping &m) const noexcept;
 
     std::uint32_t m_maxFrames;
+    std::vector<float> m_silence; // a device input with no rack input behind it
     double m_sampleRate = 48000.0;
     std::array<Device, kMaxDevices> m_devices;
     int m_count = 0;

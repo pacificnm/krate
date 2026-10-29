@@ -65,6 +65,7 @@ struct AudioBlock {
     const MidiEvent *midi;           // sorted by frame
     std::uint32_t midiCount;
     const TransportState *transport;
+    const float *const *inputs;      // inputChannels() buffers (audio in: a guitar), or nullptr = silence
 };
 
 class IInstrument {
@@ -76,6 +77,7 @@ public:
     virtual void prepare(double sampleRate, std::uint32_t maxFrames) noexcept = 0;
     virtual std::span<const ParamDescriptor> parameters() const noexcept = 0;
     virtual int outputChannels() const noexcept { return 2; }  // a drum machine may expose more
+    virtual int inputChannels() const noexcept { return 0; }   // audio inputs it plays (Krunch, the guitar amp)
 
     // Any thread: parameters by index into parameters(), normalized 0..1.
     virtual float param(int index) const noexcept = 0;
@@ -180,6 +182,10 @@ QML singletons: k303 uses singletons (`Synth`, `Pattern`, `MidiLearn`). That wor
 ### Audio outputs
 
 JACK ports in the rack: `<device>:out_L` / `<device>:out_R` for every device (pre-mixer, post-device), plus `master_L` / `master_R` (post-mixer, post-limiter). Auto-connect sends only the master pair to the speakers; the per-device pairs are there for recording or mixing in a DAW.
+
+### Audio inputs
+
+The rack has two audio inputs, `in_1` and `in_2`: an audio interface's two inputs, for a guitar. Each is fed by one capture port chosen under **AUDIO IN** in the transport bar (saved in `rack.json` as `"audioInputs"`, reconnected whenever that device appears). Every device with `inputChannels() > 0` gets both, re-based per chunk like its MIDI; inputs it asks for beyond the rack's are silent, and hosts without inputs (`krate-render`, tests) give it none (`inputs == nullptr`). The same popup sets the buffer size asked of the server (`"bufferSize"` in `rack.json`; `jack_set_buffer_size`, which PipeWire honours while Krate runs) and shows the delay from input to speakers, the capture plus playback latency the server reports.
 
 ### MIDI routing
 

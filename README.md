@@ -10,7 +10,8 @@ A suite of software instruments for Linux, and a rack that plays them together f
 | [**Kalliope**](instruments/kalliope/README.md): 8-voice polysynth, two oscillators with sync and cross mod, 12/24 dB ladder, chorus and delay, 64 patches, arpeggiator | Playable, standalone and in the rack (MIDI channel 2) |
 | [**Krimson**](instruments/krimson/README.md): 4-part multitimbral virtual-analog synth, 16 voices, sync / FM / ring oscillators, five-mode filter with drive, morph, per-slot effects and arpeggiators, 64 programs | Playable, standalone and in the rack (MIDI channels 3–6); sound tuning in progress |
 | **Song player**: play along with a song: open a `.gp` tab file and/or a `.mid` file, put its tracks on Krate's instruments, leave your part out ([docs/SONG_PLAYER.md](docs/SONG_PLAYER.md)) | In progress: the Song tab plays songs through the instruments with your part's tab scrolling along; a song library (SQLite) keeps every song by artist and album with its track setup, instrument sounds and mixer; practice tools to come |
-| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + K909 + Kalliope + Krimson + Klick), rack-wide MIDI Learn, sessions in `~/.config/krate/rack.json` |
+| [**Krunch**](instruments/krunch/README.md): guitar amp, played from your audio interface's input | G0: the input passes straight through, with meters and the delay shown ([roadmap](instruments/krunch/docs/ROADMAP.md)) |
+| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + K909 + Kalliope + Krimson + Krunch + Klick), rack-wide MIDI Learn, sessions in `~/.config/krate/rack.json` |
 
 Design: [docs/SHARED_FOUNDATIONS.MD](docs/SHARED_FOUNDATIONS.MD) (shared interfaces, transport, MIDI, the rack, repo layout).
 
@@ -40,7 +41,7 @@ pw-jack ./build/bin/k303                          # k303 on its own
 pw-jack ./build/bin/k909                          # K909 on its own
 pw-jack ./build/bin/kalliope                      # Kalliope on its own
 pw-jack ./build/bin/krimson                       # Krimson on its own
-pw-jack ./build/bin/krate                         # the rack: k303 + K909 + Kalliope + Krimson + Klick
+pw-jack ./build/bin/krate                         # the rack: k303 + K909 + Kalliope + Krimson + Krunch + Klick
 ./build/bin/krate-render --bars 8 --out rack.wav  # the rack, rendered offline (add --k909 0.8 --kalliope 1 --krimson 0.8 for all five)
 ```
 

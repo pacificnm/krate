@@ -21,11 +21,15 @@ public:
     virtual std::string outputName(int index) const = 0;
     // Physical playback channel (0, 1, ...) this output auto-connects to, or -1.
     virtual int playbackChannel(int index) const = 0;
+    // Audio inputs (in_1, in_2, ...: what the user connects a guitar to).
+    virtual int inputCount() const { return 0; }
+    virtual std::string inputName(int index) const { return "in_" + std::to_string(index + 1); }
 
     // Realtime-thread contract as IInstrument::prepare / process.
     virtual void prepare(double sampleRate, std::uint32_t maxFrames) noexcept = 0;
-    virtual void process(float *const *outputs, std::uint32_t frames, const MidiEvent *midi,
-                         std::uint32_t midiCount, double sampleRate) noexcept = 0;
+    // inputs: inputCount() buffers, `frames` long.
+    virtual void process(const float *const *inputs, float *const *outputs, std::uint32_t frames,
+                         const MidiEvent *midi, std::uint32_t midiCount, double sampleRate) noexcept = 0;
 
     virtual float takePeak() noexcept = 0; // master output peak since last call (GUI thread)
 };
@@ -55,11 +59,13 @@ public:
         m_instrument.prepare(sampleRate, maxFrames);
     }
 
-    void process(float *const *outputs, std::uint32_t frames, const MidiEvent *midi, std::uint32_t midiCount,
-                 double sampleRate) noexcept override
+    int inputCount() const override { return m_instrument.inputChannels(); }
+
+    void process(const float *const *inputs, float *const *outputs, std::uint32_t frames, const MidiEvent *midi,
+                 std::uint32_t midiCount, double sampleRate) noexcept override
     {
         const TransportState transport = m_transport.advance(frames, sampleRate);
-        m_instrument.process(AudioBlock{outputs, frames, midi, midiCount, &transport});
+        m_instrument.process(AudioBlock{outputs, frames, midi, midiCount, &transport, inputs});
         m_master.process(outputs, outputCount(), frames);
     }
 

@@ -39,6 +39,7 @@ target_link_libraries(krate PRIVATE
     k909_ui k909_uiplugin
     kalliope_ui kalliope_uiplugin
     krimson_ui krimson_uiplugin
+    krunch_ui krunch_uiplugin
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin
     krate_rack krate_host krate_song

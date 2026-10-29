@@ -2,6 +2,8 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
+#include <QVariantList>
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
@@ -32,6 +34,19 @@ class HostController : public QObject
     Q_PROPERTY(bool midiConnected READ midiConnected NOTIFY audioStatusChanged)
     Q_PROPERTY(qreal outputLevel READ outputLevel NOTIFY outputLevelChanged) // 0..1, -60..0 dB
 
+    // Audio inputs (in_1, in_2: a guitar through the audio interface).
+    Q_PROPERTY(int inputCount READ inputCount CONSTANT)
+    // The interface's capture ports, to choose from (refreshed as devices come and go).
+    Q_PROPERTY(QStringList capturePorts READ capturePorts NOTIFY capturePortsChanged)
+    // The capture port chosen for each input ("" = none); kept and reconnected when it reappears.
+    Q_PROPERTY(QStringList inputPorts READ inputPorts NOTIFY inputPortsChanged)
+    Q_PROPERTY(QVariantList inputsConnected READ inputsConnected NOTIFY audioStatusChanged)
+    Q_PROPERTY(QVariantList inputLevels READ inputLevels NOTIFY inputLevelsChanged) // 0..1 each, -60..0 dB
+    // Frames per block asked of the server (0 = the server's own); smaller is less delay.
+    Q_PROPERTY(int requestedBufferSize READ requestedBufferSize WRITE setRequestedBufferSize NOTIFY requestedBufferSizeChanged)
+    // From an input to the speakers, as the server reports it.
+    Q_PROPERTY(qreal latencyMs READ latencyMs NOTIFY audioStatusChanged)
+
 public:
     // Not default-constructible on purpose: see SynthController. Opens the
     // audio client right away (and keeps retrying while offline).
@@ -52,6 +67,20 @@ public:
     // matching source is connected, again whenever ports appear.
     void setMidiInputMatch(const QString &pattern);
 
+    int inputCount() const;
+    QStringList capturePorts() const { return m_capturePorts; }
+    QStringList inputPorts() const { return m_inputPorts; }
+    // Before the first poll (the saved choice) or from the GUI.
+    void setInputPorts(const QStringList &ports);
+    Q_INVOKABLE void setInputPort(int input, const QString &port);
+    // A capture port's name for people, e.g. "USB Audio Interface · in 1".
+    Q_INVOKABLE static QString portLabel(const QString &port);
+    QVariantList inputsConnected() const;
+    QVariantList inputLevels() const;
+    int requestedBufferSize() const { return m_requestedBufferSize; }
+    void setRequestedBufferSize(int frames);
+    qreal latencyMs() const;
+
 public slots:
     void connectAudio();
     void disconnectAudio();
@@ -59,10 +88,16 @@ public slots:
 signals:
     void audioStatusChanged();
     void outputLevelChanged();
+    void capturePortsChanged();
+    void inputPortsChanged();
+    void inputLevelsChanged();
+    void requestedBufferSizeChanged();
 
 private:
     void poll();
     void connectMidiInput();
+    void connectInputs();
+    void refreshCapturePorts();
     void setAudioStatus(const QString &status);
 
     static inline HostController *s_instance = nullptr;
@@ -78,6 +113,11 @@ private:
     int m_lastXruns = 0;
     int m_lastSampleRate = 0;
     int m_lastBufferSize = 0;
+    QStringList m_capturePorts;
+    QStringList m_inputPorts;
+    QList<qreal> m_inputLevels;
+    int m_requestedBufferSize = 0;
+    std::uint32_t m_lastLatency = 0;
 };
 
 } // namespace krate

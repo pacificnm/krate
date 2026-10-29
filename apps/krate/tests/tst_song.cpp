@@ -160,9 +160,10 @@ void write(const QString &path, const Bytes &data)
     f.write(reinterpret_cast<const char *>(data.data()), qint64(data.size()));
 }
 
-InstrumentEntry entry(const char *id, const char *name, int channel, QList<int> extra = {})
+InstrumentEntry entry(const char *id, const char *name, int channel, QList<int> extra = {}, bool playsNotes = true)
 {
     InstrumentEntry e;
+    e.playsNotes = playsNotes;
     e.id = QString::fromLatin1(id);
     e.name = QString::fromLatin1(name);
     e.defaultMidiChannel = channel;
@@ -179,7 +180,7 @@ struct Fixture
     Rack rack;
     Transport transport;
     QList<InstrumentEntry> entries{entry("k303", "k303", -1), entry("k909", "K909", 9), entry("kalliope", "Kalliope", 1),
-                                   entry("krimson", "Krimson", 2, {3, 4, 5}), entry("klick", "Klick", -1)};
+                                   entry("krimson", "Krimson", 2, {3, 4, 5}), entry("klick", "Klick", -1, {}, false)};
     song::SongPlayer player;
     std::unique_ptr<RackController> rackController;
     std::unique_ptr<SongLibrary> library;

@@ -49,10 +49,15 @@ public:
         changed |= std::uint64_t(1) << i;
     }
     std::uint64_t takeParamsChangedByAudio() noexcept override { return std::exchange(changed, 0); }
+    int inputChannels() const noexcept override { return inputs; }
 
     void process(const AudioBlock &block) noexcept override
     {
         ++calls;
+        gotInputs.push_back(block.inputs != nullptr);
+        if (block.inputs) // each input's first and last sample this block
+            for (int c = 0; c < inputs; ++c)
+                inputSamples.push_back({block.inputs[c][0], block.inputs[c][block.frames - 1]});
         for (std::uint32_t i = 0; i < block.midiCount; ++i)
             received.push_back(block.midi[i]);
         if (block.transport)
@@ -69,6 +74,9 @@ public:
     int calls = 0;
     std::vector<MidiEvent> received;
     std::vector<TransportState> transports;
+    int inputs = 0;
+    std::vector<bool> gotInputs;
+    std::vector<std::pair<float, float>> inputSamples;
 };
 
 MidiEvent msg(std::uint8_t status, std::uint8_t d1, std::uint8_t d2 = 0, std::uint32_t frame = 0)
@@ -87,7 +95,7 @@ struct Output
 };
 
 Output run(Rack &rack, std::uint32_t frames, std::vector<MidiEvent> midi = {},
-           const TransportState *transport = nullptr)
+           const TransportState *transport = nullptr, const float *const *inputs = nullptr)
 {
     Output out;
     out.left.assign(frames, 0.0f);
@@ -101,6 +109,7 @@ Output run(Rack &rack, std::uint32_t frames, std::vector<MidiEvent> midi = {},
     block.midi = midi.data();
     block.midiCount = std::uint32_t(midi.size());
     block.transport = transport;
+    block.inputs = inputs;
     block.masterL = out.left.data();
     block.masterR = out.right.data();
     block.deviceOutputs = devicePtrs.data();
@@ -530,6 +539,40 @@ private slots:
         QVERIFY(std::abs(a.transports[1].beatAtBlockStart - 4096.0 / 24000.0) < 1e-12);
         QVERIFY(std::abs(a.transports[2].beatAtBlockStart - 8192.0 / 24000.0) < 1e-12);
         QVERIFY(std::abs(out.left.back() - std::tanh(0.1f)) < 1e-6f); // all of it was rendered
+    }
+
+    // --- Audio inputs --------------------------------------------------------------
+
+    // Devices with inputs get the rack's (re-based per chunk); extra ones are
+    // silent; devices without inputs get none.
+    void devicesWithInputsGetTheRacksInputs()
+    {
+        FakeDevice amp(kParamsA, 0.0f), synth(kParamsB, 0.0f);
+        amp.inputs = 3;
+        Rack rack(4096);
+        rack.addDevice(amp);
+        rack.addDevice(synth);
+        rack.prepare(48000.0);
+        std::vector<float> in1(5000), in2(5000);
+        for (std::size_t i = 0; i < in1.size(); ++i) {
+            in1[i] = float(i);
+            in2[i] = -float(i);
+        }
+        const float *const inputs[Rack::kInputs] = {in1.data(), in2.data()};
+        run(rack, 5000, {}, nullptr, inputs);
+
+        QCOMPARE(amp.gotInputs, (std::vector<bool>{true, true}));
+        QCOMPARE(amp.inputSamples.size(), std::size_t(6)); // 2 chunks x 3 inputs
+        QCOMPARE(amp.inputSamples[0], std::make_pair(0.0f, 4095.0f));
+        QCOMPARE(amp.inputSamples[1], std::make_pair(-0.0f, -4095.0f));
+        QCOMPARE(amp.inputSamples[2], std::make_pair(0.0f, 0.0f)); // no rack input behind it
+        QCOMPARE(amp.inputSamples[3], std::make_pair(4096.0f, 4999.0f));
+        QCOMPARE(amp.inputSamples[4], std::make_pair(-4096.0f, -4999.0f));
+        QCOMPARE(synth.gotInputs, (std::vector<bool>{false, false}));
+
+        // A host without inputs (offline renders): silence.
+        run(rack, 64);
+        QCOMPARE(amp.inputSamples.back(), std::make_pair(0.0f, 0.0f));
     }
 
     void deviceLimit()

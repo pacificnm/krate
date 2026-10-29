@@ -1,6 +1,7 @@
 #include "host/JackHost.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include <jack/midiport.h>
 
@@ -18,6 +19,7 @@ void silentJackMessage(const char *) {}
 JackHost::JackHost(JackProcessor &processor)
     : m_processor(processor)
     , m_channels(std::clamp(processor.outputCount(), 1, kMaxChannels))
+    , m_inputs(std::clamp(processor.inputCount(), 0, kMaxInputs))
 {
     jack_set_error_function(silentJackMessage);
     jack_set_info_function(silentJackMessage);
@@ -49,6 +51,11 @@ bool JackHost::open(const char *clientName, std::string *error)
         const std::string name = m_processor.outputName(c);
         m_outs[std::size_t(c)] = jack_port_register(m_client, name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
         portsOk = portsOk && m_outs[std::size_t(c)];
+    }
+    for (int c = 0; c < m_inputs; ++c) {
+        const std::string name = m_processor.inputName(c);
+        m_ins[std::size_t(c)] = jack_port_register(m_client, name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+        portsOk = portsOk && m_ins[std::size_t(c)];
     }
     m_midiIn = jack_port_register(m_client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
     if (!portsOk || !m_midiIn) {
@@ -91,6 +98,7 @@ void JackHost::close()
     jack_client_close(m_client);
     m_client = nullptr;
     m_outs.fill(nullptr);
+    m_ins.fill(nullptr);
     m_midiIn = nullptr;
 }
 
@@ -146,6 +154,68 @@ bool JackHost::midiInputConnected() const
     return m_midiIn && jack_port_connected(m_midiIn) > 0;
 }
 
+std::vector<std::string> JackHost::captureSourcePorts() const
+{
+    std::vector<std::string> result;
+    if (!m_client)
+        return result;
+    const char **ports = jack_get_ports(m_client, nullptr, JACK_DEFAULT_AUDIO_TYPE, JackPortIsPhysical | JackPortIsOutput);
+    if (!ports)
+        return result;
+    for (int i = 0; ports[i]; ++i)
+        result.emplace_back(ports[i]);
+    jack_free(ports);
+    return result;
+}
+
+bool JackHost::connectInput(int input, const std::string &port)
+{
+    if (!m_client || input < 0 || input >= m_inputs)
+        return false;
+    jack_port_t *in = m_ins[std::size_t(input)];
+    if (const char **connected = jack_port_get_connections(in)) {
+        bool already = false;
+        for (int i = 0; connected[i]; ++i) {
+            if (port == connected[i])
+                already = true;
+            else
+                jack_disconnect(m_client, connected[i], jack_port_name(in));
+        }
+        jack_free(connected);
+        if (already)
+            return true;
+    }
+    return !port.empty() && jack_connect(m_client, port.c_str(), jack_port_name(in)) == 0;
+}
+
+bool JackHost::inputConnected(int input) const
+{
+    return m_client && input >= 0 && input < m_inputs && jack_port_connected(m_ins[std::size_t(input)]) > 0;
+}
+
+float JackHost::takeInputPeak(int input) noexcept
+{
+    if (input < 0 || input >= m_inputs)
+        return 0.0f;
+    return m_inputPeaks[std::size_t(input)].exchange(0.0f, std::memory_order_relaxed);
+}
+
+bool JackHost::setBufferSize(std::uint32_t frames)
+{
+    return m_client && frames > 0 && jack_set_buffer_size(m_client, frames) == 0;
+}
+
+std::uint32_t JackHost::roundTripFrames() const
+{
+    if (!m_client || m_channels < 1)
+        return 0;
+    jack_latency_range_t capture{0, 0}, playback{0, 0};
+    if (m_inputs > 0)
+        jack_port_get_latency_range(m_ins[0], JackCaptureLatency, &capture);
+    jack_port_get_latency_range(m_outs[0], JackPlaybackLatency, &playback);
+    return capture.max + playback.max;
+}
+
 int JackHost::onProcess(jack_nframes_t frames, void *arg)
 {
     auto *self = static_cast<JackHost *>(arg);
@@ -160,6 +230,18 @@ int JackHost::onProcess(jack_nframes_t frames, void *arg)
     float *outputs[kMaxChannels];
     for (int c = 0; c < self->m_channels; ++c)
         outputs[c] = static_cast<float *>(jack_port_get_buffer(self->m_outs[std::size_t(c)], frames));
+
+    const float *inputs[kMaxInputs];
+    for (int c = 0; c < self->m_inputs; ++c) {
+        const auto *in = static_cast<const float *>(jack_port_get_buffer(self->m_ins[std::size_t(c)], frames));
+        inputs[c] = in;
+        float peak = 0.0f;
+        for (jack_nframes_t s = 0; s < frames; ++s)
+            peak = std::max(peak, std::fabs(in[s]));
+        std::atomic<float> &held = self->m_inputPeaks[std::size_t(c)];
+        if (peak > held.load(std::memory_order_relaxed))
+            held.store(peak, std::memory_order_relaxed);
+    }
 
     // Copy this block's MIDI into a fixed array; the engine applies each at its frame.
     constexpr std::uint32_t kMaxEvents = 256;
@@ -178,7 +260,7 @@ int JackHost::onProcess(jack_nframes_t frames, void *arg)
             out.data[b] = ev.buffer[b];
     }
 
-    self->m_processor.process(outputs, frames, events, count, double(rate));
+    self->m_processor.process(inputs, outputs, frames, events, count, double(rate));
     return 0;
 }
 

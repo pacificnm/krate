@@ -34,6 +34,8 @@ struct AudioBlock
     const MidiEvent *midi = nullptr;         // sorted by frame, each frame < frames
     std::uint32_t midiCount = 0;
     const TransportState *transport = nullptr; // nullptr: the instrument keeps its own time (until R3)
+    // inputChannels() buffers, `frames` long (audio in: a guitar). nullptr: silence.
+    const float *const *inputs = nullptr;
 };
 
 // The realtime core of an instrument (docs/SHARED_FOUNDATIONS.MD#audio-block-and-instrument).
@@ -51,6 +53,8 @@ public:
 
     virtual std::span<const ParamDescriptor> parameters() const noexcept = 0;
     virtual int outputChannels() const noexcept { return 2; }
+    // Audio inputs it plays (a guitar amp: the interface's inputs); most have none.
+    virtual int inputChannels() const noexcept { return 0; }
 
     // Parameters by index into parameters(), normalized 0..1. Any thread.
     virtual float param(int index) const noexcept = 0;

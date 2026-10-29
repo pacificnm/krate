@@ -10,6 +10,7 @@ namespace krate {
 
 Rack::Rack(std::uint32_t maxFrames)
     : m_maxFrames(std::max<std::uint32_t>(maxFrames, 1))
+    , m_silence(m_maxFrames, 0.0f)
 {
     for (auto &c : m_channelDevice)
         c.store(-1, std::memory_order_relaxed);
@@ -357,8 +358,13 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
     for (int i = 0; i < m_count; ++i) {
         Device &d = m_devices[std::size_t(i)];
         float *const outputs[2] = {d.left.data(), d.right.data()};
+        // Its inputs: the rack's, in order; any beyond them are silent.
+        const float *inputs[kInputs + 6];
+        const int inputCount = std::min(d.instrument->inputChannels(), int(std::size(inputs)));
+        for (int c = 0; c < inputCount; ++c)
+            inputs[c] = block.inputs && c < kInputs ? block.inputs[c] + offset : m_silence.data();
         d.instrument->process(AudioBlock{outputs, frames, d.midi.data(), d.midiCount,
-                                         block.transport ? &transport : nullptr});
+                                         block.transport ? &transport : nullptr, inputCount > 0 ? inputs : nullptr});
 
         if (block.deviceOutputs) { // the device's own output, before the mixer
             std::copy_n(d.left.data(), frames, block.deviceOutputs[2 * i] + offset);

@@ -24,6 +24,7 @@
 #include "k909/app/K909Instrument.h"
 #include "kalliope/app/KalliopeInstrument.h"
 #include "krimson/app/KrimsonInstrument.h"
+#include "krunch/app/KrunchInstrument.h"
 #include "app/KlickInstrument.h"
 #include "app/ScreenshotHook.h"
 #include "core/Midi.h"
@@ -38,6 +39,7 @@ Q_IMPORT_QML_PLUGIN(K303Plugin)
 Q_IMPORT_QML_PLUGIN(K909Plugin)
 Q_IMPORT_QML_PLUGIN(KalliopePlugin)
 Q_IMPORT_QML_PLUGIN(KrimsonPlugin)
+Q_IMPORT_QML_PLUGIN(KrunchPlugin)
 Q_IMPORT_QML_PLUGIN(KlickPlugin)
 
 int main(int argc, char *argv[])
@@ -55,6 +57,7 @@ int main(int argc, char *argv[])
         k909::registryEntry(),
         kalliope::registryEntry(),
         krimson::registryEntry(),
+        krunch::registryEntry(),
         klick::registryEntry(),
     };
 
@@ -136,6 +139,12 @@ int main(int argc, char *argv[])
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
     host.setMidiInputMatch(session.midiInput());
+    host.setRequestedBufferSize(session.bufferSize());
+    host.setInputPorts(session.audioInputs());
+    QObject::connect(&host, &krate::HostController::inputPortsChanged, &session,
+                     [&session, &host] { session.setAudioInputs(host.inputPorts()); });
+    QObject::connect(&host, &krate::HostController::requestedBufferSizeChanged, &session,
+                     [&session, &host] { session.setBufferSize(host.requestedBufferSize()); });
 
     QQmlApplicationEngine engine;
     QObject::connect(

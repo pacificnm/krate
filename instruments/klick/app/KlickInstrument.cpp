@@ -13,6 +13,7 @@ krate::InstrumentEntry registryEntry()
     entry.id = QStringLiteral("klick");
     entry.name = QStringLiteral("Klick");
     entry.defaultMidiChannel = -1; // plays from the transport, not from notes
+    entry.playsNotes = false;
     entry.qmlModule = QStringLiteral("Klick");
     entry.panelComponent = QStringLiteral("Panel");
     entry.create = [](const krate::InstrumentContext &context) -> std::unique_ptr<krate::InstrumentInstance> {
