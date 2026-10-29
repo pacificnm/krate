@@ -23,7 +23,9 @@ KrimsonController::KrimsonController(krimson::Engine &engine, const QString &pan
     m_pollTimer.start();
 
     syncTempo();
+    m_arpOn = value(QStringLiteral("arp_on")) > 0.5;
     connect(this, &ParamController::paramsChanged, this, &KrimsonController::syncTempo);
+    connect(this, &ParamController::paramsChanged, this, &KrimsonController::syncArp);
 }
 
 KrimsonController::~KrimsonController()
@@ -176,6 +178,28 @@ void KrimsonController::poll()
     if (playing() != m_playing) {
         m_playing = playing();
         emit playingChanged();
+    }
+}
+
+void KrimsonController::syncArp()
+{
+    const bool on = value(QStringLiteral("arp_on")) > 0.5;
+    const int slot = m_engine.editedSlot();
+    const bool switchedSlot = slot != m_arpSlot; // another slot's switch, not a change
+    m_arpSlot = slot;
+    if (on == m_arpOn || switchedSlot) {
+        m_arpOn = on;
+        return;
+    }
+    m_arpOn = on;
+    if (!m_transport)
+        return; // in the rack, the rack's transport bar runs the arpeggios
+    if (on && !m_transport->playing()) {
+        setPlaying(true);
+        m_arpStartedTransport = true;
+    } else if (!on && m_arpStartedTransport) {
+        setPlaying(false);
+        m_arpStartedTransport = false;
     }
 }
 

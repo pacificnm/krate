@@ -78,7 +78,7 @@ About 60 entries. The exact list is fixed in C0, staying within 64.
 | Field | Value |
 | --- | --- |
 | id / name | `krimson` / `Krimson` |
-| MIDI channels | 3–6 in the rack (A–D); the registry gains "extra channels" for this (C8) |
+| MIDI channels | 3–6 in the rack (A–D), from the registry's `extraMidiChannels` |
 | QML module / panel | `Krimson` / `Panel` |
 | actions | `slotA` … `slotD`, `bank1` … `bank8`, `program1` … `program8`, `store`, `arp`, `hold`, `morph`, `octave_down`, `octave_up` |
 

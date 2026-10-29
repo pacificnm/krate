@@ -94,10 +94,12 @@ Item {
     }
 
     // MIDI channel: FOCUS (keys reach it when it has focus) or 1-16 (always).
-    // Click: next; right-click or wheel down: previous.
+    // Click: next; right-click or wheel down: previous; double-click: the
+    // instrument's own defaults (Krimson: 3-6).
     Rectangle {
         id: channelBox
         readonly property int channel: strip.rev >= 0 && !strip.isMaster ? Rack.midiChannel(strip.device) : 0
+        readonly property int count: strip.rev >= 0 && !strip.isMaster ? Rack.midiChannelCount(strip.device) : 0
         function step(delta) { Rack.setMidiChannel(strip.device, (channel + delta + 17) % 17) }
 
         visible: !strip.isMaster
@@ -110,11 +112,14 @@ Item {
         border.color: Theme.deckLine
 
         Accessible.role: Accessible.Button
-        Accessible.name: strip.name + " MIDI channel: " + (channel > 0 ? channel : "follows focus")
+        Accessible.name: strip.name + " MIDI channel: " + (channel > 0 ? channel + (count > 1 ? " and " + (count - 1) + " more" : "") : "follows focus")
 
         Text {
             anchors.centerIn: parent
-            text: channelBox.channel > 0 ? "CH " + channelBox.channel : "FOCUS"
+            // Several channels (Krimson's slots): the first and how many more.
+            text: channelBox.channel <= 0 ? "FOCUS"
+                : channelBox.count > 1 ? "CH " + channelBox.channel + "+" + (channelBox.count - 1)
+                : "CH " + channelBox.channel
             color: Theme.inkInverse
             font.family: Theme.labelFont
             font.pixelSize: 10
@@ -124,6 +129,7 @@ Item {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: mouse => channelBox.step(mouse.button === Qt.RightButton ? -1 : 1)
+            onDoubleClicked: Rack.restoreMidiChannels(strip.device)
             onWheel: wheel => channelBox.step(wheel.angleDelta.y > 0 ? 1 : -1)
         }
     }

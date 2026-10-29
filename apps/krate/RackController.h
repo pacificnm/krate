@@ -74,8 +74,10 @@ public:
     // MIDI channel routing: 1..16 = notes on that channel always go to this
     // device; 0 = none of its own (it gets keys when it has focus). Giving a
     // device a channel takes the channel from any other device.
-    Q_INVOKABLE int midiChannel(int device) const;
-    Q_INVOKABLE void setMidiChannel(int device, int channel);
+    Q_INVOKABLE int midiChannel(int device) const;    // the first of its channels, 0 = none
+    Q_INVOKABLE int midiChannelCount(int device) const; // how many it has (Krimson: 4)
+    Q_INVOKABLE void setMidiChannel(int device, int channel); // just this one (or none)
+    Q_INVOKABLE void restoreMidiChannels(int device);  // its registry defaults
 
 signals:
     void focusChanged();
@@ -100,6 +102,7 @@ private:
     static inline RackController *s_instance = nullptr;
 
     krate::Rack &m_rack;
+    QList<krate::InstrumentEntry> m_entries; // their default MIDI channels
     krate::Transport &m_transport;
     QStringList m_names, m_modules, m_components;
     QList<Strip> m_strips;

@@ -20,6 +20,7 @@
 #include "app/K303Instrument.h"
 #include "k909/app/K909Instrument.h"
 #include "kalliope/app/KalliopeInstrument.h"
+#include "krimson/app/KrimsonInstrument.h"
 #include "app/KlickInstrument.h"
 #include "app/ScreenshotHook.h"
 #include "core/Midi.h"
@@ -32,6 +33,7 @@ Q_IMPORT_QML_PLUGIN(KratePlugin)
 Q_IMPORT_QML_PLUGIN(K303Plugin)
 Q_IMPORT_QML_PLUGIN(K909Plugin)
 Q_IMPORT_QML_PLUGIN(KalliopePlugin)
+Q_IMPORT_QML_PLUGIN(KrimsonPlugin)
 Q_IMPORT_QML_PLUGIN(KlickPlugin)
 
 int main(int argc, char *argv[])
@@ -48,6 +50,7 @@ int main(int argc, char *argv[])
         k303::registryEntry(),
         k909::registryEntry(),
         kalliope::registryEntry(),
+        krimson::registryEntry(),
         klick::registryEntry(),
     };
 
@@ -69,7 +72,9 @@ int main(int argc, char *argv[])
         context.configDir = QDir(config).filePath(entry.id);
         context.dataDir = QDir(data).filePath(entry.id);
         instances.push_back(entry.create(context));
-        rack.addDevice(instances.back()->instrument(), entry.defaultMidiChannel);
+        const int device = rack.addDevice(instances.back()->instrument(), entry.defaultMidiChannel);
+        for (int channel : entry.extraMidiChannels)
+            rack.setChannelDevice(channel, device);
         ids.push_back(entry.id.toStdString());
     }
 

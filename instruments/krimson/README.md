@@ -2,7 +2,7 @@
 
 A four-part multitimbral virtual-analog synthesizer for the [Krate](../../README.md) suite, aimed at the sound of the classic late-90s red virtual-analog lead synth. It has sync, FM and ring-mod oscillators, a five-mode filter with drive, and the mod-wheel morph. Its 16 voices are shared by four slots, each with its own arpeggiator and effects. Runs standalone (`krimson`) and in the Krate rack (default MIDI channels 3–6).
 
-Status: C4 (16 voices shared by four slots A–D: own channels 3–6, layering, split; the full panel for the edited slot, wheels and keyboard; slots saved in `~/.config/krimson/slots.json`). Morph by wheel or velocity; chorus / ensemble, delay and reverb per slot. 64 programs (16 factory sounds) and 8 performances. The arpeggiator and the rack to come. `pw-jack ./build/bin/krimson`; `./build/bin/krimson-render --out-dir build` writes `krimson-sounds.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
+Status: C8 (16 voices shared by four slots A–D: own channels 3–6, layering, split; the full panel for the edited slot, wheels and keyboard; slots saved in `~/.config/krimson/slots.json`). Morph by wheel or velocity; chorus / ensemble, delay and reverb per slot. 64 programs (16 factory sounds) and 8 performances. A per-slot arpeggiator on the transport. In the Krate rack on channels 3–6. `pw-jack ./build/bin/krimson`; `./build/bin/krimson-render --out-dir build` writes `krimson-sounds.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
 
 | Doc | Contents |
 | --- | --- |

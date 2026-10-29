@@ -30,7 +30,10 @@ void Instance::triggerAction(const QString &action)
         const int next = std::clamp(shift + (action == u"octave_up" ? 1 : -1), -3, 3);
         controller.setValue(QStringLiteral("octave"), (next + 3) / 6.0);
     }
-    // arp and hold arrive with the arpeggiator (C8).
+    else if (action == u"arp" || action == u"hold") { // the edited slot's
+        const QString key = action == u"arp" ? QStringLiteral("arp_on") : QStringLiteral("arp_hold");
+        controller.setValue(key, controller.value(key) > 0.5 ? 0.0 : 1.0);
+    }
 }
 
 krate::InstrumentEntry registryEntry()
@@ -38,7 +41,8 @@ krate::InstrumentEntry registryEntry()
     krate::InstrumentEntry entry;
     entry.id = QStringLiteral("krimson");
     entry.name = QStringLiteral("Krimson");
-    entry.defaultMidiChannel = 2; // channel 3: slot A (B-D on 4-6 arrive with the rack work, C8)
+    entry.defaultMidiChannel = 2;     // channel 3: slot A
+    entry.extraMidiChannels = {3, 4, 5}; // channels 4-6: slots B-D
     entry.qmlModule = QStringLiteral("Krimson");
     entry.panelComponent = QStringLiteral("Panel");
     for (const char *slot : {"slotA", "slotB", "slotC", "slotD"})

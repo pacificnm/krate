@@ -26,6 +26,7 @@ RackController::RackController(krate::Rack &rack, krate::Transport &transport,
     : QObject(parent)
     , m_rack(rack)
     , m_transport(transport)
+    , m_entries(entries)
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
@@ -155,6 +156,26 @@ int RackController::midiChannel(int device) const
         if (m_rack.channelDevice(ch) == device)
             return ch + 1;
     return 0;
+}
+
+int RackController::midiChannelCount(int device) const
+{
+    int n = 0;
+    for (int ch = 0; ch < krate::Rack::kChannels; ++ch)
+        n += m_rack.channelDevice(ch) == device ? 1 : 0;
+    return n;
+}
+
+void RackController::restoreMidiChannels(int device)
+{
+    if (device < 0 || device >= m_strips.size() || device >= m_entries.size())
+        return;
+    const krate::InstrumentEntry &entry = m_entries[device];
+    setMidiChannel(device, entry.defaultMidiChannel + 1);
+    for (int channel : entry.extraMidiChannels)
+        m_rack.setChannelDevice(channel, device);
+    ++m_mixerRevision;
+    emit mixerChanged();
 }
 
 void RackController::setMidiChannel(int device, int channel)

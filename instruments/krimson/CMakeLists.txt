@@ -51,7 +51,7 @@ target_link_libraries(krimson_ui PUBLIC krimson_dsp krate_host krate_app krate_q
 target_compile_options(krimson_ui PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests
-foreach(test tst_voice tst_voices tst_fx)
+foreach(test tst_voice tst_voices tst_fx tst_arp)
     add_executable(krimson_${test} tests/${test}.cpp)
     target_compile_options(krimson_${test} PRIVATE -Wall -Wextra -Wpedantic)
     target_link_libraries(krimson_${test} PRIVATE krimson_dsp krate_testing Qt6::Test)

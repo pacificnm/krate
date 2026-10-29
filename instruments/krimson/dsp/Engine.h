@@ -9,6 +9,7 @@
 #include "core/Midi.h"
 #include "core/ParamValues.h"
 #include "core/SpscQueue.h"
+#include "core/StepClock.h"
 #include "dsp/Effects.h"
 #include "dsp/HalfbandDecimator.h"
 #include "dsp/Reverb.h"
@@ -112,6 +113,7 @@ public:
     enum class VoiceMode { Poly, Mono, Legato, Unison };
 
     // Inspection (tests).
+    int arpNote(int slot) const noexcept { return m_state[std::size_t(slot)].arpNote; }
     int activeVoices() const noexcept;
     bool voiceActive(int v) const noexcept { return m_voices[std::size_t(v)].active(); }
     bool voiceGate(int v) const noexcept { return m_voices[std::size_t(v)].gate(); }
@@ -139,6 +141,16 @@ private:
         float velocity = 1.0f;
         VoiceMode mode = VoiceMode::Poly;
         std::array<int, kUnisonVoices> monoVoices{-1, -1, -1}; // Mono / Legato / Unison: the voices it plays
+
+        // The slot's arpeggiator (docs/PLAY.md#arpeggiator-per-slot).
+        krate::StepClock arpClock;
+        bool arpOn = false;
+        bool hold = false;
+        std::array<std::uint8_t, 16> latched{}; // keys kept by Hold
+        int latchedCount = 0;
+        int arpNote = -1;
+        std::uint32_t arpPosition = 0;
+        std::uint32_t arpRandom = 0x2F6B3A1Du;
     };
 
     // keyboard: from the on-screen keyboard (the lit slots, whatever the channel; no Octave shift).
@@ -156,6 +168,11 @@ private:
     int pickVoice(int slot, int note) noexcept; // a voice for the note (stealing if needed)
     void startVoice(int slot, int v, int note, double glideFrom) noexcept;
     void playMono(int slot, bool retrigger) noexcept; // Mono / Legato / Unison: follow the top held key
+    void playMonoNote(int slot, int note, bool retrigger) noexcept;
+    void arpUpdate(int slot, const krate::TransportState &transport) noexcept; // once per block
+    void arpStep(int slot) noexcept;    // a step starts: the next note
+    void arpRelease(int slot) noexcept; // the gate ends (or the arpeggio stops)
+    void prepareSegment() noexcept;     // the slots' settings for the frames about to render
     void releaseVoice(int slot, int v) noexcept;      // key up: release, or hold for the pedal
 
     static constexpr std::uint32_t kChunk = 128;

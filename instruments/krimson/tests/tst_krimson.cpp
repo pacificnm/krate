@@ -143,6 +143,28 @@ private slots:
         instance->triggerAction(QStringLiteral("slotA"));
         QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(0.3f));
     }
+
+    // Standalone, the edited slot's ARP switch starts and stops the transport.
+    void arpDrivesTheStandaloneTransport()
+    {
+        QTemporaryDir dir;
+        krate::Transport transport;
+        krate::InstrumentContext context{&transport, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        instance->triggerAction(QStringLiteral("arp"));
+        QCOMPARE(k.engine.slotParam(0, ParamId::ArpOn), 1.0f);
+        QVERIFY(transport.playing());
+        instance->triggerAction(QStringLiteral("slotB")); // another slot: no change
+        QVERIFY(transport.playing());
+        instance->triggerAction(QStringLiteral("slotA"));
+        instance->triggerAction(QStringLiteral("arp"));
+        QVERIFY(!transport.playing());
+        // Hold toggles the edited slot only.
+        instance->triggerAction(QStringLiteral("hold"));
+        QCOMPARE(k.engine.slotParam(0, ParamId::ArpHold), 1.0f);
+        QCOMPARE(k.engine.slotParam(1, ParamId::ArpHold), 0.0f);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestKrimson)

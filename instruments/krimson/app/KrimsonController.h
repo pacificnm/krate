@@ -77,6 +77,7 @@ signals:
 
 private:
     void syncTempo();
+    void syncArp(); // standalone: the edited slot's ARP on starts the transport, off stops what it started
     void poll();
 
     static inline KrimsonController *s_instance = nullptr;
@@ -87,6 +88,9 @@ private:
     bool m_playing = false;
     int m_notesRevision = 0;
     bool m_morphEdit = false;
+    bool m_arpOn = false;
+    int m_arpSlot = 0;
+    bool m_arpStartedTransport = false;
     int m_morphRevision = 0;
     std::uint64_t m_heldSeen[2] = {0, 0};
 };

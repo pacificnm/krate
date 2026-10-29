@@ -32,6 +32,12 @@ Only continuous controls morph; waves, filter type, switches and lists don't. Ea
 
 As Kalliope's (PLAY.md in instruments/kalliope): Up, Down, Up/Down, Random; 1–4 octaves; 1/8, 1/16, 1/8T, 1/16T; hold; locked to the transport.
 
+- **Each slot has its own**: ARP and HOLD on the panel act on the edited slot (and are learnable actions `arp`, `hold`), so slot A can arpeggiate on channel 3 while slot B plays chords on channel 4.
+- The arpeggio plays the slot's held keys, low to high, in the slot's voice mode: Poly gives each step its own voice (release tails overlap), Mono / Legato / Unison play one line.
+- **Hold** latches the keys held when it goes on, or the next chord; off, the arpeggio follows the keys again.
+- **Standalone**: turning the edited slot's ARP on starts the transport; turning it off stops it (if ARP started it). PLAY / STOP works as well. **In the rack**: the rack's transport runs every slot's arpeggio.
+- ARP off with keys still down: they sound as a normal chord again.
+
 ## Programs and performances
 
 - **Programs**: 8 banks × 8 (`11`…`88`), each one slot's full sound **including its morph targets**. The display shows the edited slot's program, a dot while the slot differs from it, the name under it.

@@ -63,12 +63,21 @@ void RackSession::load()
             m_controller.setPan(i, d.value(u"pan").toDouble(0.0));
             m_controller.setMute(i, d.value(u"mute").toBool(false));
             m_controller.setSolo(i, d.value(u"solo").toBool(false));
-            // Channel routing: notes on this channel (1..16) go to the instrument; 0 = focus only.
+            // Channel routing: notes on these channels (1..16) go to the instrument;
+            // none = focus only. "channels" (a list, since Krimson's four slots);
+            // older sessions have one "channel".
             for (int ch = 0; ch < krate::Rack::kChannels; ++ch)
                 if (m_rack.channelDevice(ch) == i)
                     m_rack.setChannelDevice(ch, -1);
-            if (const int ch = d.value(u"channel").toInt(0); ch >= 1 && ch <= 16)
-                m_rack.setChannelDevice(ch - 1, i);
+            QList<int> channels;
+            if (d.contains(u"channels"))
+                for (const QJsonValue v : d.value(u"channels").toArray())
+                    channels << v.toInt(0);
+            else
+                channels << d.value(u"channel").toInt(0);
+            for (int ch : channels)
+                if (ch >= 1 && ch <= 16)
+                    m_rack.setChannelDevice(ch - 1, i);
         }
         if (const int focus = int(m_ids.indexOf(json.value(u"focus").toString())); focus >= 0)
             m_controller.setFocus(focus);
@@ -89,16 +98,16 @@ void RackSession::save()
     m_saveTimer.stop();
     QJsonObject devices;
     for (int i = 0; i < m_ids.size(); ++i) {
-        int channel = 0;
-        for (int ch = 0; ch < krate::Rack::kChannels && channel == 0; ++ch)
+        QJsonArray channels;
+        for (int ch = 0; ch < krate::Rack::kChannels; ++ch)
             if (m_rack.channelDevice(ch) == i)
-                channel = ch + 1;
+                channels.append(ch + 1);
         devices.insert(m_ids[i], QJsonObject{
                                      {QStringLiteral("fader"), m_controller.fader(i)},
                                      {QStringLiteral("pan"), m_controller.pan(i)},
                                      {QStringLiteral("mute"), m_controller.mute(i)},
                                      {QStringLiteral("solo"), m_controller.solo(i)},
-                                     {QStringLiteral("channel"), channel},
+                                     {QStringLiteral("channels"), channels},
                                  });
     }
     const QJsonObject json{

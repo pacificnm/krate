@@ -24,6 +24,9 @@ constexpr int kDefaultFirstChannel = 2;        // slots A..D on MIDI channels 3.
 // Delay Time positions in beats: 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2.
 constexpr double kDelayBeats[] = {0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0};
 constexpr double kMaxDelayFeedback = 0.9;
+// Arp Rate positions as steps per beat: 1/8, 1/16, 1/8T, 1/16T.
+constexpr int kArpStepsPerBeat[] = {2, 4, 3, 6};
+constexpr double kArpGate = 0.5; // each arpeggio note lasts half a step
 constexpr std::int8_t kKeyUp = -128;
 } // namespace
 
@@ -244,8 +247,13 @@ void Engine::startVoice(int slot, int v, int note, double glideFrom) noexcept
 
 void Engine::playMono(int slot, bool retrigger) noexcept
 {
+    const SlotState &state = m_state[std::size_t(slot)];
+    playMonoNote(slot, state.held[std::size_t(state.heldCount - 1)], retrigger);
+}
+
+void Engine::playMonoNote(int slot, int note, bool retrigger) noexcept
+{
     SlotState &state = m_state[std::size_t(slot)];
-    const int note = state.held[std::size_t(state.heldCount - 1)];
     const double glideFrom = state.lastNote >= 0 ? double(state.lastNote) : -1.0;
     const bool unison = state.mode == VoiceMode::Unison;
     const int count = unison ? kUnisonVoices : 1;
@@ -285,8 +293,18 @@ void Engine::noteOn(int slot, int note, int velocity) noexcept
         std::copy(state.held.begin() + 1, state.held.end(), state.held.begin());
         --state.heldCount;
     }
+    if (state.hold) { // the first key of a new chord replaces the latched one
+        if (state.heldCount == 0)
+            state.latchedCount = 0;
+        if (std::find(state.latched.begin(), state.latched.begin() + state.latchedCount, note)
+                == state.latched.begin() + state.latchedCount
+            && state.latchedCount < int(state.latched.size()))
+            state.latched[std::size_t(state.latchedCount++)] = std::uint8_t(note);
+    }
     const bool othersHeld = state.heldCount > 0;
     state.held[std::size_t(state.heldCount++)] = std::uint8_t(note);
+    if (state.arpOn)
+        return; // the arpeggiator plays it
 
     switch (state.mode) {
     case VoiceMode::Poly: {
@@ -325,6 +343,8 @@ void Engine::noteOff(int slot, int note) noexcept
             --state.heldCount;
             break;
         }
+    if (state.arpOn)
+        return; // the arpeggiator follows the held (or latched) keys
     if (state.mode == VoiceMode::Poly) {
         for (int v = 0; v < kVoices; ++v) {
             const Voice &voice = m_voices[std::size_t(v)];
@@ -359,11 +379,124 @@ void Engine::setSustain(int slot, bool down) noexcept
 void Engine::allNotesOff(int slot) noexcept
 {
     m_state[std::size_t(slot)].heldCount = 0;
+    m_state[std::size_t(slot)].latchedCount = 0;
+    m_state[std::size_t(slot)].arpNote = -1;
     for (int v = 0; v < kVoices; ++v)
         if (m_voiceSlot[std::size_t(v)] == slot) {
             m_sustained[std::size_t(v)] = false;
             m_voices[std::size_t(v)].noteOff();
         }
+}
+
+void Engine::arpUpdate(int slot, const krate::TransportState &transport) noexcept
+{
+    SlotState &state = m_state[std::size_t(slot)];
+    const Store &p = m_slots[std::size_t(slot)];
+    const bool on = units::index(p.get(int(ParamId::ArpOn)), positions::kSwitch) == 1;
+    const bool hold = units::index(p.get(int(ParamId::ArpHold)), positions::kSwitch) == 1;
+    if (hold != state.hold) {
+        state.hold = hold;
+        state.latchedCount = 0; // on: latch what is held now; off: follow the keys again
+        if (hold)
+            for (int i = 0; i < state.heldCount; ++i)
+                state.latched[std::size_t(state.latchedCount++)] = state.held[std::size_t(i)];
+    }
+    if (on != state.arpOn) {
+        arpRelease(slot);
+        state.arpOn = on;
+        state.arpClock.stop();
+        // Arpeggio on: the keys' notes stop (the arpeggio takes over); off: keys still down play again.
+        for (int v = 0; v < kVoices; ++v)
+            if (m_voiceSlot[std::size_t(v)] == slot) {
+                m_sustained[std::size_t(v)] = false;
+                m_voices[std::size_t(v)].noteOff();
+            }
+        if (!on && state.heldCount > 0) {
+            if (state.mode == VoiceMode::Poly)
+                for (int i = 0; i < state.heldCount; ++i)
+                    startVoice(slot, pickVoice(slot, state.held[std::size_t(i)]), state.held[std::size_t(i)], -1.0);
+            else
+                playMono(slot, true);
+        }
+    }
+    state.arpClock.setStepsPerBeat(kArpStepsPerBeat[units::index(p.get(int(ParamId::ArpRate)), positions::kArpRate)]);
+    state.arpClock.setGateLength(kArpGate);
+    const bool run = state.arpOn && transport.playing;
+    if (run && (transport.restarted || !state.arpClock.running())) {
+        arpRelease(slot);
+        state.arpClock.start();
+        state.arpPosition = 0;
+    } else if (!run && state.arpClock.running()) {
+        state.arpClock.stop();
+        arpRelease(slot);
+    }
+}
+
+void Engine::arpRelease(int slot) noexcept
+{
+    SlotState &state = m_state[std::size_t(slot)];
+    if (state.arpNote < 0)
+        return;
+    if (state.mode == VoiceMode::Poly) {
+        for (int v = 0; v < kVoices; ++v)
+            if (m_voiceSlot[std::size_t(v)] == slot && m_voices[std::size_t(v)].gate()
+                && m_voices[std::size_t(v)].note() == state.arpNote)
+                releaseVoice(slot, v);
+    } else {
+        for (int v : state.monoVoices)
+            if (v >= 0 && m_voiceSlot[std::size_t(v)] == slot)
+                releaseVoice(slot, v);
+    }
+    state.arpNote = -1;
+}
+
+void Engine::arpStep(int slot) noexcept
+{
+    SlotState &state = m_state[std::size_t(slot)];
+    arpRelease(slot);
+    // The keys, low to high, without repeats.
+    std::array<int, 16> keys{};
+    int count = 0;
+    const std::uint8_t *source = state.hold ? state.latched.data() : state.held.data();
+    const int sourceCount = state.hold ? state.latchedCount : state.heldCount;
+    for (int i = 0; i < sourceCount; ++i)
+        if (std::find(keys.begin(), keys.begin() + count, int(source[i])) == keys.begin() + count)
+            keys[std::size_t(count++)] = source[i];
+    if (count == 0)
+        return;
+    std::sort(keys.begin(), keys.begin() + count);
+
+    const Store &p = m_slots[std::size_t(slot)];
+    const int octaves = 1 + units::index(p.get(int(ParamId::ArpRange)), positions::kArpRange);
+    const auto length = std::uint32_t(count * octaves);
+    std::uint32_t index = 0;
+    switch (units::index(p.get(int(ParamId::ArpMode)), positions::kArpMode)) {
+    case 0: index = state.arpPosition % length; break;                  // Up
+    case 1: index = length - 1 - state.arpPosition % length; break;     // Down
+    case 2: {                                                            // Up & Down, no repeated ends
+        if (length > 1) {
+            const std::uint32_t k = state.arpPosition % (2 * length - 2);
+            index = k < length ? k : 2 * length - 2 - k;
+        }
+        break;
+    }
+    default:                                                             // Random
+        state.arpRandom ^= state.arpRandom << 13;
+        state.arpRandom ^= state.arpRandom >> 17;
+        state.arpRandom ^= state.arpRandom << 5;
+        index = state.arpRandom % length;
+        break;
+    }
+    ++state.arpPosition;
+    const int note = std::min(127, keys[index % std::uint32_t(count)] + 12 * int(index / std::uint32_t(count)));
+    if (state.mode == VoiceMode::Poly) {
+        const double glideFrom = state.lastNote >= 0 ? double(state.lastNote) : -1.0;
+        startVoice(slot, pickVoice(slot, note), note, glideFrom);
+        state.lastNote = note;
+    } else {
+        playMonoNote(slot, note, true);
+    }
+    state.arpNote = note;
 }
 
 void Engine::publishHeld() noexcept
@@ -440,6 +573,19 @@ void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
             forSlots(-1, [&](int slot) { m_state[std::size_t(slot)].bend = bend; });
         }
         break;
+    }
+}
+
+void Engine::prepareSegment() noexcept
+{
+    for (int slot = 0; slot < SlotCount; ++slot) {
+        const auto i = std::size_t(slot);
+        m_settings[i] = settings(slot);
+        m_morphing[i] = hasMorph(slot);
+        if (m_morphing[i]) {
+            m_morphSettings[i] = settings(slot, true);
+            m_wheelMorph[i] = units::index(m_slots[i].get(int(ParamId::WheelDest)), positions::kWheelDest) == 0;
+        }
     }
 }
 
@@ -536,26 +682,51 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     while (const auto event = m_gui.pop())
         handleMidi(*event, true);
 
-    // Render up to each MIDI event, then apply it on its exact frame.
-    std::uint32_t done = 0;
-    for (std::uint32_t e = 0; e <= block.midiCount; ++e) {
-        const std::uint32_t until = e < block.midiCount ? std::min(block.midi[e].frame, block.frames) : block.frames;
-        if (until > done) {
-            for (int slot = 0; slot < SlotCount; ++slot) { // bend and wheel can change between events
-                const auto i = std::size_t(slot);
-                m_settings[i] = settings(slot);
-                m_morphing[i] = hasMorph(slot);
-                if (m_morphing[i]) {
-                    m_morphSettings[i] = settings(slot, true);
-                    m_wheelMorph[i] = units::index(m_slots[i].get(int(ParamId::WheelDest)), positions::kWheelDest) == 0;
-                }
-            }
-            render(left + done, right + done, until - done, bpm);
-            done = until;
-        }
-        if (e < block.midiCount)
-            handleMidi(block.midi[e]);
+    static constexpr krate::TransportState kStopped{};
+    const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
+    bool anyArp = false;
+    for (int slot = 0; slot < SlotCount; ++slot) {
+        arpUpdate(slot, transport);
+        anyArp = anyArp || m_state[std::size_t(slot)].arpClock.running();
     }
+    const double beatsPerSample = transport.bpm / 60.0 / m_sampleRate;
+
+    // Voices render in runs between the frames where something happens: MIDI
+    // events and arpeggiator steps land on their exact sample.
+    std::uint32_t done = 0;
+    const auto renderTo = [&](std::uint32_t frame) {
+        if (frame <= done)
+            return;
+        prepareSegment(); // bend and wheel can change between events
+        render(left + done, right + done, frame - done, bpm);
+        done = frame;
+    };
+    std::uint32_t nextEvent = 0;
+    for (std::uint32_t i = 0; i < block.frames; ++i) {
+        while (nextEvent < block.midiCount && block.midi[nextEvent].frame <= i) {
+            renderTo(i);
+            handleMidi(block.midi[nextEvent++]);
+        }
+        if (!anyArp)
+            continue;
+        const double beat = transport.beatAtBlockStart + double(i) * beatsPerSample;
+        for (int slot = 0; slot < SlotCount; ++slot) {
+            krate::StepClock &clock = m_state[std::size_t(slot)].arpClock;
+            if (!clock.running())
+                continue;
+            const auto tick = clock.tick(beat);
+            if (tick.stepStarted) {
+                renderTo(i);
+                arpStep(slot);
+            } else if (tick.gatePoint) {
+                renderTo(i);
+                arpRelease(slot);
+            }
+        }
+    }
+    while (nextEvent < block.midiCount) // events past the block's end (malformed): apply at the end
+        handleMidi(block.midi[nextEvent++]);
+    renderTo(block.frames);
     publishHeld();
 
     const double target = kOutputTrim * units::gain(m_global.get(int(ParamId::Volume)));

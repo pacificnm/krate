@@ -267,6 +267,48 @@ private slots:
         QCOMPARE(f.b.notes, 0);
     }
 
+    // A device can own several channels (Krimson: one per slot); sessions keep
+    // the list, and older sessions' single "channel" still loads.
+    void multiChannelDevices()
+    {
+        QTemporaryDir dir;
+        const QString path = dir.filePath("rack.json");
+        {
+            Fixture f;
+            f.entries[1].defaultMidiChannel = 2;
+            f.entries[1].extraMidiChannels = {3, 4, 5};
+            f.controller = std::make_unique<RackController>(f.rack, f.transport, f.entries, nullptr);
+            f.controller->restoreMidiChannels(1);
+            QCOMPARE(f.controller->midiChannel(1), 3);
+            QCOMPARE(f.controller->midiChannelCount(1), 4);
+            QCOMPARE(f.rack.channelDevice(5), 1);
+            f.controller->setMidiChannel(1, 10); // a single channel again
+            QCOMPARE(f.controller->midiChannelCount(1), 1);
+            QCOMPARE(f.rack.channelDevice(3), -1);
+            f.controller->restoreMidiChannels(1);
+            RackSession session(path, *f.controller, f.rack, *f.learn, {"alpha", "beta"}, nullptr);
+            session.save();
+        }
+        {
+            Fixture g;
+            RackSession session(path, *g.controller, g.rack, *g.learn, {"alpha", "beta"}, nullptr);
+            session.load();
+            QCOMPARE(g.controller->midiChannel(1), 3);
+            QCOMPARE(g.controller->midiChannelCount(1), 4);
+            QCOMPARE(g.controller->midiChannel(0), 1);
+        }
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(R"({ "version": 1, "devices": { "alpha": { "channel": 0 }, "beta": { "channel": 7 } } })");
+        file.close();
+        Fixture h;
+        RackSession session(path, *h.controller, h.rack, *h.learn, {"alpha", "beta"}, nullptr);
+        session.load();
+        QCOMPARE(h.controller->midiChannel(1), 7);
+        QCOMPARE(h.controller->midiChannelCount(1), 1);
+        QCOMPARE(h.controller->midiChannel(0), 0);
+    }
+
     void sessionIgnoresUnknownInstruments()
     {
         QTemporaryDir dir;
