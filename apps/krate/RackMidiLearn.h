@@ -22,8 +22,9 @@ class InstrumentInstance;
 // Keys from an instrument panel refer to the focused instrument (the panel on
 // screen): a parameter key maps as fixed (that instrument's knob), or as
 // follow-focus when followFocus is on; an action key (e.g. "pattern1") maps as
-// that instrument's button. Rack keys: "rack:playstop", "rack:focus:<n>",
-// "rack:next", "rack:previous". Notes can be learned for buttons.
+// that instrument's button. Rack keys: "rack:playstop", "rack:mixer" (the
+// rack's own actions, kRackActions), "rack:focus:<n>", "rack:next",
+// "rack:previous". Notes can be learned for buttons.
 class RackMidiLearn final : public MidiLearnController
 {
     Q_OBJECT
@@ -37,7 +38,11 @@ public:
         krate::InstrumentInstance *instance = nullptr; // performs its actions; may be null in tests
     };
 
-    RackMidiLearn(krate::Rack &rack, std::vector<Device> devices, std::function<void()> playStop, QObject *parent);
+    // The rack's own learnable actions ("rack:<name>"); the index is the mapping's action.
+    inline static const QStringList kRackActions{QStringLiteral("playstop"), QStringLiteral("mixer")};
+    using ActionHandler = std::function<void(const QString &action)>; // one of kRackActions
+
+    RackMidiLearn(krate::Rack &rack, std::vector<Device> devices, ActionHandler rackAction, QObject *parent);
     ~RackMidiLearn() override;
 
     bool canFollowFocus() const override { return true; }
@@ -79,5 +84,5 @@ protected:
 private:
     krate::Rack &m_rack;
     std::vector<Device> m_devices;
-    std::function<void()> m_playStop;
+    ActionHandler m_rackAction;
 };

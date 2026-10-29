@@ -72,7 +72,7 @@ Item {
     Fader {
         x: strip.width / 2 - width + 6
         y: strip.isMaster ? 34 : 102
-        height: strip.isMaster ? 164 : 96
+        height: strip.height - y - 32
         value: strip.rev >= 0 ? Rack.fader(strip.device) : 0.8
         displayText: Rack.faderText(value)
         onMoved: v => Rack.setFader(strip.device, v)
@@ -81,7 +81,7 @@ Item {
     Meter {
         x: strip.width / 2 + 14
         y: strip.isMaster ? 40 : 108
-        height: strip.isMaster ? 152 : 84
+        height: strip.height - y - 38
         level: strip.isMaster ? Host.outputLevel : (Rack.meters[strip.device] ?? 0)
     }
 

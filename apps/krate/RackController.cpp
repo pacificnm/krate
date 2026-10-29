@@ -63,6 +63,15 @@ void RackController::setFocus(int device)
     m_rack.setFocus(device);
     m_focus = device;
     emit focusChanged();
+    setMixerShown(false);
+}
+
+void RackController::setMixerShown(bool shown)
+{
+    if (shown == m_mixerShown)
+        return;
+    m_mixerShown = shown;
+    emit mixerShownChanged();
 }
 
 bool RackController::playing() const { return m_transport.playing(); }
@@ -207,6 +216,7 @@ void RackController::poll()
     if (const int focus = m_rack.focus(); focus != m_focus) {
         m_focus = focus;
         emit focusChanged();
+        setMixerShown(false);
     }
 
     // Beat LED: lit for the first quarter of each beat while playing.

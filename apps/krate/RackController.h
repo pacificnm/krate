@@ -29,6 +29,8 @@ class RackController : public QObject
     Q_PROPERTY(QStringList panelModules READ panelModules CONSTANT)
     Q_PROPERTY(QStringList panelComponents READ panelComponents CONSTANT)
     Q_PROPERTY(int focus READ focus WRITE setFocus NOTIFY focusChanged)
+    // The mixer screen instead of the focused instrument's panel; a focus change shows the instrument.
+    Q_PROPERTY(bool mixerShown READ mixerShown WRITE setMixerShown NOTIFY mixerShownChanged)
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     Q_PROPERTY(qreal bpm READ bpm WRITE setBpm NOTIFY bpmChanged)
     Q_PROPERTY(bool beat READ beat NOTIFY beatChanged)
@@ -53,6 +55,8 @@ public:
 
     int focus() const { return m_focus; }
     void setFocus(int device);
+    bool mixerShown() const { return m_mixerShown; }
+    void setMixerShown(bool shown);
     bool playing() const;
     void setPlaying(bool playing);
     qreal bpm() const;
@@ -81,6 +85,7 @@ public:
 
 signals:
     void focusChanged();
+    void mixerShownChanged();
     void playingChanged();
     void bpmChanged();
     void beatChanged();
@@ -102,12 +107,13 @@ private:
     static inline RackController *s_instance = nullptr;
 
     krate::Rack &m_rack;
-    QList<krate::InstrumentEntry> m_entries; // their default MIDI channels
     krate::Transport &m_transport;
+    QList<krate::InstrumentEntry> m_entries; // their default MIDI channels
     QStringList m_names, m_modules, m_components;
     QList<Strip> m_strips;
     qreal m_masterFader = kUnityFader;
     int m_focus = 0;
+    bool m_mixerShown = false;
     bool m_beat = false;
     int m_mixerRevision = 0;
     QVariantList m_meters;

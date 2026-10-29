@@ -7,16 +7,12 @@
 
 Q_LOGGING_CATEGORY(lcRackLearn, "krate.learn")
 
-namespace {
-constexpr int kPlayStop = 0; // the rack's own action
-} // namespace
-
-RackMidiLearn::RackMidiLearn(krate::Rack &rack, std::vector<Device> devices, std::function<void()> playStop,
+RackMidiLearn::RackMidiLearn(krate::Rack &rack, std::vector<Device> devices, ActionHandler rackAction,
                              QObject *parent)
     : MidiLearnController(parent)
     , m_rack(rack)
     , m_devices(std::move(devices))
-    , m_playStop(std::move(playStop))
+    , m_rackAction(std::move(rackAction))
 {
 }
 
@@ -46,8 +42,8 @@ int RackMidiLearn::deviceIndex(const QString &id) const
 std::optional<RackMidiLearn::Mapping> RackMidiLearn::resolve(const QString &key) const
 {
     using Kind = Mapping::Kind;
-    if (key == u"rack:playstop")
-        return Mapping{Kind::Action, krate::Rack::kRackDevice, kPlayStop};
+    if (const qsizetype a = kRackActions.indexOf(key.mid(5)); key.startsWith(u"rack:") && a >= 0)
+        return Mapping{Kind::Action, krate::Rack::kRackDevice, int(a)};
     if (key == u"rack:next")
         return Mapping{Kind::FocusAction, -1, krate::Rack::kFocusNext};
     if (key == u"rack:previous")
@@ -176,8 +172,8 @@ void RackMidiLearn::drainEvents()
     }
     while (const auto fired = m_rack.popFired()) {
         if (fired->device == krate::Rack::kRackDevice) {
-            if (fired->action == kPlayStop && m_playStop)
-                m_playStop();
+            if (fired->action >= 0 && fired->action < kRackActions.size() && m_rackAction)
+                m_rackAction(kRackActions[fired->action]);
         } else if (fired->device >= 0 && fired->device < int(m_devices.size())) {
             const Device &d = m_devices[std::size_t(fired->device)];
             const QString action = d.actions.value(fired->action);
@@ -220,7 +216,7 @@ QJsonArray RackMidiLearn::saveMappings() const
             o[QStringLiteral("kind")] = QStringLiteral("action");
             if (m.device == krate::Rack::kRackDevice) {
                 o[QStringLiteral("device")] = QStringLiteral("rack");
-                o[QStringLiteral("key")] = QStringLiteral("playstop");
+                o[QStringLiteral("key")] = kRackActions.value(m.target);
             } else {
                 o[QStringLiteral("device")] = deviceId;
                 o[QStringLiteral("key")] = deviceId.isEmpty() ? QString() : m_devices[std::size_t(m.device)].actions.value(m.target);
@@ -265,11 +261,13 @@ void RackMidiLearn::loadMappings(const QJsonArray &mappings)
             else if (const int target = deviceIndex(key); target >= 0)
                 m = Mapping{Kind::FocusAction, -1, target};
         } else if (kind == u"action") {
-            if (deviceId == u"rack" && key == u"playstop")
-                m = Mapping{Kind::Action, krate::Rack::kRackDevice, kPlayStop};
-            else if (device >= 0)
+            if (deviceId == u"rack") {
+                if (const qsizetype a = kRackActions.indexOf(key); a >= 0)
+                    m = Mapping{Kind::Action, krate::Rack::kRackDevice, int(a)};
+            } else if (device >= 0) {
                 if (const qsizetype a = m_devices[std::size_t(device)].actions.indexOf(key); a >= 0)
                     m = Mapping{Kind::Action, device, int(a)};
+            }
         }
         if (!m || (e.isNote && m->kind != Kind::FocusAction && m->kind != Kind::Action)) {
             qCWarning(lcRackLearn) << "skipping unknown mapping" << o;

@@ -86,7 +86,13 @@ int main(int argc, char *argv[])
         learnDevices.push_back({entries[i].id, instances[std::size_t(i)]->instrument().parameters(), entries[i].actions,
                                 instances[std::size_t(i)].get()});
     RackMidiLearn midiLearn(rack, std::move(learnDevices),
-                            [&rackController] { rackController.setPlaying(!rackController.playing()); }, nullptr);
+                            [&rackController](const QString &action) {
+                                if (action == u"playstop")
+                                    rackController.setPlaying(!rackController.playing());
+                                else if (action == u"mixer")
+                                    rackController.setMixerShown(!rackController.mixerShown());
+                            },
+                            nullptr);
     QObject::connect(&rackController, &RackController::focusChanged, &midiLearn, &RackMidiLearn::focusChanged);
 
     // ~/.config/krate/rack.json: tempo, focus, mixer, routing, mappings, MIDI device.

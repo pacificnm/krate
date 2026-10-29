@@ -74,6 +74,7 @@ struct Fixture
     std::unique_ptr<RackController> controller;
     std::unique_ptr<RackMidiLearn> learn;
     int playStops = 0;
+    int mixerToggles = 0;
 
     explicit Fixture(bool reversed = false)
     {
@@ -96,7 +97,12 @@ struct Fixture
             devices = {{"beta", kParamsB, {}, &ib}, {"alpha", kParamsA, ea.actions, &ia}};
         }
         controller = std::make_unique<RackController>(rack, transport, entries, nullptr);
-        learn = std::make_unique<RackMidiLearn>(rack, std::move(devices), [this] { ++playStops; }, nullptr);
+        learn = std::make_unique<RackMidiLearn>(rack, std::move(devices), [this](const QString &action) {
+            if (action == u"playstop")
+                ++playStops;
+            else if (action == u"mixer")
+                ++mixerToggles;
+        }, nullptr);
     }
 
     void send(std::vector<MidiEvent> midi)
@@ -179,6 +185,28 @@ private slots:
         f.teach("rack:next", {cc(15, 51, 127)});
         f.send({cc(15, 51, 127)});
         QCOMPARE(f.rack.focus(), 0);
+
+        f.teach("rack:mixer", {noteOn(9, 37)});
+        f.send({noteOn(9, 37)});
+        QCOMPARE(f.mixerToggles, 1);
+        QCOMPARE(f.playStops, 1);
+    }
+
+    // The mixer screen: shown on request, gone when focus changes (from a tab,
+    // or from the controller).
+    void mixerScreen()
+    {
+        Fixture f;
+        QVERIFY(!f.controller->mixerShown());
+        QSignalSpy spy(f.controller.get(), &RackController::mixerShownChanged);
+        f.controller->setMixerShown(true);
+        QVERIFY(f.controller->mixerShown());
+        f.controller->setFocus(1);
+        QVERIFY(!f.controller->mixerShown());
+        f.controller->setMixerShown(true);
+        f.rack.setFocus(0); // as a learned focus button does
+        QTRY_VERIFY(!f.controller->mixerShown());
+        QCOMPARE(spy.count(), 4);
     }
 
     void clearAndClearAll()
@@ -232,6 +260,8 @@ private slots:
             f.rack.setChannelDevice(0, -1);
             f.rack.setChannelDevice(9, 1); // beta on channel 10
             f.teach("rack:playstop", {cc(15, 50, 127)});
+            f.teach("rack:mixer", {cc(15, 52, 127)});
+            f.controller->setMixerShown(true);
             session.save();
         }
         Fixture g;
@@ -242,9 +272,13 @@ private slots:
         QCOMPARE(g.controller->pan(0), -0.25);
         QVERIFY(g.controller->mute(1));
         QCOMPARE(g.controller->focus(), 1);
+        QVERIFY(g.controller->mixerShown()); // reopens on the mixer screen
         QCOMPARE(g.rack.channelDevice(9), 1);
         QCOMPARE(g.rack.channelDevice(0), -1);
         QCOMPARE(int(g.rack.ccMapping(15, 50).kind), int(Kind::Action));
+        g.send({cc(15, 52, 127)});
+        QCOMPARE(g.mixerToggles, 1);
+        QCOMPARE(g.playStops, 0);
     }
 
     // The mixer strip's channel selector: a channel goes to one device; FOCUS
