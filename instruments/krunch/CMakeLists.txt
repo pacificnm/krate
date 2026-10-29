@@ -6,6 +6,8 @@ add_library(krunch_dsp STATIC
     dsp/Fft.h
     dsp/Fft.cpp
     dsp/Filters.h
+    dsp/Fuzz.h
+    dsp/Fuzz.cpp
     dsp/Gate.h
     dsp/GreenDrive.h
     dsp/GreenDrive.cpp

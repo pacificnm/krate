@@ -29,6 +29,17 @@ The classic green mid-boost overdrive, modelled on its circuit in broad strokes 
 | `tone` | 0 … 10 | 5 |
 | `level` | −24 … +12 dB | −6 dB |
 
+## Round Fuzz
+
+The classic two-transistor round fuzz, in broad strokes (`dsp/Fuzz.cpp`): two transistor stages, each a gain into an asymmetric clipper (saturating softly one way up to 1, cutting off sooner the other way at −0.45, the same slope at rest), at 4×, with the coupling capacitors between and a treble roll-off. **FUZZ** sets the first stage's drive, so it cleans up as you pick lighter or roll your guitar's volume back (under 10 % distortion when quiet). The asymmetry gives the strong second harmonic. **BIAS** moves both transistors' operating point (centre is the classic setting); off centre, quiet notes get stuck and sputter, the gated "dying battery" sound. **TYPE**: Germanium (a softer knee, less gain, rolled off at 4.5 kHz) or Silicon (tanh, more gain, brighter at 7.5 kHz), levelled to each other. At the default Volume it comes in about 3 dB over bypass.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `fuzz` | 0 … 10 | 7 |
+| `volume` | −24 … +12 dB (before the type's trim) | 5.5 |
+| `bias` | −5 … +5 around centre | centre |
+| `type` | Germanium / Silicon (a switch) | Germanium |
+
 ## Compressor
 
 A pedal compressor for sustain and evening out (`dsp/StudioPedals.cpp`): a peak detector (Attack in, 200 ms out) drives a soft-kneed (8 dB) gain computer. **SUSTAIN** lowers the threshold (−12 … −48 dBFS) and raises the ratio (2:1 … 12:1) together, with make-up gain following (half of what a full-scale signal loses), so more sustain isn't quieter; at full, 30 dB of playing dynamics come out as under 10. **BLEND** mixes the dry signal back in, keeping the pick's attack (parallel compression). Best first on the board.
@@ -119,4 +130,4 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

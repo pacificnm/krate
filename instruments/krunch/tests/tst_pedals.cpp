@@ -5,6 +5,7 @@
 #include <numbers>
 #include <vector>
 
+#include "dsp/Fuzz.h"
 #include "dsp/GreenDrive.h"
 #include "dsp/ModPedals.h"
 #include "dsp/StudioPedals.h"
@@ -78,7 +79,7 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(10));
+        QCOMPARE(pedalTypes().size(), std::size_t(11));
         QCOMPARE(pedalTypes()[1]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
@@ -200,6 +201,100 @@ private slots:
             (std::fabs(f - nearest) <= 3.0 * kRate / double(n) && nearest > 0.0 ? harmonic : other) += std::norm(sum);
         }
         QVERIFY(other / (harmonic + other) < 0.01);
+    }
+
+    // --- Round Fuzz ---------------------------------------------------------------------
+
+    void fuzzMoreFuzzMoreDistortion()
+    {
+        const auto distortion = [](float fuzz) {
+            RoundFuzz f;
+            f.prepare(kRate);
+            f.setKnob(RoundFuzz::Fuzz, fuzz);
+            const auto y = run(f, sine(24000, 110.0, 0.1f));
+            return thd(y, 110.0, 12000, 9600);
+        };
+        QVERIFY(distortion(1.0f) > 2.0 * distortion(0.1f));
+    }
+
+    // Pick lighter (or roll the guitar back) and it cleans up.
+    void fuzzCleansUp()
+    {
+        const auto distortion = [](float amplitude) {
+            RoundFuzz f;
+            f.prepare(kRate);
+            f.setKnob(RoundFuzz::Fuzz, 0.4f);
+            const auto y = run(f, sine(24000, 110.0, amplitude));
+            return thd(y, 110.0, 12000, 9600);
+        };
+        const double soft = distortion(0.003f), hard = distortion(0.3f);
+        QVERIFY2(soft < 0.3 * hard, qPrintable(QStringLiteral("%1 vs %2").arg(soft).arg(hard)));
+        QVERIFY(soft < 0.1);
+    }
+
+    // Asymmetric clipping: strong even harmonics (the second).
+    void fuzzHasEvenHarmonics()
+    {
+        RoundFuzz f;
+        f.prepare(kRate);
+        const auto y = run(f, sine(24000, 110.0, 0.2f));
+        const double h1 = level(y, 110.0, 12000, 9600), h2 = level(y, 220.0, 12000, 9600);
+        QVERIFY2(h2 > 0.1 * h1, qPrintable(QStringLiteral("2nd at %1 dB").arg(db(h2 / h1))));
+    }
+
+    // Bias off centre: quiet notes get stuck and sputter, much quieter than at the centre.
+    void fuzzBiasGates()
+    {
+        const auto out = [](float bias) {
+            RoundFuzz f;
+            f.prepare(kRate);
+            f.setKnob(RoundFuzz::Bias, bias);
+            const auto y = run(f, sine(24000, 110.0, 0.01f));
+            return level(y, 110.0, 12000, 9600);
+        };
+        QVERIFY2(db(out(1.0f)) < db(out(0.5f)) - 10.0, qPrintable(QStringLiteral("%1 vs %2 dB").arg(db(out(1.0f))).arg(db(out(0.5f)))));
+    }
+
+    void fuzzSiliconIsBrighter()
+    {
+        const auto brightness = [](float type) {
+            RoundFuzz f;
+            f.prepare(kRate);
+            f.setKnob(RoundFuzz::Type, type);
+            const auto y = run(f, sine(24000, 220.0, 0.2f));
+            double high = 0.0;
+            for (int k = 10; k <= 20; ++k)
+                high += std::pow(level(y, 220.0 * k, 12000, 9600), 2.0);
+            return std::sqrt(high) / level(y, 220.0, 12000, 9600);
+        };
+        QVERIFY(brightness(1.0f) > 1.5 * brightness(0.0f));
+    }
+
+    void fuzzIsBoundedAndClean()
+    {
+        RoundFuzz f;
+        f.prepare(kRate);
+        f.setKnob(RoundFuzz::Fuzz, 1.0f);
+        f.setKnob(RoundFuzz::Volume, 1.0f);
+        f.setKnob(RoundFuzz::Type, 1.0f);
+        const double hz = 1318.5;
+        const auto y = run(f, sine(24000, hz, 0.5f));
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak) && peak < 4.0f);
+        const std::size_t from = 12000, n = 4096;
+        double harmonic = 0.0, other = 0.0;
+        for (std::size_t k = 1; k < n / 2; ++k) {
+            std::complex<double> sum = 0.0;
+            for (std::size_t i = 0; i < n; ++i) {
+                const double w = 0.5 - 0.5 * std::cos(2.0 * std::numbers::pi * double(i) / double(n - 1));
+                sum += w * double(y[from + i]) * std::polar(1.0, -2.0 * std::numbers::pi * double(k * i) / double(n));
+            }
+            const double fr = double(k) * kRate / double(n), nearest = std::round(fr / hz) * hz;
+            (std::fabs(fr - nearest) <= 3.0 * kRate / double(n) && nearest > 0.0 ? harmonic : other) += std::norm(sum);
+        }
+        QVERIFY2(other / (harmonic + other) < 0.02, qPrintable(QString::number(other / (harmonic + other))));
     }
 
     // --- Compressor ---------------------------------------------------------------------
