@@ -356,8 +356,14 @@ Item {
         height: 80
 
         PanelLabel { centerX: 58; y: 0; text: "OCTAVE"; inverse: true; font.pixelSize: 10 }
-        PanelButton { x: 4; y: 22; width: 30; height: 26; dark: true; faceText: "◂"; text: "Octave down"; onClicked: octave.step(-1) }
-        PanelButton { x: 82; y: 22; width: 30; height: 26; dark: true; faceText: "▸"; text: "Octave up"; onClicked: octave.step(1) }
+        PanelButton { // learnable as a button: octave_down
+            x: 4; y: 22; width: 30; height: 26; dark: true; faceText: "◂"; text: "Octave down"; onClicked: octave.step(-1)
+            LearnOverlay { anchors.fill: parent; paramKey: "octave_down"; round: false }
+        }
+        PanelButton { // octave_up
+            x: 82; y: 22; width: 30; height: 26; dark: true; faceText: "▸"; text: "Octave up"; onClicked: octave.step(1)
+            LearnOverlay { anchors.fill: parent; paramKey: "octave_up"; round: false }
+        }
         Text {
             x: 58 - width / 2
             y: 24

@@ -73,6 +73,10 @@ add_executable(${test}
     app/SlotController.cpp
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
+    ${PROJECT_SOURCE_DIR}/shared/app/MidiLearnController.h
+    ${PROJECT_SOURCE_DIR}/shared/app/MidiLearnController.cpp
+    ${PROJECT_SOURCE_DIR}/shared/app/InstrumentMidiLearn.h
+    ${PROJECT_SOURCE_DIR}/shared/app/InstrumentMidiLearn.cpp
 )
 target_include_directories(${test} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(${test} PRIVATE -Wall -Wextra -Wpedantic)

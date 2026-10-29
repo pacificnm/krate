@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 
+#include "app/InstrumentMidiLearn.h"
 #include "core/Transport.h"
 #include "krimson/app/KrimsonInstrument.h"
 #include "krimson/dsp/Params.h"
@@ -142,6 +143,37 @@ private slots:
         QVERIFY(std::abs(k.controller.value(QStringLiteral("cutoff")) - 0.3) > 0.01);
         instance->triggerAction(QStringLiteral("slotA"));
         QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(0.3f));
+    }
+
+    // The octave buttons are learnable (standalone and in the rack: both learn
+    // the entry's actions) and step the keys' octave, stopping at +-3.
+    void octaveButtonsLearnAndStep()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto entry = registryEntry();
+        QVERIFY(entry.actions.contains("octave_down"));
+        QVERIFY(entry.actions.contains("octave_up"));
+        const auto instance = entry.create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        krate::InstrumentMidiLearn learn(k.engine, dir.filePath("midimap.json"), nullptr, entry.actions);
+        learn.setActive(true);
+        learn.arm(QStringLiteral("octave_up"));
+        QCOMPARE(learn.armedParam(), QStringLiteral("octave_up"));
+        learn.arm(QStringLiteral("octave_down"));
+        QCOMPARE(learn.armedParam(), QStringLiteral("octave_down"));
+        learn.setActive(false);
+
+        const auto shift = [&] { return units::octaveShift(float(k.controller.value(QStringLiteral("octave")))); };
+        QCOMPARE(shift(), 0);
+        instance->triggerAction(QStringLiteral("octave_up"));
+        QCOMPARE(shift(), 1);
+        for (int i = 0; i < 5; ++i)
+            instance->triggerAction(QStringLiteral("octave_up"));
+        QCOMPARE(shift(), 3);
+        for (int i = 0; i < 9; ++i)
+            instance->triggerAction(QStringLiteral("octave_down"));
+        QCOMPARE(shift(), -3);
     }
 
     // A song in the library keeps Krimson's whole sound: all four slots, not
