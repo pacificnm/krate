@@ -157,6 +157,7 @@ void Madman::prepareEffect(double sampleRate) noexcept
     m_diodeLowpass.setCutoff(up, 6000.0); // the output's capacitor takes the fizz off
     m_lowCut.setLowShelf(sampleRate, 160.0, -5.0);
     m_amp.prepare(sampleRate);
+    m_doubler.prepare(sampleRate);
     m_mids = -1.0f;
 }
 
@@ -169,8 +170,7 @@ void Madman::resetEffect() noexcept
     m_lowCut.reset();
     m_midPush.reset();
     m_amp.reset();
-    m_line.fill(0.0f);
-    m_write = 0;
+    m_doubler.reset();
     m_level = -1.0f;
 }
 
@@ -208,7 +208,7 @@ void Madman::processEffect(float *buffer, std::uint32_t frames) noexcept
     m_amp.process(buffer, frames);
 
     // The doubler and the level.
-    const float doubling = knob(Double) >= kOff ? knob(Double) : 0.0f;
+    m_doubler.process(buffer, frames, knob(Double) >= kOff ? knob(Double) : 0.0f);
     // Trimmed so the default comes in about 4 dB over bypass (a saturated
     // signal, so it barely changes with Gain and Amp): a healthy kick into a
     // clean channel without overdriving its input.
@@ -216,13 +216,22 @@ void Madman::processEffect(float *buffer, std::uint32_t frames) noexcept
     if (m_level < 0.0f)
         m_level = target;
     const float step = (target - m_level) / float(frames);
+    for (std::uint32_t n = 0; n < frames; ++n) {
+        m_level += step;
+        buffer[n] *= m_level;
+    }
+    m_level = target;
+}
+
+// --- Doubler ----------------------------------------------------------------------
+
+void Doubler::process(float *buffer, std::uint32_t frames, float amount) noexcept
+{
     const double wanderStep = 1.0 / m_rate;
     for (std::uint32_t n = 0; n < frames; ++n) {
         const float x = buffer[n];
         m_line[m_write] = x;
-        float y = x;
-        if (doubling > 0.0f) {
-            // Two "other takes": 17 and 26 ms late, each drifting a little (0.3 and 0.47 Hz).
+        if (amount > 0.0f) {
             m_wander += wanderStep;
             if (m_wander >= 1000.0)
                 m_wander -= 1000.0;
@@ -234,14 +243,90 @@ void Madman::processEffect(float *buffer, std::uint32_t frames) noexcept
                 const float a = m_line[i & (kLine - 1)], b = m_line[(i + 1) & (kLine - 1)];
                 return a + (b - a) * f;
             };
-            y = x + doubling * 0.7f * (take(17.0, 0.3) + take(26.0, 0.47));
+            const float y = x + amount * 0.7f * (take(17.0, 0.3) + take(26.0, 0.47));
             // About as loud as one take: the takes are from different moments, so
             // they add like separate performances (power), not like one copy.
-            y /= std::sqrt(1.0f + 0.98f * doubling * doubling);
+            buffer[n] = y / std::sqrt(1.0f + 0.98f * amount * amount);
         }
         m_write = (m_write + 1) & (kLine - 1);
+    }
+}
+
+// --- Pyramid ----------------------------------------------------------------------
+
+namespace {
+std::string echoText(float v) { return v < kOff ? "Off" : std::format("{}%", std::lround(double(v) * 100.0)); }
+} // namespace
+
+const PedalInfo Pyramid::kInfo = []() {
+    static const KnobInfo knobs[] = {
+        {"gain", "GAIN", 0.55f, &tenthText},
+        {"body", "BODY", 0.5f, &tenthText},
+        {"mids", "MIDS", 0.65f, &tenthText},
+        {"bite", "BITE", 0.65f, &tenthText},
+        {"twin", "TWIN", 0.45f, &doubleText},
+        {"echo", "ECHO", 0.2f, &echoText},
+        {"level", "LEVEL", 0.5f, &levelText},
+    };
+    PedalInfo info{"pyramid", "Pyramid", "#E8C440", knobs, false, 1.8f};
+    info.pattern = "pyramid:#8A6A10";
+    return info;
+}();
+
+void Pyramid::prepareEffect(double sampleRate) noexcept
+{
+    m_rate = sampleRate;
+    m_tighten.setHighpass(sampleRate, 110.0, 0.7); // the boost: the lows out, so the crunch stays tight
+    m_push.setPeak(sampleRate, 900.0, 0.9, 5.0);    // ...and the mids up into the amp
+    m_amp.prepare(sampleRate);
+    m_doubler.prepare(sampleRate);
+    m_delay.setKnob(Delay::Time, 0.62f);    // about 380 ms
+    m_delay.setKnob(Delay::Feedback, 0.3f);
+    m_delay.setKnob(Delay::Tone, 0.4f);
+    m_delay.prepare(sampleRate);
+}
+
+void Pyramid::resetEffect() noexcept
+{
+    m_tighten.reset();
+    m_push.reset();
+    m_amp.reset();
+    m_doubler.reset();
+    m_delay.prepare(m_rate);
+    m_level = -1.0f;
+}
+
+void Pyramid::processEffect(float *buffer, std::uint32_t frames) noexcept
+{
+    // The boost: shaped, a little gain, softly clipped (it tightens more than it distorts).
+    for (std::uint32_t n = 0; n < frames; ++n)
+        buffer[n] = float(std::tanh(1.2 * double(m_push.process(m_tighten.process(buffer[n])))));
+
+    // The amp: British stages at a medium crunch.
+    Preamp::Settings amp;
+    amp.voice = Voice::Crunch;
+    amp.gain = 0.15f + 0.6f * knob(Gain);
+    amp.bass = knob(Body);
+    amp.mid = knob(Mids);
+    amp.treble = knob(Bite);
+    amp.presence = 0.4f + 0.4f * knob(Bite);
+    m_amp.set(amp);
+    m_amp.process(buffer, frames);
+
+    m_doubler.process(buffer, frames, knob(Twin) >= kOff ? knob(Twin) : 0.0f);
+
+    const float echo = knob(Echo);
+    m_delay.setOn(echo >= kOff);
+    m_delay.setKnob(Delay::Mix, 0.5f * echo);
+    m_delay.process(buffer, frames);
+
+    const float target = float(std::pow(10.0, (-12.0 + 24.0 * double(knob(Level))) / 20.0) * 0.17); // about 4 dB over bypass
+    if (m_level < 0.0f)
+        m_level = target;
+    const float step = (target - m_level) / float(frames);
+    for (std::uint32_t n = 0; n < frames; ++n) {
         m_level += step;
-        buffer[n] = y * m_level;
+        buffer[n] *= m_level;
     }
     m_level = target;
 }

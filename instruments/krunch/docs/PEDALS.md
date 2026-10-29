@@ -69,7 +69,29 @@ The early-80s neoclassical metal lead and rhythm sound, made for the **clean cha
 | `double` | off … 100 % | 30 % |
 | `level` | −12 … +12 dB | 0 dB |
 
-A black case with white polka dots. Set Krunch's channel to the Clean voice with its gain low (the pedal is the drive), pick a 4×12 IR, and start in FRONT; a Delay or Reverb in the LOOP finishes the lead sound.
+A black case with white polka dots (PedalInfo's `pattern`: `dots:` and `pyramid:` are drawn on the board; patterned cases get plates behind the name, and the dots a panel behind the knobs). Set Krunch's channel to the Clean voice with its gain low (the pedal is the drive), pick a 4×12 IR, and start in FRONT; a Delay or Reverb in the LOOP finishes the lead sound.
+
+### Pyramid
+
+The mid-80s British twin-guitar heavy metal sound, made for the **clean channel**: master-volume British heads at a medium crunch (not saturated: the riffs stay articulate and answer the pick), bright and mid-forward with tight lows, two guitars double-tracked, a touch of delay on the leads. Pyramid is that chain:
+
+- **A tightening boost**: the lows out below 110 Hz, the mids up 5 dB at 900 Hz, a little soft clipping (it tightens more than it distorts).
+- **The amp**: Krunch's two-stage British preamp (the Crunch voice) at GAIN, with **BODY**, **MIDS** and **BITE** as its bass, mid and treble (Bite raises the presence too).
+- **TWIN**: the doubler (Madman's), for the two-guitar width.
+- **ECHO**: a Delay pedal inside, about 380 ms, 30 % repeats, darkish, its mix from the knob (0 = off).
+- **LEVEL**: about 4 dB over bypass at the defaults. At its default gain, 20 dB more pick is about 9 dB louder (Madman: saturated, 0 dB).
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `gain` | 0 … 10 (the preamp's gain 1.5 … 7.5) | 5.5 |
+| `body` | 0 … 10 | 5 |
+| `mids` | 0 … 10 | 6.5 |
+| `bite` | 0 … 10 | 6.5 |
+| `twin` | off … 100 % | 45 % |
+| `echo` | off … 100 % (delay mix 0 … 50 %) | 20 % |
+| `level` | −12 … +12 dB | 0 dB |
+
+A yellow case with a pyramid. Use the Clean voice with its gain low, a 4×12 IR, and start in FRONT.
 
 ## Vibe
 
@@ -194,4 +216,4 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (Madman: the distortion's gain range, saturated at its defaults, Gain adding distortion, the mid push, the doubler adding takes at an even level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (Pyramid: a dynamic crunch, Gain adding drive, Bite brightening, the echo on time, bounded; Madman: the distortion's gain range, saturated at its defaults, Gain adding distortion, the mid push, the doubler adding takes at an even level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

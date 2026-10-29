@@ -82,8 +82,8 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(15));
-        QCOMPARE(pedalTypes()[3]->type, std::string_view("green_drive"));
+        QCOMPARE(pedalTypes().size(), std::size_t(16));
+        QCOMPARE(pedalTypes()[4]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
             QVERIFY(p);
@@ -349,6 +349,85 @@ private slots:
         for (float v : y)
             peak = std::max(peak, std::fabs(v));
         QVERIFY(std::isfinite(peak) && peak < 3.0f);
+    }
+
+    // A medium crunch: it still answers the pick (unlike Madman's saturation).
+    void pyramidCrunchesDynamically()
+    {
+        const auto spread = [](float gain) {
+            const auto out = [gain](float amplitude) {
+                Pyramid p;
+                p.prepare(kRate);
+                p.setKnob(Pyramid::Gain, gain);
+                p.setKnob(Pyramid::Twin, 0.0f);
+                p.setKnob(Pyramid::Echo, 0.0f);
+                const auto y = run(p, sine(24000, 196.0, amplitude));
+                return db(level(y, 196.0, 12000, 9600));
+            };
+            return out(0.2f) - out(0.02f);
+        };
+        const double atDefault = spread(0.55f);
+        QVERIFY2(atDefault > 5.0 && atDefault < 14.0, qPrintable(QStringLiteral("%1 dB for 20 dB").arg(atDefault)));
+        QVERIFY(spread(1.0f) < spread(0.0f)); // more gain, more compressed
+        const auto distortion = [](float gain) {
+            Pyramid p;
+            p.prepare(kRate);
+            p.setKnob(Pyramid::Gain, gain);
+            p.setKnob(Pyramid::Twin, 0.0f);
+            p.setKnob(Pyramid::Echo, 0.0f);
+            const auto y = run(p, sine(24000, 196.0, 0.1f));
+            return thd(y, 196.0, 12000, 9600);
+        };
+        QVERIFY(distortion(1.0f) > distortion(0.0f));
+    }
+
+    void pyramidBiteBrightens()
+    {
+        const auto highs = [](float bite) {
+            Pyramid p;
+            p.prepare(kRate);
+            p.setKnob(Pyramid::Bite, bite);
+            p.setKnob(Pyramid::Twin, 0.0f);
+            p.setKnob(Pyramid::Echo, 0.0f);
+            p.setKnob(Pyramid::Gain, 0.0f);
+            const auto y = run(p, sine(24000, 3000.0, 0.001f));
+            return db(level(y, 3000.0, 12000, 9600));
+        };
+        QVERIFY(highs(1.0f) > highs(0.0f) + 6.0);
+    }
+
+    void pyramidEchoAndTwin()
+    {
+        Pyramid p;
+        p.prepare(kRate);
+        p.setKnob(Pyramid::Twin, 0.0f);
+        p.setKnob(Pyramid::Echo, 1.0f);
+        std::vector<float> warm(4800, 0.0f);
+        run(p, warm);
+        std::vector<float> y(48000, 0.0f);
+        for (std::size_t i = 0; i < 480; ++i) // a short burst
+            y[i] = 0.3f * float(std::sin(2.0 * std::numbers::pi * 330.0 * double(i) / kRate));
+        y = run(p, y);
+        // The echo, about 380 ms on, and quiet in between.
+        double between = 0.0, echo = 0.0;
+        for (std::size_t i = 9600; i < 14400; ++i)
+            between = std::max(between, double(std::fabs(y[i])));
+        for (std::size_t i = 17000; i < 20000; ++i)
+            echo = std::max(echo, double(std::fabs(y[i])));
+        QVERIFY2(echo > 4.0 * between, qPrintable(QStringLiteral("%1 vs %2").arg(echo).arg(between)));
+    }
+
+    void pyramidIsBounded()
+    {
+        Pyramid p;
+        p.prepare(kRate);
+        for (int k : {Pyramid::Gain, Pyramid::Body, Pyramid::Mids, Pyramid::Bite, Pyramid::Twin, Pyramid::Echo, Pyramid::Level})
+            p.setKnob(k, 1.0f);
+        const auto y = run(p, sine(48000, 98.0, 0.8f));
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak) && peak < 4.0f);
     }
 
     void drumEchoHeads()

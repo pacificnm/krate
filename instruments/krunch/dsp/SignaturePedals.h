@@ -44,6 +44,29 @@ private:
     float m_level = -1.0f; // ramped
 };
 
+// A doubler: two "other takes", 17 and 26 ms late, each drifting a little
+// (0.3 and 0.47 Hz), mixed in and levelled as separate performances, for a
+// double-tracked width (used by the signature pedals).
+class Doubler
+{
+public:
+    void prepare(double sampleRate) noexcept { m_rate = sampleRate; reset(); }
+    void reset() noexcept
+    {
+        m_line.fill(0.0f);
+        m_write = 0;
+    }
+    // amount 0..1; 0 passes the signal untouched.
+    void process(float *buffer, std::uint32_t frames, float amount) noexcept;
+
+private:
+    static constexpr std::size_t kLine = 16384; // > 40 ms at 192 kHz; a power of two
+    std::array<float, kLine> m_line{};
+    std::size_t m_write = 0;
+    double m_rate = 48000.0;
+    double m_wander = 0.0;
+};
+
 // Madman: the early-80s neoclassical metal lead and rhythm sound, for the
 // clean channel: the rig behind it was a classic op-amp distortion pedal
 // (op-amp gain, germanium diodes clipping to ground) into a 10-band EQ
@@ -77,11 +100,36 @@ private:
     float m_mids = -1.0f;
     // The amp.
     Preamp m_amp;
-    // The doubler: two short, slowly wandering delays.
-    static constexpr std::size_t kLine = 16384; // > 40 ms at 192 kHz; a power of two
-    std::array<float, kLine> m_line{};
-    std::size_t m_write = 0;
-    double m_wander = 0.0;
+    Doubler m_doubler;
+    float m_level = -1.0f; // ramped
+};
+
+// Pyramid: the mid-80s British twin-guitar heavy metal sound, for the clean
+// channel: master-volume British heads at a medium crunch (not saturated),
+// bright and mid-forward with tight lows, two guitars double-tracked, a touch
+// of delay on the leads. Pyramid is that chain: a tightening boost (lows
+// trimmed, mids pushed, a little clipping), Krunch's two-stage British
+// preamp at a crunch (GAIN, with BODY, MIDS and BITE as its bass, mid and treble), the
+// doubler (TWIN), a Delay (ECHO) and the level.
+class Pyramid final : public Pedal
+{
+public:
+    enum Knob : int { Gain, Body, Mids, Bite, Twin, Echo, Level };
+    static const PedalInfo kInfo;
+
+    Pyramid() : Pedal(kInfo) {}
+
+protected:
+    void prepareEffect(double sampleRate) noexcept override;
+    void resetEffect() noexcept override;
+    void processEffect(float *buffer, std::uint32_t frames) noexcept override;
+
+private:
+    double m_rate = 48000.0;
+    Biquad m_tighten, m_push; // the boost's shaping
+    Preamp m_amp;
+    Doubler m_doubler;
+    Delay m_delay;
     float m_level = -1.0f; // ramped
 };
 

@@ -86,7 +86,9 @@ Rectangle {
                 readonly property bool on: Pedals.revision >= 0 && Pedals.isOn(index)
                 readonly property bool loop: Pedals.revision >= 0 && Pedals.inLoop(index)
                 // Lettering that reads on its case: dark on light cases, cream on dark ones.
-                readonly property bool lightCase: Qt.color(info.colour ?? "#444").hslLightness > 0.6
+                // (by perceived brightness: a saturated yellow is light, though its HSL lightness isn't).
+                readonly property color caseColour: info.colour ?? "#444"
+                readonly property bool lightCase: 0.299 * caseColour.r + 0.587 * caseColour.g + 0.114 * caseColour.b > 0.6
                 readonly property color lettering: lightCase ? "#1A1A1A" : "#F4F1E6"
 
                 Binding on x { // where its place is, except while it's being dragged
@@ -131,6 +133,54 @@ Rectangle {
                                 radius: 5.5
                                 color: dots.pattern.slice(5)
                             }
+                        }
+                    }
+                }
+
+                // "pyramid:#RRGGBB": a stepped pyramid in that colour, under the controls.
+                Canvas {
+                    id: pyramid
+                    readonly property string pattern: pedal.info.pattern ?? ""
+                    visible: pattern.startsWith("pyramid:")
+                    anchors.fill: parent
+                    onPatternChanged: requestPaint()
+                    onWidthChanged: requestPaint()
+                    onHeightChanged: requestPaint()
+                    onPaint: {
+                        const ctx = getContext("2d")
+                        ctx.reset()
+                        if (!visible)
+                            return
+                        const colour = pattern.slice(8)
+                        const apexY = 84, baseY = height - 14
+                        const half = Math.min(width * 0.42, (baseY - apexY) * 0.95)
+                        const cx = width / 2
+                        // Two faces, the right one in shade.
+                        ctx.fillStyle = Qt.lighter(colour, 1.25)
+                        ctx.beginPath()
+                        ctx.moveTo(cx, apexY)
+                        ctx.lineTo(cx - half, baseY)
+                        ctx.lineTo(cx + half * 0.15, baseY)
+                        ctx.closePath()
+                        ctx.fill()
+                        ctx.fillStyle = colour
+                        ctx.beginPath()
+                        ctx.moveTo(cx, apexY)
+                        ctx.lineTo(cx + half * 0.15, baseY)
+                        ctx.lineTo(cx + half, baseY)
+                        ctx.closePath()
+                        ctx.fill()
+                        // Its courses of stone.
+                        ctx.strokeStyle = Qt.darker(colour, 1.5)
+                        ctx.lineWidth = 1
+                        const courses = 9
+                        for (let i = 1; i < courses; ++i) {
+                            const y = apexY + (baseY - apexY) * i / courses
+                            const w = half * (y - apexY) / (baseY - apexY)
+                            ctx.beginPath()
+                            ctx.moveTo(cx - w, y)
+                            ctx.lineTo(cx + w, y)
+                            ctx.stroke()
                         }
                     }
                 }
@@ -259,7 +309,7 @@ Rectangle {
                 }
 
                 Rectangle { // on a patterned case, a plate behind the name so it reads
-                    visible: dots.visible
+                    visible: dots.visible || pyramid.visible
                     x: 14
                     y: (pedal.info.sliders ?? false) ? 106 : 98
                     width: parent.width - 28
@@ -274,7 +324,7 @@ Rectangle {
                     width: parent.width - 16
                     horizontalAlignment: Text.AlignHCenter
                     text: pedal.info.name ?? ""
-                    color: pedal.lettering
+                    color: dots.visible || pyramid.visible ? "#F4F1E6" : pedal.lettering // on its plate, or on the case
                     style: pedal.lightCase ? Text.Normal : Text.Raised
                     styleColor: "#80000000"
                     font.family: Theme.labelFont
