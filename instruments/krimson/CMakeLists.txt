@@ -6,14 +6,23 @@ set(KRIMSON_WARNINGS -Wall -Wextra -Wpedantic -Werror)
 add_library(krimson_dsp STATIC
     dsp/Engine.h
     dsp/Engine.cpp
+    dsp/Filter.h
+    dsp/Filter.cpp
     dsp/Params.h
     dsp/Params.cpp
+    dsp/Voice.h
+    dsp/Voice.cpp
 )
 # Included as "krimson/dsp/...", "krimson/app/...": instruments share file
 # names (Engine.h, Params.h), and the rack builds against all of them.
 target_include_directories(krimson_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(krimson_dsp PUBLIC krate_core krate_dsp)
 target_compile_options(krimson_dsp PRIVATE ${KRIMSON_WARNINGS})
+
+# --- krimson-render: offline renderer and benchmark
+add_executable(krimson-render tools/render_main.cpp)
+target_link_libraries(krimson-render PRIVATE krimson_dsp)
+target_compile_options(krimson-render PRIVATE ${KRIMSON_WARNINGS})
 
 # --- krimson_ui: QML module "Krimson": controllers and the panel
 qt_add_library(krimson_ui STATIC)
@@ -36,6 +45,11 @@ target_link_libraries(krimson_ui PUBLIC krimson_dsp krate_host krate_app krate_q
 target_compile_options(krimson_ui PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests
+add_executable(krimson_tst_voice tests/tst_voice.cpp)
+target_compile_options(krimson_tst_voice PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(krimson_tst_voice PRIVATE krimson_dsp krate_testing Qt6::Test)
+add_test(NAME krimson_tst_voice COMMAND krimson_tst_voice)
+
 add_executable(tst_krimson
     tests/tst_krimson.cpp
     app/KrimsonController.h

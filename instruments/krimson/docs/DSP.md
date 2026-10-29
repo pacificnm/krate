@@ -4,9 +4,11 @@ Realtime-safe throughout, as every Krate instrument. Values here are design star
 
 ## Reuse
 
-Kalliope's building blocks move to `shared/dsp/` in C1, and Kalliope must keep rendering byte-identical: the band-limited `Oscillator` (every jump corrected with a band-limited step, sync included), `Envelope`, `Lfo`, the TPT `Ladder` and the `Chorus` / `Delay`. Krimson adds what the target synth has and Kalliope doesn't: ring mod, a multi-mode filter with drive, the mod envelope, the second LFO, morph and the reverb.
+Kalliope's building blocks moved to `shared/dsp/` in C1 (Kalliope, k303 and the rack renders byte-identical): the band-limited `krate::Oscillator` (`dsp/BlepOscillator.h`: every jump corrected with a band-limited step, sync included), `krate::Envelope` and `krate::Lfo` (which gained Triangle and Soft random). Kalliope's `Chorus` / `Delay` follow in C6. Krimson adds what the target synth has and Kalliope doesn't: ring mod, a multi-mode filter with drive, the mod envelope, the second LFO, morph and the reverb.
 
 ## Voice (runs at 2× and is decimated, as Kalliope)
+
+OSC 2 can be the noise source; with keyboard tracking off it stays at middle C plus its semitones (for fixed-pitch sync and FM timbres). The mix is OSC 1 ↔ OSC 2 (both full at the centre); with ring mod on, OSC 2's input is OSC 1 × OSC 2.
 
 ```
  OSC 1 (sine/tri/saw/pulse) ◄─ FM (OSC 2 → OSC 1 phase) ─┐
@@ -21,11 +23,11 @@ Kalliope's building blocks move to `shared/dsp/` in C1, and Kalliope must keep r
 
 | Block | Design |
 | --- | --- |
-| **FM** | Phase modulation of OSC 1 by OSC 2 (bright, digital-edged FM rather than Kalliope's analog-style linear FM), depth up to ~3 radians |
+| **FM** | Linear FM: OSC 2's output scales OSC 1's frequency by 1 ± 3 × FM (clamped at 0), every sample at 2×; the mod envelope and LFO 1 can add to FM |
 | **Ring mod** | OSC 2's mix input becomes OSC 1 × OSC 2 (bells, metallic leads) |
-| **Filter** | State-variable core with zero-delay feedback for LP 12, BP, HP and notch (two outputs summed); LP 24 is two cascaded LP 12 stages sharing the resonance, tuned for the slightly thin, bright 24 dB of the target. Drive is a tanh with gain before the filter, its level compensated |
-| **Envelopes** | ADSR (filter, amp) and AD (mod) with fast exponential segments; the target's envelopes are snappy, so the shortest times go down to 0.5 ms |
-| **LFOs** | LFO 1 per voice (five waves, phase restarts at note-on in mono modes); LFO 2 per slot (triangle). Vibrato (wheel to Vibrato) has its own fixed 5.5 Hz LFO with a short fade-in |
+| **Filter** | `MultiFilter`: a TPT state-variable core (k = 2 … 0.06 with resonance) gives LP 12, band-pass, high-pass and notch (LP + HP); LP 24 and notch + LP add a second, unresonant (Butterworth) LP 12 stage. Drive: tanh(g·x)/√g with g = 1 … 8 before the filter. A tanh on the output keeps full resonance bounded. Cutoff = knob + filter envelope (8 octaves × velocity scaling) + key tracking (0, ⅓, ⅔, 1 from middle C) + LFOs, smoothed over 3 ms |
+| **Envelopes** | `krate::Envelope`: ADSR (filter, amp) and AD (mod: sustain 0, always restarts from zero) with exponential segments, 0.5 ms … 10 s, snappy at the short end like the target's |
+| **LFOs** | LFO 1 per voice (triangle, saw, square, sample & hold, soft random; restarts when a silent voice starts); LFO 2 per slot (triangle; amp tremolo, filter, or OSC 2 pitch). Vibrato (Wheel set to Vibrato) has its own 5.5 Hz sine, up to 0.7 semitones |
 | **Unison** | The slot's voices stacked on one note (3 per note by default), detuned symmetrically by `unison_detune`, spread in stereo |
 | **Glide** | Exponential pitch glide; in Legato only between held notes |
 
@@ -47,4 +49,4 @@ Every continuous parameter of a slot has an optional **morph value**. The morph 
 
 ## CPU
 
-Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`).
+Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C1 measures one voice (sync, FM, drive, full resonance) at 0.71 %.
