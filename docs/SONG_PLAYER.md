@@ -36,7 +36,7 @@ Every song you open is kept in Krate's **song library**, by artist, album and tr
 - **What a song remembers**:
   - its **track setup**: each track's instrument, level, mute, solo and file (TAB/MIDI), and "my track", saved as you change them;
   - its **sounds**: every instrument's full sound (all its knobs; Krimson's four slots with their morph targets) and the **mixer** (each strip's fader, pan, mute and solo, and the master), saved when you press **SAVE** on the Song screen, so experimenting never overwrites a good setup.
-- **Opening a song** puts its saved sounds and mixer on the rack. **Closing it** (or opening another) puts back the sounds and mixer you had before it opened: a song never leaves your patches changed.
+- **Opening a song** puts its saved sounds and mixer on the rack. **Closing it** (or opening another, or quitting) puts back what it changed (the instruments it has sounds for, and the mixer if it has one) as they were before it opened: a song never leaves your patches changed. Instruments it has no sound for (added to the rack after it was saved) keep whatever you change while it's open. SAVE gives the song a sound for every instrument.
 - The **library list** on the Song screen: artists, their albums, the songs in track order; a search box (artist, album or title); open a song by clicking it; edit its details; remove it (which deletes its copied files).
 - **Storage**: one SQLite database, `~/.local/share/krate/library/library.db` (Qt SQL), with tables for songs, their tracks' setup, their instrument sounds and their mixer, and the last song open (which reopens with the rack). It replaces S4's `songs.json`.
 

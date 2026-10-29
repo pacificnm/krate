@@ -413,6 +413,38 @@ private slots:
         QCOMPARE(krimson.tone, 0.9f);
     }
 
+    // A song only takes back what it changed: an instrument it has no sound for
+    // (one added to the rack after the song was saved) keeps your changes.
+    void songsLeaveOtherInstrumentsAlone()
+    {
+        Fixture f;
+        write(f.path("a.mid"), midiFile({{"Bass", 1, 33}}));
+        Fake &krimson = f.fakes[3], &newcomer = f.fakes[4];
+        f.song->openPaths({f.path("a.mid")});
+        krimson.tone = 0.9f;
+        f.song->saveSounds();
+        // As if the song had been saved before `newcomer` existed: no sound for it.
+        QJsonObject sounds = f.library->sounds(f.song->songId());
+        sounds.remove(QStringLiteral("klick"));
+        f.library->saveSounds(f.song->songId(), sounds, f.library->mixer(f.song->songId()));
+        f.song->close();
+        krimson.tone = 0.2f;
+        newcomer.tone = 0.1f;
+
+        f.song->openPaths({f.path("a.mid")});
+        QCOMPARE(krimson.tone, 0.9f);
+        newcomer.tone = 0.6f; // e.g. picking a cabinet with the song open
+        f.song->close();
+        QCOMPARE(krimson.tone, 0.2f);  // the song's goes back
+        QCOMPARE(newcomer.tone, 0.6f); // yours stays
+
+        f.song->openPaths({f.path("a.mid")});
+        newcomer.tone = 0.7f;
+        f.make(); // quitting with the song open
+        QCOMPARE(krimson.tone, 0.2f);
+        QCOMPARE(newcomer.tone, 0.7f);
+    }
+
     // The library list: artists, albums, songs in track order; editing and removing.
     void libraryList()
     {

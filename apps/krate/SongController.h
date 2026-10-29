@@ -179,6 +179,8 @@ private:
     };
     Snapshot capture() const;
     void restore(const Snapshot &snapshot);
+    // Puts back, from m_before, what the open song owns (and forgets both).
+    void restoreOwned();
 
     static inline SongController *s_instance = nullptr;
 
@@ -193,6 +195,10 @@ private:
     bool m_soundsSaved = false;
     int m_libraryRevision = 0;
     std::optional<Snapshot> m_before; // the sounds and mixer from before the open song
+    // What the open song owns (its saved sounds, or SAVE): only these go back
+    // when it closes; your changes to everything else stay.
+    QStringList m_ownedSounds;
+    bool m_ownsMixer = false;
 
     std::optional<krate::song::Score> m_score;  // from the tab file
     std::optional<krate::song::Song> m_tab;     // its playable song

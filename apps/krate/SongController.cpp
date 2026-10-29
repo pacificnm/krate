@@ -86,8 +86,7 @@ SongController::SongController(s::SongPlayer &player, RackController &rack, cons
 
 SongController::~SongController()
 {
-    if (m_before) // quitting with a song open: the instruments keep (and save) the sounds from before it
-        restore(*m_before);
+    restoreOwned(); // quitting with a song open: the instruments it changed keep (and save) the sounds from before it
     setSequencers(true);
     s_instance = nullptr;
 }
@@ -314,16 +313,18 @@ bool SongController::load(const QString &tabPath, const QString &midiPath, qint6
         return false;
 
     m_rack.setPlaying(false);
-    // Sounds: the ones from before any song come back first (or are kept now),
-    // then this song's saved ones go on.
-    if (m_before)
-        restore(*m_before);
-    else
-        m_before = capture();
+    // Sounds: what the last song changed goes back first, then this song's
+    // saved ones go on (the instruments and mixer it has sounds for).
+    restoreOwned();
+    m_before = capture();
     const auto entry = songId ? m_library.song(songId) : std::nullopt;
     m_soundsSaved = entry && entry->soundsSaved;
-    if (m_soundsSaved)
-        restore({m_library.sounds(songId), m_library.mixer(songId)});
+    if (m_soundsSaved) {
+        const Snapshot saved{m_library.sounds(songId), m_library.mixer(songId)};
+        m_ownedSounds = saved.sounds.keys();
+        m_ownsMixer = !saved.mixer.isEmpty();
+        restore(saved);
+    }
 
     m_score = std::move(score);
     m_tab = std::move(tab);
@@ -389,10 +390,7 @@ void SongController::close()
     m_songId = 0;
     m_details = {};
     m_soundsSaved = false;
-    if (m_before) { // your sounds and mixer, as they were before the song
-        restore(*m_before);
-        m_before.reset();
-    }
+    restoreOwned(); // your sounds and mixer, as they were before the song
     setSequencers(true);
     setError({});
     m_library.setLastSong(0); // nothing reopens next time
@@ -624,12 +622,30 @@ void SongController::restore(const Snapshot &snapshot)
         m_rack.setMixerState(snapshot.mixer);
 }
 
+void SongController::restoreOwned()
+{
+    if (m_before) {
+        Snapshot owned;
+        for (const QString &id : std::as_const(m_ownedSounds))
+            if (m_before->sounds.contains(id))
+                owned.sounds.insert(id, m_before->sounds.value(id));
+        if (m_ownsMixer)
+            owned.mixer = m_before->mixer;
+        restore(owned);
+    }
+    m_before.reset();
+    m_ownedSounds.clear();
+    m_ownsMixer = false;
+}
+
 void SongController::saveSounds()
 {
     if (!m_songId || !m_song)
         return;
     const Snapshot now = capture();
     m_library.saveSounds(m_songId, now.sounds, now.mixer);
+    m_ownedSounds = now.sounds.keys(); // the song now has a sound for every instrument
+    m_ownsMixer = true;
     m_soundsSaved = true;
     emit songChanged();
     ++m_libraryRevision;
