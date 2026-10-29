@@ -6,6 +6,7 @@ qt_add_qml_module(krate
     VERSION 1.0
     NO_IMPORT_SCAN # static plugins are linked and imported explicitly
     IMPORTS Krate
+    DEPENDENCIES QtQuick # TabView is a QQuickPaintedItem
     SOURCES
         RackController.h
         RackController.cpp
@@ -15,6 +16,8 @@ qt_add_qml_module(krate
         RackSession.cpp
         SongController.h
         SongController.cpp
+        TabView.h
+        TabView.cpp
     QML_FILES
         qml/Main.qml
         qml/TransportBar.qml

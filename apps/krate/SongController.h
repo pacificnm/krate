@@ -50,6 +50,7 @@ class SongController : public QObject
     Q_PROPERTY(int beat READ beat NOTIFY positionChanged)      // 1-based
     Q_PROPERTY(int barCount READ barCount NOTIFY songChanged)
     Q_PROPERTY(QString time READ time NOTIFY positionChanged)  // "1:23 / 5:34"
+    Q_PROPERTY(qint64 tick READ tick NOTIFY tickChanged)       // the song position, in the score's ticks as played
 
 public:
     // An instrument a track can play on.
@@ -83,6 +84,7 @@ public:
     int beat() const { return m_beat; }
     int barCount() const;
     QString time() const { return m_time; }
+    qint64 tick() const { return m_tick; }
 
     // Files from the dialog or a drop; a lone .gp or .mid also brings its
     // namesake of the other kind from the same folder.
@@ -95,17 +97,22 @@ public:
     Q_INVOKABLE void setSolo(int track, bool solo);
     Q_INVOKABLE void setFromMidi(int track, bool fromMidi); // play this track from the .mid file
     Q_INVOKABLE void backToStart();
+    // Jump to a written bar (from the tab view): its next time through from
+    // where the song is, else its first.
+    Q_INVOKABLE void jumpToBar(int writtenBar);
 
     // For the session and tests.
     void reopenLast();
     const std::vector<Choice> &choices() const { return m_choices; }
     const krate::song::Song *song() const { return m_song ? &*m_song : nullptr; }
+    const krate::song::Score *score() const { return m_score ? &*m_score : nullptr; }
     void pollPosition(); // the timer's tick (public for tests)
 
 signals:
     void songChanged();
     void tracksChanged();
     void positionChanged();
+    void tickChanged();
     void errorChanged();
 
 private:
@@ -146,5 +153,6 @@ private:
 
     QTimer m_timer;
     int m_bar = 1, m_beat = 1;
+    qint64 m_tick = 0;
     QString m_time;
 };

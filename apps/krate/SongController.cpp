@@ -1,5 +1,6 @@
 #include "SongController.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include <QDir>
@@ -447,6 +448,25 @@ void SongController::backToStart()
     pollPosition();
 }
 
+void SongController::jumpToBar(int writtenBar)
+{
+    if (!m_score || m_score->playOrder.empty())
+        return;
+    const auto &order = m_score->playOrder;
+    const auto &starts = m_score->playStarts;
+    const auto now = std::size_t(std::upper_bound(starts.begin(), starts.end(), m_player.position()) - starts.begin());
+    std::size_t pick = order.size();
+    for (std::size_t k = now; k < order.size() && pick == order.size(); ++k) // its next time through
+        if (order[k] == writtenBar)
+            pick = k;
+    for (std::size_t k = 0; k < order.size() && pick == order.size(); ++k) // else its first
+        if (order[k] == writtenBar)
+            pick = k;
+    if (pick == order.size())
+        return;
+    m_player.cue(starts[pick]);
+}
+
 void SongController::pollPosition()
 {
     if (!m_song)
@@ -456,6 +476,10 @@ void SongController::pollPosition()
         m_player.cue(0);
     }
     const s::Tick tick = std::min(m_player.position(), m_song->length);
+    if (tick != m_tick) {
+        m_tick = tick;
+        emit tickChanged();
+    }
     const s::BarPosition p = m_song->tempo.barAt(tick);
     const int bar = p.bar + 1;
     const int beat = int(p.beat) + 1;

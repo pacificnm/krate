@@ -76,6 +76,8 @@ add_library(krate_song STATIC
     song/Arrange.cpp
     song/SongPlayer.h
     song/SongPlayer.cpp
+    song/TabLayout.h
+    song/TabLayout.cpp
 )
 target_include_directories(krate_song PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(krate_song PUBLIC krate_core PRIVATE ZLIB::ZLIB)
@@ -159,3 +161,8 @@ add_executable(tst_songplayer tests/tst_songplayer.cpp)
 target_compile_options(tst_songplayer PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_songplayer PRIVATE krate_song krate_rack Qt6::Test)
 add_test(NAME tst_songplayer COMMAND tst_songplayer)
+
+add_executable(tst_tablayout tests/tst_tablayout.cpp)
+target_compile_options(tst_tablayout PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_tablayout PRIVATE krate_song Qt6::Test)
+add_test(NAME tst_tablayout COMMAND tst_tablayout)

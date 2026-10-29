@@ -254,6 +254,11 @@ private slots:
         QCOMPARE(f.song->song()->tracks[1].noteCount, 4);
         QCOMPARE(f.song->song()->tempo.ppq(), 960);
         QCOMPARE(f.song->song()->tracks[1].events[1].tick, song::Tick(960)); // a MIDI quarter, in the tab's ticks
+        // A click on a bar in the tab view cues it; a bar that isn't there does nothing.
+        f.song->jumpToBar(0);
+        f.song->jumpToBar(7);
+        QVERIFY(f.song->score());
+        QCOMPARE(f.song->score()->playStarts.front(), song::Tick(0));
         // From the tab instead: its two half notes.
         f.song->setFromMidi(1, false);
         QCOMPARE(f.song->song()->tracks[1].noteCount, 2);

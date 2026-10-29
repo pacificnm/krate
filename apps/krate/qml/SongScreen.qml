@@ -7,7 +7,8 @@ import Krate
 import KrateRack
 
 // The Song screen (docs/SONG_PLAYER.md): open a .gp tab file and/or a .mid
-// file (or drop them here), give each track an instrument, and play along.
+// file (or drop them here), give each track an instrument, and play along
+// with your track's tab, which scrolls with the song.
 Item {
     id: screen
 
@@ -184,7 +185,8 @@ Item {
         x: 16
         y: headings.y + headings.height + 6
         width: parent.width - 32
-        height: parent.height - y - 16
+        // The tracks take what they need, up to about a third; the tab gets the rest.
+        height: Math.min(contentHeight, Math.max(96, parent.height * 0.34))
         visible: Song.loaded
         clip: true
         spacing: 4
@@ -308,6 +310,94 @@ Item {
                     onClicked: Song.setFromMidi(row.index, !row.modelData.fromMidi)
                 }
             }
+        }
+    }
+
+    // --- My track's tab -----------------------------------------------------------------
+    Item {
+        id: tabArea
+        x: 16
+        y: list.y + list.height + 10
+        width: parent.width - 32
+        height: parent.height - y - 16
+        visible: Song.loaded
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 4
+            color: "#F7F6F2"
+            border.color: Theme.deckLine
+        }
+
+        TabView {
+            id: tab
+            x: 8
+            y: 6
+            width: parent.width - 16
+            height: parent.height - 12
+            song: Song
+            scroll: flick.contentY
+        }
+
+        Flickable { // scrolling and clicks; the TabView under it draws
+            id: flick
+            anchors.fill: tab
+            contentWidth: width
+            contentHeight: tab.contentHeight
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+            ScrollBar.vertical: ScrollBar {}
+
+            MouseArea {
+                width: flick.contentWidth
+                height: flick.contentHeight
+                onClicked: mouse => tab.clickAt(mouse.x, mouse.y)
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            NumberAnimation on contentY {
+                id: follow
+                running: false
+                duration: 250
+                easing.type: Easing.InOutQuad
+            }
+        }
+
+        Rectangle { // the cursor
+            x: tab.x + tab.cursorX - 1
+            y: tab.y + tab.cursorY + 14 - flick.contentY
+            width: 3
+            height: Math.max(0, tab.cursorHeight - 14)
+            radius: 1
+            color: Theme.accentUi
+            opacity: 0.85
+            visible: tab.cursorVisible && y + height > tab.y && y < tab.y + tab.height
+        }
+
+        // Paging: while playing, the cursor's line goes to the top so the next ones are in view.
+        Connections {
+            target: tab
+            function onCursorSystemChanged() {
+                if (tab.cursorSystem < 0 || flick.moving)
+                    return
+                const top = tab.systemTop(tab.cursorSystem)
+                const max = Math.max(0, flick.contentHeight - flick.height)
+                const target = Math.min(top, max)
+                const visible = top >= flick.contentY && top + tab.cursorHeight <= flick.contentY + flick.height
+                if (Rack.playing || !visible) {
+                    follow.to = target
+                    follow.restart()
+                }
+            }
+        }
+
+        Text {
+            anchors.centerIn: parent
+            visible: tab.message !== ""
+            text: tab.message
+            color: "#6A6C70"
+            font.family: Theme.labelFont
+            font.pixelSize: 16
         }
     }
 }
