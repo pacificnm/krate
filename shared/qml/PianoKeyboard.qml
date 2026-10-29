@@ -6,11 +6,20 @@ import QtQuick
 // keys; keys held from MIDI light up too. `instrument` is the instrument's
 // controller singleton, which provides noteOn(n), noteOff(n), noteHeld(n) and
 // notesRevision (Kalliope, Krimson).
+//
+// It follows the keys you play: a controller's own octave buttons move its
+// notes without telling anyone, so when a held note falls outside the two
+// octaves shown, the keyboard slides by octaves to show it (and says so in
+// its corner). Changing baseNote (the instrument's Octave) puts it back.
 Item {
     id: keyboard
 
     required property var instrument
     property int baseNote: 48 // lowest C
+    property bool followKeys: true
+    property int followOctaves: 0 // how far it has slid to show played notes
+    readonly property int shownBase: Math.max(0, Math.min(108, baseNote + 12 * followOctaves))
+    onBaseNoteChanged: followOctaves = 0
     property color litColor: "#E2701F"
     readonly property int whiteCount: 15
     readonly property real whiteWidth: width / whiteCount
@@ -19,7 +28,33 @@ Item {
     readonly property var whiteOffsets: [0, 2, 4, 5, 7, 9, 11]
     property int mouseNote: -1
 
-    function whiteNote(i) { return baseNote + 12 * Math.floor(i / 7) + whiteOffsets[i % 7] }
+    function whiteNote(i) { return shownBase + 12 * Math.floor(i / 7) + whiteOffsets[i % 7] }
+
+    // Slide to show held notes: the lowest one stays in view when they span more than two octaves.
+    function follow() {
+        if (!followKeys || instrument.notesRevision < 0)
+            return
+        let low = 128, high = -1
+        for (let n = 0; n < 128; ++n)
+            if (instrument.noteHeld(n)) {
+                low = Math.min(low, n)
+                high = Math.max(high, n)
+            }
+        if (high < 0)
+            return // nothing held: stay where it is
+        const top = shownBase + 24
+        if (low < shownBase) {
+            followOctaves -= Math.ceil((shownBase - low) / 12)
+        } else if (high > top) {
+            // Up far enough to show the highest note, but never past the lowest.
+            const up = Math.ceil((high - top) / 12)
+            followOctaves += Math.min(up, Math.floor((low - shownBase) / 12))
+        }
+    }
+    Connections {
+        target: keyboard.instrument
+        function onNotesRevisionChanged() { keyboard.follow() }
+    }
     function hasBlackAfter(i) { return i < whiteCount - 1 && [0, 1, 3, 4, 5].indexOf(i % 7) >= 0 }
     function lit(note) { return note === mouseNote || (instrument.notesRevision >= 0 && instrument.noteHeld(note)) }
 
@@ -95,5 +130,16 @@ Item {
         onPositionChanged: mouse => { if (pressed) keyboard.play(keyboard.noteAt(mouse.x, mouse.y)) }
         onReleased: keyboard.play(-1)
         onCanceled: keyboard.play(-1)
+    }
+
+    Text { // where it has slid to, while following
+        visible: keyboard.followOctaves !== 0
+        x: 6
+        y: 4
+        z: 10
+        text: "showing C" + (Math.floor(keyboard.shownBase / 12) - 1) + "–C" + (Math.floor(keyboard.shownBase / 12) + 1)
+        color: "#2A2B2D"
+        font.pixelSize: Math.max(10, keyboard.height * 0.05)
+        font.bold: true
     }
 }

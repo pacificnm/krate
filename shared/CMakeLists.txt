@@ -149,6 +149,12 @@ target_compile_options(tst_rack PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_rack PRIVATE krate_rack krate_testing Qt6::Test)
 add_test(NAME tst_rack COMMAND tst_rack)
 
+# QML tests (shared controls), when Qt's qmltestrunner is installed.
+find_program(QMLTESTRUNNER qmltestrunner HINTS ${QT6_INSTALL_PREFIX}/${QT6_INSTALL_BINS} /usr/lib/qt6/bin)
+if(QMLTESTRUNNER)
+    add_test(NAME tst_qml_shared COMMAND ${QMLTESTRUNNER} -platform offscreen -input ${CMAKE_CURRENT_SOURCE_DIR}/tests/qml)
+endif()
+
 add_executable(tst_midifile tests/tst_midifile.cpp)
 target_compile_options(tst_midifile PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_midifile PRIVATE krate_song Qt6::Test)
