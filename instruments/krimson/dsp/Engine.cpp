@@ -429,7 +429,10 @@ void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
         }
         break;
     case krate::MidiMessage::Type::ProgramChange:
-        break; // programs arrive in C7
+        // The programs controller loads it into the slots this channel reaches.
+        if (const unsigned slots = slotsFor(channel, -1))
+            m_programChanges.push({std::uint8_t(slots), std::uint8_t(m.data1)});
+        break;
     case krate::MidiMessage::Type::Other:
         if (event.size == 3 && (event.data[0] & 0xF0) == 0xE0) { // pitch bend
             const int value = (event.data[2] << 7) | event.data[1];

@@ -2,13 +2,14 @@
 
 #include "app/InstrumentRegistry.h"
 #include "krimson/app/KrimsonController.h"
+#include "krimson/app/ProgramController.h"
 #include "krimson/app/SlotController.h"
 #include "krimson/dsp/Engine.h"
 
 namespace krimson {
 
 // Krimson as a hostable instrument: the engine, its panel controller
-// ("Krimson") and the slots' setup ("Slots").
+// ("Krimson"), the slots' setup ("Slots") and the programs ("Programs").
 class Instance final : public krate::InstrumentInstance
 {
 public:
@@ -19,6 +20,7 @@ public:
     Engine engine;
     KrimsonController controller;
     SlotController slotSetup;
+    ProgramController programs;
 };
 
 krate::InstrumentEntry registryEntry();

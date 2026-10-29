@@ -137,7 +137,9 @@ private slots:
         k.controller.setValue(QStringLiteral("cutoff"), 0.3);
         instance->triggerAction(QStringLiteral("slotB"));
         QCOMPARE(k.controller.editedSlot(), 1);
-        QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(paramDescriptor(ParamId::Cutoff).defaultValue));
+        // Slot B's own value (a first run starts B on program 12).
+        QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(k.engine.slotParam(1, ParamId::Cutoff)));
+        QVERIFY(std::abs(k.controller.value(QStringLiteral("cutoff")) - 0.3) > 0.01);
         instance->triggerAction(QStringLiteral("slotA"));
         QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(0.3f));
     }

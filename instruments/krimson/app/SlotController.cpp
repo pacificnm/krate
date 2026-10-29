@@ -76,6 +76,13 @@ void SlotController::load()
         m_filePath += QStringLiteral(".v1");
         return;
     }
+    fromJson(json);
+    m_loaded = true;
+    qCInfo(lcSlots) << "loaded slots from" << m_filePath;
+}
+
+void SlotController::fromJson(const QJsonObject &json)
+{
     const QJsonArray slotList = json.value(u"slots").toArray();
     unsigned lit = 0;
     for (int slot = 0; slot < krimson::SlotCount && slot < slotList.size(); ++slot) {
@@ -86,6 +93,7 @@ void SlotController::load()
                 m_engine.setSlotParam(slot, krimson::ParamId(i),
                                       krate::snapToDetent(krimson::kParams[std::size_t(i)], float(std::clamp(v.toDouble(), 0.0, 1.0))));
         const QJsonObject morph = so.value(u"morph").toObject();
+        m_engine.clearMorph(slot); // the slot's targets are exactly the loaded ones
         for (auto it = morph.begin(); it != morph.end(); ++it)
             for (int i = 0; i < krimson::SlotParamCount; ++i)
                 if (keyOf(i) == it.key() && it.value().isDouble())
@@ -101,12 +109,13 @@ void SlotController::load()
     m_engine.setSplitNote(std::clamp(json.value(u"split").toInt(-1), -1, 127));
     m_panel.setEditedSlot(std::clamp(json.value(u"edited").toInt(0), 0, krimson::SlotCount - 1));
     m_engine.markAllChanged(); // the panel shows the loaded values
-    qCInfo(lcSlots) << "loaded slots from" << m_filePath;
+    m_panel.morphReloaded();
+    ++m_revision;
+    emit changed();
 }
 
-void SlotController::save()
+QJsonObject SlotController::toJson() const
 {
-    m_saveTimer.stop();
     QJsonArray slotList;
     for (int slot = 0; slot < krimson::SlotCount; ++slot) {
         QJsonObject params, morph;
@@ -124,13 +133,18 @@ void SlotController::save()
             {QStringLiteral("lit"), isLit(slot)},
         });
     }
-    const QJsonObject json{
+    return QJsonObject{
         {QStringLiteral("version"), kFileVersion},
         {QStringLiteral("edited"), m_engine.editedSlot()},
         {QStringLiteral("split"), splitNote()},
         {QStringLiteral("slots"), slotList},
     };
-    if (!krate::files::writeJsonFile(m_filePath, json))
+}
+
+void SlotController::save()
+{
+    m_saveTimer.stop();
+    if (!krate::files::writeJsonFile(m_filePath, toJson()))
         qCWarning(lcSlots) << "could not save slots to" << m_filePath;
 }
 

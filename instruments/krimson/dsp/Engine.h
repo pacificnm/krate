@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <optional>
 
 #include "core/Instrument.h"
 #include "core/Midi.h"
@@ -90,6 +91,14 @@ public:
     {
         return m_gui.push({0, 3, {status, d1, d2}});
     }
+    // GUI thread: Program Changes received, with the slots they reach (bit n = slot n).
+    struct ProgramChange
+    {
+        std::uint8_t slotMask = 0; // ("slots" is a Qt keyword)
+        std::uint8_t program = 0;
+    };
+    std::optional<ProgramChange> popProgramChange() noexcept { return m_programChanges.pop(); }
+
     // Any thread: is `note` held in any slot? Updated every block.
     bool noteHeld(int note) const noexcept
     {
@@ -196,6 +205,7 @@ private:
     double m_volumeSmoothing = 0.0;
 
     krate::SpscQueue<krate::MidiEvent, 256> m_gui;
+    krate::SpscQueue<ProgramChange, 32> m_programChanges; // audio -> GUI
     std::array<std::atomic<std::uint64_t>, 2> m_heldMask{};
     // Octave: the shift each MIDI key went down with, per channel and note, so
     // its note-off matches even if Octave changed while it was held (-128 = up).

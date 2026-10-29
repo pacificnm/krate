@@ -31,7 +31,8 @@ A fixed-size panel drawn at **1600 × 900** design pixels, scaled to the window.
 | Slot buttons A–D | Click: play and edit that slot; Shift-click: layer; LED = lit (the keyboard plays it); highlighted = the slot being edited; learnable as actions `slotA`…`slotD` |
 | Slot setup | The edited slot's MIDI channel (or none), zone (whole, lower, upper), on/off, and the split key (or off) |
 | MORPH, CLEAR | MORPH (blue while lit) toggles morph editing; CLEAR clears the edited slot's targets |
-| Program display | `--` until programs (C7) |
+| Program display | The edited slot's program (`11`–`88`, a dot while edited), its name, ▲▼; STORE (red while armed: ▲▼ pick the blinking destination, STORE writes) |
+| Performances | Under the wheels: PERF ◂ n ▸, LOAD, SAVE |
 | Wheels | Pitch (springs back) and mod, mouse-draggable; they act on the lit slots |
 | Keyboard | `PianoKeyboard` (shared with Kalliope, moved to the `Krate` module): two octaves from C3 shifted by Octave, mouse-playable, lights keys held in any slot |
 | Master level, Tempo (standalone), Octave | As Kalliope's |

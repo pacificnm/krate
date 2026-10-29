@@ -1,10 +1,14 @@
 #include "krimson/app/KrimsonInstrument.h"
 
+#include <algorithm>
+
 namespace krimson {
 
 Instance::Instance(const krate::InstrumentContext &context)
     : controller(engine, context.configDir + QStringLiteral("/panel.json"), context.transport, nullptr)
     , slotSetup(controller, engine, context.configDir + QStringLiteral("/slots.json"), nullptr)
+    , programs(controller, slotSetup, engine, context.dataDir + QStringLiteral("/programs.json"),
+               context.dataDir + QStringLiteral("/performances.json"), nullptr)
 {
 }
 
@@ -14,7 +18,19 @@ void Instance::triggerAction(const QString &action)
         slotSetup.pressSlot(action.at(4).unicode() - u'A', false);
     else if (action == u"morph")
         controller.setMorphEdit(!controller.morphEdit());
-    // Programs, store, the arpeggiator and octave actions arrive in later milestones.
+    else if (action == u"store")
+        programs.pressStore();
+    else if (action.startsWith(u"bank")) // bankN: program N1 in the edited slot
+        programs.select((action.mid(4).toInt() - 1) * persistence::kProgramsPerBank);
+    else if (action.startsWith(u"program")) // programN: that number in the current bank
+        programs.select(programs.number() / persistence::kProgramsPerBank * persistence::kProgramsPerBank
+                        + action.mid(7).toInt() - 1);
+    else if (action == u"octave_down" || action == u"octave_up") {
+        const int shift = units::octaveShift(float(controller.value(QStringLiteral("octave"))));
+        const int next = std::clamp(shift + (action == u"octave_up" ? 1 : -1), -3, 3);
+        controller.setValue(QStringLiteral("octave"), (next + 3) / 6.0);
+    }
+    // arp and hold arrive with the arpeggiator (C8).
 }
 
 krate::InstrumentEntry registryEntry()

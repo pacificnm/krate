@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QJsonObject>
 #include <QObject>
 #include <QString>
 #include <QTimer>
@@ -52,6 +53,13 @@ public:
     void setSplitNote(int note);
 
     void save();
+    // Whether slots.json was there and read at construction (not a first run).
+    bool loadedFromFile() const { return m_loaded; }
+
+    // All four slots (sounds, morph targets, setup), the split and the edited
+    // slot, as slots.json and performances hold them.
+    QJsonObject toJson() const;
+    void fromJson(const QJsonObject &json); // missing values keep their defaults
 
 signals:
     void changed();
@@ -66,5 +74,6 @@ private:
     krimson::Engine &m_engine;
     QString m_filePath;
     int m_revision = 0;
+    bool m_loaded = false;
     QTimer m_saveTimer;
 };

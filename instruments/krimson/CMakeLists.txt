@@ -35,6 +35,10 @@ qt_add_qml_module(krimson_ui
         app/KrimsonController.cpp
         app/KrimsonInstrument.h
         app/KrimsonInstrument.cpp
+        app/ProgramController.h
+        app/ProgramController.cpp
+        app/ProgramFile.h
+        app/ProgramFile.cpp
         app/SlotController.h
         app/SlotController.cpp
     QML_FILES
@@ -54,13 +58,17 @@ foreach(test tst_voice tst_voices tst_fx)
     add_test(NAME krimson_${test} COMMAND krimson_${test})
 endforeach()
 
-foreach(test tst_krimson tst_slots tst_morph)
+foreach(test tst_krimson tst_slots tst_morph tst_programs)
 add_executable(${test}
     tests/${test}.cpp
     app/KrimsonController.h
     app/KrimsonController.cpp
     app/KrimsonInstrument.h
     app/KrimsonInstrument.cpp
+    app/ProgramController.h
+    app/ProgramController.cpp
+    app/ProgramFile.h
+    app/ProgramFile.cpp
     app/SlotController.h
     app/SlotController.cpp
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h

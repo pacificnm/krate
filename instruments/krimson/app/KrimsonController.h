@@ -66,6 +66,8 @@ public:
     Q_INVOKABLE void clearMorph(const QString &key);
     Q_INVOKABLE void clearAllMorph(); // the edited slot's
     Q_INVOKABLE bool morphable(const QString &key) const;
+    // After morph targets were set behind the panel's back (a program, a performance).
+    void morphReloaded();
 
 signals:
     void playingChanged();

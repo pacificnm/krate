@@ -147,6 +147,12 @@ void KrimsonController::clearMorph(const QString &key)
     emit paramsChanged();
 }
 
+void KrimsonController::morphReloaded()
+{
+    ++m_morphRevision;
+    emit morphChanged();
+}
+
 void KrimsonController::clearAllMorph()
 {
     m_engine.clearMorph(m_engine.editedSlot());

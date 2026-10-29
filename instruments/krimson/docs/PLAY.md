@@ -34,6 +34,10 @@ As Kalliope's (PLAY.md in instruments/kalliope): Up, Down, Up/Down, Random; 1–
 
 ## Programs and performances
 
-- **Programs:** 8 banks × 8, each a full slot sound including its morph values. Banks 1–2 are factory sounds aimed at the target character: sync leads, FM bells, ring-mod clangs, 12 dB acid and saw basses, unison supersaw-style leads, pads, plucks, and morph sweeps. Selecting a program loads it into the edited slot. STORE writes the edited slot to a program.
-- **Performances:** 8, each the four slots' programs, channels, levels, pans, on/off and layering (PERF button, then 1–8).
-- **Storage** (`~/.local/share/krimson/`): `programs.json` and `performances.json`, both stored by parameter key so they survive new parameters, as Kalliope's patches do. The live state of all four slots is in `~/.config/krimson/slots.json`, since `panel.json` holds only the edited slot.
+- **Programs**: 8 banks × 8 (`11`…`88`), each one slot's full sound **including its morph targets**. The display shows the edited slot's program, a dot while the slot differs from it, the name under it.
+  - **Select**: ▲▼ (wrapping), or Program Change (on a slot's channel: that slot; on the keyboard channel: the lit slots), or the learnable `bank1`…`bank8` (program N1) and `program1`…`program8` (that number in the current bank) actions.
+  - **Store**: STORE (it turns red), ▲▼ to choose the destination (it blinks; it starts on the current number), STORE again to write. An `Init` destination gets a name like `Program 35`.
+- **Factory programs** (banks 1–2, aimed at the target character): 11 Sync Lead, 12 FM Bells, 13 Ring Clang, 14 Acid 12, 15 Unison Lead, 16 Saw Bass, 17 Morph Pad, 18 Pluck; 21 Strings, 22 Brass, 23 Notch Sweep, 24 Rave Stab, 25 Sub Bass, 26 Perc Organ, 27 Arp Pluck, 28 Noise Sweep. Several have morph targets (Sync Lead, FM Bells, Acid 12, Morph Pad, Brass): try the wheel. Banks 3–8 start as `Init`. Tuning by ear is C9.
+- **First run** (no files yet): slots A–D start on programs 11–14.
+- **Performances**: 8, each a snapshot of all four slots (sounds, morph targets, channel, on, zone, lit, the split, the edited slot and each slot's program number). PERF ◂ n ▸ chooses one (a dot after the number = empty), LOAD recalls it, SAVE writes the current state into it.
+- **Storage** (`~/.local/share/krimson/`): `programs.json` (saved on every store and 2 s after a selection) and `performances.json` (on every save). Programs are stored by parameter key, so they survive new parameters, and values are clamped. Morph targets on stepped controls are dropped. The live state of all four slots is in `~/.config/krimson/slots.json` (`panel.json` only holds the edited slot).

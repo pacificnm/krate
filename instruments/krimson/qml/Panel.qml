@@ -4,10 +4,10 @@ import QtQuick
 import Krate
 
 // Krimson's panel at design size 1600 x 900 (docs/UI.md): a red body with a
-// black control panel. Left block: master level, tempo, octave, wheel, program
-// (C7), the slot buttons and the edited slot's setup. Then the sections, left
+// black control panel. Left block: master level, tempo, octave, wheel, morph,
+// the program display and STORE, the slot buttons and the edited slot's setup. Then the sections, left
 // to right: arpeggiator and voice, LFOs, mod envelope, oscillators, filter,
-// amp envelope, effects, output. Wheels and keyboard at the bottom. Every
+// amp envelope, effects, output. Wheels, performances and keyboard at the bottom. Every
 // control edits the edited slot (Krimson.editedSlot) by key and is
 // MIDI-learnable.
 Item {
@@ -400,25 +400,80 @@ Item {
         text: "Clear the slot's morph targets"
         onClicked: Krimson.clearAllMorph()
     }
-    Item { // program display (programs arrive in C7)
-        x: 206
+    // The edited slot's program: bank and number, a dot while edited; while
+    // STORE is armed, the blinking destination (▲▼ choose it, STORE writes).
+    property bool blink: false
+    Timer {
+        interval: 250
+        repeat: true
+        running: Programs.storing
+        onTriggered: panel.blink = !panel.blink
+        onRunningChanged: panel.blink = false
+    }
+    Item {
+        id: programBox
+        readonly property int shown: Programs.storing ? Programs.storeTarget : Programs.number
+        x: 200
         y: panel.sectionTop + 96
+        width: 116
+        height: 72
+
         PanelLabel { x: 0; y: 0; text: "PROGRAM"; inverse: true; font.pixelSize: 10; horizontalAlignment: Text.AlignLeft }
         Rectangle {
-            y: 16
-            width: 90
-            height: 40
+            y: 14
+            width: 84
+            height: 38
             radius: 3
             color: "#120606"
-            border.color: panel.frame
+            border.color: Programs.storing ? panel.led : panel.frame
+
+            Accessible.role: Accessible.StaticText
+            Accessible.name: "Program " + programDigits.text + ", " + Programs.name
+
             Text {
+                id: programDigits
                 anchors.centerIn: parent
-                text: "--"
-                color: "#5A1A12"
+                text: Programs.storing && panel.blink ? ""
+                    : (Math.floor(programBox.shown / 8) + 1) + "" + (programBox.shown % 8 + 1)
+                      + (Programs.edited && !Programs.storing ? "." : "")
+                color: panel.led
                 font.family: "monospace"
                 font.pixelSize: 26
                 font.bold: true
             }
+        }
+        Column {
+            x: 88
+            y: 14
+            spacing: 2
+            PanelButton { width: 26; height: 18; dark: true; faceText: "▲"; text: "Next program"; onClicked: Programs.step(1) }
+            PanelButton { width: 26; height: 18; dark: true; faceText: "▼"; text: "Previous program"; onClicked: Programs.step(-1) }
+        }
+        Text {
+            y: 56
+            width: 116
+            elide: Text.ElideRight
+            text: Programs.storing ? "STORE to " + Programs.programName(Programs.storeTarget) : Programs.name
+            color: Programs.storing ? panel.led : panel.dim
+            font.family: Theme.labelFont
+            font.pixelSize: 10
+        }
+    }
+    PanelButton {
+        x: 116
+        y: panel.sectionTop + 156
+        width: 72
+        height: 18
+        dark: true
+        tint: Programs.storing ? "#E2343A" : "transparent"
+        faceText: "STORE"
+        text: Programs.storing ? "Store: press again to write" : "Store the slot's sound"
+        onClicked: Programs.pressStore()
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "store"
+            round: false
         }
     }
 
@@ -671,8 +726,60 @@ Item {
         radius: 6
         color: "#1A1A1B"
     }
-    Wheel { x: 50; y: 560; label: "PITCH"; springs: true; onChanged: a => Krimson.pitchBend(a * 2 - 1) }
-    Wheel { x: 120; y: 560; label: "MOD"; onChanged: a => Krimson.modWheel(a) }
+    Wheel { x: 50; y: 560; label: "PITCH"; springs: true; height: 200; onChanged: a => Krimson.pitchBend(a * 2 - 1) }
+    Wheel { x: 120; y: 560; label: "MOD"; height: 200; onChanged: a => Krimson.modWheel(a) }
+
+    // Performances: all four slots' sounds and setup, 1-8.
+    Column {
+        x: 40
+        y: 776
+        spacing: 6
+        Row {
+            spacing: 4
+            Text {
+                width: 38
+                anchors.verticalCenter: parent.verticalCenter
+                text: "PERF"
+                color: panel.silk
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+                font.bold: true
+            }
+            PanelButton { width: 22; height: 22; dark: true; faceText: "◂"; text: "Previous performance"; onClicked: Programs.stepPerformance(-1) }
+            Text {
+                width: 40
+                anchors.verticalCenter: parent.verticalCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: (Programs.performance + 1) + (Programs.revision >= 0 && Programs.performanceUsed(Programs.performance) ? "" : "·")
+                color: panel.led
+                font.family: "monospace"
+                font.pixelSize: 16
+                font.bold: true
+            }
+            PanelButton { width: 22; height: 22; dark: true; faceText: "▸"; text: "Next performance"; onClicked: Programs.stepPerformance(1) }
+        }
+        Row {
+            spacing: 6
+            PanelButton {
+                width: 64
+                height: 24
+                dark: true
+                faceText: "LOAD"
+                text: "Load the performance"
+                enabled: Programs.revision >= 0 && Programs.performanceUsed(Programs.performance)
+                opacity: enabled ? 1.0 : 0.4
+                onClicked: Programs.loadPerformance(Programs.performance)
+            }
+            PanelButton {
+                width: 64
+                height: 24
+                dark: true
+                faceText: "SAVE"
+                text: "Save all four slots as this performance"
+                onClicked: Programs.savePerformance(Programs.performance)
+            }
+        }
+    }
 
     PianoKeyboard {
         instrument: Krimson
