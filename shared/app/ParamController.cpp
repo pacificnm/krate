@@ -36,6 +36,7 @@ ParamController::ParamController(IInstrument &instrument, const QString &panelFi
 
 ParamController::~ParamController()
 {
+    poll(); // a change the host made just now (a song's sounds put back on the way out) is saved too
     if (m_saveTimer.isActive())
         save();
 }

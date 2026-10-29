@@ -112,10 +112,10 @@ int main(int argc, char *argv[])
     // The Song screen and the song library (~/.local/share/krate/library: the
     // songs' files, library.db with each song's set-up and sounds).
     SongLibrary library(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/library"));
-    std::vector<krate::IInstrument *> instruments;
+    std::vector<krate::InstrumentInstance *> songInstances;
     for (const auto &instance : instances)
-        instruments.push_back(&instance->instrument());
-    SongController songController(songPlayer, rackController, entries, std::move(instruments), library, nullptr);
+        songInstances.push_back(instance.get());
+    SongController songController(songPlayer, rackController, entries, std::move(songInstances), library, nullptr);
     if (const QString old = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/songs.json");
         QFileInfo::exists(old))
         songController.importSongsJson(old); // from before the library

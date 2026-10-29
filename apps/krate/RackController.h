@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QJsonObject>
 #include <QObject>
 #include <QStringList>
 #include <QTimer>
@@ -89,6 +90,11 @@ public:
 
     // Mixer moves from learned controller faders, knobs and buttons (polled; public for tests).
     void applyMixerMoves();
+
+    // The whole mixer (every strip by instrument id, and the master), for a
+    // song in the library to keep and put back.
+    QJsonObject mixerState() const;
+    void setMixerState(const QJsonObject &state);
 
 signals:
     void focusChanged();

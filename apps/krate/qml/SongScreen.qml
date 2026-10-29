@@ -72,11 +72,12 @@ Item {
             }
             Text {
                 width: parent.width
-                text: Song.error !== "" ? Song.error : Song.files
+                text: Song.error !== "" ? Song.error
+                    : Song.files + (Song.loaded ? (Song.soundsSaved ? "  ·  sounds saved" : "  ·  sounds not saved") : "")
                 color: Song.error !== "" ? "#B02020" : "#55575B"
                 font.family: Theme.labelFont
                 font.pixelSize: 12
-                elide: Text.ElideMiddle
+                elide: Text.ElideLeft // the note at the end matters more than the file names
             }
         }
 
@@ -125,6 +126,14 @@ Item {
                 color: Theme.ink
                 font.family: Theme.labelFont
                 font.pixelSize: 14
+            }
+            PanelButton {
+                width: 64
+                height: 36
+                faceText: "SAVE"
+                text: "Save the instruments' sounds and the mixer with this song"
+                tint: Song.soundsSaved ? "transparent" : Theme.labelOrange
+                onClicked: Song.saveSounds()
             }
             PanelButton {
                 width: 64

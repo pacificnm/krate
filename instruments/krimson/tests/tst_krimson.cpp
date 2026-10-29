@@ -144,6 +144,35 @@ private slots:
         QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(0.3f));
     }
 
+    // A song in the library keeps Krimson's whole sound: all four slots, not
+    // only the edited one, plus the instrument's own parameters.
+    void wholeSoundSavesAndLoads()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        k.engine.setSlotParam(1, ParamId::Cutoff, 0.11f); // slot B, not the edited one
+        k.engine.setSlotParam(3, ParamId::Res, 0.77f);    // slot D
+        k.engine.setMorph(2, ParamId::Cutoff, 0.9f);      // a morph target on C
+        k.controller.setValue(QStringLiteral("volume"), 0.33);
+        const QJsonObject sound = instance->saveSound();
+        QVERIFY(sound.contains("slots"));
+        QVERIFY(sound.value("params").toObject().contains("volume"));
+
+        k.engine.setSlotParam(1, ParamId::Cutoff, 0.5f);
+        k.engine.setSlotParam(3, ParamId::Res, 0.1f);
+        k.engine.clearMorph(2);
+        k.controller.setValue(QStringLiteral("volume"), 0.8);
+        instance->loadSound(sound);
+        QCOMPARE(k.engine.slotParam(1, ParamId::Cutoff), 0.11f);
+        QCOMPARE(k.engine.slotParam(3, ParamId::Res), 0.77f);
+        QCOMPARE(k.engine.morph(2, ParamId::Cutoff), 0.9f);
+        QCOMPARE(k.engine.param(ParamId::Volume), 0.33f);
+        // slots.json has it too (the next start begins from this sound).
+        QVERIFY(QFile::exists(dir.filePath("config/slots.json")));
+    }
+
     // Standalone, the edited slot's ARP switch starts and stops the transport.
     void arpDrivesTheStandaloneTransport()
     {

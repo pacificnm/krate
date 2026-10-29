@@ -41,6 +41,7 @@ SynthController::SynthController(const QString &panelFilePath, krate::Transport 
 
 SynthController::~SynthController()
 {
+    poll(); // a change the host made just now is saved too
     if (m_saveTimer.isActive())
         savePanel();
     s_instance = nullptr;

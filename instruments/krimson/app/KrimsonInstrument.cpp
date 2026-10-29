@@ -12,6 +12,22 @@ Instance::Instance(const krate::InstrumentContext &context)
 {
 }
 
+QJsonObject Instance::saveSound()
+{
+    QJsonObject sound = InstrumentInstance::saveSound();
+    sound[QStringLiteral("slots")] = slotSetup.toJson();
+    return sound;
+}
+
+void Instance::loadSound(const QJsonObject &sound)
+{
+    InstrumentInstance::loadSound(sound); // Volume, Octave... and the edited slot (the slots below win)
+    if (const QJsonObject slotState = sound.value(u"slots").toObject(); !slotState.isEmpty()) {
+        slotSetup.fromJson(slotState);
+        slotSetup.save();
+    }
+}
+
 void Instance::triggerAction(const QString &action)
 {
     if (action.size() == 5 && action.startsWith(u"slot")) // slotA..slotD: play and edit that slot

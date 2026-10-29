@@ -16,6 +16,9 @@ public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
     void triggerAction(const QString &action) override;
+    // The instrument parameters plus all four slots (sounds, morph targets, set-up).
+    QJsonObject saveSound() override;
+    void loadSound(const QJsonObject &sound) override;
 
     Engine engine;
     KrimsonController controller;

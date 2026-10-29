@@ -13,6 +13,7 @@
 #include <QLoggingCategory>
 
 #include "RackController.h"
+#include "app/InstrumentRegistry.h"
 #include "core/Instrument.h"
 #include "song/Arrange.h"
 #include "song/GpFile.h"
@@ -48,11 +49,11 @@ const char *noteName(int pitch)
 } // namespace
 
 SongController::SongController(s::SongPlayer &player, RackController &rack, const QList<krate::InstrumentEntry> &entries,
-                               std::vector<krate::IInstrument *> instruments, SongLibrary &library, QObject *parent)
+                               std::vector<krate::InstrumentInstance *> instances, SongLibrary &library, QObject *parent)
     : QObject(parent)
     , m_player(player)
     , m_rack(rack)
-    , m_instruments(std::move(instruments))
+    , m_instances(std::move(instances))
     , m_library(library)
 {
     Q_ASSERT(!s_instance);
@@ -60,6 +61,8 @@ SongController::SongController(s::SongPlayer &player, RackController &rack, cons
 
     // Every instrument that plays notes; one choice per channel for
     // instruments with several (Krimson's slots A-D). The metronome plays none.
+    for (const krate::InstrumentEntry &e : entries)
+        m_ids << e.id;
     for (qsizetype i = 0; i < entries.size(); ++i) {
         const krate::InstrumentEntry &e = entries[i];
         if (e.id == u"klick")
@@ -83,6 +86,8 @@ SongController::SongController(s::SongPlayer &player, RackController &rack, cons
 
 SongController::~SongController()
 {
+    if (m_before) // quitting with a song open: the instruments keep (and save) the sounds from before it
+        restore(*m_before);
     setSequencers(true);
     s_instance = nullptr;
 }
@@ -296,6 +301,17 @@ bool SongController::load(const QString &tabPath, const QString &midiPath, qint6
         return false;
 
     m_rack.setPlaying(false);
+    // Sounds: the ones from before any song come back first (or are kept now),
+    // then this song's saved ones go on.
+    if (m_before)
+        restore(*m_before);
+    else
+        m_before = capture();
+    const auto entry = songId ? m_library.song(songId) : std::nullopt;
+    m_soundsSaved = entry && entry->soundsSaved;
+    if (m_soundsSaved)
+        restore({m_library.sounds(songId), m_library.mixer(songId)});
+
     m_score = std::move(score);
     m_tab = std::move(tab);
     m_midi = std::move(midi);
@@ -353,6 +369,11 @@ void SongController::close()
     m_myTrack = -1;
     m_songId = 0;
     m_details = {};
+    m_soundsSaved = false;
+    if (m_before) { // your sounds and mixer, as they were before the song
+        restore(*m_before);
+        m_before.reset();
+    }
     setSequencers(true);
     setError({});
     m_library.setLastSong(0); // nothing reopens next time
@@ -558,9 +579,38 @@ void SongController::pollPosition()
 
 void SongController::setSequencers(bool enabled)
 {
-    for (krate::IInstrument *instrument : m_instruments)
-        if (instrument)
-            instrument->setSequencerEnabled(enabled);
+    for (krate::InstrumentInstance *instance : m_instances)
+        if (instance)
+            instance->instrument().setSequencerEnabled(enabled);
+}
+
+SongController::Snapshot SongController::capture() const
+{
+    Snapshot s;
+    for (std::size_t i = 0; i < m_instances.size() && i < std::size_t(m_ids.size()); ++i)
+        if (m_instances[i])
+            s.sounds[m_ids[qsizetype(i)]] = m_instances[i]->saveSound();
+    s.mixer = m_rack.mixerState();
+    return s;
+}
+
+void SongController::restore(const Snapshot &snapshot)
+{
+    for (std::size_t i = 0; i < m_instances.size() && i < std::size_t(m_ids.size()); ++i)
+        if (m_instances[i] && snapshot.sounds.contains(m_ids[qsizetype(i)]))
+            m_instances[i]->loadSound(snapshot.sounds.value(m_ids[qsizetype(i)]).toObject());
+    if (!snapshot.mixer.isEmpty())
+        m_rack.setMixerState(snapshot.mixer);
+}
+
+void SongController::saveSounds()
+{
+    if (!m_songId || !m_song)
+        return;
+    const Snapshot now = capture();
+    m_library.saveSounds(m_songId, now.sounds, now.mixer);
+    m_soundsSaved = true;
+    emit songChanged();
 }
 
 // --- The library ---------------------------------------------------------------------

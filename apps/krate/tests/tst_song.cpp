@@ -24,14 +24,18 @@ namespace {
 
 using Bytes = std::vector<std::uint8_t>;
 
+std::string fmt(float v) { return std::to_string(v); }
+constexpr ParamDescriptor kFakeParams[] = {{"tone", "Tone", 0.5f, 0, &fmt}};
+
+// An instrument with one knob ("tone"), and its own sequencer switch.
 class Fake final : public IInstrument
 {
 public:
     void prepare(double, std::uint32_t) noexcept override {}
-    std::span<const ParamDescriptor> parameters() const noexcept override { return {}; }
-    float param(int) const noexcept override { return 0.0f; }
-    void setParam(int, float) noexcept override {}
-    void setParamFromHost(int, float) noexcept override {}
+    std::span<const ParamDescriptor> parameters() const noexcept override { return kFakeParams; }
+    float param(int) const noexcept override { return tone; }
+    void setParam(int, float v) noexcept override { tone = v; }
+    void setParamFromHost(int, float v) noexcept override { tone = v; }
     std::uint64_t takeParamsChangedByAudio() noexcept override { return 0; }
     void process(const AudioBlock &b) noexcept override
     {
@@ -40,6 +44,16 @@ public:
     }
     void setSequencerEnabled(bool on) noexcept override { sequencer = on; }
     bool sequencer = true;
+    float tone = 0.5f;
+};
+
+// Its instance: the default whole-sound save and load (every parameter).
+class FakeInstance final : public InstrumentInstance
+{
+public:
+    explicit FakeInstance(Fake &f) : fake(f) {}
+    IInstrument &instrument() override { return fake; }
+    Fake &fake;
 };
 
 void be(Bytes &out, std::uint32_t v, int n)
@@ -161,6 +175,7 @@ struct Fixture
 {
     QTemporaryDir dir;
     std::array<Fake, 5> fakes;
+    std::vector<std::unique_ptr<FakeInstance>> instances;
     Rack rack;
     Transport transport;
     QList<InstrumentEntry> entries{entry("k303", "k303", -1), entry("k909", "K909", 9), entry("kalliope", "Kalliope", 1),
@@ -172,8 +187,10 @@ struct Fixture
 
     Fixture()
     {
-        for (Fake &f : fakes)
+        for (Fake &f : fakes) {
             rack.addDevice(f);
+            instances.push_back(std::make_unique<FakeInstance>(f));
+        }
         rackController = std::make_unique<RackController>(rack, transport, entries, nullptr);
         make();
     }
@@ -183,10 +200,10 @@ struct Fixture
         song.reset();
         library.reset();
         library = std::make_unique<SongLibrary>(dir.filePath(QStringLiteral("library")));
-        std::vector<IInstrument *> instruments;
-        for (Fake &f : fakes)
-            instruments.push_back(&f);
-        song = std::make_unique<SongController>(player, *rackController, entries, instruments, *library, nullptr);
+        std::vector<InstrumentInstance *> list;
+        for (const auto &i : instances)
+            list.push_back(i.get());
+        song = std::make_unique<SongController>(player, *rackController, entries, list, *library, nullptr);
     }
     QString path(const char *name) const { return dir.filePath(QString::fromLatin1(name)); }
     QVariantMap track(int t) const { return song->tracks().value(t).toMap(); }
@@ -334,6 +351,53 @@ private slots:
         f.make();
         f.song->reopenLast();
         QCOMPARE(f.track(1).value("choice").toInt(), f.choice("Krimson C"));
+    }
+
+    // SAVE keeps the instruments' sounds and the mixer with the song; opening
+    // it puts them on, closing (or another song, or quitting) puts yours back.
+    void soundsComeAndGo()
+    {
+        Fixture f;
+        write(f.path("a.mid"), midiFile({{"Bass", 1, 33}}));
+        write(f.path("b.mid"), midiFile({{"Drums", 9, 36}}));
+        Fake &krimson = f.fakes[3];
+        RackController &mixer = *f.rackController;
+        krimson.tone = 0.2f; // your sound, before any song
+        mixer.setFader(3, 0.6);
+
+        f.song->openPaths({f.path("a.mid")});
+        QVERIFY(!f.song->soundsSaved());
+        krimson.tone = 0.9f; // the song's sound
+        mixer.setFader(3, 0.3);
+        mixer.setPan(3, -0.5);
+        f.song->saveSounds();
+        QVERIFY(f.song->soundsSaved());
+        krimson.tone = 0.7f; // experimenting, not saved
+
+        f.song->close();
+        QCOMPARE(krimson.tone, 0.2f); // yours again
+        QCOMPARE(mixer.fader(3), 0.6);
+        QCOMPARE(mixer.pan(3), 0.0);
+
+        f.song->openPaths({f.path("a.mid")});
+        QVERIFY(f.song->soundsSaved());
+        QCOMPARE(krimson.tone, 0.9f); // the song's, as saved
+        QCOMPARE(mixer.fader(3), 0.3);
+        QCOMPARE(mixer.pan(3), -0.5);
+
+        f.song->openPaths({f.path("b.mid")}); // another song, without saved sounds: yours
+        QVERIFY(!f.song->soundsSaved());
+        QCOMPARE(krimson.tone, 0.2f);
+        QCOMPARE(mixer.fader(3), 0.6);
+
+        f.song->openPaths({f.path("a.mid")});
+        QCOMPARE(krimson.tone, 0.9f);
+        f.make(); // quitting with the song open: yours come back on the way out
+        QCOMPARE(krimson.tone, 0.2f);
+        QCOMPARE(mixer.fader(3), 0.6);
+        // ...and the song (reopening next time) still has its own.
+        f.song->reopenLast();
+        QCOMPARE(krimson.tone, 0.9f);
     }
 
     void badFilesKeepTheSong()

@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 
+#include <QJsonObject>
 #include <QString>
 #include <QStringList>
 
@@ -31,6 +32,14 @@ public:
     virtual IInstrument &instrument() = 0;
     // A learned MIDI button for one of the entry's actions was pressed.
     virtual void triggerAction(const QString &action) { Q_UNUSED(action); }
+
+    // The instrument's whole sound, for a song in the library to keep
+    // (docs/SONG_PLAYER.md#library), and putting one back. By default every
+    // parameter by key ({"params": {key: value}}), set as the host would, so
+    // the panel follows and saves; instruments with more state than their
+    // parameter table (Krimson's four slots) add it.
+    virtual QJsonObject saveSound();
+    virtual void loadSound(const QJsonObject &sound);
 };
 
 // How a host (standalone app or the Krate rack) finds and builds an instrument.

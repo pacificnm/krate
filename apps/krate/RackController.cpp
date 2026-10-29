@@ -223,6 +223,33 @@ void RackController::setSolo(int device, bool solo)
     emit mixerChanged();
 }
 
+QJsonObject RackController::mixerState() const
+{
+    QJsonObject strips;
+    for (qsizetype i = 0; i < m_strips.size() && i < m_entries.size(); ++i)
+        strips[m_entries[i].id] = QJsonObject{{QStringLiteral("fader"), m_strips[i].fader},
+                                              {QStringLiteral("pan"), m_strips[i].pan},
+                                              {QStringLiteral("mute"), m_strips[i].mute},
+                                              {QStringLiteral("solo"), m_strips[i].solo}};
+    return QJsonObject{{QStringLiteral("strips"), strips}, {QStringLiteral("master"), m_masterFader}};
+}
+
+void RackController::setMixerState(const QJsonObject &state)
+{
+    const QJsonObject strips = state.value(u"strips").toObject();
+    for (qsizetype i = 0; i < m_strips.size() && i < m_entries.size(); ++i) {
+        if (!strips.contains(m_entries[i].id))
+            continue; // an instrument added since: as it is
+        const QJsonObject s = strips.value(m_entries[i].id).toObject();
+        setFader(int(i), s.value(u"fader").toDouble(kUnityFader));
+        setPan(int(i), s.value(u"pan").toDouble(0.0));
+        setMute(int(i), s.value(u"mute").toBool(false));
+        setSolo(int(i), s.value(u"solo").toBool(false));
+    }
+    if (state.contains(u"master"))
+        setFader(-1, state.value(u"master").toDouble(kUnityFader));
+}
+
 void RackController::applyMixerMoves()
 {
     while (const auto move = m_rack.popMixerMove()) {
