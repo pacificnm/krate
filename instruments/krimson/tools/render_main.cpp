@@ -67,12 +67,13 @@ std::vector<Sound> sounds()
     return {
         {"sync lead", {{ParamId::Osc1Wave, saw1}, {ParamId::Osc2Wave, saw2}, {ParamId::Sync, 1.0f}, {ParamId::OscMix, 1.0f},
                        {ParamId::MenvAmt, 0.85f}, {ParamId::MenvD, 0.5f}, {ParamId::Cutoff, 0.85f}, {ParamId::FenvAmt, 0.1f},
-                       {ParamId::Osc2Semi, 0.5f + 7 * semi}},
+                       {ParamId::Osc2Semi, 0.5f + 7 * semi}, {ParamId::DelayLevel, 0.35f}, {ParamId::DelayFb, 0.4f}},
          line({60, 63, 67, 72, 70, 67}, 0.3, 0.25)},
         {"fm bell", {{ParamId::Osc1Wave, sine1}, {ParamId::Osc2Wave, tri2}, {ParamId::Osc2Semi, 0.5f + 19 * semi},
                      {ParamId::OscMix, 0.0f}, {ParamId::Fm, 0.35f}, {ParamId::MenvDest, pos(1, p::kMenvDest)},
                      {ParamId::MenvAmt, 0.8f}, {ParamId::MenvD, 0.55f}, {ParamId::Cutoff, 0.9f}, {ParamId::FenvAmt, 0.0f},
-                     {ParamId::AenvD, 0.65f}, {ParamId::AenvS, 0.0f}, {ParamId::AenvR, 0.6f}},
+                     {ParamId::AenvD, 0.65f}, {ParamId::AenvS, 0.0f}, {ParamId::AenvR, 0.6f}, {ParamId::ReverbLevel, 0.4f},
+                     {ParamId::ReverbSize, 0.6f}},
          line({72, 79, 76, 84}, 0.6, 0.1)},
         {"ring clang", {{ParamId::Osc1Wave, pulse1}, {ParamId::Osc2Wave, pulse2}, {ParamId::Ring, 1.0f}, {ParamId::OscMix, 1.0f},
                         {ParamId::Osc2Semi, 0.5f + 11 * semi}, {ParamId::Cutoff, 0.8f}, {ParamId::AenvD, 0.55f},
@@ -89,7 +90,8 @@ std::vector<Sound> sounds()
         {"notch pad", {{ParamId::Osc1Wave, pulse1}, {ParamId::Osc2Wave, saw2}, {ParamId::Pw, 0.5f}, {ParamId::Osc2Fine, 0.55f},
                        {ParamId::FilterType, pos(4, p::kFilterType)}, {ParamId::Res, 0.6f}, {ParamId::Cutoff, 0.5f},
                        {ParamId::Lfo1Dest, pos(2, p::kLfo1Dest)}, {ParamId::Lfo1Amt, 0.5f}, {ParamId::Lfo1Rate, 0.3f},
-                       {ParamId::AenvA, 0.55f}, {ParamId::AenvR, 0.6f}, {ParamId::FenvAmt, 0.0f}},
+                       {ParamId::AenvA, 0.55f}, {ParamId::AenvR, 0.6f}, {ParamId::FenvAmt, 0.0f},
+                       {ParamId::Chorus, 1.0f}, {ParamId::ReverbLevel, 0.35f}},
          line({57}, 2.0, 1.8)},
     };
 }
@@ -173,13 +175,17 @@ int main(int argc, char **argv)
 
     krate::MasterStage master;
     if (bench) {
-        // All 16 voices held with sync, FM, drive and full resonance, 60 s.
+        // All 16 voices held with sync, FM, drive and full resonance, through
+        // ensemble, delay and reverb, 60 s.
         krimson::Engine engine;
         engine.prepare(rate, kBlock);
         engine.setParam(ParamId::Sync, 1.0f);
         engine.setParam(ParamId::Fm, 0.5f);
         engine.setParam(ParamId::Res, 1.0f);
         engine.setParam(ParamId::Drive, 0.5f);
+        engine.setParam(ParamId::Chorus, 1.0f);      // Ensemble
+        engine.setParam(ParamId::DelayLevel, 0.5f);
+        engine.setParam(ParamId::ReverbLevel, 0.5f);
         std::vector<float> out;
         out.reserve(std::size_t(rate) * 60 * 2 + 2 * kBlock);
         const auto t0 = std::chrono::steady_clock::now();
@@ -188,7 +194,7 @@ int main(int argc, char **argv)
             chord.push_back({0.0, note, 100});
         play(engine, master, chord, 60.0, rate, out);
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-        std::printf("rendered 60 s of 16 voices at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
+        std::printf("rendered 60 s of 16 voices with effects at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
                     seconds, seconds / 60.0 * 100.0);
         return 0;
     }

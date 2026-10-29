@@ -42,8 +42,8 @@ Each voice runs at **2× the host rate**; the voices are summed at 2× and the s
 
 | Effect | Design |
 | --- | --- |
-| **Chorus** | `Chorus`: one short delay line read at two modulated taps (left and right, sine LFOs a quarter cycle apart), linear-interpolated, each mixed with the dry signal at equal parts × 0.707. I: 0.5 Hz, ±2 ms around 7 ms; II: 0.85 Hz, ±3 ms; Off: both sides dry. This is what makes Kalliope stereo |
-| **Delay** | `Delay`: stereo ping-pong; the input (mid of the chorus output) enters the left line, each line feeds the other, so echoes alternate left, right, left…; feedback 0–90% through a one-pole low-pass at 4 kHz so repeats darken. Time = the `delay_time` note value (1/16 … 1/2) at the transport's tempo (the Tempo knob when there is none, as in `kalliope-render`), smoothed over 50 ms so tempo changes glide. The buffer (2 s at up to 192 kHz) is allocated once, when the engine is constructed |
+| **Chorus** | `krate::Chorus` (in `shared/dsp/Effects.h` since Krimson): one short delay line read at two modulated taps (left and right, sine LFOs a quarter cycle apart), linear-interpolated, each mixed with the dry signal at equal parts × 0.707. I: 0.5 Hz, ±2 ms around 7 ms; II: 0.85 Hz, ±3 ms; Off: both sides dry. This is what makes Kalliope stereo |
+| **Delay** | `krate::Delay` (shared likewise): stereo ping-pong; the input (mid of the chorus output) enters the left line, each line feeds the other, so echoes alternate left, right, left…; feedback 0–90% through a one-pole low-pass at 4 kHz so repeats darken. Time = the `delay_time` note value (1/16 … 1/2) at the transport's tempo (the Tempo knob when there is none, as in `kalliope-render`), smoothed over 50 ms so tempo changes glide. The buffer (2 s at up to 192 kHz) is allocated once, when the engine is constructed |
 
 ## Levels and CPU
 

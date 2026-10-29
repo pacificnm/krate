@@ -8,7 +8,9 @@
 #include "core/Midi.h"
 #include "core/ParamValues.h"
 #include "core/SpscQueue.h"
+#include "dsp/Effects.h"
 #include "dsp/HalfbandDecimator.h"
+#include "dsp/Reverb.h"
 #include "krimson/dsp/Params.h"
 #include "krimson/dsp/Voice.h"
 
@@ -16,7 +18,9 @@ namespace krimson {
 
 // Krimson's realtime core (docs/DSP.md). Four slots, each a full set of sound
 // parameters and its own key state (held keys, sustain, bend, wheel, voice
-// mode, glide), sharing 16 voices at 2x. The IInstrument parameter table shows
+// mode, glide), sharing 16 voices at 2x; each slot's voices go to its own
+// stereo bus, then its chorus, delay and reverb, then the mix. Effect buffers
+// are allocated here, at construction. The IInstrument parameter table shows
 // the slot being edited (docs/BRIEF.md#parameters-one-slot-at-a-time).
 //
 // MIDI routing (docs/PLAY.md#slots): a channel that belongs to a slot (and the
@@ -138,7 +142,7 @@ private:
     void noteOff(int slot, int note) noexcept;
     void setSustain(int slot, bool down) noexcept;
     void allNotesOff(int slot) noexcept;
-    void render(float *left, float *right, std::uint32_t frames) noexcept;
+    void render(float *left, float *right, std::uint32_t frames, double bpm) noexcept;
     VoiceMode voiceMode(int slot) const noexcept;
     int pickVoice(int slot, int note) noexcept; // a voice for the note (stealing if needed)
     void startVoice(int slot, int v, int note, double glideFrom) noexcept;
@@ -169,8 +173,18 @@ private:
     std::uint64_t m_counter = 0;
     std::array<Lfo, SlotCount> m_lfo2;   // per slot
     Lfo m_vibrato;                       // the mod wheel's vibrato
-    krate::HalfbandDecimator<31> m_decimatorL, m_decimatorR;
-    std::array<float, 2 * kChunk> m_bufferL{}, m_bufferR{};
+    // Per slot: a stereo bus at 2x, its decimators, its effects.
+    struct SlotBus
+    {
+        std::array<float, 2 * kChunk> left2x{}, right2x{};
+        std::array<float, kChunk> left{}, right{};
+        krate::HalfbandDecimator<31> decimateL, decimateR;
+        krate::Chorus chorus;
+        krate::Delay delay{2.0, 192000.0};
+        krate::Reverb reverb{192000.0};
+        bool delayOn = false, reverbOn = false; // were they running (to clear stale tails)
+    };
+    std::array<SlotBus, SlotCount> m_bus;
     std::array<std::array<float, kChunk>, SlotCount> m_lfo2Values{};
     std::array<float, kChunk> m_vibratoValues{};
     std::array<SlotSettings, SlotCount> m_settings{};      // at the panel values

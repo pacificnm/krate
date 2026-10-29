@@ -4,7 +4,7 @@ Realtime-safe throughout, as every Krate instrument. Values here are design star
 
 ## Reuse
 
-Kalliope's building blocks moved to `shared/dsp/` in C1 (Kalliope, k303 and the rack renders byte-identical): the band-limited `krate::Oscillator` (`dsp/BlepOscillator.h`: every jump corrected with a band-limited step, sync included), `krate::Envelope` and `krate::Lfo` (which gained Triangle and Soft random). Kalliope's `Chorus` / `Delay` follow in C6. Krimson adds what the target synth has and Kalliope doesn't: ring mod, a multi-mode filter with drive, the mod envelope, the second LFO, morph and the reverb.
+Kalliope's building blocks moved to `shared/dsp/` in C1 (Kalliope, k303 and the rack renders byte-identical): the band-limited `krate::Oscillator` (`dsp/BlepOscillator.h`: every jump corrected with a band-limited step, sync included), `krate::Envelope` and `krate::Lfo` (which gained Triangle and Soft random). Kalliope's `Chorus` and `Delay` followed in C6 (`dsp/Effects.h`), with the new `Reverb`. Krimson adds what the target synth has and Kalliope doesn't: ring mod, a multi-mode filter with drive, the mod envelope, the second LFO, morph and the reverb.
 
 ## Voice (runs at 2× and is decimated, as Kalliope)
 
@@ -41,12 +41,16 @@ Every continuous slot parameter can have a **morph target** (`Engine::setMorph`;
 
 ## Effects (per slot, then summed)
 
+Each slot's voices go to its own stereo bus (at 2×, decimated per slot). Then come that slot's effects, in this order, and then the four slots are summed. All of them are in `shared/dsp/`:
+
 | Effect | Design |
 | --- | --- |
-| Chorus / Ensemble | Kalliope's chorus; Ensemble uses three taps with slower, deeper modulation |
-| Delay | Kalliope's ping-pong delay, synced to the transport |
-| Reverb | A small feedback-delay-network reverb (8 delay lines, Hadamard mix, damping), size = decay time; buffers allocated at construction |
+| Chorus / Ensemble | `krate::Chorus::processStereo` (Kalliope's chorus, moved to `shared/dsp/` with Kalliope byte-identical): the bus's mid feeds a modulated delay line, each side keeps its dry signal. Chorus = Kalliope's I (0.5 Hz, ±2 ms around 7 ms); Ensemble = three taps 120° apart (0.6 Hz, ±4 ms around 10 ms), two per side |
+| Delay | `krate::Delay` (Kalliope's ping-pong delay), its time a note value at the transport's tempo (the Tempo knob without a transport), feedback 0–90 % |
+| Reverb | `krate::Reverb`: eight delay lines (30–73 ms) through a Hadamard mix, each damped (6 kHz one-pole), feedback set so the tail falls 60 dB in 0.4–8 s (Size); stereo out from different lines |
+
+A delay or reverb at zero level isn't processed, and is cleared when turned up, so no stale tail plays. Buffers (2 s of delay and the reverb lines at up to 192 kHz, per slot) are allocated when the engine is constructed. Effects follow the panel values; they don't morph.
 
 ## CPU
 
-Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C5 measures 16 voices with sync, FM, drive and full resonance at 10.2 % (one voice: 0.71 %).
+Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C6 measures 16 voices with sync, FM, drive and full resonance through ensemble, delay and reverb at 11.1 % (one voice: 0.71 %).

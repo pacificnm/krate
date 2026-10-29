@@ -137,7 +137,8 @@ CMakeLists.txt         Krate project; one add_subdirectory per folder below
 shared/
   core/      krate_core   IInstrument, AudioBlock, TransportState, ParamDescriptor, Transport,
                           StepClock, Midi (decode, MidiLearnMap), MasterStage, SpscQueue, Denormals  -- no Qt
-  dsp/       krate_dsp    HalfbandDecimator, polyBlep, Oscillator (BlepOscillator.h), Envelope, Lfo -- no Qt
+  dsp/       krate_dsp    HalfbandDecimator, polyBlep, Oscillator (BlepOscillator.h), Envelope, Lfo,
+                          Chorus and Delay (Effects.h), Reverb                                    -- no Qt
   host/      krate_host   JackHost (standalone); later RackHost                                   -- JACK, no Qt
   app/       krate_app    JsonFile, MidiMapFile, PanelFile, ScreenshotHook                        -- Qt
              krate_qml    MidiLearnController (QML singleton MidiLearn)

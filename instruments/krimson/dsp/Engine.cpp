@@ -21,6 +21,9 @@ constexpr int kCcAllNotesOff = 123;
 constexpr double kMaxUnisonDetuneSemis = 0.35; // Unison Detune at 100 %: the outer voices +/- 35 cents
 constexpr double kUnisonSpread = 0.7;          // stereo position of the outer unison voices
 constexpr int kDefaultFirstChannel = 2;        // slots A..D on MIDI channels 3..6
+// Delay Time positions in beats: 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2.
+constexpr double kDelayBeats[] = {0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0};
+constexpr double kMaxDelayFeedback = 0.9;
 constexpr std::int8_t kKeyUp = -128;
 } // namespace
 
@@ -41,8 +44,14 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
     m_sampleRate = sampleRate;
     for (Voice &voice : m_voices)
         voice.prepare(2.0 * sampleRate);
-    m_decimatorL.reset();
-    m_decimatorR.reset();
+    for (SlotBus &bus : m_bus) {
+        bus.decimateL.reset();
+        bus.decimateR.reset();
+        bus.chorus.prepare(sampleRate);
+        bus.delay.prepare(sampleRate);
+        bus.reverb.prepare(sampleRate);
+        bus.delayOn = bus.reverbOn = false;
+    }
     for (Lfo &lfo : m_lfo2)
         lfo.reset();
     m_vibrato.reset();
@@ -431,7 +440,7 @@ void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
     }
 }
 
-void Engine::render(float *left, float *right, std::uint32_t frames) noexcept
+void Engine::render(float *left, float *right, std::uint32_t frames, double bpm) noexcept
 {
     std::array<double, SlotCount> lfo2Hz{};
     for (int slot = 0; slot < SlotCount; ++slot)
@@ -444,27 +453,61 @@ void Engine::render(float *left, float *right, std::uint32_t frames) noexcept
                     float(m_lfo2[std::size_t(slot)].next(lfo2Hz[std::size_t(slot)], Lfo::Wave::Triangle, m_sampleRate));
             m_vibratoValues[i] = float(m_vibrato.next(kVibratoHz, Lfo::Wave::Sine, m_sampleRate));
         }
-        std::fill_n(m_bufferL.begin(), 2 * n, 0.0f);
-        std::fill_n(m_bufferR.begin(), 2 * n, 0.0f);
+        for (SlotBus &bus : m_bus) {
+            std::fill_n(bus.left2x.begin(), 2 * n, 0.0f);
+            std::fill_n(bus.right2x.begin(), 2 * n, 0.0f);
+        }
+        // Each voice into its slot's bus.
         for (int v = 0; v < kVoices; ++v) {
             Voice &voice = m_voices[std::size_t(v)];
             if (!voice.active())
                 continue;
             const auto slot = std::size_t(m_voiceSlot[std::size_t(v)]);
+            SlotBus &bus = m_bus[slot];
             if (!m_morphing[slot]) {
-                voice.render(m_bufferL.data(), m_bufferR.data(), n, m_lfo2Values[slot].data(), m_vibratoValues.data(),
+                voice.render(bus.left2x.data(), bus.right2x.data(), n, m_lfo2Values[slot].data(), m_vibratoValues.data(),
                              m_settings[slot]);
                 continue;
             }
             // Morph: the slot's wheel, or this voice's velocity, between panel and targets.
             const double amount = m_wheelMorph[slot] ? m_state[slot].wheel : voice.velocity();
             const SlotSettings morphed = blend(m_settings[slot], m_morphSettings[slot], amount);
-            voice.render(m_bufferL.data(), m_bufferR.data(), n, m_lfo2Values[slot].data(), m_vibratoValues.data(),
+            voice.render(bus.left2x.data(), bus.right2x.data(), n, m_lfo2Values[slot].data(), m_vibratoValues.data(),
                          morphed);
         }
-        for (std::uint32_t i = 0; i < n; ++i) {
-            left[i] = m_decimatorL.process(m_bufferL[2 * i], m_bufferL[2 * i + 1]);
-            right[i] = m_decimatorR.process(m_bufferR[2 * i], m_bufferR[2 * i + 1]);
+        // Each slot: decimate, its effects, into the mix.
+        std::fill_n(left, n, 0.0f);
+        std::fill_n(right, n, 0.0f);
+        for (int slot = 0; slot < SlotCount; ++slot) {
+            SlotBus &bus = m_bus[std::size_t(slot)];
+            const Store &p = m_slots[std::size_t(slot)];
+            for (std::uint32_t i = 0; i < n; ++i) {
+                bus.left[i] = bus.decimateL.process(bus.left2x[2 * i], bus.left2x[2 * i + 1]);
+                bus.right[i] = bus.decimateR.process(bus.right2x[2 * i], bus.right2x[2 * i + 1]);
+            }
+            static constexpr int kChorusModes[] = {krate::Chorus::Off, krate::Chorus::I, krate::Chorus::Ensemble};
+            bus.chorus.processStereo(bus.left.data(), bus.right.data(), n,
+                                     kChorusModes[units::index(p.get(int(ParamId::Chorus)), positions::kChorus)]);
+            const double delayLevel = p.get(int(ParamId::DelayLevel));
+            if (delayLevel > 0.0) {
+                if (!bus.delayOn) // turned up: no stale echoes from before
+                    bus.delay.clear();
+                const double beats = kDelayBeats[units::index(p.get(int(ParamId::DelayTime)), positions::kDelayTime)];
+                bus.delay.process(bus.left.data(), bus.right.data(), n, beats * 60.0 / std::max(bpm, 1.0), delayLevel,
+                                  kMaxDelayFeedback * p.get(int(ParamId::DelayFb)));
+            }
+            bus.delayOn = delayLevel > 0.0;
+            const double reverbLevel = p.get(int(ParamId::ReverbLevel));
+            if (reverbLevel > 0.0) {
+                if (!bus.reverbOn)
+                    bus.reverb.clear();
+                bus.reverb.process(bus.left.data(), bus.right.data(), n, p.get(int(ParamId::ReverbSize)), reverbLevel);
+            }
+            bus.reverbOn = reverbLevel > 0.0;
+            for (std::uint32_t i = 0; i < n; ++i) {
+                left[i] += bus.left[i];
+                right[i] += bus.right[i];
+            }
         }
         left += n;
         right += n;
@@ -484,6 +527,8 @@ void Engine::process(const krate::AudioBlock &block) noexcept
             m_state[std::size_t(slot)].lastNote = -1;
         }
 
+    const double bpm = block.transport ? block.transport->bpm : units::tempoBpm(m_global.get(int(ParamId::Tempo)));
+
     // The on-screen keyboard and wheels, at the start of the block.
     while (const auto event = m_gui.pop())
         handleMidi(*event, true);
@@ -502,7 +547,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
                     m_wheelMorph[i] = units::index(m_slots[i].get(int(ParamId::WheelDest)), positions::kWheelDest) == 0;
                 }
             }
-            render(left + done, right + done, until - done);
+            render(left + done, right + done, until - done, bpm);
             done = until;
         }
         if (e < block.midiCount)
