@@ -71,6 +71,11 @@ public:
     Q_INVOKABLE void setMute(int device, bool mute);
     Q_INVOKABLE bool solo(int device) const;
     Q_INVOKABLE void setSolo(int device, bool solo);
+    // MIDI channel routing: 1..16 = notes on that channel always go to this
+    // device; 0 = none of its own (it gets keys when it has focus). Giving a
+    // device a channel takes the channel from any other device.
+    Q_INVOKABLE int midiChannel(int device) const;
+    Q_INVOKABLE void setMidiChannel(int device, int channel);
 
 signals:
     void focusChanged();

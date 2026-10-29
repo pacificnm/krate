@@ -21,7 +21,9 @@ krate::InstrumentEntry registryEntry()
     krate::InstrumentEntry entry;
     entry.id = QStringLiteral("k303");
     entry.name = QStringLiteral("k303");
-    entry.defaultMidiChannel = 0; // channel 1
+    // None of its own: with one keyboard, the keys play whichever instrument has
+    // focus (Kalliope keeps channel 2, K909 channel 10 for pads).
+    entry.defaultMidiChannel = -1;
     entry.qmlModule = QStringLiteral("K303");
     entry.panelComponent = QStringLiteral("Panel");
     entry.actions = {

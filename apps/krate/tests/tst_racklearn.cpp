@@ -41,9 +41,13 @@ public:
     {
         std::fill_n(b.outputs[0], b.frames, 0.0f);
         std::fill_n(b.outputs[1], b.frames, 0.0f);
+        for (std::uint32_t i = 0; i < b.midiCount; ++i)
+            if ((b.midi[i].data[0] & 0xF0) == 0x90)
+                ++notes;
     }
     std::span<const ParamDescriptor> params;
     std::vector<float> values;
+    int notes = 0; // note-ons received
 };
 
 class FakeInstance final : public InstrumentInstance
@@ -241,6 +245,26 @@ private slots:
         QCOMPARE(g.rack.channelDevice(9), 1);
         QCOMPARE(g.rack.channelDevice(0), -1);
         QCOMPARE(int(g.rack.ccMapping(15, 50).kind), int(Kind::Action));
+    }
+
+    // The mixer strip's channel selector: a channel goes to one device; FOCUS
+    // (0) frees it, so those notes follow focus.
+    void midiChannelSelector()
+    {
+        Fixture f; // alpha on channel 1
+        QCOMPARE(f.controller->midiChannel(0), 1);
+        QCOMPARE(f.controller->midiChannel(1), 0);
+        f.controller->setMidiChannel(1, 1); // beta takes channel 1 from alpha
+        QCOMPARE(f.controller->midiChannel(1), 1);
+        QCOMPARE(f.controller->midiChannel(0), 0);
+        QCOMPARE(f.rack.channelDevice(0), 1);
+        f.controller->setMidiChannel(1, 0);  // FOCUS
+        QCOMPARE(f.rack.channelDevice(0), -1);
+        // Channel 1 now follows focus: with focus on alpha, its notes reach alpha.
+        f.controller->setFocus(0);
+        f.send({noteOn(0, 60)});
+        QVERIFY(f.a.notes > 0);
+        QCOMPARE(f.b.notes, 0);
     }
 
     void sessionIgnoresUnknownInstruments()

@@ -20,7 +20,7 @@ private slots:
         QCOMPARE(entry.id, QStringLiteral("k303"));
         QCOMPARE(entry.qmlModule, QStringLiteral("K303"));
         QCOMPARE(entry.panelComponent, QStringLiteral("Panel"));
-        QCOMPARE(entry.defaultMidiChannel, 0);
+        QCOMPARE(entry.defaultMidiChannel, -1); // keys follow focus in the rack
         QVERIFY(entry.actions.contains(QStringLiteral("pattern1")));
         QVERIFY(entry.actions.contains(QStringLiteral("runstop")));
         QVERIFY(bool(entry.create));

@@ -149,6 +149,27 @@ bool RackController::solo(int device) const
     return device >= 0 && device < m_strips.size() && m_strips[device].solo;
 }
 
+int RackController::midiChannel(int device) const
+{
+    for (int ch = 0; ch < krate::Rack::kChannels; ++ch)
+        if (m_rack.channelDevice(ch) == device)
+            return ch + 1;
+    return 0;
+}
+
+void RackController::setMidiChannel(int device, int channel)
+{
+    if (device < 0 || device >= m_strips.size() || channel < 0 || channel > krate::Rack::kChannels)
+        return;
+    for (int ch = 0; ch < krate::Rack::kChannels; ++ch)
+        if (m_rack.channelDevice(ch) == device)
+            m_rack.setChannelDevice(ch, -1);
+    if (channel > 0)
+        m_rack.setChannelDevice(channel - 1, device);
+    ++m_mixerRevision;
+    emit mixerChanged(); // the session saves it
+}
+
 void RackController::setSolo(int device, bool solo)
 {
     if (device < 0 || device >= m_strips.size())

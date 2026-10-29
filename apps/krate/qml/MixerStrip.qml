@@ -1,7 +1,8 @@
 import QtQuick
 import Krate
 
-// One mixer channel: name, pan, mute/solo, fader, meter. device -1 = master.
+// One mixer channel: name, pan, mute/solo, fader, meter, MIDI channel.
+// device -1 = master.
 Item {
     id: strip
 
@@ -85,10 +86,45 @@ Item {
     }
 
     PanelLabel {
-        centerX: strip.width / 2
+        centerX: strip.isMaster ? strip.width / 2 : 30
         y: strip.height - 22
         text: Rack.faderText(strip.rev >= 0 ? Rack.fader(strip.device) : 0.8)
         font.pixelSize: 11
         font.bold: false
+    }
+
+    // MIDI channel: FOCUS (keys reach it when it has focus) or 1-16 (always).
+    // Click: next; right-click or wheel down: previous.
+    Rectangle {
+        id: channelBox
+        readonly property int channel: strip.rev >= 0 && !strip.isMaster ? Rack.midiChannel(strip.device) : 0
+        function step(delta) { Rack.setMidiChannel(strip.device, (channel + delta + 17) % 17) }
+
+        visible: !strip.isMaster
+        x: strip.width - width - 6
+        y: strip.height - 25
+        width: 50
+        height: 19
+        radius: 3
+        color: channel > 0 ? "#2A2B2E" : "#5A5C60"
+        border.color: Theme.deckLine
+
+        Accessible.role: Accessible.Button
+        Accessible.name: strip.name + " MIDI channel: " + (channel > 0 ? channel : "follows focus")
+
+        Text {
+            anchors.centerIn: parent
+            text: channelBox.channel > 0 ? "CH " + channelBox.channel : "FOCUS"
+            color: Theme.inkInverse
+            font.family: Theme.labelFont
+            font.pixelSize: 10
+            font.bold: true
+        }
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: mouse => channelBox.step(mouse.button === Qt.RightButton ? -1 : 1)
+            onWheel: wheel => channelBox.step(wheel.angleDelta.y > 0 ? 1 : -1)
+        }
     }
 }

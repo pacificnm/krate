@@ -185,7 +185,7 @@ Decided: **per-channel routing plus a focus**, so one controller can play one in
 
 | Message | Goes to |
 | --- | --- |
-| Notes on a channel assigned to a device | That device (for example ch 1 → k303, ch 10 → K909, ch 2 → Kalliope) |
+| Notes on a channel assigned to a device | That device (defaults: ch 10 → K909, ch 2 → Kalliope; k303 and Klick have none) |
 | Notes on an unassigned channel | The focused device |
 | CC with a **fixed** mapping | The mapped device and parameter, whatever has focus |
 | CC with a **follow-focus** mapping | That parameter key on whichever device has focus (when it has one with that key) |
@@ -204,6 +204,7 @@ Decided: the target setup is **one Nektar Impact LX49 mk3** driving every instru
 - A button (or several) on the LX49 switches focus: "focus k303", "focus K909", "focus Kalliope", "focus next". Whichever message the button sends (CC, note or Program Change) works, because focus actions are learned like parameters. The panel shows which instrument has focus.
 - Keys and follow-focus knobs drive the focused instrument; fixed knobs (for example K909's level, or tempo) ignore focus.
 - If the LX49's pads can send on their own channel, per-channel routing lets pads play K909 (e.g. channel 10) while the keys play the focused instrument. To be checked on the hardware.
+- Each mixer strip has a **MIDI channel selector** (FOCUS or CH 1–16; click for the next, right-click or wheel for the previous), saved in `rack.json`. A channel belongs to one device: giving it to another takes it. With one keyboard, leave the instruments the keys should play on FOCUS: an instrument holding the keyboard's channel gets the keys whatever has focus. (Found on the hardware: k303 used to default to channel 1, the LX49's, so the keys never reached Kalliope; k303 now defaults to FOCUS.)
 - Hardware notes (2026-10-28): the LX49 mk3 is class-compliant on Linux (USB ID `2467:201a`) and has **two MIDI ports**: `MIDI1` (keys, knobs, faders, pads) and `MIDI2` (control and transport buttons). Hosts connect every port matching the device name, so both arrive. The control buttons send CCs on channel 16 via MIDI2 (one sends CC 47, value 127 on press and 0 on release); everything the user wanted (focus switching, pattern buttons, play/stop, knobs) maps through rack MIDI Learn with no code changes (K6).
 
 #### Who resolves CCs
