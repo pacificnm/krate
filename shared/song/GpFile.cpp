@@ -410,6 +410,7 @@ GpFileResult readGpFile(std::span<const std::uint8_t> data)
     if (const Node *s = gp.child("Score")) {
         score.title = std::string(s->childText("Title"));
         score.artist = std::string(s->childText("Artist"));
+        score.album = std::string(s->childText("Album"));
     }
 
     // Tracks.

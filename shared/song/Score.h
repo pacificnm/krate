@@ -88,7 +88,7 @@ struct TempoMark
 
 struct Score
 {
-    std::string title, artist;
+    std::string title, artist, album;
     int ppq = 960;
     std::vector<MasterBar> bars;
     std::vector<TempoMark> tempos; // in bar and position order

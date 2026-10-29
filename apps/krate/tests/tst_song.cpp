@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
@@ -166,6 +167,7 @@ struct Fixture
                                    entry("krimson", "Krimson", 2, {3, 4, 5}), entry("klick", "Klick", -1)};
     song::SongPlayer player;
     std::unique_ptr<RackController> rackController;
+    std::unique_ptr<SongLibrary> library;
     std::unique_ptr<SongController> song;
 
     Fixture()
@@ -175,15 +177,17 @@ struct Fixture
         rackController = std::make_unique<RackController>(rack, transport, entries, nullptr);
         make();
     }
+    // A fresh controller and library connection, as when the rack starts again.
     void make()
     {
         song.reset();
+        library.reset();
+        library = std::make_unique<SongLibrary>(dir.filePath(QStringLiteral("library")));
         std::vector<IInstrument *> instruments;
         for (Fake &f : fakes)
             instruments.push_back(&f);
-        song = std::make_unique<SongController>(player, *rackController, entries, instruments, settings(), nullptr);
+        song = std::make_unique<SongController>(player, *rackController, entries, instruments, *library, nullptr);
     }
-    QString settings() const { return dir.filePath(QStringLiteral("songs.json")); }
     QString path(const char *name) const { return dir.filePath(QString::fromLatin1(name)); }
     QVariantMap track(int t) const { return song->tracks().value(t).toMap(); }
     int choice(const char *label) const { return int(song->instrumentChoices().indexOf(QString::fromLatin1(label))); }
@@ -244,7 +248,8 @@ private slots:
         QVERIFY(f.song->hasMidi());
         QCOMPARE(f.song->title(), QStringLiteral("Practice Riff"));
         QCOMPARE(f.song->artist(), QStringLiteral("Krate"));
-        QCOMPARE(f.song->files(), QStringLiteral("riff.gp + riff.mid"));
+        QCOMPARE(f.song->files(), QStringLiteral("Practice Riff.gp + Practice Riff.mid")); // the library's copies
+        QVERIFY(f.song->songId() > 0);
         QCOMPARE(f.song->barCount(), 1);
         QCOMPARE(f.track(0).value("tuning").toString(), QStringLiteral("E A D G B E"));
         QCOMPARE(f.track(1).value("strings").toInt(), 4);
@@ -296,6 +301,39 @@ private slots:
         QVERIFY(!f.song->loaded());
         f.song->openPaths({f.path("band.mid")});
         QCOMPARE(f.track(1).value("choice").toInt(), f.choice("Krimson D"));
+    }
+
+    // S4's songs.json comes into the library once, with its last song's setup.
+    void importsSongsJson()
+    {
+        Fixture f;
+        write(f.path("band.mid"), midiFile({{"Lead Guitar", 0, 64}, {"Bass", 1, 33}}));
+        const QString json = f.path("songs.json");
+        QFile out(json);
+        QVERIFY(out.open(QIODevice::WriteOnly));
+        out.write(QJsonDocument(QJsonObject{
+                                    {"last", QJsonObject{{"tab", ""}, {"midi", f.path("band.mid")}}},
+                                    {"songs", QJsonObject{{f.path("band.mid"),
+                                                           QJsonObject{{"myTrack", 1},
+                                                                       {"tracks", QJsonArray{QJsonObject{{"instrument", "kalliope"}},
+                                                                                             QJsonObject{{"instrument", "krimson:C"},
+                                                                                                         {"level", 0.4}}}}}}}},
+                                })
+                      .toJson());
+        out.close();
+        f.song->importSongsJson(json);
+        QVERIFY(f.song->loaded());
+        QVERIFY(f.song->songId() > 0);
+        QCOMPARE(f.track(0).value("choice").toInt(), f.choice("Kalliope"));
+        QCOMPARE(f.track(1).value("choice").toInt(), f.choice("Krimson C"));
+        QCOMPARE(f.track(1).value("level").toDouble(), 0.4);
+        QCOMPARE(f.song->myTrack(), 1);
+        QVERIFY(!QFile::exists(json));
+        QVERIFY(QFile::exists(json + ".old"));
+        // Next start: from the library.
+        f.make();
+        f.song->reopenLast();
+        QCOMPARE(f.track(1).value("choice").toInt(), f.choice("Krimson C"));
     }
 
     void badFilesKeepTheSong()

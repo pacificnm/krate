@@ -5,13 +5,12 @@
 
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
-#include <QJSEngine>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QFileInfo>
+#include <QJSEngine>
 #include <QLoggingCategory>
-#include <QSaveFile>
 
 #include "RackController.h"
 #include "core/Instrument.h"
@@ -49,13 +48,12 @@ const char *noteName(int pitch)
 } // namespace
 
 SongController::SongController(s::SongPlayer &player, RackController &rack, const QList<krate::InstrumentEntry> &entries,
-                               std::vector<krate::IInstrument *> instruments, const QString &settingsPath,
-                               QObject *parent)
+                               std::vector<krate::IInstrument *> instruments, SongLibrary &library, QObject *parent)
     : QObject(parent)
     , m_player(player)
     , m_rack(rack)
     , m_instruments(std::move(instruments))
-    , m_settingsPath(settingsPath)
+    , m_library(library)
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
@@ -98,6 +96,8 @@ SongController *SongController::create(QQmlEngine *, QJSEngine *)
 
 QString SongController::title() const
 {
+    if (!m_details.title.isEmpty())
+        return m_details.title;
     if (m_score && !m_score->title.empty())
         return QString::fromStdString(m_score->title);
     if (m_midi && !m_midi->title.empty())
@@ -106,7 +106,7 @@ QString SongController::title() const
     return path.isEmpty() ? QString() : QFileInfo(path).completeBaseName();
 }
 
-QString SongController::artist() const { return m_score ? QString::fromStdString(m_score->artist) : QString(); }
+QString SongController::artist() const { return m_details.artist; }
 
 QString SongController::files() const
 {
@@ -222,38 +222,87 @@ void SongController::openPaths(const QStringList &paths)
     if (tabPath.isEmpty())
         tabPath = sibling(midiPath, {QStringLiteral(".gp"), QStringLiteral(".GP")});
 
-    std::optional<s::Score> score;
-    std::optional<s::Song> tab, midi;
+    // Read them first: a file that doesn't read leaves the open song alone.
     QStringList problems;
+    std::optional<s::Score> score;
     if (!tabPath.isEmpty()) {
         auto result = s::readGpFile(tabPath.toStdString());
-        if (result.song) {
+        if (result.score)
             score = std::move(result.score);
-            tab = std::move(result.song);
-        } else {
+        else {
             problems << QFileInfo(tabPath).fileName() + QStringLiteral(": ") + QString::fromStdString(result.error);
             tabPath.clear();
         }
     }
     if (!midiPath.isEmpty()) {
         auto result = s::readMidiFile(midiPath.toStdString());
-        if (result.song) {
-            midi = std::move(result.song);
-        } else {
+        if (!result.song) {
             problems << QFileInfo(midiPath).fileName() + QStringLiteral(": ") + QString::fromStdString(result.error);
             midiPath.clear();
         }
     }
     setError(problems.join(u'\n'));
+    if (tabPath.isEmpty() && midiPath.isEmpty())
+        return;
+
+    // Into the library (or the song already there with these files), and play its copies.
+    SongLibrary::Details details;
+    if (score) {
+        details.title = QString::fromStdString(score->title);
+        details.artist = QString::fromStdString(score->artist);
+        details.album = QString::fromStdString(score->album);
+    }
+    if (details.title.isEmpty() || details.artist.isEmpty()) {
+        const SongLibrary::Details fromName = SongLibrary::detailsFromFileName(midiPath.isEmpty() ? tabPath : midiPath);
+        if (details.title.isEmpty())
+            details.title = fromName.title;
+        if (details.artist.isEmpty())
+            details.artist = fromName.artist;
+    }
+    if (const auto added = m_library.add(tabPath, midiPath, details)) {
+        load(added->tabFile, added->midiFile, added->id, added->details);
+    } else {
+        if (m_library.isOpen())
+            setError(m_library.lastError());
+        load(tabPath, midiPath, 0, details); // play it anyway, unsaved
+    }
+}
+
+void SongController::openSong(qint64 id)
+{
+    const auto song = m_library.song(id);
+    if (!song) {
+        setError(tr("That song isn't in the library any more"));
+        return;
+    }
+    setError({});
+    if (!load(song->tabFile, song->midiFile, song->id, song->details))
+        setError(tr("The library's copy of %1 can't be read").arg(song->details.title));
+}
+
+bool SongController::load(const QString &tabPath, const QString &midiPath, qint64 songId, const SongLibrary::Details &details)
+{
+    std::optional<s::Score> score;
+    std::optional<s::Song> tab, midi;
+    if (!tabPath.isEmpty())
+        if (auto result = s::readGpFile(tabPath.toStdString()); result.song) {
+            score = std::move(result.score);
+            tab = std::move(result.song);
+        }
+    if (!midiPath.isEmpty())
+        if (auto result = s::readMidiFile(midiPath.toStdString()); result.song)
+            midi = std::move(result.song);
     if (!tab && !midi)
-        return; // the song that was open stays
+        return false;
 
     m_rack.setPlaying(false);
     m_score = std::move(score);
     m_tab = std::move(tab);
     m_midi = std::move(midi);
-    m_tabPath = tabPath.isEmpty() ? QString() : QFileInfo(tabPath).absoluteFilePath();
-    m_midiPath = midiPath.isEmpty() ? QString() : QFileInfo(midiPath).absoluteFilePath();
+    m_tabPath = m_tab ? QFileInfo(tabPath).absoluteFilePath() : QString();
+    m_midiPath = m_midi ? QFileInfo(midiPath).absoluteFilePath() : QString();
+    m_songId = songId;
+    m_details = details;
     const std::size_t count = (m_tab ? m_tab->tracks.size() : m_midi->tracks.size());
     m_tracks.assign(std::min<std::size_t>(count, s::SongPlayer::kMaxTracks), TrackSettings{});
     for (std::size_t t = 0; t < m_tracks.size(); ++t)
@@ -270,9 +319,22 @@ void SongController::openPaths(const QStringList &paths)
     setSequencers(false);
     m_bar = m_beat = 1;
     pollPosition();
+    if (m_songId)
+        m_library.markOpened(m_songId);
     emit songChanged();
     emit tracksChanged();
     saveSettings();
+    return true;
+}
+
+void SongController::setDetails(const QString &artist, const QString &album, const QString &title, int trackNumber)
+{
+    if (!m_song)
+        return;
+    m_details = {artist.trimmed(), album.trimmed(), title.trimmed(), std::max(0, trackNumber)};
+    if (m_songId)
+        m_library.setDetails(m_songId, m_details);
+    emit songChanged();
 }
 
 void SongController::close()
@@ -289,11 +351,13 @@ void SongController::close()
     m_midiPath.clear();
     m_tracks.clear();
     m_myTrack = -1;
+    m_songId = 0;
+    m_details = {};
     setSequencers(true);
     setError({});
+    m_library.setLastSong(0); // nothing reopens next time
     emit songChanged();
     emit tracksChanged();
-    saveSettings(); // no last song
 }
 
 bool SongController::lineUp(int track) const
@@ -499,81 +563,85 @@ void SongController::setSequencers(bool enabled)
             instrument->setSequencerEnabled(enabled);
 }
 
-// --- songs.json ----------------------------------------------------------------------------
-
-QString SongController::songKey() const { return m_tabPath.isEmpty() ? m_midiPath : m_tabPath; }
+// --- The library ---------------------------------------------------------------------
 
 void SongController::loadSettings()
 {
-    QFile file(m_settingsPath);
-    if (!file.open(QIODevice::ReadOnly))
+    if (!m_songId)
         return;
-    const QJsonObject song = QJsonDocument::fromJson(file.readAll()).object().value(u"songs").toObject().value(songKey()).toObject();
-    if (song.isEmpty())
+    const QList<SongLibrary::TrackSetup> setup = m_library.setup(m_songId);
+    if (setup.isEmpty())
         return; // first time: the suggestions stand
-    m_myTrack = song.value(u"myTrack").toInt(-1);
+    m_myTrack = m_library.myTrack(m_songId);
     if (m_myTrack >= int(m_tracks.size()))
         m_myTrack = -1;
-    const QJsonArray tracks = song.value(u"tracks").toArray();
-    for (qsizetype t = 0; t < tracks.size() && t < qsizetype(m_tracks.size()); ++t) {
-        const QJsonObject o = tracks[t].toObject();
+    for (qsizetype t = 0; t < setup.size() && t < qsizetype(m_tracks.size()); ++t) {
+        const SongLibrary::TrackSetup &saved = setup[t];
         TrackSettings &st = m_tracks[std::size_t(t)];
-        const QString key = o.value(u"instrument").toString();
         st.choice = 0;
         for (std::size_t i = 0; i < m_choices.size(); ++i)
-            if (m_choices[i].key == key)
+            if (m_choices[i].key == saved.instrument)
                 st.choice = int(i) + 1;
-        st.level = std::clamp(o.value(u"level").toDouble(1.0), 0.0, 1.0);
-        st.mute = o.value(u"mute").toBool(false);
-        st.solo = o.value(u"solo").toBool(false);
-        st.fromMidi = o.value(u"midi").toBool(st.fromMidi) && m_tab && lineUp(int(t));
+        st.level = std::clamp(saved.level, 0.0, 1.0);
+        st.mute = saved.mute;
+        st.solo = saved.solo;
+        st.fromMidi = saved.fromMidi && m_tab && lineUp(int(t));
     }
 }
 
 void SongController::saveSettings() const
 {
-    QJsonObject root;
-    {
-        QFile file(m_settingsPath);
-        if (file.open(QIODevice::ReadOnly))
-            root = QJsonDocument::fromJson(file.readAll()).object();
+    if (!m_songId || !m_song)
+        return;
+    QList<SongLibrary::TrackSetup> setup;
+    for (const TrackSettings &st : m_tracks)
+        setup << SongLibrary::TrackSetup{st.choice > 0 ? m_choices[std::size_t(st.choice - 1)].key : QString(), st.level,
+                                         st.mute, st.solo, st.fromMidi};
+    m_library.saveSetup(m_songId, m_myTrack, setup);
+    m_library.setLastSong(m_songId);
+}
+
+void SongController::importSongsJson(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+    file.close();
+    const QJsonObject last = root.value(u"last").toObject();
+    const QString tab = last.value(u"tab").toString(), midi = last.value(u"midi").toString();
+    QStringList paths;
+    for (const QString &p : {tab, midi})
+        if (!p.isEmpty() && QFileInfo::exists(p))
+            paths << p;
+    if (!paths.isEmpty()) {
+        openPaths(paths);
+        const QJsonObject saved = root.value(u"songs").toObject().value(tab.isEmpty() ? midi : tab).toObject();
+        if (m_song && !saved.isEmpty()) {
+            const QJsonArray tracks = saved.value(u"tracks").toArray();
+            for (qsizetype t = 0; t < tracks.size() && t < qsizetype(m_tracks.size()); ++t) {
+                const QJsonObject o = tracks[t].toObject();
+                TrackSettings &st = m_tracks[std::size_t(t)];
+                st.choice = 0;
+                for (std::size_t i = 0; i < m_choices.size(); ++i)
+                    if (m_choices[i].key == o.value(u"instrument").toString())
+                        st.choice = int(i) + 1;
+                st.level = std::clamp(o.value(u"level").toDouble(1.0), 0.0, 1.0);
+                st.mute = o.value(u"mute").toBool();
+                st.solo = o.value(u"solo").toBool();
+                applyTrack(int(t));
+            }
+            m_myTrack = std::clamp(saved.value(u"myTrack").toInt(-1), -1, int(m_tracks.size()) - 1);
+            emit tracksChanged();
+            saveSettings();
+        }
     }
-    root[QStringLiteral("version")] = 1;
-    if (m_song) {
-        QJsonArray tracks;
-        for (const TrackSettings &st : m_tracks)
-            tracks.append(QJsonObject{
-                {QStringLiteral("instrument"), st.choice > 0 ? m_choices[std::size_t(st.choice - 1)].key : QString()},
-                {QStringLiteral("level"), st.level},
-                {QStringLiteral("mute"), st.mute},
-                {QStringLiteral("solo"), st.solo},
-                {QStringLiteral("midi"), st.fromMidi},
-            });
-        QJsonObject songs = root.value(u"songs").toObject();
-        songs[songKey()] = QJsonObject{{QStringLiteral("myTrack"), m_myTrack}, {QStringLiteral("tracks"), tracks}};
-        root[QStringLiteral("songs")] = songs;
-        root[QStringLiteral("last")] = QJsonObject{{QStringLiteral("tab"), m_tabPath}, {QStringLiteral("midi"), m_midiPath}};
-    } else {
-        root.remove(QStringLiteral("last"));
-    }
-    QDir().mkpath(QFileInfo(m_settingsPath).absolutePath());
-    QSaveFile out(m_settingsPath);
-    if (out.open(QIODevice::WriteOnly)) {
-        out.write(QJsonDocument(root).toJson());
-        out.commit();
-    }
+    QFile::remove(path + QStringLiteral(".old"));
+    QFile::rename(path, path + QStringLiteral(".old"));
 }
 
 void SongController::reopenLast()
 {
-    QFile file(m_settingsPath);
-    if (!file.open(QIODevice::ReadOnly))
-        return;
-    const QJsonObject last = QJsonDocument::fromJson(file.readAll()).object().value(u"last").toObject();
-    QStringList paths;
-    for (const QString &key : {QStringLiteral("tab"), QStringLiteral("midi")})
-        if (const QString p = last.value(key).toString(); !p.isEmpty() && QFileInfo::exists(p))
-            paths << p;
-    if (!paths.isEmpty())
-        openPaths(paths);
+    if (const qint64 id = m_library.lastSong())
+        openSong(id);
 }

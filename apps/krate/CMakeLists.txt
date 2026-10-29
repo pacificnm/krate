@@ -16,6 +16,8 @@ qt_add_qml_module(krate
         RackSession.cpp
         SongController.h
         SongController.cpp
+        SongLibrary.h
+        SongLibrary.cpp
         TabView.h
         TabView.cpp
     QML_FILES
@@ -37,7 +39,7 @@ target_link_libraries(krate PRIVATE
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin
     krate_rack krate_host krate_song
-    Qt6::Gui Qt6::Quick Qt6::QuickControls2
+    Qt6::Gui Qt6::Sql Qt6::Quick Qt6::QuickControls2
 )
 
 # Rack learn and session, with fake instruments (sources compiled directly).
@@ -64,8 +66,17 @@ add_executable(tst_song
     RackController.cpp
     SongController.h
     SongController.cpp
+    SongLibrary.h
+    SongLibrary.cpp
 )
 target_include_directories(tst_song PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_song PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_song PRIVATE krate_rack krate_song krate_app Qt6::Qml Qt6::Test)
+target_link_libraries(tst_song PRIVATE krate_rack krate_song krate_app Qt6::Qml Qt6::Sql Qt6::Test)
 add_test(NAME tst_song COMMAND tst_song)
+
+# The song library's database, with generated files.
+add_executable(tst_library tests/tst_library.cpp SongLibrary.h SongLibrary.cpp)
+target_include_directories(tst_library PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_library PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_library PRIVATE Qt6::Sql Qt6::Test)
+add_test(NAME tst_library COMMAND tst_library)

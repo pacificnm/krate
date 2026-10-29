@@ -11,6 +11,7 @@
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
+#include "SongLibrary.h"
 #include "app/InstrumentRegistry.h"
 #include "song/Score.h"
 #include "song/Song.h"
@@ -26,8 +27,9 @@ class IInstrument;
 // The rack's Song screen (docs/SONG_PLAYER.md): opens a .gp tab file and/or a
 // .mid file of the same song, lists its tracks, assigns each to one of the
 // rack's instruments (or none), with level, mute, solo, which file it plays
-// from, and "my track" (the one you play); shows the position. Settings are
-// remembered per song in songs.json, and the last song reopens with the rack.
+// from, and "my track" (the one you play); shows the position. Every song
+// opened goes into the song library (SongLibrary), which keeps its files and
+// its setup; the last song reopens with the rack.
 // While a song is loaded the instruments' own sequencers are off, so only the
 // song plays them. QML singleton "Song".
 class SongController : public QObject
@@ -39,6 +41,9 @@ class SongController : public QObject
     Q_PROPERTY(bool loaded READ loaded NOTIFY songChanged)
     Q_PROPERTY(QString title READ title NOTIFY songChanged)
     Q_PROPERTY(QString artist READ artist NOTIFY songChanged)
+    Q_PROPERTY(QString album READ album NOTIFY songChanged)
+    Q_PROPERTY(int trackNumber READ trackNumber NOTIFY songChanged)
+    Q_PROPERTY(qint64 songId READ songId NOTIFY songChanged) // in the library, 0 = not in it
     Q_PROPERTY(QString files READ files NOTIFY songChanged) // "name.gp + name.mid"
     Q_PROPERTY(bool hasTab READ hasTab NOTIFY songChanged)
     Q_PROPERTY(bool hasMidi READ hasMidi NOTIFY songChanged)
@@ -64,7 +69,7 @@ public:
     };
 
     SongController(krate::song::SongPlayer &player, RackController &rack, const QList<krate::InstrumentEntry> &entries,
-                   std::vector<krate::IInstrument *> instruments, const QString &settingsPath, QObject *parent);
+                   std::vector<krate::IInstrument *> instruments, SongLibrary &library, QObject *parent);
     ~SongController() override;
 
     static SongController *create(QQmlEngine *, QJSEngine *);
@@ -72,6 +77,9 @@ public:
     bool loaded() const { return m_song.has_value(); }
     QString title() const;
     QString artist() const;
+    QString album() const { return m_details.album; }
+    int trackNumber() const { return m_details.trackNumber; }
+    qint64 songId() const { return m_songId; }
     QString files() const;
     bool hasTab() const { return m_tab.has_value(); }
     bool hasMidi() const { return m_midi.has_value(); }
@@ -91,6 +99,10 @@ public:
     Q_INVOKABLE void open(const QList<QUrl> &urls);
     Q_INVOKABLE void openPaths(const QStringList &paths);
     Q_INVOKABLE void close();
+    // A song from the library.
+    Q_INVOKABLE void openSong(qint64 id);
+    // The open song's artist, album, title and track number (in the library).
+    Q_INVOKABLE void setDetails(const QString &artist, const QString &album, const QString &title, int trackNumber);
     Q_INVOKABLE void setInstrument(int track, int choice);
     Q_INVOKABLE void setLevel(int track, qreal level);
     Q_INVOKABLE void setMute(int track, bool mute);
@@ -103,6 +115,9 @@ public:
 
     // For the session and tests.
     void reopenLast();
+    // Once: S4's songs.json (its last song and that song's track setup) into
+    // the library; the file is then renamed to songs.json.old.
+    void importSongsJson(const QString &path);
     const std::vector<Choice> &choices() const { return m_choices; }
     const krate::song::Song *song() const { return m_song ? &*m_song : nullptr; }
     const krate::song::Score *score() const { return m_score ? &*m_score : nullptr; }
@@ -130,7 +145,7 @@ private:
     void rebuild();               // the playable song from the chosen sources, to the player
     void applyTrack(int track);
     void suggest();               // defaults for a song opened for the first time
-    QString songKey() const;
+    bool load(const QString &tabPath, const QString &midiPath, qint64 songId, const SongLibrary::Details &details);
     void loadSettings();
     void saveSettings() const;
     void setSequencers(bool enabled);
@@ -141,7 +156,9 @@ private:
     RackController &m_rack;
     std::vector<krate::IInstrument *> m_instruments;
     std::vector<Choice> m_choices;
-    QString m_settingsPath;
+    SongLibrary &m_library;
+    qint64 m_songId = 0;
+    SongLibrary::Details m_details;
 
     std::optional<krate::song::Score> m_score;  // from the tab file
     std::optional<krate::song::Song> m_tab;     // its playable song

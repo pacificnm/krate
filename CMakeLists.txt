@@ -20,7 +20,7 @@ if(KRATE_SANITIZE)
     add_link_options(-fsanitize=address,undefined)
 endif()
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Test)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Sql Test)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(JACK REQUIRED IMPORTED_TARGET jack)
 qt_standard_project_setup(REQUIRES 6.8)

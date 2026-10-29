@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlEngineExtensionPlugin>
@@ -108,15 +109,18 @@ int main(int argc, char *argv[])
                         rackController, rack, midiLearn, deviceIds, nullptr);
     session.load();
 
-    // The Song screen: ~/.config/krate/songs.json remembers each song's set-up and the last song.
+    // The Song screen and the song library (~/.local/share/krate/library: the
+    // songs' files, library.db with each song's set-up and sounds).
+    SongLibrary library(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/library"));
     std::vector<krate::IInstrument *> instruments;
     for (const auto &instance : instances)
         instruments.push_back(&instance->instrument());
-    SongController songController(songPlayer, rackController, entries, std::move(instruments),
-                                  QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
-                                      + QStringLiteral("/songs.json"),
-                                  nullptr);
-    songController.reopenLast();
+    SongController songController(songPlayer, rackController, entries, std::move(instruments), library, nullptr);
+    if (const QString old = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/songs.json");
+        QFileInfo::exists(old))
+        songController.importSongsJson(old); // from before the library
+    else
+        songController.reopenLast();
 
     krate::RackProcessor processor(rack, transport, ids);
     processor.setEventSource(&songPlayer);
