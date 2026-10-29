@@ -79,6 +79,8 @@ QVariantList PedalController::pedals() const
                               {QStringLiteral("colour"), QString::fromUtf8(info.colour)},
                               {QStringLiteral("on"), pedal.on()},
                               {QStringLiteral("loop"), m_board.inLoop(p)},
+                              {QStringLiteral("width"), info.width},
+                              {QStringLiteral("sliders"), info.sliders},
                               {QStringLiteral("knobs"), knobs}};
     }
     return result;

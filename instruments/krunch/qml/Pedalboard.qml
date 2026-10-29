@@ -12,7 +12,26 @@ import Krate
 Rectangle {
     id: board
 
-    readonly property real slot: 164 // a pedal and the gap after it
+    readonly property real slot: 164 // a standard pedal and the gap after it
+    readonly property var layout: Pedals.layoutRevision >= 0 ? Pedals.pedals() : []
+    // Each pedal's left edge, and the end of the last one (cases are 1 or more slots wide).
+    readonly property var lefts: {
+        const xs = []
+        let x = 0
+        for (const p of layout) {
+            xs.push(x)
+            x += p.width * slot
+        }
+        xs.push(x)
+        return xs
+    }
+    // Where a pedal dragged to centre `c` would go.
+    function placeFor(c) {
+        for (let i = 0; i < layout.length; ++i)
+            if (c < (lefts[i] + lefts[i + 1]) / 2)
+                return i
+        return layout.length - 1
+    }
     readonly property color cream: "#E9DFC4"
 
     radius: 8
@@ -43,12 +62,19 @@ Rectangle {
         font.bold: true
     }
 
-    Item {
+    Flickable { // scrolls sideways once the board is fuller than it is wide
         id: lane
         x: 16
         y: 30
         width: parent.width - 32
         height: parent.height - 40
+        contentWidth: board.lefts[board.lefts.length - 1] + 120
+        contentHeight: height
+        flickableDirection: Flickable.HorizontalFlick
+        boundsBehavior: Flickable.StopAtBounds
+        clip: true
+        interactive: contentWidth > width
+        ScrollBar.horizontal: ScrollBar { policy: lane.interactive ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff }
 
         Repeater {
             model: Pedals.layoutRevision >= 0 ? Pedals.count : 0
@@ -56,7 +82,7 @@ Rectangle {
             Rectangle {
                 id: pedal
                 required property int index
-                readonly property var info: Pedals.layoutRevision >= 0 ? Pedals.pedals()[index] : ({})
+                readonly property var info: board.layout[index] ?? ({})
                 readonly property bool on: Pedals.revision >= 0 && Pedals.isOn(index)
                 readonly property bool loop: Pedals.revision >= 0 && Pedals.inLoop(index)
                 // Lettering that reads on its case: dark on light cases, cream on dark ones.
@@ -65,10 +91,10 @@ Rectangle {
 
                 Binding on x { // where its place is, except while it's being dragged
                     when: !bodyDrag.drag.active
-                    value: pedal.index * board.slot
+                    value: board.lefts[pedal.index] ?? 0
                     restoreMode: Binding.RestoreNone
                 }
-                width: board.slot - 12
+                width: (info.width ?? 1) * board.slot - 12
                 height: lane.height
                 z: bodyDrag.drag.active ? 10 : 0
                 radius: 10
@@ -85,29 +111,31 @@ Rectangle {
                 MouseArea {
                     id: bodyDrag
                     anchors.fill: parent
+                    preventStealing: true // a pedal being dragged isn't the board scrolling
                     drag.target: pedal
                     drag.axis: Drag.XAxis
                     drag.minimumX: 0
-                    drag.maximumX: (Pedals.count - 1) * board.slot
+                    drag.maximumX: board.lefts[board.lefts.length - 1] - pedal.width
                     cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                     onReleased: {
-                        const to = Math.max(0, Math.min(Pedals.count - 1, Math.round(pedal.x / board.slot)))
+                        const to = board.placeFor(pedal.x + pedal.width / 2)
                         if (to !== pedal.index)
                             Pedals.move(pedal.index, to)
                         else
-                            pedal.x = pedal.index * board.slot
+                            pedal.x = board.lefts[pedal.index]
                     }
                 }
 
                 // Its knobs.
                 Row {
                     id: knobRow
+                    visible: !(pedal.info.sliders ?? false)
                     readonly property real size: Math.min(44, (pedal.width - 12) / Math.max(1, (pedal.info.knobs ?? []).length) - 2)
                     x: (parent.width - width) / 2
                     y: 20
                     spacing: 2
                     Repeater {
-                        model: pedal.info.knobs ?? []
+                        model: knobRow.visible ? (pedal.info.knobs ?? []) : []
                         Column {
                             id: knobColumn
                             required property var modelData
@@ -127,21 +155,66 @@ Rectangle {
                                 onMoved: v => Pedals.setKnob(pedal.index, knobColumn.index, v)
                             }
                             Text {
-                                width: knobRow.size
+                                width: knobRow.size + 2
                                 horizontalAlignment: Text.AlignHCenter
                                 text: knobColumn.modelData.label
-                                color: "#101010"
+                                color: pedal.lettering
                                 font.family: Theme.labelFont
                                 font.pixelSize: 9
                                 font.bold: true
+                                fontSizeMode: Text.HorizontalFit // long names shrink rather than run together
+                                minimumPixelSize: 6
+                            }
+                        }
+                    }
+                }
+
+                // A graphic EQ's sliders, the frequency under each.
+                Row {
+                    id: sliderRow
+                    visible: pedal.info.sliders ?? false
+                    readonly property int n: (pedal.info.knobs ?? []).length
+                    readonly property real each: (pedal.width - 16) / Math.max(1, n)
+                    x: 8
+                    y: 12
+                    Repeater {
+                        model: sliderRow.visible ? (pedal.info.knobs ?? []) : []
+                        Column {
+                            id: sliderColumn
+                            required property var modelData
+                            required property int index
+                            width: sliderRow.each
+                            spacing: 2
+                            PanelSlider {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: Math.min(26, sliderRow.each - 4)
+                                height: 84
+                                showScale: false
+                                capColor: sliderColumn.index === sliderRow.n - 1 ? "#E0781E" : "#D9DADC"
+                                name: (pedal.info.name ?? "") + " " + sliderColumn.modelData.label
+                                value: Pedals.revision >= 0 ? Pedals.knob(pedal.index, sliderColumn.index) : 0.5
+                                defaultValue: sliderColumn.modelData.defaultValue
+                                displayText: Pedals.knobText(pedal.index, sliderColumn.index, value)
+                                onMoved: v => Pedals.setKnob(pedal.index, sliderColumn.index, v)
+                            }
+                            Text {
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                text: sliderColumn.modelData.label
+                                color: pedal.lettering
+                                font.family: Theme.labelFont
+                                font.pixelSize: 9
+                                font.bold: true
+                                fontSizeMode: Text.HorizontalFit
+                                minimumPixelSize: 6
                             }
                         }
                     }
                 }
 
                 Led {
-                    x: (parent.width - width) / 2
-                    y: 88
+                    x: (pedal.info.sliders ?? false) ? 12 : (parent.width - width) / 2
+                    y: (pedal.info.sliders ?? false) ? 116 : 88
                     width: 10
                     height: 10
                     on: pedal.on
@@ -149,7 +222,7 @@ Rectangle {
 
                 Text { // the name, on a plate
                     x: 8
-                    y: 102
+                    y: (pedal.info.sliders ?? false) ? 110 : 102
                     width: parent.width - 16
                     horizontalAlignment: Text.AlignHCenter
                     text: pedal.info.name ?? ""
@@ -235,7 +308,7 @@ Rectangle {
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: parent.height - 22
                     text: (pedal.index + 1).toString()
-                    color: "#101010"
+                    color: pedal.lettering
                     font.family: Theme.labelFont
                     font.pixelSize: 11
                     font.bold: true
@@ -246,7 +319,8 @@ Rectangle {
                     x: parent.width - 18
                     y: 0
                     text: "×"
-                    color: removeArea.containsMouse ? "#FFFFFF" : "#B0000000"
+                    color: removeArea.containsMouse ? (pedal.lightCase ? "#000000" : "#FFFFFF") : pedal.lettering
+                    opacity: removeArea.containsMouse ? 1.0 : 0.65
                     font.family: Theme.labelFont
                     font.pixelSize: 18
                     font.bold: true
@@ -266,7 +340,7 @@ Rectangle {
         // + : another pedal at the end of the board.
         Rectangle {
             visible: Pedals.count < Pedals.maxPedals
-            x: Pedals.count * board.slot
+            x: board.lefts[board.lefts.length - 1]
             width: 110
             height: lane.height
             radius: 10

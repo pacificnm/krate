@@ -46,7 +46,7 @@ public:
     int maxPedals() const { return krunch::PedalList::kMaxPedals; }
     QVariantList types() const;
 
-    // The board, in order: [{type, name, colour, on, loop, knobs: [{key, label, value, defaultValue}]}].
+    // The board, in order: [{type, name, colour, on, loop, width, sliders, knobs: [{key, label, value, defaultValue, detents}]}].
     Q_INVOKABLE QVariantList pedals() const;
     Q_INVOKABLE bool isOn(int position) const;
     // In the amp's effects loop, or in front of the amp.

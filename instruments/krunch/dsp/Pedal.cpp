@@ -5,6 +5,7 @@
 
 #include "dsp/GreenDrive.h"
 #include "dsp/ModPedals.h"
+#include "dsp/StudioPedals.h"
 #include "dsp/TimePedals.h"
 
 namespace krunch {
@@ -57,8 +58,9 @@ void Pedal::process(float *buffer, std::uint32_t frames) noexcept
 
 std::span<const PedalInfo *const> pedalTypes()
 {
-    static const PedalInfo *const kTypes[] = {&GreenDrive::kInfo, &Phaser::kInfo, &Flanger::kInfo, &Chorus::kInfo,
-                                              &Delay::kInfo, &Reverb::kInfo};
+    static const PedalInfo *const kTypes[] = {&Compressor::kInfo, &GreenDrive::kInfo, &Eq5::kInfo, &Eq10::kInfo,
+                                              &Phaser::kInfo, &Flanger::kInfo, &Chorus::kInfo, &Delay::kInfo,
+                                              &Reverb::kInfo};
     return kTypes;
 }
 
@@ -66,6 +68,12 @@ std::unique_ptr<Pedal> makePedal(std::string_view type)
 {
     if (type == GreenDrive::kInfo.type)
         return std::make_unique<GreenDrive>();
+    if (type == Compressor::kInfo.type)
+        return std::make_unique<Compressor>();
+    if (type == Eq5::kInfo.type)
+        return std::make_unique<Eq5>();
+    if (type == Eq10::kInfo.type)
+        return std::make_unique<Eq10>();
     if (type == Flanger::kInfo.type)
         return std::make_unique<Flanger>();
     if (type == Phaser::kInfo.type)

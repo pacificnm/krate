@@ -22,7 +22,7 @@ guitar → [pedals] → PREAMP (channel) → FX SEND → [loop pedals] → FX RE
 
 | Feature | Notes |
 | --- | --- |
-| Pedals in front of the amp | ✅ The pedalboard (add, remove, drag to reorder, footswitches learnable, saved with songs); Green Drive, Phaser, Flanger ([PEDALS.md](PEDALS.md)). Next: boost, gate, wah |
+| Pedals in front of the amp | ✅ The pedalboard (add, remove, drag to reorder, footswitches learnable, saved with songs); Compressor, Green Drive, 5- and 10-band EQs, Phaser, Flanger ([PEDALS.md](PEDALS.md)). Next: boost, gate, wah |
 | Pedals in the loop | ✅ Each pedal FRONT or LOOP; Chorus, Delay and Reverb ([PEDALS.md](PEDALS.md)). Next: a stereo loop (stereo chorus, ping-pong delay, wide reverb), tempo-synced delay |
 | Reordering pedals | Drag to reorder each chain |
 | Footswitches | Channels and pedals from a MIDI foot controller |

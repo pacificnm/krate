@@ -29,6 +29,30 @@ The classic green mid-boost overdrive, modelled on its circuit in broad strokes 
 | `tone` | 0 … 10 | 5 |
 | `level` | −24 … +12 dB | −6 dB |
 
+## Compressor
+
+A pedal compressor for sustain and evening out (`dsp/StudioPedals.cpp`): a peak detector (Attack in, 200 ms out) drives a soft-kneed (8 dB) gain computer. **SUSTAIN** lowers the threshold (−12 … −48 dBFS) and raises the ratio (2:1 … 12:1) together, with make-up gain following (half of what a full-scale signal loses), so more sustain isn't quieter; at full, 30 dB of playing dynamics come out as under 10. **BLEND** mixes the dry signal back in, keeping the pick's attack (parallel compression). Best first on the board.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `sustain` | 0 … 10 | 5 |
+| `attack` | 0.5 … 50 ms | about 3.5 ms |
+| `level` | −12 … +12 dB | 0 dB |
+| `blend` | 0 … 100 % compressed | 100 % |
+
+## Graphic EQs
+
+Peaking filters at fixed frequencies, each a slider (flat in the middle), and an output **LEVEL** (±12 dB, the orange slider). A flat band costs nothing (it's skipped). In front of the amp they shape what drives it; in the loop, the amp's finished tone.
+
+| Pedal | Bands | Range | Width |
+| --- | --- | --- | --- |
+| **5-Band EQ** | 120, 360, 800 Hz, 2, 4.5 kHz (guitar-centred) | ±15 dB, Q 0.9 | wider than a standard pedal |
+| **10-Band EQ** | 31, 62, 125, 250, 500 Hz, 1, 2, 4, 8, 16 kHz (octaves) | ±12 dB, an octave wide | a double-wide case |
+
+A band at full lifts its own frequency by its range (within 1 dB) and leaves frequencies three octaves away within 1 dB.
+
+The board scrolls sideways when its pedals are wider than it is.
+
 ## Phaser
 
 The classic one-knob four-stage phaser (`dsp/ModPedals.cpp`): four first-order all-pass stages swept together (their corner from about 140 Hz to 1.6 kHz, the LFO bent to linger low as a FET's sweep does), mixed half and half with the guitar: two notches moving through the low mids. **MODE**: Smooth (no feedback: notches about 60 dB deep, flat peaks), or Deep, which feeds the last stage back to the first (0.6) as the later version of the pedal does: resonant peaks about 3 dB up, notches about 16 dB deep, trimmed so it isn't louder overall.
@@ -84,4 +108,4 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

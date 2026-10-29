@@ -7,6 +7,7 @@
 
 #include "dsp/GreenDrive.h"
 #include "dsp/ModPedals.h"
+#include "dsp/StudioPedals.h"
 #include "dsp/Pedal.h"
 #include "dsp/TimePedals.h"
 
@@ -77,8 +78,8 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(6));
-        QCOMPARE(pedalTypes()[0]->type, std::string_view("green_drive"));
+        QCOMPARE(pedalTypes().size(), std::size_t(9));
+        QCOMPARE(pedalTypes()[1]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
             QVERIFY(p);
@@ -199,6 +200,119 @@ private slots:
             (std::fabs(f - nearest) <= 3.0 * kRate / double(n) && nearest > 0.0 ? harmonic : other) += std::norm(sum);
         }
         QVERIFY(other / (harmonic + other) < 0.01);
+    }
+
+    // --- Compressor ---------------------------------------------------------------------
+
+    void compressorCurve()
+    {
+        // Quiet signals pass with the make-up gain; louder ones are held back,
+        // more so with more sustain; the curve never turns over.
+        for (float s : {0.0f, 0.5f, 1.0f}) {
+            double previous = -1e9;
+            for (double in = -70.0; in <= 0.0; in += 1.0) {
+                const double out = in + Compressor::gainDb(in, s);
+                QVERIFY(out >= previous - 1e-9);
+                previous = out;
+            }
+        }
+        const double spread = [](float s) {
+            return (0.0 + Compressor::gainDb(0.0, s)) - (-30.0 + Compressor::gainDb(-30.0, s));
+        }(1.0f);
+        QVERIFY2(spread < 10.0, qPrintable(QString::number(spread))); // 30 dB in, under 10 out
+    }
+
+    void compressorEvensOutLoudAndQuiet()
+    {
+        const auto out = [](float amplitude, float sustain) {
+            auto c = std::make_unique<Compressor>();
+            c->prepare(kRate);
+            c->setKnob(Compressor::Sustain, sustain);
+            const auto y = run(*c, sine(48000, 220.0, amplitude));
+            return db(level(y, 220.0, 24000, 9600));
+        };
+        const double loud = out(0.5f, 0.8f), quiet = out(0.02f, 0.8f);
+        QVERIFY2(loud - quiet < 0.5 * (db(0.5) - db(0.02)), qPrintable(QStringLiteral("%1 vs %2").arg(loud).arg(quiet)));
+    }
+
+    // A fast attack catches the pick; a slow one lets it through.
+    void compressorAttack()
+    {
+        const auto overshoot = [](float attack) {
+            Compressor c;
+            c.prepare(kRate);
+            c.setKnob(Compressor::Sustain, 1.0f);
+            c.setKnob(Compressor::Attack, attack);
+            std::vector<float> warm(4800, 0.0f);
+            run(c, warm);
+            auto y = run(c, sine(9600, 220.0, 0.5f));
+            float early = 0.0f, late = 0.0f;
+            for (std::size_t i = 0; i < 480; ++i)
+                early = std::max(early, std::fabs(y[i]));
+            for (std::size_t i = 7200; i < 9600; ++i)
+                late = std::max(late, std::fabs(y[i]));
+            return early / late;
+        };
+        QVERIFY(overshoot(1.0f) > 1.5 * overshoot(0.0f));
+    }
+
+    void compressorBlendZeroIsDry()
+    {
+        Compressor c;
+        c.prepare(kRate);
+        c.setKnob(Compressor::Blend, 0.0f);
+        c.setKnob(Compressor::Level, 0.5f); // 0 dB
+        const auto x = sine(9600, 220.0, 0.3f), y = run(c, x);
+        float diff = 0.0f;
+        for (std::size_t i = 4800; i < x.size(); ++i)
+            diff = std::max(diff, std::fabs(y[i] - x[i]));
+        QVERIFY(diff < 1e-6f);
+    }
+
+    // --- Graphic EQs --------------------------------------------------------------------
+
+    void eqFlatIsTransparent()
+    {
+        Eq10 eq;
+        eq.prepare(kRate);
+        const auto x = sine(9600, 440.0, 0.3f), y = run(eq, x);
+        float diff = 0.0f;
+        for (std::size_t i = 4800; i < x.size(); ++i)
+            diff = std::max(diff, std::fabs(y[i] - x[i]));
+        QVERIFY(diff < 1e-6f);
+    }
+
+    void eqBandsLiftTheirOwnFrequency()
+    {
+        const auto gainAt = [](auto &eq, double hz) {
+            const auto y = run(eq, sine(48000, hz, 0.1f));
+            return db(level(y, hz, 24000, 19200) / 0.1);
+        };
+        for (int b = 0; b < 10; ++b) {
+            Eq10 eq;
+            eq.prepare(kRate);
+            eq.setKnob(b, 1.0f); // +12 dB
+            const double f = Eq10::kFrequencies[std::size_t(b)];
+            QVERIFY2(std::fabs(gainAt(eq, f) - 12.0) < 1.0, qPrintable(QStringLiteral("band %1: %2 dB").arg(f).arg(gainAt(eq, f))));
+            const double far = b < 5 ? f * 8.0 : f / 8.0; // three octaves away
+            Eq10 again;
+            again.prepare(kRate);
+            again.setKnob(b, 1.0f);
+            QVERIFY2(std::fabs(gainAt(again, far)) < 1.0, qPrintable(QStringLiteral("band %1 at %2: %3 dB").arg(f).arg(far).arg(gainAt(again, far))));
+        }
+        Eq5 cut;
+        cut.prepare(kRate);
+        cut.setKnob(2, 0.0f); // 800 Hz, -15 dB
+        QVERIFY(std::fabs(gainAt(cut, 800.0) + 15.0) < 1.0);
+    }
+
+    void eqLevel()
+    {
+        Eq5 eq;
+        eq.prepare(kRate);
+        eq.setKnob(5, 1.0f); // +12 dB
+        const auto y = run(eq, sine(9600, 1000.0, 0.1f));
+        QVERIFY(std::fabs(db(level(y, 1000.0, 4800, 4800) / 0.1) - 12.0) < 0.2);
     }
 
     // --- Flanger and phaser ------------------------------------------------------------

@@ -29,6 +29,8 @@ struct PedalInfo
     std::string_view colour; // its enclosure, "#RRGGBB"
     std::span<const KnobInfo> knobs;
     bool loopByDefault = false; // goes in the effects loop when added (time-based effects)
+    float width = 1.0f;         // its case, in standard pedal widths
+    bool sliders = false;       // its controls are sliders (a graphic EQ), not knobs
 };
 
 // One pedal: mono, in place, at the base rate (docs/PEDALS.md). Knobs and the
@@ -38,7 +40,7 @@ struct PedalInfo
 class Pedal
 {
 public:
-    static constexpr int kMaxKnobs = 6;
+    static constexpr int kMaxKnobs = 12;
     static constexpr std::uint32_t kMaxFrames = 256; // per process() call
 
     explicit Pedal(const PedalInfo &info);
