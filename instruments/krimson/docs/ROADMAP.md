@@ -4,7 +4,7 @@ Each milestone ends with something you can run and check, and is committed and p
 
 | # | Milestone | Done when |
 | --- | --- | --- |
-| C0 | **Skeleton** | `instruments/krimson/` (`krimson_dsp`, `krimson_ui` QML module `Krimson`), `apps/krimson/`; the slot parameter table (≤ 64) with formats; the engine holding four slots, the table showing the edited one; registry entry; red panel frame with sections and labels; `tst_krimson` |
+| C0 ✅ | **Skeleton** | `instruments/krimson/` (`krimson_dsp`, `krimson_ui` QML module `Krimson`), `apps/krimson/`; the slot parameter table (≤ 64) with formats; the engine holding four slots, the table showing the edited one; registry entry; red panel frame with sections and labels; `tst_krimson`. Result: 59 parameters (56 per slot, Volume / Tempo / Octave for the instrument); the engine keeps four slot stores, the table reads and writes the edited one and reports everything changed on a switch so the panel follows; learned CCs edit the edited slot; the `Krimson` singleton has `editedSlot`; slot buttons A-D on the frame already work |
 | C1 | **One voice** | Kalliope's oscillator, envelope, LFO and effects moved to `shared/dsp/` (Kalliope byte-identical); OSC 1/2 with all waves, sync, FM, ring mod; multi-mode filter with drive; filter, amp and mod envelopes; LFO 1 and 2; `krimson-render` sounds; `tst_voice` |
 | C2 | **Polyphony** | 16 voices, Poly / Mono / Legato / Unison, glide, velocity, bend, wheel, sustain; `--bench` within budget |
 | C3 | **Slots** | Four slots with channels, layering (lit slots), split, level / pan / on; voices shared across slots; `slots.json`; `tst_slots` |
