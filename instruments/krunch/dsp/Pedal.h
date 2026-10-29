@@ -31,6 +31,7 @@ struct PedalInfo
     bool loopByDefault = false; // goes in the effects loop when added (time-based effects)
     float width = 1.0f;         // its case, in standard pedal widths
     bool sliders = false;       // its controls are sliders (a graphic EQ), not knobs
+    std::string_view pattern = {}; // drawn on the case: "" plain, "dots:#RRGGBB" polka dots in that colour
 };
 
 // One pedal: mono, in place, at the base rate (docs/PEDALS.md). Knobs and the

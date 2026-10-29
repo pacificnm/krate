@@ -107,6 +107,44 @@ Rectangle {
                 Accessible.role: Accessible.Grouping
                 Accessible.name: (info.name ?? "") + ", pedal " + (index + 1)
 
+                // A pattern on the case ("dots:#RRGGBB": polka dots), under everything else.
+                Item {
+                    id: dots
+                    readonly property string pattern: pedal.info.pattern ?? ""
+                    readonly property real spacing: 22
+                    visible: pattern.startsWith("dots:")
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    clip: true
+                    Repeater {
+                        model: dots.visible ? Math.ceil(dots.height / dots.spacing) + 1 : 0
+                        Repeater {
+                            id: dotRow
+                            required property int index
+                            model: Math.ceil(dots.width / dots.spacing) + 1
+                            Rectangle {
+                                required property int index
+                                x: index * dots.spacing + (dotRow.index % 2 ? dots.spacing / 2 : 0) - 6
+                                y: dotRow.index * dots.spacing - 4
+                                width: 11
+                                height: 11
+                                radius: 5.5
+                                color: dots.pattern.slice(5)
+                            }
+                        }
+                    }
+                }
+
+                Rectangle { // on a patterned case, a panel behind the knobs and their labels
+                    visible: dots.visible && knobRow.visible
+                    x: 5
+                    y: 14
+                    width: parent.width - 10
+                    height: knobRow.size + 22
+                    radius: 6
+                    color: "#101010"
+                }
+
                 // Drag by the body to move it along the board.
                 MouseArea {
                     id: bodyDrag
@@ -220,6 +258,16 @@ Rectangle {
                     on: pedal.on
                 }
 
+                Rectangle { // on a patterned case, a plate behind the name so it reads
+                    visible: dots.visible
+                    x: 14
+                    y: (pedal.info.sliders ?? false) ? 106 : 98
+                    width: parent.width - 28
+                    height: 30
+                    radius: 4
+                    color: "#101010"
+                    border.color: "#60FFFFFF"
+                }
                 Text { // the name, on a plate
                     x: 8
                     y: (pedal.info.sliders ?? false) ? 110 : 102

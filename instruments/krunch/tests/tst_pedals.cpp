@@ -13,6 +13,7 @@
 #include "dsp/StudioPedals.h"
 #include "dsp/Pedal.h"
 #include "dsp/TimePedals.h"
+#include "SyntheticGuitar.h"
 
 using namespace krunch;
 
@@ -81,8 +82,8 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(14));
-        QCOMPARE(pedalTypes()[2]->type, std::string_view("green_drive"));
+        QCOMPARE(pedalTypes().size(), std::size_t(15));
+        QCOMPARE(pedalTypes()[3]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
             QVERIFY(p);
@@ -258,6 +259,96 @@ private slots:
                 e = std::max(e, std::fabs(y[i]));
             QVERIFY2(e > 0.02f, qPrintable(QStringLiteral("head %1: %2").arg(h).arg(e)));
         }
+    }
+
+    void madmanGainRange()
+    {
+        QVERIFY(std::fabs(Madman::opAmpGain(0.0f) - 2.0) < 0.01);       // the pot all in: 1 + 1M / ~1M
+        QVERIFY(std::fabs(Madman::opAmpGain(1.0f) - 213.8) < 0.5);      // all out: 1 + 1M / 4.7k
+        QVERIFY(Madman::opAmpGain(0.5f) > 5.0 && Madman::opAmpGain(0.5f) < 50.0); // audio taper
+    }
+
+    // At its defaults it's saturated, the singing high-gain sound: 20 dB more
+    // pick is barely louder. GAIN adds distortion.
+    void madmanDistorts()
+    {
+        const auto out = [](float amplitude) {
+            Madman m;
+            m.prepare(kRate);
+            m.setKnob(Madman::Double, 0.0f);
+            const auto y = run(m, sine(24000, 196.0, amplitude));
+            return db(level(y, 196.0, 12000, 9600));
+        };
+        const double spread = out(0.2f) - out(0.02f);
+        QVERIFY2(spread < 4.0, qPrintable(QStringLiteral("%1 dB for 20 dB").arg(spread)));
+        const auto distortion = [](float gain) {
+            Madman m;
+            m.prepare(kRate);
+            m.setKnob(Madman::Gain, gain);
+            m.setKnob(Madman::Amp, 0.0f);
+            m.setKnob(Madman::Double, 0.0f);
+            const auto y = run(m, sine(24000, 196.0, 0.1f));
+            return thd(y, 196.0, 12000, 9600);
+        };
+        QVERIFY(distortion(1.0f) > 1.5 * distortion(0.1f));
+    }
+
+    // MIDS pushes 1 kHz against the lows (small signals, where it's linear).
+    void madmanMids()
+    {
+        const auto tilt = [](float mids) {
+            const auto gainAt = [mids](double hz) {
+                Madman m;
+                m.prepare(kRate);
+                m.setKnob(Madman::Gain, 0.0f);
+                m.setKnob(Madman::Amp, 0.0f);
+                m.setKnob(Madman::Double, 0.0f);
+                m.setKnob(Madman::Mids, mids);
+                const auto y = run(m, sine(24000, hz, 0.0003f));
+                return db(level(y, hz, 12000, 9600));
+            };
+            return gainAt(1000.0) - gainAt(150.0);
+        };
+        QVERIFY2(tilt(1.0f) - tilt(0.0f) > 8.0, qPrintable(QStringLiteral("%1 vs %2").arg(tilt(1.0f)).arg(tilt(0.0f))));
+    }
+
+    // DOUBLE adds the other takes, about as loud as one take (on a played
+    // riff: a steady tone would comb against its own copies).
+    void madmanDoubles()
+    {
+        const auto riff = tools::SyntheticGuitar(kRate).riff();
+        const auto out = [&](float doubling) {
+            Madman m;
+            m.prepare(kRate);
+            m.setKnob(Madman::Double, doubling);
+            auto x = riff;
+            x.resize(x.size() / 128 * 128);
+            return run(m, x);
+        };
+        const auto single = out(0.0f), doubled = out(1.0f);
+        double a = 0.0, b = 0.0, diff = 0.0;
+        for (std::size_t i = 4800; i < single.size(); ++i) {
+            a += double(single[i]) * single[i];
+            b += double(doubled[i]) * doubled[i];
+            diff += double(doubled[i] - single[i]) * (doubled[i] - single[i]);
+        }
+        QVERIFY(diff > 0.05 * a);                           // other takes in it
+        QVERIFY2(std::fabs(10.0 * std::log10(b / a)) < 2.0, qPrintable(QString::number(10.0 * std::log10(b / a))));
+    }
+
+    void madmanIsBoundedAndClean()
+    {
+        Madman m;
+        m.prepare(kRate);
+        m.setKnob(Madman::Gain, 1.0f);
+        m.setKnob(Madman::Amp, 1.0f);
+        m.setKnob(Madman::Level, 1.0f);
+        const double hz = 1318.5;
+        const auto y = run(m, sine(24000, hz, 0.5f));
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak) && peak < 3.0f);
     }
 
     void drumEchoHeads()

@@ -49,6 +49,28 @@ The early-70s spacey, singing lead and clean sound. The rig behind it: a single-
 
 With every part at 0, Tone centred and Level at 0 dB it passes the guitar untouched.
 
+### Madman
+
+The early-80s neoclassical metal lead and rhythm sound, made for the **clean channel**: the pedal brings the whole rig. That rig was a classic op-amp distortion pedal (op-amp gain, germanium diodes clipping to ground) into a 10-band EQ pushing the mids and trimming the lows, slamming a cranked, master-less British amp; the leads were double-tracked. Madman is that chain, in that order:
+
+- **The distortion** (GAIN), at 4×: op-amp gain 1 + 1 M / (4.7 k + the 1 M pot, audio taper), 2 … ~210, less of it below 720 Hz (the gain leg's capacitor); the op-amp's own ceiling; germanium diodes to ground (a soft knee at about ±0.35); the output capacitor rolling off above 6 kHz.
+- **The EQ**: lows trimmed (−5 dB below 160 Hz), mids pushed at 1 kHz by MIDS (0 … +12 dB).
+- **The amp**: the pedal's level turned up into Krunch's own British two-stage preamp (the Crunch voice), driven by AMP, its tone stack's BASS and TREBLE (mids up, presence 6).
+- **The doubler** (DOUBLE): two "other takes" 17 and 26 ms late, each drifting a little (0.3 and 0.47 Hz), mixed in and levelled as separate performances, for the double-tracked width.
+- **LEVEL**: at the defaults it comes in about 5 dB over bypass and is saturated (20 dB more pick is under 4 dB louder).
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `gain` | 0 … 10 (op-amp gain 2 … ~210) | 7.5 |
+| `amp` | 0 … 10 (the preamp's gain 4.5 … 10) | 6.5 |
+| `bass` | 0 … 10 | 4.5 |
+| `mids` | +0 … +12 dB at 1 kHz | +7.2 dB |
+| `treble` | 0 … 10 | 6 |
+| `double` | off … 100 % | 30 % |
+| `level` | −12 … +12 dB | 0 dB |
+
+A black case with white polka dots. Set Krunch's channel to the Clean voice with its gain low (the pedal is the drive), pick a 4×12 IR, and start in FRONT; a Delay or Reverb in the LOOP finishes the lead sound.
+
 ## Vibe
 
 The classic photocell vibe, in broad strokes (`dsp/ClassicPedals.cpp`): four all-pass stages whose capacitors are far apart (15 nF, 220 nF, 470 pF, 4.7 nF), so the notches are spread unevenly rather than in a neat comb, swept together by a lamp shining on photocells (150 k dark down to 15 k lit, by Intensity). The cells answer brightening in about 10 ms and dimming in about 60 ms, which gives the lopsided, throbbing sweep. **MODE**: Chorus (half and half with the guitar) or Vibrato (the swept signal alone: a pitch wobble, its level steady).
@@ -172,4 +194,4 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (Madman: the distortion's gain range, saturated at its defaults, Gain adding distortion, the mid push, the doubler adding takes at an even level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

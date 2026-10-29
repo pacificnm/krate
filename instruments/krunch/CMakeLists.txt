@@ -91,5 +91,6 @@ add_test(NAME tst_irlibrary COMMAND tst_irlibrary)
 
 add_executable(tst_pedals tests/tst_pedals.cpp)
 target_compile_options(tst_pedals PRIVATE -Wall -Wextra -Wpedantic)
+target_include_directories(tst_pedals PRIVATE tools)
 target_link_libraries(tst_pedals PRIVATE krunch_dsp krate_testing Qt6::Test)
 add_test(NAME tst_pedals COMMAND tst_pedals)
