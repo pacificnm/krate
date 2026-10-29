@@ -12,6 +12,8 @@ class Instance final : public krate::InstrumentInstance
 public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
+    // "channel1".."channel4", "loop" (the playing channel's effects loop).
+    void triggerAction(const QString &action) override;
 
     Krunch engine;
     KrunchController controller;

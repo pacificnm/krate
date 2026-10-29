@@ -25,6 +25,8 @@ class KrunchController : public krate::ParamController
     Q_PROPERTY(qreal outputLevel READ outputLevel NOTIFY metersChanged)
     // The input reached full scale in the last second: turn the interface's gain down.
     Q_PROPERTY(bool clipping READ clipping NOTIFY metersChanged)
+    // The noise gate is shut.
+    Q_PROPERTY(bool gateClosed READ gateClosed NOTIFY metersChanged)
 
 public:
     // Not default-constructible on purpose (see k303's SynthController).
@@ -36,6 +38,7 @@ public:
     qreal inputLevel() const { return m_inputLevel; }
     qreal outputLevel() const { return m_outputLevel; }
     bool clipping() const { return m_clipFrames > 0; }
+    bool gateClosed() const { return m_gateClosed; }
 
 signals:
     void metersChanged();
@@ -50,4 +53,5 @@ private:
     qreal m_inputLevel = 0.0;
     qreal m_outputLevel = 0.0;
     int m_clipFrames = 0; // polls left showing the clip light
+    bool m_gateClosed = false;
 };

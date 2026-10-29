@@ -51,8 +51,10 @@ void KrunchController::pollMeters()
     const qreal out = meterLevel(m_engine.takeOutputPeak(), m_outputLevel);
     const bool wasClipping = clipping();
     m_clipFrames = inPeak >= kClipPeak ? kClipHoldPolls : std::max(0, m_clipFrames - 1);
+    const bool gate = m_engine.gateClosed();
     if (!qFuzzyCompare(in + 1.0, m_inputLevel + 1.0) || !qFuzzyCompare(out + 1.0, m_outputLevel + 1.0)
-        || clipping() != wasClipping) {
+        || clipping() != wasClipping || gate != m_gateClosed) {
+        m_gateClosed = gate;
         m_inputLevel = in;
         m_outputLevel = out;
         emit metersChanged();

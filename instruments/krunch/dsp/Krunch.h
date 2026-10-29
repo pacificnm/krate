@@ -7,39 +7,89 @@
 
 #include "core/Instrument.h"
 #include "core/ParamValues.h"
+#include "dsp/Gate.h"
+#include "dsp/Pedal.h"
+#include "dsp/PowerAmp.h"
+#include "dsp/Preamp.h"
 
 namespace krunch {
 
-// Krunch: a guitar amp for the Krate rack (docs/ROADMAP.md). It plays the
-// rack's audio inputs (a guitar through the audio interface) rather than
-// notes. G0: the input it plays, straight through at the Level knob, with
-// input and output peaks for the panel's meters.
-enum class ParamId : int { Input, Level, Count };
-inline constexpr int ParamCount = int(ParamId::Count);
+// Krunch: a guitar amp for the Krate rack (docs/DSP.md). It plays the rack's
+// audio inputs (a guitar through the audio interface) rather than notes:
+//
+//   input -> pedals -> gate -> PREAMP (the channel's) -> volume -> FX LOOP
+//         -> POWER AMP -> speaker -> level -> out (mono, on both sides)
+//
+// Four channels, each with its own voice, gain, EQ, volume, gate and loop
+// switch; switching crossfades over 15 ms.
+inline constexpr int kChannels = 4;
+
+// Parameter ids: the amp's own, then kChannelParams per channel.
+enum class ParamId : int { Input, Channel, Master, Sag, Resonance, Level, FirstChannel };
+enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, Count };
+inline constexpr int kChannelParams = int(ChannelParam::Count);
+inline constexpr int ParamCount = int(ParamId::FirstChannel) + kChannels * kChannelParams;
+// Index of a channel's parameter (channel 0..3).
+constexpr int channelParam(int channel, ChannelParam p) { return int(ParamId::FirstChannel) + channel * kChannelParams + int(p); }
 
 namespace format {
 std::string input(float v);
+std::string channel(float v);
+std::string dial(float v);  // 0..10, as on an amp
 std::string level(float v);
+std::string voice(float v);
+std::string volume(float v);
+std::string gate(float v);
+std::string onOff(float v);
 } // namespace format
-
-inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
-    {"input", "Input", 0.0f, 2, &format::input},       // the interface's input 1 or 2
-    {"level", "Level", 60.0f / 72.0f, 0, &format::level}, // -60..+12 dB, default 0 dB
-}};
 
 namespace units {
 inline constexpr int kInputs = 2;
 inline constexpr double kLevelMinDb = -60.0;
 inline constexpr double kLevelMaxDb = 12.0;
-int input(float v);        // 0 or 1
-double levelDb(float v);   // kLevelMinDb..kLevelMaxDb; the bottom is silence
-double levelGain(float v); // 0 at the bottom
+int input(float v);         // 0 or 1
+int channel(float v);       // 0..3
+Voice voice(float v);
+double levelDb(float v);    // kLevelMinDb..kLevelMaxDb; the bottom is silence
+double levelGain(float v);  // 0 at the bottom
+double volumeDb(float v);   // -40..+6 dB; the bottom is silence
+double volumeGain(float v);
+double gateDb(float v);     // the threshold, -80..-20 dBFS (0 = off)
 } // namespace units
+
+#define KRUNCH_CHANNEL_PARAMS(n, dVoice, dGain, dBass, dMid, dTreble, dPresence, dVolume, dGate)                      \
+    {"ch" #n "_voice", "Channel " #n " Voice", dVoice, int(Voice::Count), &format::voice},                          \
+    {"ch" #n "_gain", "Channel " #n " Gain", dGain, 0, &format::dial},                                              \
+    {"ch" #n "_bass", "Channel " #n " Bass", dBass, 0, &format::dial},                                              \
+    {"ch" #n "_mid", "Channel " #n " Mid", dMid, 0, &format::dial},                                                 \
+    {"ch" #n "_treble", "Channel " #n " Treble", dTreble, 0, &format::dial},                                        \
+    {"ch" #n "_presence", "Channel " #n " Presence", dPresence, 0, &format::dial},                                  \
+    {"ch" #n "_volume", "Channel " #n " Volume", dVolume, 0, &format::volume},                                      \
+    {"ch" #n "_gate", "Channel " #n " Gate", dGate, 0, &format::gate},                                              \
+    {"ch" #n "_loop", "Channel " #n " Effects Loop", 1.0f, 2, &format::onOff}
+
+inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
+    {"input", "Input", 0.0f, 2, &format::input},          // the interface's input 1 or 2
+    {"channel", "Channel", 0.0f, kChannels, &format::channel},
+    {"master", "Master", 0.5f, 0, &format::dial},
+    {"sag", "Sag", 0.3f, 0, &format::dial},
+    {"resonance", "Resonance", 0.4f, 0, &format::dial},
+    {"level", "Level", 60.0f / 72.0f, 0, &format::level}, // -60..+12 dB, default 0 dB
+    // Defaults: 1 clean, 2 crunch, 3 heavy (tight, mids down), 4 lead.
+    KRUNCH_CHANNEL_PARAMS(1, 0.0f, 0.40f, 0.50f, 0.50f, 0.55f, 0.50f, 0.70f, 0.00f),
+    KRUNCH_CHANNEL_PARAMS(2, 1.0f / 3.0f, 0.50f, 0.55f, 0.60f, 0.55f, 0.50f, 0.70f, 0.00f),
+    KRUNCH_CHANNEL_PARAMS(3, 2.0f / 3.0f, 0.65f, 0.60f, 0.35f, 0.60f, 0.55f, 0.70f, 0.35f),
+    KRUNCH_CHANNEL_PARAMS(4, 1.0f, 0.70f, 0.50f, 0.70f, 0.50f, 0.50f, 0.72f, 0.30f),
+}};
+#undef KRUNCH_CHANNEL_PARAMS
 
 class Krunch final : public krate::IInstrument
 {
 public:
-    Krunch() = default;
+    static constexpr std::uint32_t kBlock = 256;        // processed in pieces this long
+    static constexpr double kSwitchSeconds = 0.015;     // channel crossfade
+
+    Krunch();
 
     void prepare(double sampleRate, std::uint32_t maxFrames) noexcept override;
     std::span<const krate::ParamDescriptor> parameters() const noexcept override { return kParams; }
@@ -54,14 +104,41 @@ public:
     // and the amp's output.
     float takeInputPeak() noexcept { return m_inputPeak.exchange(0.0f, std::memory_order_relaxed); }
     float takeOutputPeak() noexcept { return m_outputPeak.exchange(0.0f, std::memory_order_relaxed); }
+    // The gate is shut (display).
+    bool gateClosed() const noexcept { return m_gateClosed.load(std::memory_order_relaxed); }
+
+    // Pedal chains (setup, before processing): in front of the amp, in the loop.
+    PedalChain &frontPedals() noexcept { return m_front; }
+    PedalChain &loopPedals() noexcept { return m_loop; }
 
 private:
+    float channelValue(int channel, ChannelParam p) const noexcept { return m_params.get(channelParam(channel, p)); }
+    Preamp::Settings preampSettings(int channel) const noexcept;
+    // One channel's preamp and volume, from m_in into out.
+    void runChannel(int channel, float *out, std::uint32_t frames) noexcept;
+    void processBlock(const float *in, float *left, float *right, std::uint32_t frames) noexcept;
+
     krate::ParamValues<ParamCount> m_params{kParams};
     double m_sampleRate = 48000.0;
-    float m_gain = -1.0f; // current (ramped) output gain; < 0 until the first block
+
+    PedalChain m_front, m_loop;
+    Gate m_gate;
+    std::array<Preamp, kChannels> m_preamps;
+    std::array<float, kChannels> m_volume{}; // current (ramped) channel volumes; < 0 until first used
+    PowerAmp m_powerAmp;
+    SpeakerFilter m_speaker;
+
+    int m_active = -1;   // the channel playing
+    int m_previous = -1; // the channel fading out, or -1
+    double m_fade = 1.0; // 0..1 into the switch
+    double m_fadeStep = 0.0;
+    float m_level = -1.0f; // current (ramped) output level
+
+    std::array<float, kBlock> m_in{}, m_a{}, m_b{};
 
     std::atomic<float> m_inputPeak{0.0f};
     std::atomic<float> m_outputPeak{0.0f};
+    std::atomic<bool> m_gateClosed{false};
 };
 
 } // namespace krunch
