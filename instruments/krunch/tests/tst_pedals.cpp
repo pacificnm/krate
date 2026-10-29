@@ -7,6 +7,7 @@
 
 #include "dsp/GreenDrive.h"
 #include "dsp/Pedal.h"
+#include "dsp/TimePedals.h"
 
 using namespace krunch;
 
@@ -75,9 +76,18 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(1));
+        QCOMPARE(pedalTypes().size(), std::size_t(4));
         QCOMPARE(pedalTypes()[0]->type, std::string_view("green_drive"));
-        QVERIFY(makePedal("green_drive"));
+        for (const PedalInfo *info : pedalTypes()) {
+            auto p = makePedal(info->type);
+            QVERIFY(p);
+            QCOMPARE(&p->info(), info);
+            QVERIFY(info->knobs.size() <= std::size_t(Pedal::kMaxKnobs));
+            for (const KnobInfo &k : info->knobs)
+                QVERIFY(!k.format(k.defaultValue).empty());
+        }
+        QVERIFY(!makePedal("green_drive")->info().loopByDefault);
+        QVERIFY(makePedal("delay")->info().loopByDefault);
         QVERIFY(!makePedal("nope"));
         QCOMPARE(GreenDrive::kInfo.knobs.size(), std::size_t(3));
     }
@@ -194,10 +204,10 @@ private slots:
 
     void boardAddsRemovesAndReorders()
     {
-        PedalChain chain;
+        PedalChain chain, loop;
         std::uint64_t blocks = 0;
         {
-            Pedalboard board(chain);
+            Pedalboard board(chain, loop);
             QVERIFY(board.add("green_drive", kRate, blocks));
             QVERIFY(board.add("green_drive", kRate, blocks));
             QVERIFY(board.add("green_drive", kRate, blocks, 0)); // in front
@@ -226,6 +236,134 @@ private slots:
             QCOMPARE(chain.list()->count, 0);
         }
         QCOMPARE(chain.list(), nullptr); // the board is gone: nothing to play
+        QCOMPARE(loop.list(), nullptr);
+    }
+
+    // Each pedal plays in front of the amp or in its loop, in the board's order.
+    void frontOrLoop()
+    {
+        PedalChain front, loop;
+        Pedalboard board(front, loop);
+        board.add("green_drive", kRate, 0); // front, by its kind
+        board.add("delay", kRate, 0);       // loop, by its kind
+        board.add("chorus", kRate, 0);      // loop
+        board.add("reverb", kRate, 0, -1, 0); // asked for the front
+        QVERIFY(!board.inLoop(0) && board.inLoop(1) && board.inLoop(2) && !board.inLoop(3));
+        const auto list = [](const PedalChain &c) {
+            std::vector<std::string_view> v;
+            for (int i = 0; i < c.list()->count; ++i)
+                v.push_back(c.list()->pedals[std::size_t(i)]->info().type);
+            return v;
+        };
+        QCOMPARE(list(front), (std::vector<std::string_view>{"green_drive", "reverb"}));
+        QCOMPARE(list(loop), (std::vector<std::string_view>{"delay", "chorus"}));
+        board.setInLoop(0, true, 0);
+        board.move(0, 2, 0); // delay, chorus, drive, reverb
+        QCOMPARE(list(front), (std::vector<std::string_view>{"reverb"}));
+        QCOMPARE(list(loop), (std::vector<std::string_view>{"delay", "chorus", "green_drive"}));
+    }
+
+    // --- Time-based pedals --------------------------------------------------------------
+
+    void delayRepeatsAtItsTime()
+    {
+        Delay d;
+        d.prepare(kRate);
+        d.setKnob(Delay::Time, 0.5f);
+        d.setKnob(Delay::Feedback, 0.5f);
+        d.setKnob(Delay::Mix, 1.0f);
+        d.setKnob(Delay::Tone, 1.0f);
+        std::vector<float> x(48000 * 2, 0.0f);
+        for (int i = 0; i < 480; ++i) // let it fade in, then a click
+            d.process(x.data(), 1);
+        std::vector<float> y(48000 * 2, 0.0f);
+        y[0] = 0.5f;
+        for (std::size_t at = 0; at < y.size(); at += 128)
+            d.process(y.data() + at, std::uint32_t(std::min<std::size_t>(128, y.size() - at)));
+        const double seconds = 0.04 * std::pow(Delay::kMaxSeconds / 0.04, 0.5);
+        const auto first = std::size_t(std::lround(seconds * kRate)), second = 2 * first;
+        // The click comes back spread over a couple of samples (the time
+        // falls between them): its sum, near where it should be.
+        const auto echoNear = [&](std::size_t at) {
+            float sum = 0.0f;
+            for (std::size_t i = at - 20; i < at + 20; ++i)
+                sum += y[i];
+            return sum;
+        };
+        QVERIFY(echoNear(first) > 0.4f);                // the echo (of tanh(0.5)), at its time
+        QVERIFY(echoNear(second) < echoNear(first));    // each repeat quieter
+        QVERIFY(echoNear(second) > 0.05f);
+        QVERIFY(std::fabs(echoNear(first / 2)) < 0.01f); // nothing in between
+    }
+
+    void delayDoesNotRunAway()
+    {
+        Delay d;
+        d.prepare(kRate);
+        d.setKnob(Delay::Time, 0.1f);
+        d.setKnob(Delay::Feedback, 1.0f);
+        d.setKnob(Delay::Mix, 1.0f);
+        d.setKnob(Delay::Tone, 1.0f);
+        const auto y = run(d, sine(48000 * 3, 220.0, 0.8f));
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak) && peak < 2.0f);
+    }
+
+    void chorusSweepsAndMixZeroIsDry()
+    {
+        Chorus c;
+        c.prepare(kRate);
+        c.setKnob(Chorus::Rate, 1.0f);
+        c.setKnob(Chorus::Depth, 1.0f);
+        const auto x = sine(48000, 440.0, 0.3f);
+        const auto y = run(c, x);
+        // The sweep moves the copy against the dry: the level wobbles over time.
+        double lo = 1e9, hi = 0.0;
+        for (std::size_t at = 4800; at + 480 < y.size(); at += 480) {
+            const double l = level(y, 440.0, at, 480);
+            lo = std::min(lo, l);
+            hi = std::max(hi, l);
+        }
+        QVERIFY2(db(hi) - db(lo) > 3.0, qPrintable(QStringLiteral("%1 dB").arg(db(hi) - db(lo))));
+        Chorus dry;
+        dry.prepare(kRate);
+        dry.setKnob(Chorus::Mix, 0.0f);
+        const auto z = run(dry, x);
+        float diff = 0.0f;
+        for (std::size_t i = 4800; i < x.size(); ++i) // after the fade-in
+            diff = std::max(diff, std::fabs(z[i] - x[i]));
+        QVERIFY(diff < 1e-6f);
+    }
+
+    void reverbTailDecays()
+    {
+        Reverb r;
+        r.prepare(kRate);
+        r.setKnob(Reverb::Decay, 0.3f);
+        r.setKnob(Reverb::Mix, 1.0f);
+        std::vector<float> warm(4800, 0.0f);
+        run(r, warm); // past the fade-in
+        std::vector<float> y(48000 * 3, 0.0f);
+        y[0] = 0.5f;
+        y = run(r, y);
+        const auto rmsAt = [&](std::size_t from) {
+            double s = 0.0;
+            for (std::size_t i = from; i < from + 4800; ++i)
+                s += double(y[i]) * y[i];
+            return std::sqrt(s / 4800.0);
+        };
+        QVERIFY(rmsAt(4800) > 1e-4);               // a tail after the click
+        QVERIFY(rmsAt(48000 * 2) < 0.1 * rmsAt(4800)); // dying away
+        Reverb dry;
+        dry.prepare(kRate);
+        dry.setKnob(Reverb::Mix, 0.0f);
+        const auto x = sine(9600, 220.0, 0.3f), z = run(dry, x);
+        float diff = 0.0f;
+        for (std::size_t i = 4800; i < x.size(); ++i)
+            diff = std::max(diff, std::fabs(z[i] - x[i]));
+        QVERIFY(diff < 1e-6f);
     }
 
     // The chain plays the pedals in the board's order: the same as running
@@ -246,8 +384,8 @@ private slots:
         };
         const auto x = sine(9600, 330.0, 0.3f);
         for (bool swapped : {false, true}) {
-            PedalChain chain;
-            Pedalboard board(chain);
+            PedalChain chain, loop;
+            Pedalboard board(chain, loop);
             board.add("green_drive", kRate, 0);
             board.add("green_drive", kRate, 0);
             setUp(board.pedal(0), 0.1f, 0.2f);

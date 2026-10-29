@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "dsp/GreenDrive.h"
+#include "dsp/TimePedals.h"
 
 namespace krunch {
 
@@ -50,7 +51,7 @@ void Pedal::process(float *buffer, std::uint32_t frames) noexcept
 
 std::span<const PedalInfo *const> pedalTypes()
 {
-    static const PedalInfo *const kTypes[] = {&GreenDrive::kInfo};
+    static const PedalInfo *const kTypes[] = {&GreenDrive::kInfo, &Chorus::kInfo, &Delay::kInfo, &Reverb::kInfo};
     return kTypes;
 }
 
@@ -58,6 +59,12 @@ std::unique_ptr<Pedal> makePedal(std::string_view type)
 {
     if (type == GreenDrive::kInfo.type)
         return std::make_unique<GreenDrive>();
+    if (type == Chorus::kInfo.type)
+        return std::make_unique<Chorus>();
+    if (type == Delay::kInfo.type)
+        return std::make_unique<Delay>();
+    if (type == Reverb::kInfo.type)
+        return std::make_unique<Reverb>();
     return nullptr;
 }
 
@@ -82,10 +89,11 @@ void PedalChain::process(float *buffer, std::uint32_t frames) noexcept
 
 Pedalboard::~Pedalboard()
 {
-    m_chain.set(nullptr); // whoever owns the chain stops processing first
+    m_front.set(nullptr); // whoever owns the chains stops processing first
+    m_loop.set(nullptr);
 }
 
-bool Pedalboard::add(std::string_view type, double sampleRate, std::uint64_t blocks, int position)
+bool Pedalboard::add(std::string_view type, double sampleRate, std::uint64_t blocks, int position, int loop)
 {
     if (count() >= PedalList::kMaxPedals)
         return false;
@@ -95,7 +103,8 @@ bool Pedalboard::add(std::string_view type, double sampleRate, std::uint64_t blo
     pedal->prepare(sampleRate); // before the audio thread can see it
     if (position < 0 || position > count())
         position = count();
-    m_pedals.insert(m_pedals.begin() + position, std::move(pedal));
+    const bool inLoop = loop < 0 ? pedal->info().loopByDefault : loop > 0;
+    m_pedals.insert(m_pedals.begin() + position, Entry{std::move(pedal), inLoop});
     publish(blocks);
     return true;
 }
@@ -104,7 +113,7 @@ void Pedalboard::remove(int position, std::uint64_t blocks)
 {
     if (position < 0 || position >= count())
         return;
-    auto pedal = std::move(m_pedals[std::size_t(position)]);
+    auto pedal = std::move(m_pedals[std::size_t(position)].pedal);
     m_pedals.erase(m_pedals.begin() + position);
     publish(blocks);
     m_retired.push_back({std::move(pedal), nullptr, blocks});
@@ -114,9 +123,17 @@ void Pedalboard::move(int from, int to, std::uint64_t blocks)
 {
     if (from < 0 || from >= count() || to < 0 || to >= count() || from == to)
         return;
-    auto pedal = std::move(m_pedals[std::size_t(from)]);
+    Entry entry = std::move(m_pedals[std::size_t(from)]);
     m_pedals.erase(m_pedals.begin() + from);
-    m_pedals.insert(m_pedals.begin() + to, std::move(pedal));
+    m_pedals.insert(m_pedals.begin() + to, std::move(entry));
+    publish(blocks);
+}
+
+void Pedalboard::setInLoop(int position, bool loop, std::uint64_t blocks)
+{
+    if (position < 0 || position >= count() || m_pedals[std::size_t(position)].loop == loop)
+        return;
+    m_pedals[std::size_t(position)].loop = loop;
     publish(blocks);
 }
 
@@ -128,14 +145,19 @@ void Pedalboard::clear(std::uint64_t blocks)
 
 void Pedalboard::publish(std::uint64_t blocks)
 {
-    auto list = std::make_unique<PedalList>();
-    list->count = count();
-    for (int i = 0; i < count(); ++i)
-        list->pedals[std::size_t(i)] = m_pedals[std::size_t(i)].get();
-    m_chain.set(list.get());
-    if (m_list)
-        m_retired.push_back({nullptr, std::move(m_list), blocks});
-    m_list = std::move(list);
+    auto front = std::make_unique<PedalList>(), loop = std::make_unique<PedalList>();
+    for (const Entry &e : m_pedals) {
+        PedalList &list = e.loop ? *loop : *front;
+        list.pedals[std::size_t(list.count++)] = e.pedal.get();
+    }
+    m_front.set(front.get());
+    m_loop.set(loop.get());
+    if (m_frontList)
+        m_retired.push_back({nullptr, std::move(m_frontList), blocks});
+    if (m_loopList)
+        m_retired.push_back({nullptr, std::move(m_loopList), blocks});
+    m_frontList = std::move(front);
+    m_loopList = std::move(loop);
 }
 
 void Pedalboard::collect(std::uint64_t blocks)

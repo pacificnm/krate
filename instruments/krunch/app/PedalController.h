@@ -15,9 +15,9 @@ namespace krunch {
 class Krunch;
 }
 
-// QML singleton "Pedals": the pedalboard in front of the amp
-// (docs/PEDALS.md): add, remove and reorder pedals, their knobs and
-// footswitches. Kept in pedals.json, and in songs' sounds.
+// QML singleton "Pedals": the pedalboard (docs/PEDALS.md): add, remove and
+// reorder pedals, put each in front of the amp or in its effects loop, their
+// knobs and footswitches. Kept in pedals.json, and in songs' sounds.
 class PedalController : public QObject
 {
     Q_OBJECT
@@ -46,9 +46,12 @@ public:
     int maxPedals() const { return krunch::PedalList::kMaxPedals; }
     QVariantList types() const;
 
-    // The board, in order: [{type, name, colour, on, knobs: [{key, label, value, defaultValue}]}].
+    // The board, in order: [{type, name, colour, on, loop, knobs: [{key, label, value, defaultValue}]}].
     Q_INVOKABLE QVariantList pedals() const;
     Q_INVOKABLE bool isOn(int position) const;
+    // In the amp's effects loop, or in front of the amp.
+    Q_INVOKABLE bool inLoop(int position) const;
+    Q_INVOKABLE void setInLoop(int position, bool loop);
     Q_INVOKABLE qreal knob(int position, int knob) const;
     Q_INVOKABLE QString knobText(int position, int knob, qreal value) const;
 
@@ -59,7 +62,7 @@ public:
     Q_INVOKABLE void toggle(int position); // a footswitch (learnable as "pedal1".."pedal8")
     Q_INVOKABLE void setKnob(int position, int knob, qreal value);
 
-    // For songs' sounds and pedals.json: [{type, on, knobs: {key: value}}].
+    // For songs' sounds and pedals.json: [{type, on, loop, knobs: {key: value}}].
     QJsonArray save() const;
     void load(const QJsonArray &pedals);
 

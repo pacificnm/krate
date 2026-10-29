@@ -39,7 +39,7 @@ const PedalInfo GreenDrive::kInfo = []() {
         {"tone", "TONE", 0.5f, &tenth},
         {"level", "LEVEL", 0.5f, &levelText},
     };
-    return PedalInfo{"green_drive", "Green Drive", "#3E8E4E", knobs};
+    return PedalInfo{"green_drive", "Green Drive", "#3E8E4E", knobs, false};
 }();
 
 void GreenDrive::prepareEffect(double sampleRate) noexcept

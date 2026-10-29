@@ -4,10 +4,11 @@ import QtQuick
 import QtQuick.Controls
 import Krate
 
-// The pedals in front of the amp, left to right as the guitar goes through
-// them (docs/PEDALS.md). Drag a pedal by its body to move it; the footswitch
-// turns it on and off (learnable: "pedal1".."pedal8" by position); × takes it
-// off the board; + adds one.
+// The pedalboard (docs/PEDALS.md), left to right: FRONT pedals play in front
+// of the amp, LOOP pedals in its effects loop (when the channel's LOOP is
+// on), each group in the board's order. Drag a pedal by its body to move it;
+// FRONT / LOOP places it; the footswitch turns it on and off (learnable:
+// "pedal1".."pedal8" by position); × takes it off the board; + adds one.
 Rectangle {
     id: board
 
@@ -29,7 +30,13 @@ Rectangle {
     Text {
         x: 16
         y: 8
-        text: "PEDALS  ·  guitar → " + (Pedals.count > 0 ? Pedals.count + (Pedals.count === 1 ? " pedal" : " pedals") : "no pedals") + " → amp"
+        readonly property var counts: {
+            let front = 0, loop = 0
+            for (let i = 0; Pedals.revision >= 0 && i < Pedals.count; ++i)
+                Pedals.inLoop(i) ? ++loop : ++front
+            return [front, loop]
+        }
+        text: "PEDALS  ·  guitar → " + counts[0] + " in front → preamp → " + counts[1] + " in the loop → power amp"
         color: "#8F897A"
         font.family: Theme.labelFont
         font.pixelSize: 12
@@ -51,6 +58,7 @@ Rectangle {
                 required property int index
                 readonly property var info: Pedals.layoutRevision >= 0 ? Pedals.pedals()[index] : ({})
                 readonly property bool on: Pedals.revision >= 0 && Pedals.isOn(index)
+                readonly property bool loop: Pedals.revision >= 0 && Pedals.inLoop(index)
 
                 Binding on x { // where its place is, except while it's being dragged
                     when: !bodyDrag.drag.active
@@ -90,6 +98,8 @@ Rectangle {
 
                 // Its knobs.
                 Row {
+                    id: knobRow
+                    readonly property real size: Math.min(44, (pedal.width - 12) / Math.max(1, (pedal.info.knobs ?? []).length) - 2)
                     x: (parent.width - width) / 2
                     y: 20
                     spacing: 2
@@ -101,8 +111,8 @@ Rectangle {
                             required property int index
                             spacing: 1
                             Knob {
-                                width: 44
-                                height: 44
+                                width: knobRow.size
+                                height: knobRow.size
                                 name: (pedal.info.name ?? "") + " " + knobColumn.modelData.label
                                 value: Pedals.revision >= 0 ? Pedals.knob(pedal.index, knobColumn.index) : 0
                                 defaultValue: knobColumn.modelData.defaultValue
@@ -113,7 +123,7 @@ Rectangle {
                                 onMoved: v => Pedals.setKnob(pedal.index, knobColumn.index, v)
                             }
                             Text {
-                                width: 44
+                                width: knobRow.size
                                 horizontalAlignment: Text.AlignHCenter
                                 text: knobColumn.modelData.label
                                 color: "#101010"
@@ -135,7 +145,7 @@ Rectangle {
 
                 Text { // the name, on a plate
                     x: 8
-                    y: 106
+                    y: 102
                     width: parent.width - 16
                     horizontalAlignment: Text.AlignHCenter
                     text: pedal.info.name ?? ""
@@ -149,13 +159,55 @@ Rectangle {
                     wrapMode: Text.WordWrap
                 }
 
+                // In front of the amp, or in its loop.
+                Rectangle {
+                    id: placement
+                    x: (parent.width - width) / 2
+                    y: 136
+                    width: 96
+                    height: 20
+                    radius: 4
+                    color: "#30000000"
+                    Row {
+                        anchors.fill: parent
+                        Repeater {
+                            model: ["FRONT", "LOOP"]
+                            Rectangle {
+                                id: placeChoice
+                                required property string modelData
+                                required property int index
+                                readonly property bool chosen: (index === 1) === pedal.loop
+                                width: placement.width / 2
+                                height: placement.height
+                                radius: 4
+                                color: chosen ? "#F4F1E6" : "transparent"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: placeChoice.modelData
+                                    color: placeChoice.chosen ? "#101010" : "#F4F1E6"
+                                    font.family: Theme.labelFont
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: Pedals.setInLoop(pedal.index, placeChoice.index === 1)
+                                }
+                                Accessible.role: Accessible.RadioButton
+                                Accessible.name: (pedal.info.name ?? "") + (index === 1 ? " in the effects loop" : " in front of the amp")
+                                Accessible.checked: chosen
+                            }
+                        }
+                    }
+                }
+
                 // The footswitch.
                 Rectangle {
                     id: footswitch
                     x: (parent.width - width) / 2
                     y: parent.height - height - 26
-                    width: 54
-                    height: 54
+                    width: 48
+                    height: 48
                     radius: width / 2
                     border.color: "#555"
                     border.width: 2
@@ -262,7 +314,7 @@ Rectangle {
             visible: Pedals.count === 0
             x: 130
             anchors.verticalCenter: parent.verticalCenter
-            text: "Add a pedal with +. Drag pedals to reorder them; the footswitch turns one on and off."
+            text: "Add a pedal with +. Drag pedals to reorder them; FRONT or LOOP puts one in front of the amp or in its effects loop."
             color: "#8F897A"
             font.family: Theme.labelFont
             font.pixelSize: 14

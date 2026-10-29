@@ -18,13 +18,15 @@ add_library(krunch_dsp STATIC
     dsp/PowerAmp.cpp
     dsp/Preamp.h
     dsp/Preamp.cpp
+    dsp/TimePedals.h
+    dsp/TimePedals.cpp
     dsp/ToneStack.h
     dsp/ToneStack.cpp
     dsp/Wav.h
     dsp/Wav.cpp
 )
 target_include_directories(krunch_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(krunch_dsp PUBLIC krate_core)
+target_link_libraries(krunch_dsp PUBLIC krate_core krate_dsp)
 target_compile_options(krunch_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 add_executable(tst_krunch tests/tst_krunch.cpp)

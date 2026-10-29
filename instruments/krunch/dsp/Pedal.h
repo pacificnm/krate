@@ -27,6 +27,7 @@ struct PedalInfo
     std::string_view name; // on the pedal
     std::string_view colour; // its enclosure, "#RRGGBB"
     std::span<const KnobInfo> knobs;
+    bool loopByDefault = false; // goes in the effects loop when added (time-based effects)
 };
 
 // One pedal: mono, in place, at the base rate (docs/PEDALS.md). Knobs and the
@@ -96,35 +97,44 @@ private:
     std::atomic<const PedalList *> m_list{nullptr};
 };
 
-// Owns a chain's pedals on the GUI side: adds, removes and reorders them,
-// hands each new order to the chain, and frees what the audio thread has
+// Owns the pedals on the GUI side, in the board's order, each in front of
+// the amp or in its effects loop: adds, removes, reorders and places them,
+// hands each chain its pedals in order, and frees what the audio thread has
 // finished with (collect(), once its block count has moved two on).
 class Pedalboard
 {
 public:
-    explicit Pedalboard(PedalChain &chain) : m_chain(chain) {}
+    Pedalboard(PedalChain &front, PedalChain &loop) : m_front(front), m_loop(loop) {}
     ~Pedalboard();
 
     Pedalboard(const Pedalboard &) = delete;
     Pedalboard &operator=(const Pedalboard &) = delete;
 
     int count() const noexcept { return int(m_pedals.size()); }
-    Pedal &pedal(int position) noexcept { return *m_pedals[std::size_t(position)]; }
+    Pedal &pedal(int position) noexcept { return *m_pedals[std::size_t(position)].pedal; }
+    bool inLoop(int position) const noexcept { return m_pedals[std::size_t(position)].loop; }
 
     // blocks: the audio thread's block count now (Krunch::blocksProcessed()).
-    // Returns false if the board is full or there's no such type.
-    bool add(std::string_view type, double sampleRate, std::uint64_t blocks, int position = -1);
+    // Returns false if the board is full or there's no such type. A new
+    // pedal goes where its kind belongs (loopByDefault) unless `loop` says.
+    bool add(std::string_view type, double sampleRate, std::uint64_t blocks, int position = -1, int loop = -1);
     void remove(int position, std::uint64_t blocks);
     void move(int from, int to, std::uint64_t blocks);
+    void setInLoop(int position, bool loop, std::uint64_t blocks);
     void clear(std::uint64_t blocks);
     void collect(std::uint64_t blocks);
 
 private:
     void publish(std::uint64_t blocks);
 
-    PedalChain &m_chain;
-    std::vector<std::unique_ptr<Pedal>> m_pedals;
-    std::unique_ptr<PedalList> m_list;
+    struct Entry
+    {
+        std::unique_ptr<Pedal> pedal;
+        bool loop = false;
+    };
+    PedalChain &m_front, &m_loop;
+    std::vector<Entry> m_pedals;
+    std::unique_ptr<PedalList> m_frontList, m_loopList;
     struct Retired
     {
         std::unique_ptr<Pedal> pedal;

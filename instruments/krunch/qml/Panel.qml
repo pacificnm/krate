@@ -327,7 +327,20 @@ Item {
                 LearnOverlay { anchors.fill: parent; paramKey: "loop"; round: false }
             }
             Label { width: 104; text: "FX LOOP"; font.pixelSize: 12 }
-            Label { width: 104; text: "(pedals later)"; font.pixelSize: 10; font.bold: false; color: "#8F897A" }
+            Label {
+                width: 104
+                readonly property int pedals: {
+                    let n = 0
+                    for (let i = 0; Pedals.revision >= 0 && i < Pedals.count; ++i)
+                        if (Pedals.inLoop(i))
+                            ++n
+                    return n
+                }
+                text: pedals === 0 ? "no pedals in it" : pedals + (pedals === 1 ? " pedal" : " pedals")
+                font.pixelSize: 10
+                font.bold: false
+                color: "#8F897A"
+            }
         }
 
         // --- The playing channel's cabinet ------------------------------------------

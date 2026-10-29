@@ -18,7 +18,7 @@ constexpr int kFadeOutMs = 30; // a removed pedal switches off (10 ms fade) befo
 PedalController::PedalController(krunch::Krunch &engine, const QString &filePath, QObject *parent)
     : QObject(parent)
     , m_engine(engine)
-    , m_board(engine.frontPedals())
+    , m_board(engine.frontPedals(), engine.loopPedals())
     , m_filePath(filePath)
 {
     Q_ASSERT(!s_instance);
@@ -77,6 +77,7 @@ QVariantList PedalController::pedals() const
                               {QStringLiteral("name"), QString::fromUtf8(info.name)},
                               {QStringLiteral("colour"), QString::fromUtf8(info.colour)},
                               {QStringLiteral("on"), pedal.on()},
+                              {QStringLiteral("loop"), m_board.inLoop(p)},
                               {QStringLiteral("knobs"), knobs}};
     }
     return result;
@@ -85,6 +86,19 @@ QVariantList PedalController::pedals() const
 bool PedalController::isOn(int position) const
 {
     return valid(position) && const_cast<krunch::Pedalboard &>(m_board).pedal(position).on();
+}
+
+bool PedalController::inLoop(int position) const
+{
+    return valid(position) && m_board.inLoop(position);
+}
+
+void PedalController::setInLoop(int position, bool loop)
+{
+    if (!valid(position) || m_board.inLoop(position) == loop)
+        return;
+    m_board.setInLoop(position, loop, m_engine.blocksProcessed());
+    bump();
 }
 
 qreal PedalController::knob(int position, int knob) const
@@ -167,6 +181,7 @@ QJsonArray PedalController::save() const
             knobs.insert(QString::fromUtf8(pedal.info().knobs[k].key), pedal.knob(int(k)));
         result.append(QJsonObject{{QStringLiteral("type"), QString::fromUtf8(pedal.info().type)},
                                   {QStringLiteral("on"), pedal.on()},
+                                  {QStringLiteral("loop"), m_board.inLoop(p)},
                                   {QStringLiteral("knobs"), knobs}});
     }
     return result;
@@ -177,7 +192,8 @@ void PedalController::load(const QJsonArray &pedals)
     m_board.clear(m_engine.blocksProcessed());
     for (const QJsonValue &v : pedals) {
         const QJsonObject o = v.toObject();
-        if (!m_board.add(o.value(u"type").toString().toStdString(), m_engine.sampleRate(), m_engine.blocksProcessed())) {
+        const int loop = o.contains(u"loop") ? (o.value(u"loop").toBool() ? 1 : 0) : -1; // -1: where its kind goes
+        if (!m_board.add(o.value(u"type").toString().toStdString(), m_engine.sampleRate(), m_engine.blocksProcessed(), -1, loop)) {
             qCWarning(lcPedals) << "skipping a pedal we don't have:" << o.value(u"type").toString();
             continue;
         }

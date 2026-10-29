@@ -103,7 +103,7 @@ double thd(Preamp &preamp, double hz = 220.0, float amplitude = 0.2f)
 // A pedal for the chains: multiplies by its one knob (0..1 -> 0..2).
 std::string gainText(float v) { return std::to_string(v); }
 const KnobInfo kGainKnobs[] = {{"gain", "GAIN", 0.5f, &gainText}};
-const PedalInfo kGainInfo{"test_gain", "Gain", "#000000", kGainKnobs};
+const PedalInfo kGainInfo{"test_gain", "Gain", "#000000", kGainKnobs, false};
 
 class GainPedal final : public Pedal
 {
