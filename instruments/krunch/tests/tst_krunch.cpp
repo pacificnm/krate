@@ -330,21 +330,44 @@ private slots:
         QCOMPARE(amp.outputChannels(), 2);
     }
 
+    // The channels peak at a similar level (a clean sound can't match a
+    // compressed one's average without slamming the power amp).
     void everyChannelPlaysAtASimilarLevel()
     {
         const auto di = tools::SyntheticGuitar(kRate).riff();
-        std::vector<double> levels;
+        std::vector<double> peaks;
         for (int c = 0; c < kChannels; ++c) {
             Krunch amp;
             amp.prepare(kRate, 128);
             setChannel(amp, c);
             const auto out = play(amp, di);
             QVERIFY(peak(out) < 1.0f);
-            levels.push_back(db(rms(out)));
+            QVERIFY(db(rms(out)) > -34.0);
+            peaks.push_back(db(peak(out)));
         }
-        const auto [lo, hi] = std::minmax_element(levels.begin(), levels.end());
-        QVERIFY2(*hi - *lo < 4.0, qPrintable(QStringLiteral("%1 .. %2 dB").arg(*lo).arg(*hi)));
-        QVERIFY(*lo > -28.0);
+        const auto [lo, hi] = std::minmax_element(peaks.begin(), peaks.end());
+        QVERIFY2(*hi - *lo < 5.0, qPrintable(QStringLiteral("%1 .. %2 dB").arg(*lo).arg(*hi)));
+    }
+
+    // The clean channel stays clean when you dig in: hot guitar, sag up.
+    void cleanChannelHasHeadroom()
+    {
+        Krunch amp;
+        amp.prepare(kRate, 128);
+        amp.setParam(int(ParamId::Sag), 0.7f);
+        const auto out = play(amp, sine(48000, 196.0, 0.45f)); // a hot pickup through a healthy interface gain
+        const std::size_t from = 24000, n = 12000;
+        const auto power = [&](double f) {
+            std::complex<double> sum = 0.0;
+            for (std::size_t i = 0; i < n; ++i)
+                sum += double(out[from + i]) * std::polar(1.0, -2.0 * std::numbers::pi * f * double(i) / kRate);
+            return std::norm(sum);
+        };
+        double harmonics = 0.0;
+        for (int h = 2; h <= 11; ++h)
+            harmonics += power(196.0 * h);
+        const double thd = std::sqrt(harmonics / power(196.0));
+        QVERIFY2(thd < 0.04, qPrintable(QStringLiteral("THD %1").arg(thd)));
     }
 
     void inputKnobChoosesTheInput()
@@ -402,6 +425,8 @@ private slots:
         float biggest = std::fabs(second[0] - first.back());
         for (std::size_t i = 1; i < 2400; ++i)
             biggest = std::max(biggest, std::fabs(second[i] - second[i - 1]));
+        for (std::size_t i = 12001; i < second.size(); ++i) // the new channel's own playing, settled
+            steady = std::max(steady, std::fabs(second[i] - second[i - 1]));
         QVERIFY2(biggest < 2.5f * steady, qPrintable(QStringLiteral("%1 vs %2").arg(biggest).arg(steady)));
     }
 

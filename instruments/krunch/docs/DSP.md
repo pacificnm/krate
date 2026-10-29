@@ -18,7 +18,7 @@ Four channels, each with its own parameters (`ch<N>_<name>`) and cabinet. Only t
 
 | Voice | Stages | Into the first stage | Gain knob (first stage) | Tone stack |
 | --- | --- | --- | --- | --- |
-| Clean | 1 | high-pass 30 Hz | −6 … +18 dB | American (scooped, glassy) |
+| Clean | 1 | high-pass 30 Hz | −14 … +10 dB | American (scooped, glassy) |
 | Crunch | 2 | high-pass 60 Hz, +2 dB at 900 Hz | 0 … +30 dB | British |
 | Heavy | 3 | high-pass 140 Hz, +5 dB at 850 Hz (tight) | +6 … +40 dB | British |
 | Lead | 4 | high-pass 100 Hz, +6 dB at 750 Hz | +6 … +42 dB | British |
@@ -26,7 +26,7 @@ Four channels, each with its own parameters (`ch<N>_<name>`) and cabinet. Only t
 - **Stages** run at 4× the sample rate (`dsp/Oversampler.h`: two half-band 2× stages each way, about 0.5 ms of delay). Each is a gain, a biased `tanh` (asymmetric: even harmonics), a coupling-capacitor high-pass and a treble roll-off (one-pole each, per voice). Later stages have a fixed gain (+12 … +14 dB) and half the bias.
 - **Tone stack** (`dsp/ToneStack.cpp`): the passive bass / mid / treble network modelled from the circuit (Yeh and Smith, DAFx 2006): third order, the controls interact as on an amp, bass on a log taper; bilinear transform. Two sets of parts: American (the mid scoop near 700 Hz is about 12 dB at noon) and British (less scooped).
 - **Presence:** a high shelf at 3 kHz, −6 … +9 dB; then a low-pass at 11 kHz.
-- A trim per voice evens the channels out (the defaults play within 2 dB of each other).
+- A trim per voice evens the channels' peaks out (within about 4 dB). The clean voice plays a few dB quieter on average than the distorted ones: matching their average would drive the power amp into clipping on every pick (a hot guitar at −7 dBFS stays under 2 % distortion on the clean channel, sag up).
 
 ## Gate
 
@@ -38,7 +38,7 @@ Between the channel volume and the power amp: the loop's pedal chain (`dsp/Pedal
 
 ## Power amp
 
-`dsp/PowerAmp.cpp`, shared by the channels. **Resonance** lifts 100 Hz (0 … +10 dB) going in; **Master** drives the output stage −24 … +18 dB (it clips from about 0 dB); the stage is a symmetric `tanh` at 4×. **Sag**: a follower on the output (4 ms attack, 150 ms release) lowers the headroom, so digging in compresses.
+`dsp/PowerAmp.cpp`, shared by the channels. **Resonance** lifts 100 Hz (0 … +10 dB) going in; **Master** drives the output stage −24 … +18 dB (it clips from about 0 dB); the stage is a symmetric `tanh` at 4×. **Sag**: a follower on the output (20 ms attack, 200 ms release) lowers the headroom, so digging in compresses.
 
 ## Cabinet
 

@@ -9,7 +9,7 @@ namespace krunch {
 
 // The power amp (docs/DSP.md#power-amp): Master drives a push-pull output
 // stage (symmetric soft clipping at 4x) whose supply sags under load (it
-// compresses as you dig in), with Resonance lifting the lows the speaker
+// compresses as you dig in, over 20 ms in and 200 ms out), with Resonance lifting the lows the speaker
 // pushes back. Mono, in place.
 class PowerAmp
 {

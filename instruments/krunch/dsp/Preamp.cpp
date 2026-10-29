@@ -32,7 +32,7 @@ struct VoiceDesign
 const VoiceDesign &design(Voice voice)
 {
     static const VoiceDesign kDesigns[int(Voice::Count)] = {
-        {1, 30.0, 800.0, 0.0, -6.0, 18.0, 0.0, 0.08, 20.0, 14000.0, ToneStack::kAmerican, 20.0},
+        {1, 30.0, 800.0, 0.0, -14.0, 10.0, 0.0, 0.08, 20.0, 14000.0, ToneStack::kAmerican, 20.0},
         {2, 60.0, 900.0, 2.0, 0.0, 30.0, 12.0, 0.18, 40.0, 9000.0, ToneStack::kBritish, 3.0},
         {3, 140.0, 850.0, 5.0, 6.0, 40.0, 14.0, 0.22, 70.0, 7500.0, ToneStack::kBritish, 0.0},
         {4, 100.0, 750.0, 6.0, 6.0, 42.0, 12.0, 0.18, 50.0, 6000.0, ToneStack::kBritish, -1.0},

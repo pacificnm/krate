@@ -8,8 +8,9 @@ namespace krunch {
 void PowerAmp::prepare(double sampleRate) noexcept
 {
     m_rate = sampleRate;
-    m_attack = std::exp(-1.0 / (0.004 * sampleRate));
-    m_release = std::exp(-1.0 / (0.150 * sampleRate));
+    // The supply follows how hard you play (over tens of milliseconds), not each wave.
+    m_attack = std::exp(-1.0 / (0.020 * sampleRate));
+    m_release = std::exp(-1.0 / (0.200 * sampleRate));
     m_master = m_sag = m_resonance = -1.0f; // retune on the next set()
     reset();
 }
