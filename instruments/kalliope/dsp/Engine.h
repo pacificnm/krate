@@ -14,19 +14,22 @@
 #include "kalliope/dsp/Effects.h"
 #include "kalliope/dsp/Lfo.h"
 #include "kalliope/dsp/Params.h"
+#include "kalliope/dsp/Sequence.h"
 #include "kalliope/dsp/Voice.h"
 
 namespace kalliope {
 
 // Kalliope's realtime core (docs/DSP.md): eight voices at 2x, decimated once,
 // then the stereo chorus and the tempo-synced ping-pong delay; Poly, Unison and
-// Solo key modes (docs/PLAY.md#key-modes), the arpeggiator on the transport
-// (docs/PLAY.md#arpeggiator), sustain pedal, pitch bend, mod wheel, MIDI Learn.
-// The delay's buffer is allocated here, at construction.
+// Solo key modes (docs/PLAY.md#key-modes), the arpeggiator and the step
+// sequencer on the transport (docs/PLAY.md#arpeggiator, docs/SEQUENCER.md),
+// sustain pedal, pitch bend, mod wheel, MIDI Learn. The delay's buffer is
+// allocated here, at construction.
 //
-// Keys (what is held) and voice notes (what sounds) are separate: with the
-// arpeggiator off, keys play voices directly; with it on, keys feed the
-// arpeggiator and it plays the voices.
+// Keys (what is held) and voice notes (what sounds) are separate. Play Mode
+// Note: keys play voices. Arpeggio: keys feed the arpeggiator, which plays the
+// voices. Sequencer: the pattern plays the voices while the transport runs and
+// keys transpose it; stopped, keys play voices (to hear what you record).
 class Engine final : public krate::IInstrument
 {
 public:
@@ -81,6 +84,17 @@ public:
     // The note the arpeggiator is playing, or -1 (tests, display).
     int arpNote() const noexcept { return m_arpNote; }
 
+    enum class PlayMode { Note, Arpeggio, Sequencer };
+
+    // GUI thread: the sequencer's pattern (applied at the next block; a new
+    // length takes effect from the next pass). False if the queue is full.
+    bool postSequence(const SeqPattern &pattern) noexcept { return m_sequences.push(pattern); }
+    // Setup (before processing) and tests.
+    void setSequence(const SeqPattern &pattern) noexcept { m_sequence = pattern; }
+    // Any thread: the sequencer step playing, or -1; the transposition (semitones).
+    int sequencerStep() const noexcept { return m_seqPlayingStep.load(std::memory_order_relaxed); }
+    int transpose() const noexcept { return m_transpose; }
+
 private:
     static constexpr std::uint32_t kChunk = 128; // frames rendered at a time (fixed buffers)
 
@@ -98,9 +112,13 @@ private:
     void releaseAllVoices() noexcept;       // every voice to release (keys stay held)
     void voiceOn(int note) noexcept;        // Poly: a voice for `note` (stealing if needed)
     void voiceOff(int note) noexcept;       // Poly: release `note`'s voice
-    void arpUpdate(const krate::TransportState &transport) noexcept; // once per block
+    void arpUpdate(const krate::TransportState &transport) noexcept; // once per block: play mode, clock
     void arpStep() noexcept;                // a step starts: the next note
     void arpRelease() noexcept;             // the gate ends (or the arpeggio stops)
+    void seqStep(int step) noexcept;        // a sequencer step starts
+    void seqRelease() noexcept;             // the sequencer's notes end
+    void playNotes(const int *notes, int count) noexcept; // through the key mode
+    void releaseNotes(const int *notes, int count) noexcept;
 
     krate::ParamValues<ParamCount> m_params{kParams};
     krate::MidiLearnMap m_learn{kParams}; // parameters are ParamId values
@@ -134,14 +152,23 @@ private:
     int m_heldCount = 0;
 
     // Arpeggiator (docs/PLAY.md#arpeggiator).
-    krate::StepClock m_arpClock;
-    bool m_arpOn = false;
+    krate::StepClock m_arpClock; // the arpeggiator's and the sequencer's (never both at once)
+    PlayMode m_playMode = PlayMode::Note;
+    bool m_arpOn = false;        // m_playMode == Arpeggio
     bool m_hold = false;
     std::array<std::uint8_t, 16> m_latched{}; // keys kept by Hold
     int m_latchedCount = 0;
     int m_arpNote = -1;
     std::uint32_t m_arpPosition = 0;
     std::uint32_t m_arpRandom = 0x2F6B3A1Du;
+
+    // Step sequencer (docs/SEQUENCER.md).
+    krate::SpscQueue<SeqPattern, 8> m_sequences;
+    SeqPattern m_sequence;
+    std::array<int, 4> m_seqNotes{}; // sounding now
+    int m_seqCount = 0;
+    int m_transpose = 0;
+    std::atomic<int> m_seqPlayingStep{-1};
     float m_lastVelocity = 1.0f;
     double m_bend = 0.0;  // -1..1
     double m_wheel = 0.0; // 0..1

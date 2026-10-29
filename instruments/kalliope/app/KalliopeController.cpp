@@ -1,5 +1,7 @@
 #include "kalliope/app/KalliopeController.h"
 
+#include <cmath>
+
 #include <QJSEngine>
 
 #include "core/Transport.h"
@@ -90,7 +92,8 @@ void KalliopeController::poll()
 
 void KalliopeController::syncArp()
 {
-    const bool on = value(QStringLiteral("arp_on")) > 0.5;
+    // Play Mode Arpeggio (the middle position).
+    const bool on = std::abs(value(QStringLiteral("play_mode")) - 0.5) < 0.01;
     if (on == m_arpOn)
         return;
     m_arpOn = on;

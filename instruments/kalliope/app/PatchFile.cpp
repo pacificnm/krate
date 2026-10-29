@@ -93,7 +93,7 @@ Patch factoryPatch(int index)
                                          {"env2_a", 0.5}, {"env2_r", 0.6}});
     case 12: return make("Arp Pluck", {{"vco1_wave", kSaw1}, {"vco2_wave", kPulse2}, {"cutoff", 0.35}, {"vcf_env", 0.45},
                                        {"env1_d", 0.38}, {"env1_s", 0.0}, {"env2_d", 0.45}, {"env2_s", 0.0},
-                                       {"env2_r", 0.35}, {"arp_on", 1.0}, {"arp_mode", at(2, p::kArpMode)},
+                                       {"env2_r", 0.35}, {"play_mode", at(1, p::kPlayMode)}, {"arp_mode", at(2, p::kArpMode)},
                                        {"arp_range", at(1, p::kArpRange)}, {"delay_level", 0.3}, {"delay_fb", 0.4}});
     case 13: return make("Detuned Saws", {{"vco1_wave", kSaw1}, {"vco2_wave", kSaw2}, {"vco2_fine", 0.6},
                                           {"cutoff", 0.65}, {"vcf_env", 0.15}, {"env2_r", 0.45}});

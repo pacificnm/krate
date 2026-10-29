@@ -56,7 +56,7 @@ signals:
 
 private:
     void syncTempo(); // the Tempo knob drives the transport, if we have one
-    void syncArp();   // standalone: Arpeggio on starts the transport, off stops what it started
+    void syncArp();   // standalone: Play Mode Arpeggio starts the transport, leaving it stops what it started
     void poll();
 
     static inline KalliopeController *s_instance = nullptr;

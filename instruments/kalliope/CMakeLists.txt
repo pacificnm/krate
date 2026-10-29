@@ -16,6 +16,8 @@ add_library(kalliope_dsp STATIC
     dsp/Oscillator.cpp
     dsp/Params.h
     dsp/Params.cpp
+    dsp/Sequence.h
+    dsp/Sequence.cpp
     dsp/Voice.h
     dsp/Voice.cpp
 )
@@ -45,6 +47,10 @@ qt_add_qml_module(kalliope_ui
         app/PatchController.cpp
         app/PatchFile.h
         app/PatchFile.cpp
+        app/SequenceController.h
+        app/SequenceController.cpp
+        app/SequenceFile.h
+        app/SequenceFile.cpp
     QML_FILES
         qml/Keyboard.qml
         qml/Main.qml
@@ -75,6 +81,10 @@ add_executable(tst_kalliope
     app/PatchController.cpp
     app/PatchFile.h
     app/PatchFile.cpp
+    app/SequenceController.h
+    app/SequenceController.cpp
+    app/SequenceFile.h
+    app/SequenceFile.cpp
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
 )
@@ -84,7 +94,7 @@ target_link_libraries(tst_kalliope PRIVATE kalliope_dsp krate_app krate_testing 
 add_test(NAME tst_kalliope COMMAND tst_kalliope)
 
 # Patches and the arpeggiator: the same controller sources, through the instrument's registry entry.
-foreach(test tst_patches tst_arp)
+foreach(test tst_patches tst_arp tst_sequencer)
 add_executable(kalliope_${test}
     tests/${test}.cpp
     app/KalliopeController.h
@@ -95,6 +105,10 @@ add_executable(kalliope_${test}
     app/PatchController.cpp
     app/PatchFile.h
     app/PatchFile.cpp
+    app/SequenceController.h
+    app/SequenceController.cpp
+    app/SequenceFile.h
+    app/SequenceFile.cpp
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
     ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
 )

@@ -22,7 +22,7 @@ enum class ParamId : int {
     Env2A, Env2D, Env2S, Env2R,
     EnvKey,
     KeyMode, Velocity, BendRange,
-    ArpOn, ArpMode, ArpRange, ArpRate, ArpHold,
+    PlayMode, ArpMode, ArpRange, ArpRate, ArpHold, GenDensity,
     Chorus, DelayLevel, DelayTime, DelayFb,
     Volume,
     Tempo,
@@ -51,6 +51,7 @@ std::string envSrc(float v);
 std::string envTime(float v);
 std::string keyMode(float v);
 std::string bendRange(float v);
+std::string playMode(float v);
 std::string arpMode(float v);
 std::string arpRange(float v);
 std::string arpRate(float v);
@@ -72,6 +73,7 @@ inline constexpr int kVco2Wave = 4;  // Sine, Saw, Pulse, Noise
 inline constexpr int kSwitch = 2;    // Off, On (and other two-way switches)
 inline constexpr int kKeyMode = 3;   // Poly, Unison, Solo
 inline constexpr int kBendRange = 12;
+inline constexpr int kPlayMode = 3;  // Note, Arpeggio, Sequencer
 inline constexpr int kArpMode = 4;   // Up, Down, Up & Down, Random
 inline constexpr int kArpRange = 4;  // 1..4 octaves
 inline constexpr int kArpRate = 4;   // 1/8, 1/16, 1/8T, 1/16T
@@ -122,11 +124,12 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"key_mode",    "Key Mode",          0.0f,                         p::kKeyMode,   &format::keyMode},
     {"velocity",    "Velocity",          0.5f,                         0,             &format::percent},
     {"bend_range",  "Bend Range",        position(1, p::kBendRange),   p::kBendRange, &format::bendRange},
-    {"arp_on",      "Arpeggio",          0.0f,                         p::kSwitch,    &format::onOff},
+    {"play_mode",   "Play Mode",         0.0f,                         p::kPlayMode,  &format::playMode},
     {"arp_mode",    "Arp Mode",          0.0f,                         p::kArpMode,   &format::arpMode},
     {"arp_range",   "Arp Range",         0.0f,                         p::kArpRange,  &format::arpRange},
-    {"arp_rate",    "Arp Rate",          position(1, p::kArpRate),     p::kArpRate,   &format::arpRate},
+    {"arp_rate",    "Rate",              position(1, p::kArpRate),     p::kArpRate,   &format::arpRate},
     {"arp_hold",    "Hold",              0.0f,                         p::kSwitch,    &format::onOff},
+    {"gen_density", "Density",           0.6f,                         0,             &format::percent},
     {"chorus",      "Chorus",            position(1, p::kChorus),      p::kChorus,    &format::chorus},
     {"delay_level", "Delay Level",       0.0f,                         0,             &format::percent},
     {"delay_time",  "Delay Time",        position(2, p::kDelayTime),   p::kDelayTime, &format::delayTime},
@@ -137,8 +140,12 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
 
 inline constexpr const krate::ParamDescriptor &paramDescriptor(ParamId id) { return kParams[std::size_t(id)]; }
 
-// True for the parameters a patch stores (all but Volume, Tempo and Hold; docs/PLAY.md#patches).
-constexpr bool inPatch(ParamId id) { return id != ParamId::Volume && id != ParamId::Tempo && id != ParamId::ArpHold; }
+// True for the parameters a patch stores (all but Volume, Tempo, Hold and the
+// generator's Density; docs/PLAY.md#patches).
+constexpr bool inPatch(ParamId id)
+{
+    return id != ParamId::Volume && id != ParamId::Tempo && id != ParamId::ArpHold && id != ParamId::GenDensity;
+}
 
 namespace units {
 inline constexpr double kTempoMinBpm = 40.0;

@@ -70,6 +70,7 @@ std::string envSrc(float v) { return choice<2>(v, {"ENV-1", "ENV-2"}); }
 std::string envTime(float v) { return seconds(units::envSeconds(v)); }
 std::string keyMode(float v) { return choice<3>(v, {"Poly", "Unison", "Solo"}); }
 std::string bendRange(float v) { return std::format("{} st", units::bendSemitones(v)); }
+std::string playMode(float v) { return choice<3>(v, {"Note", "Arpeggio", "Sequencer"}); }
 std::string arpMode(float v) { return choice<4>(v, {"Up", "Down", "Up & Down", "Random"}); }
 std::string arpRange(float v) { return std::format("{} oct", 1 + units::index(v, positions::kArpRange)); }
 std::string arpRate(float v) { return choice<4>(v, {"1/8", "1/16", "1/8T", "1/16T"}); }

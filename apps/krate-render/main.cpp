@@ -90,7 +90,7 @@ int main(int argc, char **argv)
     int polyIndex = -1;
     if (kalliopeLevel >= 0.0f) {
         namespace kp = kalliope::positions;
-        poly.setParam(kalliope::ParamId::ArpOn, 1.0f);
+        poly.setParam(kalliope::ParamId::PlayMode, kalliope::position(1, kp::kPlayMode));
         poly.setParam(kalliope::ParamId::ArpMode, kalliope::position(2, kp::kArpMode));
         poly.setParam(kalliope::ParamId::ArpRange, kalliope::position(1, kp::kArpRange));
         poly.setParam(kalliope::ParamId::Cutoff, 0.4f);

@@ -24,7 +24,7 @@ private slots:
     void parameterTable()
     {
         QCOMPARE(int(kParams.size()), ParamCount);
-        QCOMPARE(ParamCount, 49);
+        QCOMPARE(ParamCount, 50);
         QCOMPARE(paramDescriptor(ParamId::LfoRate).key, std::string_view("lfo_rate"));
         QCOMPARE(paramDescriptor(ParamId::Cutoff).key, std::string_view("cutoff"));
         QCOMPARE(paramDescriptor(ParamId::Env2R).key, std::string_view("env2_r"));
@@ -65,7 +65,8 @@ private slots:
         QVERIFY(!inPatch(ParamId::Tempo));
         QVERIFY(!inPatch(ParamId::ArpHold));
         QVERIFY(inPatch(ParamId::Cutoff));
-        QVERIFY(inPatch(ParamId::ArpOn));
+        QVERIFY(inPatch(ParamId::PlayMode));
+        QVERIFY(!inPatch(ParamId::GenDensity));
     }
 
     void entryDescribesKalliope()
@@ -76,7 +77,7 @@ private slots:
         QCOMPARE(entry.qmlModule, QStringLiteral("Kalliope"));
         QCOMPARE(entry.panelComponent, QStringLiteral("Panel"));
         QCOMPARE(entry.defaultMidiChannel, 1);
-        QCOMPARE(entry.actions.size(), 19);
+        QCOMPARE(entry.actions.size(), 25);
         QVERIFY(entry.actions.contains(QStringLiteral("bank8")));
         QVERIFY(entry.actions.contains(QStringLiteral("patch1")));
         QVERIFY(entry.actions.contains(QStringLiteral("write")));

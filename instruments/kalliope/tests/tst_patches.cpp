@@ -154,7 +154,11 @@ private slots:
         QCOMPARE(k.patches.number(), 2);
         QCOMPARE(k.patches.name(), QStringLiteral("Tremolo Keys"));
         instance->triggerAction(QStringLiteral("arp"));
-        QCOMPARE(k.controller.value(QStringLiteral("arp_on")), 1.0);
+        QCOMPARE(k.controller.value(QStringLiteral("play_mode")), 0.5); // Arpeggio
+        instance->triggerAction(QStringLiteral("seq"));
+        QCOMPARE(k.controller.value(QStringLiteral("play_mode")), 1.0); // Sequencer
+        instance->triggerAction(QStringLiteral("seq"));
+        QCOMPARE(k.controller.value(QStringLiteral("play_mode")), 0.0); // back to Note
         instance->triggerAction(QStringLiteral("hold"));
         QCOMPARE(k.controller.value(QStringLiteral("arp_hold")), 1.0);
         instance->triggerAction(QStringLiteral("write"));

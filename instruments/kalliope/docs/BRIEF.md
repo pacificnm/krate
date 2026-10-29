@@ -6,13 +6,14 @@ Kalliope is an eight-voice polyphonic synthesizer for the [Krate](../../../READM
 
 It follows the classic early-80s flagship polysynth layout: a black panel of vertical sliders under orange section headers, rotary range and waveform selectors, a row of colored function buttons, a keyboard. Every name, logo and graphic is our own: the panel reads "Kalliope" and "Polyphonic Synthesizer". The reference screenshot stays out of the repository (`reference/` is git-ignored).
 
-Related docs: [DSP.md](DSP.md) (voices, filters, effects), [PLAY.md](PLAY.md) (voice modes, arpeggiator, patches), [UI.md](UI.md), [ROADMAP.md](ROADMAP.md). Suite design: [SHARED_FOUNDATIONS.MD](../../../docs/SHARED_FOUNDATIONS.MD).
+Related docs: [DSP.md](DSP.md) (voices, filters, effects), [PLAY.md](PLAY.md) (voice modes, arpeggiator, patches), [SEQUENCER.md](SEQUENCER.md) (step sequencer, pattern generator), [UI.md](UI.md), [ROADMAP.md](ROADMAP.md). Suite design: [SHARED_FOUNDATIONS.MD](../../../docs/SHARED_FOUNDATIONS.MD).
 
 ## Scope (v1)
 
 - **8 voices**, each: VCO-1 and VCO-2 (cross-mod, sync, noise), source mix, HPF, 12/24 dB resonant low-pass, VCA, two ADSR envelopes; one LFO shared by all voices with a delay (fade-in) per note.
 - **Key modes**: Poly (8 voices, oldest-note stealing), Unison (all 8 on one note, detuned), Solo (one voice, last-note priority, legato).
 - **Arpeggiator**: Up, Down, Up & Down, Random; 1–4 octaves; 1/8, 1/16, 1/8T, 1/16T; Hold; locked to the transport (standalone or the rack's).
+- **Step sequencer and pattern generator** ([SEQUENCER.md](SEQUENCER.md)): 8 patterns of up to 16 steps (notes, chords, rests, ties), recorded step by step and transposed from the keys; GENERATE writes a pattern from the held notes.
 - **Effects**: stereo chorus (off, I, II), tempo-synced delay.
 - **Patches**: 8 banks × 8 patches; a set of factory patches; WRITE stores the panel into a patch.
 - **MIDI**: notes with velocity, pitch bend (±2 semitones), mod wheel (adds LFO to pitch), sustain pedal (CC 64), Program Change selects a patch (standalone); MIDI Learn for every slider, selector and button; in the rack, default channel 2.
@@ -58,11 +59,12 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | Voice | `key_mode` | Key Mode | Poly, Unison, Solo (3) |
 | | `velocity` | Velocity | 0–100% of velocity on VCA and VCF env amount |
 | | `bend_range` | Bend Range | 1–12 semitones (12) |
-| Arpeggiator | `arp_on` | Arpeggio | Off, On (2) |
+| Play | `play_mode` | Play Mode | Note, Arpeggio, Sequencer (3): what the keys do (PLAY.md, SEQUENCER.md) |
 | | `arp_mode` | Arp Mode | Up, Down, Up & Down, Random (4) |
 | | `arp_range` | Arp Range | 1–4 octaves (4) |
-| | `arp_rate` | Arp Rate | 1/8, 1/16, 1/8T, 1/16T (4) |
+| | `arp_rate` | Rate | 1/8, 1/16, 1/8T, 1/16T (4), for the arpeggiator and the sequencer |
 | | `arp_hold` | Hold | Off, On (2) *panel* |
+| | `gen_density` | Density | 0–100%: how many steps the pattern generator fills *panel* |
 | Effects | `chorus` | Chorus | Off, I, II (3) |
 | | `delay_level` | Delay Level | 0–100% wet |
 | | `delay_time` | Delay Time | 1/16, 1/8T, 1/8, 1/8 dotted, 1/4, 1/4 dotted, 1/2 (7), synced to the tempo |
@@ -70,7 +72,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | Master | `volume` | Volume | output level *panel* |
 | | `tempo` | Tempo | 40–240 BPM; drives the standalone transport, unused in the rack (as k303 and K909) *panel* |
 
-49 parameters, within `ParamValues`' limit of 64.
+50 parameters, within `ParamValues`' limit of 64.
 
 ## MIDI
 
@@ -90,7 +92,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | id / name | `kalliope` / `Kalliope` |
 | default MIDI channel | 1 (channel 2) |
 | QML module / panel | `Kalliope` / `Panel` |
-| actions | `bank1` … `bank8`, `patch1` … `patch8`, `arp`, `hold`, `write` |
+| actions | `bank1` … `bank8`, `patch1` … `patch8`, `note`, `arp`, `seq`, `hold`, `write`, `start`, `rest`, `tie`, `generate` |
 
 ## Outputs
 

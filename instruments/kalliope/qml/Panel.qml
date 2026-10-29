@@ -356,7 +356,17 @@ Item {
         }
     }
 
-    // ---- Function deck: arpeggiator, key mode, patches, effects
+    // ---- Function deck: play mode (note / arpeggio / sequencer), key mode, patches or steps, effects
+
+    readonly property bool seqMode: Kalliope.revision >= 0 && Kalliope.value("play_mode") > 0.75
+    property bool blink: false
+    Timer {
+        interval: 250
+        repeat: true
+        running: Patches.writing || Patches.pendingBank >= 0 || Sequencer.cursor >= 0
+        onTriggered: panel.blink = !panel.blink
+        onRunningChanged: panel.blink = false
+    }
 
     Rectangle {
         x: panel.margin
@@ -368,10 +378,10 @@ Item {
     }
     Repeater {
         model: [
-            { title: "ARPEGGIO", x: 40, w: 290 },
-            { title: "KEY MODE", x: 345, w: 215 },
-            { title: "PATCH", x: 575, w: 225 },
-            { title: "BANK  ·  PATCH NUMBER", x: 815, w: 425 },
+            { title: "ARPEGGIO  ·  SEQUENCER", x: 40, w: 430 },
+            { title: "KEY MODE", x: 485, w: 155 },
+            { title: "PATCH", x: 655, w: 205 },
+            { title: "BANK  ·  PATCH NUMBER", x: 875, w: 365 },
             { title: "FX", x: 1255, w: 321 }
         ]
 
@@ -385,7 +395,8 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                text: parent.modelData.title
+                // The step rows' header changes with the mode.
+                text: parent.modelData.x === 875 && panel.seqMode ? "SEQUENCER STEPS  1 – 16" : parent.modelData.title
                 color: "#111111"
                 font.family: Theme.labelFont
                 font.pixelSize: 13
@@ -402,8 +413,8 @@ Item {
         hasLed: true
         ledOn: Kalliope.revision >= 0 && Kalliope.value(key) > 0.5
         onClicked: Kalliope.setValue(key, ledOn ? 0 : 1)
-        width: 58
-        height: 46
+        width: 56
+        height: 40
 
         LearnOverlay {
             anchors.fill: parent
@@ -412,33 +423,133 @@ Item {
         }
     }
 
-    // Arpeggio: ARP, HOLD, mode / range / rate
-    DeckLabel { x: 56; y: 604; width: 58; text: "ARP" }
-    ToggleButton { key: "arp_on"; x: 56; y: 624; tint: "#E2701F" }
-    DeckLabel { x: 124; y: 604; width: 58; text: "HOLD" }
-    ToggleButton { key: "arp_hold"; x: 124; y: 624; tint: "#E8C12A" }
-    Repeater {
-        model: [{ key: "arp_mode", label: "MODE", cx: 214 }, { key: "arp_range", label: "RANGE", cx: 262 },
-                { key: "arp_rate", label: "RATE", cx: 308 }]
+    // A button that fires one of Kalliope's learnable actions.
+    component ActionButton: PanelButton {
+        id: actionButton
+        required property string action
+        width: 56
+        height: 36
 
-        Item {
-            id: arpKnob
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: actionButton.action
+            round: false
+        }
+    }
+
+    // A small knob with its label above and its value under it.
+    component DeckKnob: Item {
+        id: deckKnob
+        required property string key
+        required property string label
+        required property real cx
+        property real knobY: 682
+        property real size: 36
+        DeckLabel { x: deckKnob.cx - width / 2; y: deckKnob.knobY - 18; text: deckKnob.label }
+        ParamKnob {
+            id: deckControl
+            key: deckKnob.key
+            x: deckKnob.cx - width / 2
+            y: deckKnob.knobY
+            width: deckKnob.size
+            height: deckKnob.size
+        }
+        ValueText {
+            x: deckKnob.cx - width / 2
+            y: deckKnob.knobY + deckKnob.size + 2
+            width: 58
+            text: deckControl.displayText
+        }
+    }
+
+    // Play mode: NOTE / ARP / SEQ (one lit), HOLD, START, CLEAR
+    Repeater {
+        model: [{ label: "NOTE", tint: "#D8D8D4" }, { label: "ARP", tint: "#E2701F" }, { label: "SEQ", tint: "#E8C12A" }]
+
+        PanelButton {
+            id: playButton
+            required property int index
             required property var modelData
-            DeckLabel { x: arpKnob.modelData.cx - width / 2; y: 604; text: arpKnob.modelData.label }
-            ParamKnob {
-                id: arpControl
-                key: arpKnob.modelData.key
-                x: arpKnob.modelData.cx - width / 2
-                y: 624
-                width: 40
-                height: 40
+            readonly property real position: index / 2
+            readonly property bool lit: Kalliope.revision >= 0 && Math.abs(Kalliope.value("play_mode") - position) < 0.01
+            x: 52 + index * 62
+            y: 614
+            width: 56
+            height: 40
+            text: "Play mode " + modelData.label
+            tint: lit ? Qt.lighter(modelData.tint, 1.25) : Qt.darker(modelData.tint, 1.6)
+            onClicked: Kalliope.setValue("play_mode", position)
+
+            DeckLabel { x: playButton.width / 2 - width / 2; y: -18; text: playButton.modelData.label }
+        }
+    }
+    Item {
+        LearnOverlay { // the play mode buttons learn as one selector
+            x: 48
+            y: 610
+            width: 186
+            height: 48
+            paramKey: "play_mode"
+            round: false
+        }
+    }
+    DeckLabel { x: 248; y: 596; width: 56; text: "HOLD" }
+    ToggleButton { key: "arp_hold"; x: 248; y: 614; tint: "#E8C12A" }
+    DeckLabel { x: 330; y: 596; width: 56; text: "START"; visible: Kalliope.ownsTransport }
+    ActionButton {
+        action: "start"
+        visible: Kalliope.ownsTransport
+        x: 330
+        y: 614
+        height: 40
+        text: "Start or stop"
+        tint: "#F0F0EE"
+        hasLed: true
+        ledOn: Kalliope.playing
+        onClicked: Kalliope.playing = !Kalliope.playing
+    }
+    DeckLabel { x: 400; y: 596; width: 56; text: "CLEAR"; visible: panel.seqMode }
+    PanelButton {
+        visible: panel.seqMode
+        x: 400
+        y: 614
+        width: 56
+        height: 40
+        dark: true
+        text: "Clear the sequencer pattern"
+        onClicked: Sequencer.clear()
+    }
+
+    // Arpeggio and generator knobs; generator and step-entry buttons
+    DeckKnob { key: "arp_mode"; label: "MODE"; cx: 70 }
+    DeckKnob { key: "arp_range"; label: "RANGE"; cx: 124 }
+    DeckKnob { key: "arp_rate"; label: "RATE"; cx: 178 }
+    DeckKnob { key: "gen_density"; label: "DENSITY"; cx: 236 }
+    Repeater {
+        model: [{ label: "GEN", action: "generate", x: 282, tint: "#E2701F" },
+                { label: "REST", action: "rest", x: 344, tint: "#9A9B9E" },
+                { label: "TIE", action: "tie", x: 406, tint: "#9A9B9E" }]
+
+        ActionButton {
+            id: seqButton
+            required property var modelData
+            action: modelData.action
+            x: modelData.x
+            y: 686
+            text: modelData.label
+            tint: modelData.tint
+            enabled: panel.seqMode
+            opacity: enabled ? 1.0 : 0.35
+            onClicked: {
+                if (modelData.action === "generate")
+                    Sequencer.generate()
+                else if (modelData.action === "rest")
+                    Sequencer.rest()
+                else
+                    Sequencer.tie()
             }
-            ValueText {
-                x: arpKnob.modelData.cx - width / 2
-                y: 670
-                width: 52
-                text: arpControl.displayText
-            }
+
+            DeckLabel { x: seqButton.width / 2 - width / 2; y: -18; text: seqButton.modelData.label }
         }
     }
 
@@ -451,72 +562,43 @@ Item {
             required property int index
             required property string modelData
             readonly property real position: index / 2
-            x: 360 + index * 66
-            y: 624
-            width: 58
+            x: 494 + index * 50
+            y: 614
+            width: 44
             height: 40
             text: "Key mode " + modelData
-
-            DeckLabel {
-                x: modeButton.width / 2 - width / 2
-                y: -20
-                text: modeButton.modelData
-            }
             tint: "#3F7FD0"
             hasLed: true
             ledOn: Kalliope.revision >= 0 && Math.abs(Kalliope.value("key_mode") - position) < 0.01
             onClicked: Kalliope.setValue("key_mode", position)
+
+            DeckLabel {
+                x: modeButton.width / 2 - width / 2
+                y: -18
+                text: modeButton.modelData
+                font.pixelSize: 10
+            }
         }
     }
     Item {
         LearnOverlay { // the key mode buttons learn as one selector
-            x: 356
-            y: 620
-            width: 190
-            height: 54
+            x: 490
+            y: 610
+            width: 148
+            height: 48
             paramKey: "key_mode"
             round: false
         }
     }
-    Repeater {
-        model: [{ key: "velocity", label: "VELOCITY", cx: 405 }, { key: "bend_range", label: "BEND", cx: 500 }]
+    DeckKnob { key: "velocity"; label: "VELOCITY"; cx: 528 }
+    DeckKnob { key: "bend_range"; label: "BEND"; cx: 604 }
 
-        Item {
-            id: playKnob
-            required property var modelData
-            DeckLabel { x: playKnob.modelData.cx - width / 2; y: 672; text: playKnob.modelData.label }
-            ParamKnob {
-                id: playControl
-                key: playKnob.modelData.key
-                x: playKnob.modelData.cx - 50
-                y: 692
-                width: 40
-                height: 40
-            }
-            ValueText {
-                x: playKnob.modelData.cx - 6
-                y: 702
-                width: 56
-                horizontalAlignment: Text.AlignLeft
-                text: playControl.displayText
-            }
-        }
-    }
-
-    // Patches (docs/PLAY.md#patches): display, arrows, WRITE, MANUAL; banks and numbers
-    property bool blink: false
-    Timer {
-        interval: 250
-        repeat: true
-        running: Patches.writing || Patches.pendingBank >= 0
-        onTriggered: panel.blink = !panel.blink
-        onRunningChanged: panel.blink = false
-    }
-
-    Rectangle { // two-digit patch display: bank, number; a dot while edited
-        x: 588
+    // Patches (docs/PLAY.md#patches): display, arrows, WRITE, MANUAL. In SEQ
+    // mode the display shows the sequencer pattern (P1..P8) and the arrows pick it.
+    Rectangle { // two-digit display: bank and patch with a dot while edited, or the pattern
+        x: 662
         y: 606
-        width: 96
+        width: 84
         height: 62
         radius: 4
         color: "#120606"
@@ -524,57 +606,71 @@ Item {
         border.width: 2
 
         Accessible.role: Accessible.StaticText
-        Accessible.name: "Patch " + patchDigits.text + ", " + Patches.name
+        Accessible.name: panel.seqMode ? "Sequencer pattern " + (Sequencer.patternIndex + 1)
+                                       : "Patch " + patchDigits.text + ", " + Patches.name
 
         Text {
             id: patchDigits
             anchors.centerIn: parent
-            text: Patches.manual ? "--"
+            text: panel.seqMode ? "P" + (Sequencer.patternIndex + 1)
+                : Patches.manual ? "--"
                 : (Patches.pendingBank >= 0 ? (panel.blink ? " " : String(Patches.pendingBank + 1)) : String(Patches.bank + 1))
                   + String(Patches.number + 1) + (Patches.edited ? "." : "")
             color: "#FF3A26"
             font.family: "monospace"
-            font.pixelSize: 40
+            font.pixelSize: 38
             font.bold: true
         }
     }
     ValueText {
-        x: 584
+        x: 658
         y: 674
-        width: 104
+        width: 92
         elide: Text.ElideRight
         wrapMode: Text.NoWrap
-        text: Patches.name
+        text: !panel.seqMode ? Patches.name
+            : Sequencer.cursor >= 0 ? "Step " + (Sequencer.cursor + 1) + ": "
+                                      + (Sequencer.revision >= 0 ? Sequencer.stepText(Sequencer.cursor) : "")
+            : Sequencer.length + " steps"
         color: panel.silk
         font.pixelSize: 11
     }
     Column {
-        x: 688
+        x: 750
         y: 606
         spacing: 4
-        PanelButton { width: 24; height: 29; faceText: "▲"; text: "Next patch"; onClicked: Patches.step(1) }
-        PanelButton { width: 24; height: 29; faceText: "▼"; text: "Previous patch"; onClicked: Patches.step(-1) }
+        PanelButton {
+            width: 24
+            height: 29
+            faceText: "▲"
+            text: panel.seqMode ? "Next pattern" : "Next patch"
+            onClicked: panel.seqMode ? Sequencer.patternIndex = (Sequencer.patternIndex + 1) % 8 : Patches.step(1)
+        }
+        PanelButton {
+            width: 24
+            height: 29
+            faceText: "▼"
+            text: panel.seqMode ? "Previous pattern" : "Previous patch"
+            onClicked: panel.seqMode ? Sequencer.patternIndex = (Sequencer.patternIndex + 7) % 8 : Patches.step(-1)
+        }
     }
-    PanelButton {
-        x: 718
+    ActionButton {
+        action: "write"
+        visible: !panel.seqMode
+        x: 780
         y: 606
-        width: 74
+        width: 72
         height: 34
         faceText: "WRITE"
         text: "Write: then press a patch number to store the panel there"
         tint: Patches.writing && panel.blink ? "#FF6A55" : "#B8302A"
         onClicked: Patches.toggleWrite()
-
-        LearnOverlay {
-            anchors.fill: parent
-            paramKey: "write"
-            round: false
-        }
     }
     PanelButton {
-        x: 718
+        visible: !panel.seqMode
+        x: 780
         y: 648
-        width: 74
+        width: 72
         height: 34
         faceText: "MANUAL"
         text: "Manual: the panel as set, not tied to a patch"
@@ -582,8 +678,8 @@ Item {
         onClicked: Patches.pressManual()
     }
     Text { // WRITE armed
-        visible: Patches.writing
-        x: 588
+        visible: Patches.writing && !panel.seqMode
+        x: 662
         y: 692
         text: "WRITE: press a patch number"
         color: "#FF3A26"
@@ -591,18 +687,33 @@ Item {
         font.pixelSize: 11
         font.bold: true
     }
+    Text { // recording
+        visible: panel.seqMode && Sequencer.cursor >= 0
+        x: 662
+        y: 692
+        width: 190
+        wrapMode: Text.WordWrap
+        text: "REC: play a note or chord, or REST / TIE. Shift-click a step: last step"
+        color: "#FF3A26"
+        font.family: Theme.labelFont
+        font.pixelSize: 10
+        font.bold: true
+    }
 
-    DeckLabel { x: 824; y: 620; text: "BANK" }
-    DeckLabel { x: 824; y: 676; text: "PATCH" }
+    // Banks and patch numbers, or (SEQ) the sequencer's 16 steps
+    DeckLabel { x: 882; y: 620; text: panel.seqMode ? "1–8" : "BANK" }
+    DeckLabel { x: 882; y: 676; text: panel.seqMode ? "9–16" : "PATCH" }
     Repeater {
         model: 8
 
-        PanelButton {
+        ActionButton {
             id: bankButton
             required property int index
-            x: 872 + index * 45
+            action: "bank" + (index + 1)
+            visible: !panel.seqMode
+            x: 930 + index * 39
             y: 610
-            width: 40
+            width: 35
             height: 34
             faceText: String(index + 1)
             text: "Bank " + (index + 1)
@@ -611,34 +722,63 @@ Item {
                                       : Patches.pendingBank < 0 && !Patches.manual && Patches.bank === index
             tint: lit ? "#FFFFFF" : "#9A9B9E"
             onClicked: Patches.pressBank(index)
-
-            LearnOverlay {
-                anchors.fill: parent
-                paramKey: "bank" + (bankButton.index + 1)
-                round: false
-            }
         }
     }
     Repeater {
         model: 8
 
-        PanelButton {
+        ActionButton {
             id: patchButton
             required property int index
-            x: 872 + index * 45
+            action: "patch" + (index + 1)
+            visible: !panel.seqMode
+            x: 930 + index * 39
             y: 666
-            width: 40
+            width: 35
             height: 34
             faceText: String(index + 1)
             text: "Patch " + (index + 1)
             readonly property bool lit: !Patches.manual && Patches.number === index && Patches.pendingBank < 0
             tint: lit ? "#FFE45C" : "#A88A1E"
             onClicked: Patches.pressPatch(index)
+        }
+    }
+    Repeater { // the sequencer's steps
+        model: 16
 
-            LearnOverlay {
+        Rectangle {
+            id: stepButton
+            required property int index
+            readonly property int state: Sequencer.revision >= 0 ? Sequencer.stepState(index) : 0
+            readonly property bool inPattern: index < Sequencer.length
+            readonly property bool playing: Sequencer.playingStep === index
+            readonly property bool recording: Sequencer.cursor === index
+            visible: panel.seqMode
+            x: 930 + (index % 8) * 39
+            y: index < 8 ? 610 : 666
+            width: 35
+            height: 34
+            radius: 4
+            border.color: "#0E0E0F"
+            opacity: inPattern ? 1.0 : 0.3
+            color: recording ? (panel.blink ? "#FF3A26" : "#6A1A12")
+                 : playing ? "#FFFFFF"
+                 : state === 1 ? "#FFE45C" : state === 2 ? "#C8892A" : "#4A4B4E"
+
+            Accessible.role: Accessible.Button
+            Accessible.name: "Step " + (index + 1) + ": " + (Sequencer.revision >= 0 ? Sequencer.stepText(index) : "")
+
+            Text {
+                anchors.centerIn: parent
+                text: stepButton.index + 1
+                color: stepButton.state === 0 && !stepButton.playing && !stepButton.recording ? "#C8C9CC" : "#111"
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+                font.bold: true
+            }
+            MouseArea {
                 anchors.fill: parent
-                paramKey: "patch" + (patchButton.index + 1)
-                round: false
+                onClicked: mouse => Sequencer.pressStep(stepButton.index, (mouse.modifiers & Qt.ShiftModifier) !== 0)
             }
         }
     }

@@ -32,7 +32,7 @@ class TestArp : public QObject
         {
             engine.prepare(kRate, kBlock);
             engine.setParam(ParamId::Chorus, 0.0f);
-            engine.setParam(ParamId::ArpOn, 1.0f);
+            engine.setParam(ParamId::PlayMode, 0.5f); // Arpeggio
             transport.setBpm(120.0);
             transport.setPlaying(true);
         }
@@ -156,7 +156,7 @@ private slots:
         rig.key(60, true);
         rig.key(64, true);
         rig.run(kStep);
-        rig.engine.setParam(ParamId::ArpOn, 0.0f);
+        rig.engine.setParam(ParamId::PlayMode, 0.0f); // Note
         rig.run(kStep);
         QCOMPARE(rig.engine.arpNote(), -1);
         int gated = 0;
@@ -165,7 +165,7 @@ private slots:
         QCOMPARE(gated, 2);
     }
 
-    // Standalone: Arpeggio on starts the transport, off stops what it started.
+    // Standalone: Play Mode Arpeggio starts the transport, leaving it stops what it started.
     void standaloneArpRunsTheTransport()
     {
         QTemporaryDir dir;
@@ -174,14 +174,14 @@ private slots:
         const auto instance = registryEntry().create(context);
         auto &k = static_cast<Instance &>(*instance);
         QVERIFY(!transport.playing());
-        k.controller.setValue(QStringLiteral("arp_on"), 1.0);
+        k.controller.setValue(QStringLiteral("play_mode"), 0.5); // Arpeggio
         QVERIFY(transport.playing());
-        k.controller.setValue(QStringLiteral("arp_on"), 0.0);
+        k.controller.setValue(QStringLiteral("play_mode"), 0.0); // Note
         QVERIFY(!transport.playing());
-        // Started by hand: turning the arpeggio off leaves it running.
+        // Started by hand: leaving Arpeggio leaves it running.
         k.controller.setPlaying(true);
-        k.controller.setValue(QStringLiteral("arp_on"), 1.0);
-        k.controller.setValue(QStringLiteral("arp_on"), 0.0);
+        k.controller.setValue(QStringLiteral("play_mode"), 0.5);
+        k.controller.setValue(QStringLiteral("play_mode"), 0.0);
         QVERIFY(transport.playing());
     }
 };

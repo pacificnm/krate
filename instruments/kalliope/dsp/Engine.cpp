@@ -132,6 +132,7 @@ void Engine::allNotesOff() noexcept
     m_heldCount = 0;
     m_latchedCount = 0;
     m_arpNote = -1;
+    m_seqCount = 0;
     m_sustained.fill(false);
     for (Voice &voice : m_voices)
         voice.noteOff();
@@ -231,6 +232,10 @@ void Engine::noteOn(int note, int velocity) noexcept
 
     if (m_arpOn)
         return; // the arpeggiator plays it
+    if (m_playMode == PlayMode::Sequencer && m_arpClock.running()) {
+        m_transpose = note - kSeqTransposeCentre; // keys transpose the running pattern
+        return;
+    }
     if (m_mode != KeyMode::Poly)
         playMono(!othersHeld); // legato while another key is down
     else
@@ -256,6 +261,8 @@ void Engine::noteOff(int note) noexcept
         }
     if (m_arpOn)
         return; // the arpeggiator follows the held (or latched) keys
+    if (m_playMode == PlayMode::Sequencer && m_arpClock.running())
+        return; // transposing keys don't sound
 
     if (m_mode != KeyMode::Poly) {
         if (!wasTop)
@@ -274,7 +281,7 @@ void Engine::noteOff(int note) noexcept
 
 void Engine::arpUpdate(const krate::TransportState &transport) noexcept
 {
-    const bool on = units::index(m_params.get(int(ParamId::ArpOn)), positions::kSwitch) == 1;
+    const auto mode = PlayMode(units::index(m_params.get(int(ParamId::PlayMode)), positions::kPlayMode));
     const bool hold = units::index(m_params.get(int(ParamId::ArpHold)), positions::kSwitch) == 1;
     if (hold != m_hold) {
         m_hold = hold;
@@ -284,13 +291,19 @@ void Engine::arpUpdate(const krate::TransportState &transport) noexcept
             for (int i = 0; i < m_heldCount; ++i)
                 m_latched[std::size_t(m_latchedCount++)] = m_held[std::size_t(i)];
     }
-    if (on != m_arpOn) {
-        m_arpOn = on;
+    while (const auto pattern = m_sequences.pop())
+        m_sequence = *pattern;
+
+    if (mode != m_playMode) {
         arpRelease();
-        if (on) {
+        seqRelease();
+        m_arpClock.stop();
+        m_playMode = mode;
+        m_arpOn = mode == PlayMode::Arpeggio;
+        if (mode == PlayMode::Arpeggio) {
             releaseAllVoices(); // held keys stop sounding as chords: the arpeggio takes over
         } else {
-            m_arpClock.stop();
+            releaseAllVoices();
             // Keys still down play as chords again.
             for (int i = 0; i < m_heldCount; ++i)
                 if (m_mode == KeyMode::Poly)
@@ -302,28 +315,78 @@ void Engine::arpUpdate(const krate::TransportState &transport) noexcept
 
     m_arpClock.setStepsPerBeat(kArpStepsPerBeat[units::index(m_params.get(int(ParamId::ArpRate)), positions::kArpRate)]);
     m_arpClock.setGateLength(kArpGate);
-    const bool run = m_arpOn && transport.playing;
+    m_arpClock.setLength(m_playMode == PlayMode::Sequencer ? m_sequence.length : 16);
+    const bool run = m_playMode != PlayMode::Note && transport.playing;
     if (run && (transport.restarted || !m_arpClock.running())) {
         arpRelease();
+        seqRelease();
+        if (m_playMode == PlayMode::Sequencer)
+            releaseAllVoices(); // keys stop sounding: from now on they transpose
         m_arpClock.start();
         m_arpPosition = 0;
     } else if (!run && m_arpClock.running()) {
         m_arpClock.stop();
         arpRelease();
+        seqRelease();
     }
+}
+
+void Engine::playNotes(const int *notes, int count) noexcept
+{
+    if (count <= 0)
+        return;
+    if (m_mode == KeyMode::Poly) {
+        for (int i = 0; i < count; ++i)
+            voiceOn(notes[i]);
+        return;
+    }
+    // Solo and Unison: one note at a time, the top one.
+    const int top = *std::max_element(notes, notes + count);
+    const int voices = m_mode == KeyMode::Unison ? kVoices : 1;
+    for (int v = 0; v < voices; ++v) {
+        m_sustained[std::size_t(v)] = false;
+        m_voices[std::size_t(v)].noteOn(top, m_lastVelocity, true);
+    }
+}
+
+void Engine::releaseNotes(const int *notes, int count) noexcept
+{
+    if (count <= 0)
+        return;
+    if (m_mode == KeyMode::Poly) {
+        for (int i = 0; i < count; ++i)
+            voiceOff(notes[i]);
+        return;
+    }
+    const int voices = m_mode == KeyMode::Unison ? kVoices : 1;
+    for (int v = 0; v < voices; ++v)
+        releaseVoice(v);
+}
+
+void Engine::seqRelease() noexcept
+{
+    releaseNotes(m_seqNotes.data(), m_seqCount);
+    m_seqCount = 0;
+}
+
+void Engine::seqStep(int step) noexcept
+{
+    if (step < 0 || step >= 16)
+        return;
+    const SeqStep &s = m_sequence.steps[std::size_t(step)];
+    if (s.tie && m_seqCount > 0)
+        return; // the notes go on
+    seqRelease();
+    for (int i = 0; i < s.count && i < 4; ++i)
+        m_seqNotes[std::size_t(m_seqCount++)] = std::clamp(int(s.notes[std::size_t(i)]) + m_transpose, 0, 127);
+    playNotes(m_seqNotes.data(), m_seqCount);
 }
 
 void Engine::arpRelease() noexcept
 {
     if (m_arpNote < 0)
         return;
-    if (m_mode == KeyMode::Poly) {
-        voiceOff(m_arpNote);
-    } else {
-        const int count = m_mode == KeyMode::Unison ? kVoices : 1;
-        for (int v = 0; v < count; ++v)
-            releaseVoice(v);
-    }
+    releaseNotes(&m_arpNote, 1);
     m_arpNote = -1;
 }
 
@@ -371,15 +434,7 @@ void Engine::arpStep() noexcept
     ++m_arpPosition;
     const int note = std::min(127, keys[index % std::uint32_t(count)] + 12 * int(index / std::uint32_t(count)));
 
-    if (m_mode == KeyMode::Poly) {
-        voiceOn(note);
-    } else {
-        const int voices = m_mode == KeyMode::Unison ? kVoices : 1;
-        for (int v = 0; v < voices; ++v) {
-            m_sustained[std::size_t(v)] = false;
-            m_voices[std::size_t(v)].noteOn(note, m_lastVelocity, true);
-        }
-    }
+    playNotes(&note, 1);
     m_arpNote = note;
 }
 
@@ -499,12 +554,20 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         }
         if (m_arpClock.running()) {
             const auto tick = m_arpClock.tick(transport.beatAtBlockStart + double(i) * beatsPerSample);
+            const bool sequencer = m_playMode == PlayMode::Sequencer;
             if (tick.stepStarted) {
                 renderTo(i);
-                arpStep();
+                if (sequencer)
+                    seqStep(m_arpClock.step());
+                else
+                    arpStep();
             } else if (tick.gatePoint) {
                 renderTo(i);
-                arpRelease();
+                // A tie on the next step holds the notes through it.
+                if (!sequencer)
+                    arpRelease();
+                else if (!m_sequence.steps[std::size_t(m_arpClock.nextStep())].tie)
+                    seqRelease();
             }
         }
     }
@@ -513,6 +576,8 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     renderTo(block.frames);
 
     publishHeld();
+    m_seqPlayingStep.store(m_playMode == PlayMode::Sequencer && m_arpClock.running() ? m_arpClock.step() : -1,
+                           std::memory_order_relaxed);
 
     // The voices are mono: the chorus makes them stereo, then the delay, then Volume.
     m_chorus.process(left, left, right, block.frames, units::index(m_params.get(int(ParamId::Chorus)), positions::kChorus));

@@ -12,10 +12,10 @@
 
 Runs on the audio thread on the shared `krate::StepClock`, ticked every sample from the transport's beat position, so it locks to the transport: the standalone app's (Tempo; Space) or the rack's transport bar. Steps and gate ends land on their exact sample.
 
-- **Keys and notes.** With Arpeggio off, keys play voices directly. With it on, keys only feed the arpeggiator, which plays the voices. Turning it on releases the keys' chord; turning it off plays the keys still down as a chord again.
-- **Standalone**, turning Arpeggio on starts the transport if it is stopped, and turning it off stops it again if Arpeggio was what started it (a transport you started by hand keeps running). **In the rack**, the arpeggio runs while the rack's transport plays.
+- **Play Mode** (NOTE / ARP / SEQ) chooses what the keys do. In NOTE, keys play voices directly. In ARP, keys only feed the arpeggiator, which plays the voices. (SEQ: the step sequencer, [SEQUENCER.md](SEQUENCER.md).) Choosing ARP releases the keys' chord; going back to NOTE plays the keys still down as a chord again.
+- **Standalone**, choosing ARP starts the transport if it is stopped, and leaving ARP stops it again if ARP was what started it (a transport you started by hand, with START or Space, keeps running). **In the rack**, the arpeggio runs while the rack's transport plays.
 - **Mode**: Up, Down, Up & Down (the top and bottom notes are not repeated), Random. The held notes are ordered low to high, without repeats, and extended over **Range** octaves (1–4).
-- **Rate**: 1/8, 1/16, 1/8T, 1/16T (2, 4, 3 or 6 steps per beat). Each note lasts half a step.
+- **Rate**: 1/8, 1/16, 1/8T, 1/16T (2, 4, 3 or 6 steps per beat), shared with the sequencer. Each note lasts half a step.
 - **Hold**: released keys stay in the arpeggio; the first key of a new chord (with no keys down) replaces them. Turning Hold on latches what is held at that moment.
 - Velocity is the last key's. The arpeggio plays through the current Key Mode: Poly lets release tails overlap; Unison and Solo retrigger every note.
 
