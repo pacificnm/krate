@@ -15,9 +15,10 @@ namespace krimson {
 
 // Krimson's realtime core (docs/DSP.md). Four slots, each a full set of sound
 // parameters; the IInstrument parameter table shows the slot being edited
-// (docs/BRIEF.md#parameters-one-slot-at-a-time). C1: one voice playing the
-// edited slot's sound, last-note priority, at 2x and decimated; pitch bend and
-// the mod wheel (vibrato). Polyphony arrives in C2, the slots playing in C3.
+// (docs/BRIEF.md#parameters-one-slot-at-a-time). C2: 16 voices with Poly,
+// Mono, Legato and Unison, glide, sustain, pitch bend and the mod wheel
+// (vibrato), at 2x and decimated, playing the edited slot. Each voice remembers
+// its slot, so the slots can share the voices in C3.
 class Engine final : public krate::IInstrument
 {
 public:
@@ -47,6 +48,17 @@ public:
     // A slot's sound in DSP units.
     SlotSettings settings(int slot) const noexcept;
 
+    static constexpr int kVoices = 16;
+    static constexpr int kUnisonVoices = 3; // voices stacked per note in Unison
+    enum class VoiceMode { Poly, Mono, Legato, Unison };
+
+    // Inspection (tests).
+    int activeVoices() const noexcept;
+    bool voiceActive(int v) const noexcept { return m_voices[std::size_t(v)].active(); }
+    bool voiceGate(int v) const noexcept { return m_voices[std::size_t(v)].gate(); }
+    int voiceNote(int v) const noexcept { return m_voices[std::size_t(v)].note(); }
+    double voiceLevel(int v) const noexcept { return m_voices[std::size_t(v)].level(); }
+
 private:
     using Store = krate::ParamValues<ParamCount>;
     Store &store(int index) noexcept { return isSlotParam(index) ? m_slots[std::size_t(editedSlot())] : m_global; }
@@ -57,7 +69,14 @@ private:
     void handleMidi(const krate::MidiEvent &event) noexcept;
     void noteOn(int note, int velocity) noexcept;
     void noteOff(int note) noexcept;
-    void render(float *out, std::uint32_t frames, const SlotSettings &s) noexcept;
+    void setSustain(bool down) noexcept;
+    void allNotesOff() noexcept;
+    void render(float *left, float *right, std::uint32_t frames) noexcept;
+    VoiceMode voiceMode(int slot) const noexcept;
+    int pickVoice(int note) noexcept;        // Poly: a voice for the note (stealing if needed)
+    void startVoice(int v, int note, double glideFrom) noexcept;
+    void playMono(bool retrigger) noexcept;  // Mono / Legato / Unison: follow the top held key
+    void releaseVoice(int v) noexcept;       // key up: release, or hold for the pedal
 
     static constexpr std::uint32_t kChunk = 128;
 
@@ -68,12 +87,21 @@ private:
     krate::MidiLearnMap m_learn{kParams};
     double m_sampleRate = 48000.0;
 
-    Voice m_voice;
-    Lfo m_lfo2;     // per slot from C3; slot A's for now
-    Lfo m_vibrato;  // the mod wheel's vibrato
-    krate::HalfbandDecimator<31> m_decimator;
-    std::array<float, 2 * kChunk> m_buffer2x{};
-    std::array<float, kChunk> m_lfo2Values{}, m_vibratoValues{};
+    std::array<Voice, kVoices> m_voices;
+    std::array<int, kVoices> m_voiceSlot{};          // which slot each voice plays
+    std::array<std::uint64_t, kVoices> m_started{};  // note-on order, for stealing
+    std::array<bool, kVoices> m_sustained{};         // key up, held by the pedal
+    std::uint64_t m_counter = 0;
+    VoiceMode m_mode = VoiceMode::Poly;
+    bool m_sustain = false;
+    int m_lastNote = -1;  // for glide
+    std::array<Lfo, SlotCount> m_lfo2;   // per slot
+    Lfo m_vibrato;                       // the mod wheel's vibrato
+    krate::HalfbandDecimator<31> m_decimatorL, m_decimatorR;
+    std::array<float, 2 * kChunk> m_bufferL{}, m_bufferR{};
+    std::array<std::array<float, kChunk>, SlotCount> m_lfo2Values{};
+    std::array<float, kChunk> m_vibratoValues{};
+    std::array<SlotSettings, SlotCount> m_settings{};
     std::array<std::uint8_t, 16> m_held{};
     int m_heldCount = 0;
     float m_lastVelocity = 1.0f;

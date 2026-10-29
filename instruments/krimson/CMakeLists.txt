@@ -45,10 +45,12 @@ target_link_libraries(krimson_ui PUBLIC krimson_dsp krate_host krate_app krate_q
 target_compile_options(krimson_ui PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests
-add_executable(krimson_tst_voice tests/tst_voice.cpp)
-target_compile_options(krimson_tst_voice PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(krimson_tst_voice PRIVATE krimson_dsp krate_testing Qt6::Test)
-add_test(NAME krimson_tst_voice COMMAND krimson_tst_voice)
+foreach(test tst_voice tst_voices)
+    add_executable(krimson_${test} tests/${test}.cpp)
+    target_compile_options(krimson_${test} PRIVATE -Wall -Wextra -Wpedantic)
+    target_link_libraries(krimson_${test} PRIVATE krimson_dsp krate_testing Qt6::Test)
+    add_test(NAME krimson_${test} COMMAND krimson_${test})
+endforeach()
 
 add_executable(tst_krimson
     tests/tst_krimson.cpp

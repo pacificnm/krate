@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 
     krate::MasterStage master;
     if (bench) {
-        // One voice (C1) with sync, FM, drive and full resonance, held for 60 s.
+        // All 16 voices held with sync, FM, drive and full resonance, 60 s.
         krimson::Engine engine;
         engine.prepare(rate, kBlock);
         engine.setParam(ParamId::Sync, 1.0f);
@@ -183,9 +183,12 @@ int main(int argc, char **argv)
         std::vector<float> out;
         out.reserve(std::size_t(rate) * 60 * 2 + 2 * kBlock);
         const auto t0 = std::chrono::steady_clock::now();
-        play(engine, master, {{0.0, 48, 100}}, 60.0, rate, out);
+        std::vector<NoteEvent> chord;
+        for (int note = 40; note < 72; note += 2)
+            chord.push_back({0.0, note, 100});
+        play(engine, master, chord, 60.0, rate, out);
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-        std::printf("rendered 60 s of one voice at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
+        std::printf("rendered 60 s of 16 voices at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
                     seconds, seconds / 60.0 * 100.0);
         return 0;
     }

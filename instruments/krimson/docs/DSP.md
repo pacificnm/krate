@@ -28,8 +28,8 @@ OSC 2 can be the noise source; with keyboard tracking off it stays at middle C p
 | **Filter** | `MultiFilter`: a TPT state-variable core (k = 2 … 0.06 with resonance) gives LP 12, band-pass, high-pass and notch (LP + HP); LP 24 and notch + LP add a second, unresonant (Butterworth) LP 12 stage. Drive: tanh(g·x)/√g with g = 1 … 8 before the filter. A tanh on the output keeps full resonance bounded. Cutoff = knob + filter envelope (8 octaves × velocity scaling) + key tracking (0, ⅓, ⅔, 1 from middle C) + LFOs, smoothed over 3 ms |
 | **Envelopes** | `krate::Envelope`: ADSR (filter, amp) and AD (mod: sustain 0, always restarts from zero) with exponential segments, 0.5 ms … 10 s, snappy at the short end like the target's |
 | **LFOs** | LFO 1 per voice (triangle, saw, square, sample & hold, soft random; restarts when a silent voice starts); LFO 2 per slot (triangle; amp tremolo, filter, or OSC 2 pitch). Vibrato (Wheel set to Vibrato) has its own 5.5 Hz sine, up to 0.7 semitones |
-| **Unison** | The slot's voices stacked on one note (3 per note by default), detuned symmetrically by `unison_detune`, spread in stereo |
-| **Glide** | Exponential pitch glide; in Legato only between held notes |
+| **Unison** | Three voices stacked on the top held note, detuned −, 0, + by `unison_detune` (the outer ones up to ±35 cents) and placed left, centre, right (±0.7); mono, last-note priority, retriggering |
+| **Glide** | Exponential pitch glide from the last note played (the knob is the time to get almost there, up to 2 s), in every mode; in Legato only between held notes (a fresh phrase starts on its note) |
 
 ## Morph
 
@@ -37,7 +37,7 @@ Every continuous parameter of a slot has an optional **morph value**. The morph 
 
 ## Voices and slots
 
-16 voices for the whole instrument. A slot takes voices as notes arrive: a free voice, else the oldest released voice of any slot, else the oldest held voice of the slot playing (with a 2 ms declick). Unison spends 3 voices per note. Each slot keeps its own key list, sustain, bend, wheel, arpeggiator and LFO 2.
+16 voices for the whole instrument, each remembering the slot it plays (C3 lets the slots share them). **Poly**: a note already sounding reuses its voice; else a silent voice; else the oldest released (or pedal-held) voice; else the oldest held one. A taken voice fades out over 2 ms before its new note starts. **Mono**: one voice, last-note priority, retriggering (also when going back to a held key). **Legato**: as Mono without retriggering while keys are held. **Unison**: see above. Changing Voice Mode releases every note; the sustain pedal (CC 64) holds released notes; CC 120 / 123 release everything. Voices are rendered in stereo at 2× (each with its pan) and decimated per side. In C3 each slot keeps its own key list, sustain, bend, wheel, arpeggiator and LFO 2.
 
 ## Effects (per slot, then summed)
 
@@ -49,4 +49,4 @@ Every continuous parameter of a slot has an optional **morph value**. The morph 
 
 ## CPU
 
-Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C1 measures one voice (sync, FM, drive, full resonance) at 0.71 %.
+Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C2 measures 16 voices with sync, FM, drive and full resonance at 9.9 % (one voice: 0.71 %).
