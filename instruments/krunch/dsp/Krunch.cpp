@@ -33,6 +33,11 @@ std::string voice(float v)
 std::string volume(float v) { return v <= 0.0f ? "-inf dB" : db(units::volumeDb(v)); }
 std::string gate(float v) { return v <= 0.0f ? "Off" : std::format("{:.0f} dB", units::gateDb(v)); }
 std::string onOff(float v) { return v >= 0.5f ? "On" : "Off"; }
+std::string cabMix(float v)
+{
+    const long b = std::lround(double(v) * 100.0);
+    return std::format("A {} / B {}", 100 - b, b);
+}
 } // namespace format
 
 namespace {
@@ -58,9 +63,38 @@ void Krunch::prepare(double sampleRate, std::uint32_t) noexcept
         p.prepare(sampleRate);
     m_powerAmp.prepare(sampleRate);
     m_speaker.prepare(sampleRate);
+    m_cabinet.prepare();
+    m_rateForKernels.store(sampleRate, std::memory_order_relaxed);
     m_fadeStep = 1.0 / (kSwitchSeconds * sampleRate);
     m_active = -1;
     m_previous = -1;
+}
+
+void Krunch::addCabinet(int channel, const float *weight, std::uint32_t frames) noexcept
+{
+    const double rate = m_sampleRate;
+    const auto usable = [this, rate](int slot) {
+        const IrKernel *k = m_cabinet.kernel(slot);
+        return k && k->sampleRate() == rate;
+    };
+    const int slotA = cabinetSlot(channel, false), slotB = cabinetSlot(channel, true);
+    const bool a = usable(slotA), b = usable(slotB);
+    if (!a && !b) {
+        for (std::uint32_t n = 0; n < frames; ++n)
+            m_speakerWeight[n] += weight[n];
+        return;
+    }
+    const float mix = a && b ? channelValue(channel, ChannelParam::CabMix) : (b ? 1.0f : 0.0f);
+    const auto assign = [&](int slot, float share) {
+        auto &w = m_slotWeights[std::size_t(slot)];
+        for (std::uint32_t n = 0; n < frames; ++n)
+            w[n] = weight[n] * share;
+        m_slotWeightPtrs[std::size_t(slot)] = w.data();
+    };
+    if (a && mix < 1.0f)
+        assign(slotA, 1.0f - mix);
+    if (b && mix > 0.0f)
+        assign(slotB, mix);
 }
 
 Preamp::Settings Krunch::preampSettings(int channel) const noexcept
@@ -132,14 +166,19 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
     m_gateClosed.store(m_gate.closed(), std::memory_order_relaxed);
 
     runChannel(m_active, m_a.data(), frames);
-    if (m_previous >= 0) {
-        runChannel(m_previous, m_b.data(), frames);
+    const int previous = m_previous; // fading out this block (its cabinet too)
+    if (previous >= 0) {
+        runChannel(previous, m_b.data(), frames);
         for (std::uint32_t n = 0; n < frames; ++n) {
             m_fade = std::min(1.0, m_fade + m_fadeStep);
-            m_a[n] = float(m_a[n] * m_fade + m_b[n] * (1.0 - m_fade));
+            m_fadeIn[n] = float(m_fade);
+            m_fadeOut[n] = float(1.0 - m_fade);
+            m_a[n] = m_a[n] * m_fadeIn[n] + m_b[n] * m_fadeOut[n];
         }
         if (m_fade >= 1.0)
             m_previous = -1;
+    } else {
+        std::fill_n(m_fadeIn.data(), frames, 1.0f);
     }
 
     if (channelValue(m_active, ChannelParam::Loop) >= 0.5f)
@@ -149,8 +188,23 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
                    m_params.get(int(ParamId::Resonance)));
     m_powerAmp.process(m_a.data(), frames);
 
-    // Speaker and level (ramped), mono on both sides. The trim keeps a cranked
-    // master (the output stage at full swing, plus the speaker's peaks) under full scale.
+    // The cabinets: the playing channel's (and the previous one's while it fades).
+    std::fill_n(left, frames, 0.0f);
+    std::fill_n(right, frames, 0.0f);
+    m_slotWeightPtrs.fill(nullptr);
+    std::fill_n(m_speakerWeight.data(), frames, 0.0f);
+    addCabinet(m_active, m_fadeIn.data(), frames);
+    if (previous >= 0)
+        addCabinet(previous, m_fadeOut.data(), frames);
+    m_cabinet.process(m_a.data(), frames, m_slotWeightPtrs.data(), left, right);
+    for (std::uint32_t n = 0; n < frames; ++n) { // the built-in speaker keeps running, so it's ready
+        const float y = m_speaker.process(m_a[n]) * m_speakerWeight[n];
+        left[n] += y;
+        right[n] += y;
+    }
+
+    // Level (ramped). The trim keeps a cranked master (the output stage at full
+    // swing, plus the speaker's peaks) under full scale.
     constexpr double kOutputTrimDb = -4.0;
     const float target = float(units::levelGain(m_params.get(int(ParamId::Level))) * std::pow(10.0, kOutputTrimDb / 20.0));
     if (m_level < 0.0f)
@@ -159,10 +213,9 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
     float outPeak = 0.0f;
     for (std::uint32_t n = 0; n < frames; ++n) {
         m_level += step;
-        const float y = m_speaker.process(m_a[n]) * m_level;
-        left[n] = y;
-        right[n] = y;
-        outPeak = std::max(outPeak, std::fabs(y));
+        left[n] *= m_level;
+        right[n] *= m_level;
+        outPeak = std::max(outPeak, std::max(std::fabs(left[n]), std::fabs(right[n])));
     }
     m_level = target;
     holdPeak(m_outputPeak, outPeak);

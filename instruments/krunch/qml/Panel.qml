@@ -3,14 +3,15 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Krate
 
-// Krunch's panel at design size 1400 x 600: grille cloth with the logo and
+// Krunch's panel at design size 1400 x 700: grille cloth with the logo and
 // where the guitar comes from; below, the control plate: input, the four
-// channel buttons, the playing channel's controls, the power amp, level.
+// channel buttons, the power amp, level; then the playing channel's controls
+// and its cabinet (IRs A and B from the IR library, and their mix).
 Item {
     id: panel
 
     width: 1400
-    height: 600
+    height: 700
 
     readonly property int input: Krunch.revision >= 0 && Krunch.value("input") >= 0.5 ? 1 : 0
     readonly property int channel: Krunch.revision >= 0 ? Math.round(Krunch.value("channel") * 3) : 0
@@ -186,7 +187,7 @@ Item {
         x: 24
         y: 164
         width: parent.width - 48
-        height: 418
+        height: 518
         radius: 6
         border.color: "#3A3B3E"
         gradient: Gradient {
@@ -271,7 +272,7 @@ Item {
             x: 14
             y: 196
             width: plate.width - 28
-            height: 208
+            height: 308
             radius: 6
             color: "#1A1A1C"
             border.color: panel.channelColors[panel.channel]
@@ -279,7 +280,7 @@ Item {
 
             Label {
                 x: 16
-                y: 182
+                y: 10
                 text: "CHANNEL " + (panel.channel + 1) + "  ·  " + panel.voiceNames[panel.voiceOf(panel.channel)]
                 font.pixelSize: 12
                 color: panel.channelColors[panel.channel]
@@ -299,7 +300,7 @@ Item {
             AmpKnob {
                 required property var modelData
                 required property int index
-                y: 214
+                y: 226
                 cx: 96 + index * 142
                 size: 96
                 key: panel.chKey(modelData.name)
@@ -309,7 +310,7 @@ Item {
         }
         Column { // the channel's effects loop
             x: 1200
-            y: 232
+            y: 244
             spacing: 6
             PanelButton {
                 width: 104
@@ -325,6 +326,60 @@ Item {
             }
             Label { width: 104; text: "FX LOOP"; font.pixelSize: 12 }
             Label { width: 104; text: "(pedals later)"; font.pixelSize: 10; font.bold: false; color: "#8F897A" }
+        }
+
+        // --- The playing channel's cabinet ------------------------------------------
+
+        Label { x: 40; y: 400; text: "CABINET"; font.pixelSize: 13 }
+        Repeater {
+            model: 2
+            Column {
+                id: cabSlot
+                required property int index
+                readonly property bool isB: index === 1
+                readonly property string irName: Cabinets.revision >= 0 ? Cabinets.irName(panel.channel, isB) : ""
+                x: 40 + index * 470
+                y: 422
+                spacing: 4
+                PanelButton {
+                    width: 440
+                    height: 40
+                    dark: true
+                    faceText: (cabSlot.isB ? "B   " : "A   ") + (cabSlot.irName !== "" ? cabSlot.irName : cabSlot.isB ? "—" : "Built-in speaker")
+                    text: "Channel " + (panel.channel + 1) + " cabinet " + (cabSlot.isB ? "B" : "A") + ": choose an IR"
+                    onClicked: {
+                        irPicker.channel = panel.channel
+                        irPicker.slotB = cabSlot.isB
+                        irPicker.open()
+                    }
+                }
+            }
+        }
+        AmpKnob { y: 380; cx: 1060; size: 64; key: panel.chKey("cab_mix"); label: "CAB MIX" }
+        Text {
+            x: 1140
+            y: 420
+            width: 190
+            text: Cabinets.libraryCount + " IRs in the library"
+            color: "#8F897A"
+            font.family: Theme.labelFont
+            font.pixelSize: 12
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    IrPicker {
+        id: irPicker
+        x: (panel.width - width) / 2
+        y: 40
+    }
+
+    DropArea { // IR files, folders or packs dropped on the amp go into the library
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onDropped: event => {
+            Cabinets.importUrls(event.urls)
+            event.accept()
         }
     }
 }

@@ -4,7 +4,22 @@ namespace krunch {
 
 Instance::Instance(const krate::InstrumentContext &context)
     : controller(engine, context.configDir + QStringLiteral("/panel.json"), nullptr)
+    , cabinets(engine, context.dataDir + QStringLiteral("/irs"), context.configDir + QStringLiteral("/cabinets.json"), nullptr)
 {
+}
+
+QJsonObject Instance::saveSound()
+{
+    QJsonObject sound = krate::InstrumentInstance::saveSound();
+    sound.insert(QStringLiteral("cabinets"), cabinets.save());
+    return sound;
+}
+
+void Instance::loadSound(const QJsonObject &sound)
+{
+    krate::InstrumentInstance::loadSound(sound);
+    if (sound.contains(u"cabinets"))
+        cabinets.load(sound.value(u"cabinets").toArray());
 }
 
 void Instance::triggerAction(const QString &action)

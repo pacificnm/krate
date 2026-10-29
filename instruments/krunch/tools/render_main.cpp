@@ -1,7 +1,9 @@
 // krunch-render: play a guitar DI through Krunch offline, one WAV per channel.
-// The DI is a WAV file (--in; its first channel) or a synthetic riff.
+// The DI is a WAV file (--in; its first channel) or a synthetic riff; --ir and
+// --ir-b load cabinet IRs (A and B) into every channel.
 //
-//   krunch-render [--in di.wav] [--out prefix] [--channel 1..4] [--set key=value]... [--bench]
+//   krunch-render [--in di.wav] [--ir a.wav] [--ir-b b.wav] [--out prefix] [--channel 1..4]
+//                 [--set key=value]... [--bench]
 //
 // Writes <prefix>-ch<N>.wav (stereo, 16-bit) for each channel rendered, and
 // prints each one's peak and RMS; --bench times the amp instead.
@@ -13,6 +15,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -20,69 +23,15 @@
 
 #include "SyntheticGuitar.h"
 #include "dsp/Krunch.h"
+#include "dsp/Wav.h"
 #include "tools/WavFile.h"
 
 namespace {
 
-// Reads a PCM 16 / 24 / 32-bit or float WAV's first channel. Empty on failure.
-std::vector<float> readWav(const char *path, int *rate)
-{
-    std::vector<float> samples;
-    std::FILE *f = std::fopen(path, "rb");
-    if (!f)
-        return samples;
-    std::vector<unsigned char> data;
-    unsigned char chunk[4096];
-    for (std::size_t n; (n = std::fread(chunk, 1, sizeof chunk, f)) > 0;)
-        data.insert(data.end(), chunk, chunk + n);
-    std::fclose(f);
-    const auto u32 = [&data](std::size_t at) {
-        return std::uint32_t(data[at]) | std::uint32_t(data[at + 1]) << 8 | std::uint32_t(data[at + 2]) << 16
-               | std::uint32_t(data[at + 3]) << 24;
-    };
-    const auto u16 = [&data](std::size_t at) { return std::uint32_t(data[at]) | std::uint32_t(data[at + 1]) << 8; };
-    if (data.size() < 12 || std::memcmp(data.data(), "RIFF", 4) != 0 || std::memcmp(data.data() + 8, "WAVE", 4) != 0)
-        return samples;
-    std::uint32_t format = 0, channels = 0, bits = 0;
-    for (std::size_t at = 12; at + 8 <= data.size();) {
-        const std::uint32_t size = u32(at + 4);
-        const std::size_t body = at + 8;
-        if (std::memcmp(data.data() + at, "fmt ", 4) == 0 && body + 16 <= data.size()) {
-            format = u16(body);
-            channels = u16(body + 2);
-            *rate = int(u32(body + 4));
-            bits = u16(body + 14);
-            if (format == 0xFFFE && body + 26 <= data.size()) // extensible: the sub-format's first two bytes
-                format = u16(body + 24);
-        } else if (std::memcmp(data.data() + at, "data", 4) == 0 && channels > 0) {
-            const std::size_t frameBytes = channels * bits / 8;
-            const std::size_t end = std::min(data.size(), body + size);
-            for (std::size_t p = body; p + frameBytes <= end; p += frameBytes) {
-                float s = 0.0f;
-                if (format == 3 && bits == 32) {
-                    const std::uint32_t v = u32(p);
-                    std::memcpy(&s, &v, 4);
-                } else if (format == 1 && bits == 16) {
-                    s = float(std::int16_t(u16(p))) / 32768.0f;
-                } else if (format == 1 && bits == 24) {
-                    s = float(std::int32_t((u16(p) << 8 | std::uint32_t(data[p + 2]) << 24)) >> 8) / 8388608.0f;
-                } else if (format == 1 && bits == 32) {
-                    s = float(std::int32_t(u32(p))) / 2147483648.0f;
-                } else {
-                    return {};
-                }
-                samples.push_back(s);
-            }
-            break;
-        }
-        at = body + size + (size & 1);
-    }
-    return samples;
-}
-
 int usage()
 {
-    std::fprintf(stderr, "usage: krunch-render [--in di.wav] [--out prefix] [--channel 1..4] [--set key=value]... [--bench]\n");
+    std::fprintf(stderr, "usage: krunch-render [--in di.wav] [--ir a.wav] [--ir-b b.wav] [--out prefix] [--channel 1..4]\n"
+                         "                     [--set key=value]... [--bench]\n");
     return 2;
 }
 
@@ -90,7 +39,7 @@ int usage()
 
 int main(int argc, char **argv)
 {
-    std::string in, out = "krunch";
+    std::string in, out = "krunch", irA, irB;
     int only = 0;
     bool bench = false;
     std::vector<std::pair<std::string, float>> settings;
@@ -98,6 +47,10 @@ int main(int argc, char **argv)
         const std::string_view a = argv[i];
         if (a == "--in" && i + 1 < argc)
             in = argv[++i];
+        else if (a == "--ir" && i + 1 < argc)
+            irA = argv[++i];
+        else if (a == "--ir-b" && i + 1 < argc)
+            irB = argv[++i];
         else if (a == "--out" && i + 1 < argc)
             out = argv[++i];
         else if (a == "--channel" && i + 1 < argc)
@@ -117,11 +70,14 @@ int main(int argc, char **argv)
     int rate = 48000;
     std::vector<float> di;
     if (!in.empty()) {
-        di = readWav(in.c_str(), &rate);
-        if (di.empty()) {
-            std::fprintf(stderr, "could not read %s (PCM 16/24/32-bit or float WAV)\n", in.c_str());
+        krunch::WavData wav;
+        std::string error;
+        if (!krunch::readWavFile(in, &wav, &error)) {
+            std::fprintf(stderr, "could not read %s: %s\n", in.c_str(), error.c_str());
             return 1;
         }
+        rate = wav.rate;
+        di = std::move(wav.left);
     } else {
         di = krunch::tools::SyntheticGuitar(rate).riff();
     }
@@ -130,11 +86,28 @@ int main(int argc, char **argv)
         diPeak = std::max(diPeak, std::fabs(s));
     std::printf("DI: %.1f s, peak %.1f dBFS\n", double(di.size()) / rate, 20.0 * std::log10(std::max(diPeak, 1e-9f)));
 
+    std::unique_ptr<krunch::IrKernel> kernels[2];
+    for (int k = 0; k < 2; ++k) {
+        const std::string &path = k == 0 ? irA : irB;
+        if (path.empty())
+            continue;
+        krunch::WavData wav;
+        std::string error;
+        if (!krunch::readWavFile(path, &wav, &error) || !(kernels[k] = krunch::IrKernel::build(wav, rate, &error))) {
+            std::fprintf(stderr, "could not load the IR %s: %s\n", path.c_str(), error.c_str());
+            return 1;
+        }
+        std::printf("IR %c: %d Hz, %d channel(s), %zu taps here\n", 'A' + k, wav.rate, wav.channels, kernels[k]->taps());
+    }
+
     for (int channel = 1; channel <= krunch::kChannels; ++channel) {
         if (only && channel != only)
             continue;
         krunch::Krunch amp;
         amp.prepare(rate, krunch::Krunch::kBlock);
+        for (int c = 0; c < krunch::kChannels; ++c)
+            for (int k = 0; k < 2; ++k)
+                amp.cabinet().setKernel(krunch::Krunch::cabinetSlot(c, k == 1), kernels[k].get());
         amp.setParam(int(krunch::ParamId::Channel), float(channel - 1) / float(krunch::kChannels - 1));
         for (const auto &[key, value] : settings)
             for (std::size_t p = 0; p < krunch::kParams.size(); ++p)
@@ -157,6 +130,7 @@ int main(int argc, char **argv)
             for (std::uint32_t n = 0; n < frames; ++n) {
                 wav.push_back(left[n]);
                 wav.push_back(right[n]);
+                peak = std::max(peak, std::fabs(right[n]));
                 sum += double(left[n]) * left[n];
                 peak = std::max(peak, std::fabs(left[n]));
             }

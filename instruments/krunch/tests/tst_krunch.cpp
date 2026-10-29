@@ -125,7 +125,7 @@ private slots:
 
     void parameterTable()
     {
-        QCOMPARE(int(kParams.size()), 6 + 4 * 9);
+        QCOMPARE(int(kParams.size()), 6 + 4 * 10);
         QVERIFY(kParams.size() <= 64); // the "changed by audio" mask
         std::set<std::string_view> keys;
         for (const auto &p : kParams) {

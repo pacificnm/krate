@@ -7,6 +7,7 @@
 
 #include "core/Instrument.h"
 #include "core/ParamValues.h"
+#include "dsp/Cabinet.h"
 #include "dsp/Gate.h"
 #include "dsp/Pedal.h"
 #include "dsp/PowerAmp.h"
@@ -18,15 +19,16 @@ namespace krunch {
 // audio inputs (a guitar through the audio interface) rather than notes:
 //
 //   input -> pedals -> gate -> PREAMP (the channel's) -> volume -> FX LOOP
-//         -> POWER AMP -> speaker -> level -> out (mono, on both sides)
+//         -> POWER AMP -> CABINET (the channel's IRs A and B, or the built-in
+//            speaker) -> level -> out (stereo with a stereo IR)
 //
-// Four channels, each with its own voice, gain, EQ, volume, gate and loop
-// switch; switching crossfades over 15 ms.
+// Four channels, each with its own voice, gain, EQ, volume, gate, loop
+// switch and cabinet; switching crossfades over 15 ms.
 inline constexpr int kChannels = 4;
 
 // Parameter ids: the amp's own, then kChannelParams per channel.
 enum class ParamId : int { Input, Channel, Master, Sag, Resonance, Level, FirstChannel };
-enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, Count };
+enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, CabMix, Count };
 inline constexpr int kChannelParams = int(ChannelParam::Count);
 inline constexpr int ParamCount = int(ParamId::FirstChannel) + kChannels * kChannelParams;
 // Index of a channel's parameter (channel 0..3).
@@ -41,6 +43,7 @@ std::string voice(float v);
 std::string volume(float v);
 std::string gate(float v);
 std::string onOff(float v);
+std::string cabMix(float v); // "A 70 / B 30"
 } // namespace format
 
 namespace units {
@@ -66,7 +69,8 @@ double gateDb(float v);     // the threshold, -80..-20 dBFS (0 = off)
     {"ch" #n "_presence", "Channel " #n " Presence", dPresence, 0, &format::dial},                                  \
     {"ch" #n "_volume", "Channel " #n " Volume", dVolume, 0, &format::volume},                                      \
     {"ch" #n "_gate", "Channel " #n " Gate", dGate, 0, &format::gate},                                              \
-    {"ch" #n "_loop", "Channel " #n " Effects Loop", 1.0f, 2, &format::onOff}
+    {"ch" #n "_loop", "Channel " #n " Effects Loop", 1.0f, 2, &format::onOff},                                      \
+    {"ch" #n "_cab_mix", "Channel " #n " Cabinet Mix", 0.5f, 0, &format::cabMix}
 
 inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"input", "Input", 0.0f, 2, &format::input},          // the interface's input 1 or 2
@@ -107,6 +111,14 @@ public:
     // The gate is shut (display).
     bool gateClosed() const noexcept { return m_gateClosed.load(std::memory_order_relaxed); }
 
+    // The cabinet's IRs: slot cabinetSlot(channel, b) holds channel's IR A (b
+    // false) or B. A channel with neither plays the built-in speaker. Kernels
+    // at another sample rate than prepare()'s are ignored until rebuilt.
+    static constexpr int cabinetSlot(int channel, bool b) { return 2 * channel + (b ? 1 : 0); }
+    Cabinet &cabinet() noexcept { return m_cabinet; }
+    // The rate prepare() was given (any thread): what kernels must be built for.
+    double sampleRate() const noexcept { return m_rateForKernels.load(std::memory_order_relaxed); }
+
     // Pedal chains (setup, before processing): in front of the amp, in the loop.
     PedalChain &frontPedals() noexcept { return m_front; }
     PedalChain &loopPedals() noexcept { return m_loop; }
@@ -127,6 +139,8 @@ private:
     std::array<float, kChannels> m_volume{}; // current (ramped) channel volumes; < 0 until first used
     PowerAmp m_powerAmp;
     SpeakerFilter m_speaker;
+    Cabinet m_cabinet;
+    std::atomic<double> m_rateForKernels{48000.0};
 
     int m_active = -1;   // the channel playing
     int m_previous = -1; // the channel fading out, or -1
@@ -134,7 +148,14 @@ private:
     double m_fadeStep = 0.0;
     float m_level = -1.0f; // current (ramped) output level
 
+    // Adds channel's cabinet into left/right, weighted per sample by `weight`.
+    void addCabinet(int channel, const float *weight, std::uint32_t frames) noexcept;
+
     std::array<float, kBlock> m_in{}, m_a{}, m_b{};
+    std::array<float, kBlock> m_fadeIn{}, m_fadeOut{}; // the playing channel's and the previous one's weights
+    std::array<std::array<float, kBlock>, Cabinet::kSlots> m_slotWeights{};
+    std::array<const float *, Cabinet::kSlots> m_slotWeightPtrs{};
+    std::array<float, kBlock> m_speakerWeight{}, m_speakerOut{};
 
     std::atomic<float> m_inputPeak{0.0f};
     std::atomic<float> m_outputPeak{0.0f};

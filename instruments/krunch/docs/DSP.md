@@ -4,12 +4,13 @@ Mono from the input to the speaker; the same signal on both outputs. Everything 
 
 ```
 input 1|2 -> front pedals -> gate -> PREAMP (playing channel) -> channel volume
-          -> FX LOOP (if the channel's loop is on) -> POWER AMP -> speaker filter -> level -> out
+          -> FX LOOP (if the channel's loop is on) -> POWER AMP
+          -> CABINET (the channel's IRs A and B, or the built-in speaker) -> level -> out
 ```
 
 ## Channels
 
-Four channels, each with its own parameters (`ch<N>_<name>`). Only the playing channel's preamp runs; switching starts the new one fresh and crossfades over 15 ms (both run during the fade). The gate takes the playing channel's threshold, the loop its switch.
+Four channels, each with its own parameters (`ch<N>_<name>`) and cabinet. Only the playing channel's preamp runs; switching starts the new one fresh and crossfades over 15 ms (both run during the fade, and both cabinets). The gate takes the playing channel's threshold, the loop its switch.
 
 ## Preamp
 
@@ -39,9 +40,20 @@ Between the channel volume and the power amp: the loop's pedal chain (`dsp/Pedal
 
 `dsp/PowerAmp.cpp`, shared by the channels. **Resonance** lifts 100 Hz (0 … +10 dB) going in; **Master** drives the output stage −24 … +18 dB (it clips from about 0 dB); the stage is a symmetric `tanh` at 4×. **Sag**: a follower on the output (4 ms attack, 150 ms release) lowers the headroom, so digging in compresses.
 
-## Speaker
+## Cabinet
 
-Until cabinets (G2), `SpeakerFilter`: high-pass 75 Hz, +3 dB at 110 Hz, −2.5 dB at 450 Hz, +4 dB at 2.4 kHz, two low-passes (5 and 6 kHz). Then −4 dB of trim, so a cranked master stays near full scale, and the Level knob.
+`dsp/Cabinet.cpp`. Each channel plays its IR A, its IR B, or both mixed by `ch<N>_cab_mix` (A 100 … B 100); with neither, the built-in speaker (below). A stereo IR makes the amp stereo; a mono one plays on both sides.
+
+- **Convolution with no delay:** uniformly partitioned, 128-sample partitions. The first 128 taps run directly on every sample; the rest by FFT (overlap-save, 256 points) once per 128 samples, from the spectra of the input's past blocks. Any host block size works.
+- **Instant switching:** the input's history (the direct window and the past blocks' spectra) is shared by all eight slots (four channels × A, B), so a slot that starts playing (a channel switch, a new IR) is right from its first sample.
+- **Loading** (`IrKernel::build`, off the audio thread): the WAV's first two channels, resampled to the engine's rate (windowed sinc), cut at 65,536 taps (1.4 s at 48 kHz) with a 10 ms fade, normalised to unit energy and then −6.5 dB, so IRs play as loud as each other and as the built-in speaker (the 33 of one 4×12 pack land within 1.4 dB). The controller hands kernels over through atomics and frees a replaced one once the audio thread has moved two blocks on; a kernel built for another rate is ignored until rebuilt.
+- **Cost:** about 0.7 % of a core for a 200 ms mono IR.
+
+The **built-in speaker** (`SpeakerFilter`, always running so it's ready): high-pass 75 Hz, +3 dB at 110 Hz, −2.5 dB at 450 Hz, +4 dB at 2.4 kHz, two low-passes (5 and 6 kHz). After the cabinet, −4 dB of trim, so a cranked master stays near full scale, and the Level knob.
+
+## IR library
+
+`app/IrLibrary.cpp`: `~/.local/share/krunch/irs/`, an SQLite database (`irs.db`, table `irs`: id, pack, folder, name, channels, rate, frames, favourite, added) next to a copy of each IR named `<id>.wav`, where the id is the file's SHA-256: the same IR is never added twice, and channels, presets and songs refer to IRs by id. Imports WAV files, folders (searched with their subfolders for WAVs and zips) and zip packs; the pack is the zip's or folder's name, the folder the path inside it; macOS's `._` files and `__MACOSX` are skipped, and files we can't read are reported. `app/CabinetController.cpp` (QML `Cabinets`) keeps each channel's IR ids in `~/.config/krunch/cabinets.json` and in songs' sounds.
 
 ## Parameters
 
@@ -59,6 +71,7 @@ Until cabinets (G2), `SpeakerFilter`: high-pass 75 Hz, +3 dB at 110 Hz, −2.5 d
 | `ch<N>_volume` | −inf, −40 … +6 dB | −7.8 dB (channel 4: −6.9 dB) |
 | `ch<N>_gate` | off, −80 … −20 dBFS | off, off, −59 dB, −62 dB |
 | `ch<N>_loop` | off / on | on |
+| `ch<N>_cab_mix` | A 100 … B 100 (with both IRs) | A 50 / B 50 |
 
 Learnable buttons: `channel1` … `channel4`, `loop` (the playing channel's).
 
