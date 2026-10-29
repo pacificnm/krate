@@ -2,26 +2,28 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 
-// Two-octave keyboard (C to C) played with the mouse: press and glide across
+// A 49-key keyboard (four octaves, C to C, like a 49-key controller: C2-C6,
+// notes 36-84, at baseNote 36) played with the mouse: press and glide across
 // keys; keys held from MIDI light up too. `instrument` is the instrument's
 // controller singleton, which provides noteOn(n), noteOff(n), noteHeld(n) and
 // notesRevision (Kalliope, Krimson).
 //
 // It follows the keys you play: a controller's own octave buttons move its
-// notes without telling anyone, so when a held note falls outside the two
+// notes without telling anyone, so when a held note falls outside the four
 // octaves shown, the keyboard slides by octaves to show it (and says so in
 // its corner). Changing baseNote (the instrument's Octave) puts it back.
 Item {
     id: keyboard
 
     required property var instrument
-    property int baseNote: 48 // lowest C
+    property int baseNote: 36 // lowest C
+    property int octaves: 4   // 49 keys
     property bool followKeys: true
     property int followOctaves: 0 // how far it has slid to show played notes
     readonly property int shownBase: Math.max(0, Math.min(108, baseNote + 12 * followOctaves))
     onBaseNoteChanged: followOctaves = 0
     property color litColor: "#E2701F"
-    readonly property int whiteCount: 15
+    readonly property int whiteCount: 7 * octaves + 1
     readonly property real whiteWidth: width / whiteCount
     readonly property real blackWidth: whiteWidth * 0.6
     readonly property real blackHeight: height * 0.62
@@ -42,7 +44,7 @@ Item {
             }
         if (high < 0)
             return // nothing held: stay where it is
-        const top = shownBase + 24
+        const top = shownBase + 12 * octaves
         if (low < shownBase) {
             followOctaves -= Math.ceil((shownBase - low) / 12)
         } else if (high > top) {
@@ -137,7 +139,7 @@ Item {
         x: 6
         y: 4
         z: 10
-        text: "showing C" + (Math.floor(keyboard.shownBase / 12) - 1) + "–C" + (Math.floor(keyboard.shownBase / 12) + 1)
+        text: "showing C" + (Math.floor(keyboard.shownBase / 12) - 1) + "–C" + (Math.floor(keyboard.shownBase / 12) - 1 + keyboard.octaves)
         color: "#2A2B2D"
         font.pixelSize: Math.max(10, keyboard.height * 0.05)
         font.bold: true
