@@ -303,13 +303,13 @@ void Rack::route(MidiEvent event) noexcept
 
 void Rack::process(const RackBlock &block) noexcept
 {
-    std::uint32_t nextEvent = 0;
+    std::uint32_t nextEvent = 0, nextDeviceEvent = 0;
     for (std::uint32_t offset = 0; offset < block.frames; offset += m_maxFrames)
-        processChunk(block, offset, std::min(m_maxFrames, block.frames - offset), nextEvent);
+        processChunk(block, offset, std::min(m_maxFrames, block.frames - offset), nextEvent, nextDeviceEvent);
 }
 
-void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint32_t frames,
-                        std::uint32_t &nextEvent) noexcept
+void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint32_t frames, std::uint32_t &nextEvent,
+                        std::uint32_t &nextDeviceEvent) noexcept
 {
     // Transport for this chunk (only the first chunk carries `restarted`).
     TransportState transport;
@@ -329,6 +329,21 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
         MidiEvent ev = block.midi[nextEvent++];
         ev.frame -= offset;
         route(ev);
+    }
+    // Events addressed to devices (a song's tracks), merged in by frame.
+    if (nextDeviceEvent < block.deviceMidiCount && block.deviceMidi[nextDeviceEvent].frame() < offset + frames) {
+        while (nextDeviceEvent < block.deviceMidiCount && block.deviceMidi[nextDeviceEvent].frame() < offset + frames) {
+            MidiEvent ev = block.deviceMidi[nextDeviceEvent].event;
+            const int device = block.deviceMidi[nextDeviceEvent++].device;
+            ev.frame -= offset;
+            forward(device, ev);
+        }
+        for (int i = 0; i < m_count; ++i) { // insertion sort: both sources were in order
+            Device &d = m_devices[std::size_t(i)];
+            for (std::uint32_t k = 1; k < d.midiCount; ++k)
+                for (std::uint32_t j = k; j > 0 && d.midi[j - 1].frame > d.midi[j].frame; --j)
+                    std::swap(d.midi[j - 1], d.midi[j]);
+        }
     }
 
     // Run every device on the shared transport.

@@ -178,12 +178,13 @@ void Engine::process(const krate::AudioBlock &block) noexcept
 
     static constexpr krate::TransportState kStopped{};
     const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
-    if (transport.playing && (transport.restarted || !m_sequencer.running())) {
+    const bool sequence = transport.playing && m_sequencerEnabled.load(std::memory_order_relaxed);
+    if (sequence && (transport.restarted || !m_sequencer.running())) {
         if (m_sequencer.running())
             handle(m_sequencer.stop());
         m_sequencer.start();
         m_heldCount = 0; // the sequencer owns the voice now
-    } else if (!transport.playing && m_sequencer.running()) {
+    } else if (!sequence && m_sequencer.running()) {
         handle(m_sequencer.stop());
     }
     const double beatsPerSample = transport.bpm / 60.0 / m_sampleRate;
@@ -193,7 +194,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     for (std::uint32_t i = 0; i < frames; ++i) {
         while (nextEvent < eventCount && events[nextEvent].frame <= i)
             handleMidi(events[nextEvent++]);
-        if (transport.playing)
+        if (sequence)
             handle(m_sequencer.tick(transport.beatAtBlockStart + double(i) * beatsPerSample));
         m_volume += (volumeTarget - m_volume) * m_volumeCoeff;
         const float s = m_voice.next() * m_volume; // the host's master stage soft-clips

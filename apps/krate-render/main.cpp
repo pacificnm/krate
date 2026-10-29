@@ -11,9 +11,26 @@
 //   krate-render [--out file.wav] [--bars N] [--tempo BPM] [--rate HZ]
 //                [--k303 LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]
 //                [--k909 LEVEL] [--k909-pattern N] [--kalliope LEVEL] [--krimson LEVEL]
+//
+// Song mode (docs/SONG_PLAYER.md) plays a .gp tab file or a .mid file through
+// all the instruments, each track on the instrument it's assigned to:
+//
+//   krate-render --song FILE [--out file.wav] [--assign TRACK:INSTRUMENT[:SLOT]]...
+//                [--start-bar N] [--bars N] [--speed X] [--click] [--rate HZ]
+//
+// INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D) or none. Without
+// --assign, tracks are assigned by what they look like: drums to K909, the
+// first bass to k303, keys and others to Kalliope and Krimson's slots, guitars
+// left out (they're for you to play).
 
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <cmath>
+#include <optional>
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -24,6 +41,10 @@
 #include "kalliope/dsp/Engine.h"
 #include "krimson/dsp/Engine.h"
 #include "rack/Rack.h"
+#include "song/Arrange.h"
+#include "song/GpFile.h"
+#include "song/MidiFile.h"
+#include "song/SongPlayer.h"
 #include "tools/WavFile.h"
 
 namespace {
@@ -35,13 +56,202 @@ void usage()
                  "                    [--k303 LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]\n"
                  "                    [--k909 LEVEL] [--k909-pattern 0..3] [--kalliope LEVEL]\n"
                  "                    [--krimson LEVEL]\n"
-                 "  LEVEL is mixer gain, 1 = unity\n");
+                 "       krate-render --song FILE.gp|FILE.mid [--out file.wav] [--assign TRACK:INSTRUMENT[:SLOT]]...\n"
+                 "                    [--start-bar N] [--bars N] [--speed 0.25..2] [--click] [--rate HZ]\n"
+                 "  LEVEL is mixer gain, 1 = unity; INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D) or none\n");
+}
+
+// --- Song mode ------------------------------------------------------------------
+
+struct SongOptions
+{
+    std::string file, out = "song.wav";
+    std::vector<std::string> assigns; // TRACK:INSTRUMENT[:SLOT]
+    int startBar = 1;
+    int bars = 0; // 0 = to the end
+    double speed = 1.0;
+    bool click = false;
+    int rate = 48000;
+};
+
+int renderSong(const SongOptions &o)
+{
+    namespace s = krate::song;
+    std::unique_ptr<s::Song> song;
+    std::vector<const s::ScoreTrack *> scoreTracks;
+    std::optional<s::Score> score;
+    const bool isMidi = o.file.size() > 4
+                        && (o.file.substr(o.file.size() - 4) == ".mid" || o.file.substr(o.file.size() - 5) == ".midi");
+    if (isMidi) {
+        auto result = s::readMidiFile(o.file);
+        if (!result.song) {
+            std::fprintf(stderr, "krate-render: %s\n", result.error.c_str());
+            return 1;
+        }
+        song = std::make_unique<s::Song>(std::move(*result.song));
+    } else {
+        auto result = s::readGpFile(o.file);
+        if (!result.song) {
+            std::fprintf(stderr, "krate-render: %s\n", result.error.c_str());
+            return 1;
+        }
+        song = std::make_unique<s::Song>(std::move(*result.song));
+        score = std::move(result.score);
+    }
+    if (score)
+        for (const auto &t : score->tracks)
+            scoreTracks.push_back(&t);
+
+    // The rack: every instrument, sequencers quiet so only the song plays them.
+    constexpr std::uint32_t kBlock = 64;
+    k303::Engine bass;
+    klick::Klick metronome;
+    k909::Engine drums;
+    kalliope::Engine poly;
+    krimson::Engine lead;
+    bass.setSequencerEnabled(false);
+    drums.setPattern(k909::Pattern{});
+    krate::Rack rack(kBlock);
+    enum Device { K303, Klick, K909, Kalliope, Krimson };
+    rack.addDevice(bass, 0);
+    rack.addDevice(metronome);
+    rack.addDevice(drums, 9);
+    rack.addDevice(poly, 1);
+    rack.addDevice(lead, 2);
+    rack.prepare(o.rate);
+    rack.setMute(Klick, !o.click);
+    rack.setLevel(K909, 0.8f);
+
+    // Assignments.
+    s::SongPlayer player;
+    const int trackCount = int(std::min<std::size_t>(song->tracks.size(), s::SongPlayer::kMaxTracks));
+    std::vector<std::string> names(std::size_t(trackCount), "none");
+    const auto assign = [&](int t, const std::string &instrument, int slot) {
+        if (instrument == "k303")
+            player.setAssignment(t, {K303, 0});
+        else if (instrument == "k909")
+            player.setAssignment(t, {K909, 9, true});
+        else if (instrument == "kalliope")
+            player.setAssignment(t, {Kalliope, 1});
+        else if (instrument == "krimson")
+            player.setAssignment(t, {Krimson, 2 + std::clamp(slot, 0, 3)});
+        else
+            return false;
+        names[std::size_t(t)] = instrument + (instrument == "krimson" ? std::string(" ") + char('A' + slot) : "");
+        return true;
+    };
+    if (o.assigns.empty()) {
+        bool bassTaken = false;
+        int nextKeys = 0; // Kalliope, then Krimson A-D
+        for (int t = 0; t < trackCount; ++t) {
+            const s::Track &track = song->tracks[std::size_t(t)];
+            if (track.noteCount == 0)
+                continue;
+            const s::TrackRole role = s::guessRole(track, t < int(scoreTracks.size()) ? scoreTracks[std::size_t(t)] : nullptr);
+            if (role == s::TrackRole::Drums)
+                assign(t, "k909", 0);
+            else if (role == s::TrackRole::Bass && !bassTaken)
+                bassTaken = assign(t, "k303", 0);
+            else if (role != s::TrackRole::Guitar && nextKeys < 5) {
+                assign(t, nextKeys == 0 ? "kalliope" : "krimson", nextKeys - 1);
+                ++nextKeys;
+            }
+        }
+    } else {
+        for (const std::string &a : o.assigns) {
+            const std::size_t colon = a.find(':');
+            const int t = std::atoi(a.substr(0, colon).c_str());
+            std::string instrument = colon == std::string::npos ? "" : a.substr(colon + 1);
+            int slot = 0;
+            if (const std::size_t c2 = instrument.find(':'); c2 != std::string::npos) {
+                slot = std::toupper(static_cast<unsigned char>(instrument[c2 + 1])) - 'A';
+                instrument = instrument.substr(0, c2);
+            }
+            if (t < 0 || t >= trackCount || (instrument != "none" && !assign(t, instrument, slot))) {
+                std::fprintf(stderr, "krate-render: bad --assign %s\n", a.c_str());
+                return 2;
+            }
+        }
+    }
+    for (int t = 0; t < trackCount; ++t) {
+        const s::Track &track = song->tracks[std::size_t(t)];
+        std::printf("  track %2d %-10s %5d notes  -> %s  (%s)\n", t,
+                    s::roleName(s::guessRole(track, t < int(scoreTracks.size()) ? scoreTracks[std::size_t(t)] : nullptr)),
+                    track.noteCount, names[std::size_t(t)].c_str(), track.name.c_str());
+    }
+
+    // From the start bar for N bars (or to the end), then a tail to ring out.
+    const s::Tick start = song->tempo.barStart(std::max(0, o.startBar - 1));
+    const s::Tick end = o.bars > 0 ? std::min(song->length, song->tempo.barStart(o.startBar - 1 + o.bars)) : song->length;
+    const double seconds = (song->tempo.secondsAt(end) - song->tempo.secondsAt(start)) / o.speed;
+    const std::string title = song->title;
+    player.setSpeed(o.speed);
+    player.load(std::move(song));
+    player.cue(start);
+
+    krate::Transport transport;
+    std::vector<float> l(kBlock), r(kBlock), interleaved;
+    std::array<krate::DeviceEvent, 4096> events{};
+    const auto total = std::uint64_t((seconds + 1.5) * o.rate);
+    const auto playFrames = std::uint64_t(seconds * o.rate);
+    interleaved.reserve(total * 2 + 2 * kBlock);
+    for (std::uint64_t done = 0; done < total; done += kBlock) {
+        transport.setPlaying(done < playFrames);
+        player.beforeTransport(transport);
+        const krate::TransportState state = transport.advance(kBlock, o.rate);
+        krate::RackBlock block;
+        block.frames = kBlock;
+        block.transport = &state;
+        block.deviceMidi = events.data();
+        block.deviceMidiCount = player.render(state, kBlock, o.rate, events.data(), std::uint32_t(events.size()));
+        block.masterL = l.data();
+        block.masterR = r.data();
+        rack.process(block);
+        for (std::uint32_t i = 0; i < kBlock; ++i) {
+            interleaved.push_back(l[i]);
+            interleaved.push_back(r[i]);
+        }
+    }
+    if (!krate::writeStereoWav(o.out, interleaved, o.rate)) {
+        std::fprintf(stderr, "krate-render: could not write %s\n", o.out.c_str());
+        return 1;
+    }
+    std::printf("wrote %s: \"%s\" from bar %d, %.1f s at %.0f%% speed\n", o.out.c_str(), title.c_str(), o.startBar,
+                seconds, o.speed * 100.0);
+    return 0;
 }
 
 } // namespace
 
 int main(int argc, char **argv)
 {
+    // Song mode has its own options.
+    for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--song") {
+            SongOptions o;
+            for (int j = 1; j < argc; ++j) {
+                const std::string arg = argv[j];
+                const bool hasValue = j + 1 < argc;
+                if (arg == "--song" && hasValue) o.file = argv[++j];
+                else if (arg == "--out" && hasValue) o.out = argv[++j];
+                else if (arg == "--assign" && hasValue) o.assigns.push_back(argv[++j]);
+                else if (arg == "--start-bar" && hasValue) o.startBar = std::max(1, std::atoi(argv[++j]));
+                else if (arg == "--bars" && hasValue) o.bars = std::max(0, std::atoi(argv[++j]));
+                else if (arg == "--speed" && hasValue) o.speed = std::clamp(std::atof(argv[++j]), 0.25, 2.0);
+                else if (arg == "--rate" && hasValue) o.rate = std::atoi(argv[++j]);
+                else if (arg == "--click") o.click = true;
+                else {
+                    usage();
+                    return 2;
+                }
+            }
+            if (o.file.empty() || o.rate < 8000) {
+                usage();
+                return 2;
+            }
+            return renderSong(o);
+        }
+
     std::string out = "krate.wav";
     int bars = 4;
     double bpm = 120.0;

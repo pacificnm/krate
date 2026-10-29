@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -9,7 +10,8 @@
 
 namespace krate {
 
-// The krate app's processor: advances the shared transport and runs the rack.
+// The krate app's processor: advances the shared transport and runs the rack,
+// with an optional event source (the song player) playing into it.
 // Outputs: master_L, master_R (to the speakers), then <device>_L, <device>_R
 // for every device (its own output, before the mixer: for recording or a DAW).
 class RackProcessor final : public JackProcessor
@@ -21,6 +23,9 @@ public:
         , m_ids(std::move(deviceIds))
     {
     }
+
+    // Before the host starts.
+    void setEventSource(IEventSource *source) { m_source = source; }
 
     int outputCount() const override { return 2 + 2 * m_rack.deviceCount(); }
     std::string outputName(int index) const override
@@ -38,11 +43,18 @@ public:
     void process(float *const *outputs, std::uint32_t frames, const MidiEvent *midi, std::uint32_t midiCount,
                  double sampleRate) noexcept override
     {
+        if (m_source)
+            m_source->beforeTransport(m_transport);
         const TransportState transport = m_transport.advance(frames, sampleRate);
         RackBlock block;
         block.frames = frames;
         block.midi = midi;
         block.midiCount = midiCount;
+        if (m_source) {
+            block.deviceMidi = m_sourceEvents.data();
+            block.deviceMidiCount = m_source->render(transport, frames, sampleRate, m_sourceEvents.data(),
+                                                     std::uint32_t(m_sourceEvents.size()));
+        }
         block.transport = &transport;
         block.masterL = outputs[0];
         block.masterR = outputs[1];
@@ -56,6 +68,8 @@ private:
     Rack &m_rack;
     Transport &m_transport;
     std::vector<std::string> m_ids;
+    IEventSource *m_source = nullptr;
+    std::array<DeviceEvent, 4096> m_sourceEvents{};
 };
 
 } // namespace krate

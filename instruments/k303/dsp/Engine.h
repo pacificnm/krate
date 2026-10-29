@@ -77,6 +77,11 @@ public:
     // GUI thread (single producer). Returns false if the queue is full.
     bool post(const Command &command) noexcept { return m_commands.push(command); }
 
+    // Any thread. Off: the sequencer doesn't follow the transport and MIDI keys
+    // play the voice while it plays too (a song track playing k303). On by default.
+    void setSequencerEnabled(bool on) noexcept { m_sequencerEnabled.store(on, std::memory_order_relaxed); }
+    bool sequencerEnabled() const noexcept { return m_sequencerEnabled.load(std::memory_order_relaxed); }
+
     // GUI thread (single consumer).
     std::optional<EngineEvent> popEvent() noexcept { return m_events.pop(); }
 
@@ -111,6 +116,7 @@ private:
 
     std::atomic<int> m_currentStep{-1};
     std::atomic<bool> m_onBeat{false};
+    std::atomic<bool> m_sequencerEnabled{true};
     std::atomic<float> m_peak{0.0f};
 };
 

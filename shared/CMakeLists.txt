@@ -5,6 +5,7 @@ set(KRATE_WARNINGS -Wall -Wextra -Wpedantic -Werror)
 # --- krate_core: interfaces, transport, step clock, MIDI, queues; no Qt, no JACK
 add_library(krate_core STATIC
     core/Denormals.h
+    core/EventSource.h
     core/Instrument.h
     core/MasterStage.h
     core/Midi.h
@@ -57,7 +58,7 @@ add_library(krate_rack STATIC
 target_link_libraries(krate_rack PUBLIC krate_core)
 target_compile_options(krate_rack PRIVATE ${KRATE_WARNINGS})
 
-# --- krate_song: songs to play along with (tempo map, MIDI files, .gp tab files); no Qt
+# --- krate_song: songs to play along with (tempo map, MIDI files, .gp tab files, the player); no Qt
 find_package(ZLIB REQUIRED)
 add_library(krate_song STATIC
     song/Song.h
@@ -71,9 +72,13 @@ add_library(krate_song STATIC
     song/Xml.cpp
     song/Zip.h
     song/Zip.cpp
+    song/Arrange.h
+    song/Arrange.cpp
+    song/SongPlayer.h
+    song/SongPlayer.cpp
 )
 target_include_directories(krate_song PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(krate_song PRIVATE ZLIB::ZLIB)
+target_link_libraries(krate_song PUBLIC krate_core PRIVATE ZLIB::ZLIB)
 target_compile_options(krate_song PRIVATE ${KRATE_WARNINGS})
 
 # --- krate_app: Qt helpers for any instrument app (files, screenshot hook)
@@ -149,3 +154,8 @@ add_executable(tst_gpfile tests/tst_gpfile.cpp)
 target_compile_options(tst_gpfile PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_gpfile PRIVATE krate_song ZLIB::ZLIB Qt6::Test)
 add_test(NAME tst_gpfile COMMAND tst_gpfile)
+
+add_executable(tst_songplayer tests/tst_songplayer.cpp)
+target_compile_options(tst_songplayer PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_songplayer PRIVATE krate_song krate_rack Qt6::Test)
+add_test(NAME tst_songplayer COMMAND tst_songplayer)

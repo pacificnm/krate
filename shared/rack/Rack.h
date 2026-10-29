@@ -6,6 +6,7 @@
 #include <optional>
 #include <vector>
 
+#include "core/EventSource.h"
 #include "core/Instrument.h"
 #include "core/MasterStage.h"
 #include "core/SpscQueue.h"
@@ -18,6 +19,10 @@ struct RackBlock
     std::uint32_t frames = 0;
     const MidiEvent *midi = nullptr;           // sorted by frame, each frame < frames
     std::uint32_t midiCount = 0;
+    // Events for particular devices (a song's tracks), sorted by frame, each
+    // frame < frames. They skip routing, mappings and learn.
+    const DeviceEvent *deviceMidi = nullptr;
+    std::uint32_t deviceMidiCount = 0;
     const TransportState *transport = nullptr; // shared by every device
     float *masterL = nullptr;
     float *masterR = nullptr;
@@ -167,8 +172,8 @@ private:
     static std::uint32_t pack(Mapping m) noexcept;
     static Mapping unpack(std::uint32_t packed) noexcept;
 
-    void processChunk(const RackBlock &block, std::uint32_t offset, std::uint32_t frames,
-                      std::uint32_t &nextEvent) noexcept;
+    void processChunk(const RackBlock &block, std::uint32_t offset, std::uint32_t frames, std::uint32_t &nextEvent,
+                      std::uint32_t &nextDeviceEvent) noexcept;
     void route(MidiEvent event) noexcept;
     bool runAction(int action) noexcept;
     void forward(int device, const MidiEvent &event) noexcept;
