@@ -63,8 +63,21 @@ public:
     void setSplitNote(int note) noexcept { m_split.store(note, std::memory_order_relaxed); } // -1 = no split
     int splitNote() const noexcept { return m_split.load(std::memory_order_relaxed); }
 
-    // A slot's sound in DSP units.
-    SlotSettings settings(int slot) const noexcept;
+    // A slot's sound in DSP units: at its panel values, or (atMorph) with every
+    // morph target in place of its parameter.
+    SlotSettings settings(int slot, bool atMorph = false) const noexcept;
+
+    // Morph targets (docs/DSP.md#morph), any thread: a continuous slot
+    // parameter's value at full morph, or -1 for none. Detented parameters
+    // (waves, types, switches) don't morph: setting one is ignored.
+    void setMorph(int slot, ParamId id, float target) noexcept;
+    float morph(int slot, ParamId id) const noexcept
+    {
+        return m_morph[std::size_t(slot)][std::size_t(id)].load(std::memory_order_relaxed);
+    }
+    void clearMorph(int slot) noexcept;
+    bool hasMorph(int slot) const noexcept;
+    static bool morphable(ParamId id) noexcept { return isSlotParam(int(id)) && kParams[std::size_t(id)].detents == 0; }
 
     // GUI thread: the on-screen keyboard and wheels, played as the keyboard
     // (the lit slots), at the next block. status: 0x90 note on, 0x80 note off,
@@ -160,7 +173,11 @@ private:
     std::array<float, 2 * kChunk> m_bufferL{}, m_bufferR{};
     std::array<std::array<float, kChunk>, SlotCount> m_lfo2Values{};
     std::array<float, kChunk> m_vibratoValues{};
-    std::array<SlotSettings, SlotCount> m_settings{};
+    std::array<SlotSettings, SlotCount> m_settings{};      // at the panel values
+    std::array<SlotSettings, SlotCount> m_morphSettings{}; // at the morph targets
+    std::array<bool, SlotCount> m_morphing{};              // the slot has morph targets
+    std::array<bool, SlotCount> m_wheelMorph{};            // the wheel morphs (else velocity)
+    std::array<std::array<std::atomic<float>, SlotParamCount>, SlotCount> m_morph{};
     double m_volume = -1.0;
     double m_volumeSmoothing = 0.0;
 

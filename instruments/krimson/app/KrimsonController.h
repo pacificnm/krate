@@ -30,6 +30,10 @@ class KrimsonController : public krate::ParamController
     Q_PROPERTY(int editedSlot READ editedSlot WRITE setEditedSlot NOTIFY editedSlotChanged)
     // Bumped when the held keys change (MIDI or the on-screen keyboard).
     Q_PROPERTY(int notesRevision READ notesRevision NOTIFY notesChanged)
+    // MORPH lit: turning a knob sets its morph target (docs/PLAY.md#morph).
+    Q_PROPERTY(bool morphEdit READ morphEdit WRITE setMorphEdit NOTIFY morphChanged)
+    // Bumped when any morph target changes (or the edited slot does).
+    Q_PROPERTY(int morphRevision READ morphRevision NOTIFY morphChanged)
 
 public:
     // Not default-constructible on purpose (see k303's SynthController).
@@ -53,10 +57,21 @@ public:
     Q_INVOKABLE void pitchBend(qreal amount); // -1..1
     Q_INVOKABLE void modWheel(qreal amount);  // 0..1
 
+    // The edited slot's morph targets, by key: -1 = none.
+    bool morphEdit() const { return m_morphEdit; }
+    void setMorphEdit(bool on);
+    int morphRevision() const { return m_morphRevision; }
+    Q_INVOKABLE qreal morph(const QString &key) const;
+    Q_INVOKABLE void setMorph(const QString &key, qreal target);
+    Q_INVOKABLE void clearMorph(const QString &key);
+    Q_INVOKABLE void clearAllMorph(); // the edited slot's
+    Q_INVOKABLE bool morphable(const QString &key) const;
+
 signals:
     void playingChanged();
     void editedSlotChanged();
     void notesChanged();
+    void morphChanged();
 
 private:
     void syncTempo();
@@ -69,5 +84,7 @@ private:
     QTimer m_pollTimer;
     bool m_playing = false;
     int m_notesRevision = 0;
+    bool m_morphEdit = false;
+    int m_morphRevision = 0;
     std::uint64_t m_heldSeen[2] = {0, 0};
 };

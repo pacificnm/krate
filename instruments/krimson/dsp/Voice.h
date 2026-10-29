@@ -58,6 +58,11 @@ struct SlotSettings
     double slotPan = 0.0;      // -1..1
 };
 
+// Morph (docs/DSP.md#morph): a slot's sound between its panel settings (t = 0)
+// and its morph targets (t = 1). Continuous quantities blend (times and rates
+// in the log domain, so they move as their knobs do); the rest come from `a`.
+SlotSettings blend(const SlotSettings &a, const SlotSettings &b, double t) noexcept;
+
 // One voice at twice the host rate (docs/DSP.md).
 class Voice
 {
@@ -74,6 +79,7 @@ public:
     bool gate() const noexcept { return m_gate; }
     int note() const noexcept { return m_stealing ? m_nextNote : m_note; }
     double level() const noexcept { return m_aenv.level(); }
+    double velocity() const noexcept { return m_velocity; } // 0..1 (morph by velocity)
 
     // Unison: detune (semitones) and stereo position (-1..1) of this voice.
     void setSpread(double detuneSemis, double pan) noexcept;

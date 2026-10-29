@@ -47,18 +47,29 @@ Item {
         }
         RingKnob {
             id: kkKnob
+            // MORPH lit: the knob shows and sets its morph target (starting from its value).
+            readonly property real target: Krimson.morphRevision >= 0 ? Krimson.morph(kk.key) : -1
+            readonly property bool morphing: Krimson.morphEdit && Krimson.morphable(kk.key)
             x: (kk.width - width) / 2
             y: 13
             width: kk.size
             height: kk.size
             bipolar: kk.bipolar
-            name: Krimson.label(kk.key)
+            name: Krimson.label(kk.key) + (morphing ? " morph target" : "")
             detents: Krimson.detents(kk.key)
-            value: Krimson.revision >= 0 ? Krimson.value(kk.key) : 0
+            value: morphing && target >= 0 ? target : (Krimson.revision >= 0 ? Krimson.value(kk.key) : 0)
+            morphValue: morphing ? -1 : target
+            ringColor: morphing ? morphColor : "#FF4A3D"
             defaultValue: Krimson.defaultValue(kk.key)
             displayText: Krimson.displayText(kk.key, value)
-            onMoved: v => Krimson.setValue(kk.key, v)
+            onMoved: v => morphing ? Krimson.setMorph(kk.key, v) : Krimson.setValue(kk.key, v)
 
+            MouseArea { // MORPH lit: right-click clears this knob's target
+                anchors.fill: parent
+                enabled: kkKnob.morphing
+                acceptedButtons: Qt.RightButton
+                onClicked: Krimson.clearMorph(kk.key)
+            }
             LearnOverlay {
                 anchors.fill: parent
                 paramKey: kk.key
@@ -359,9 +370,38 @@ Item {
         LearnOverlay { x: 36; y: 18; width: 44; height: 32; paramKey: "octave"; round: false }
     }
 
-    Choices { key: "wheel_dest"; label: "WHEEL"; x: 40; y: panel.sectionTop + 96 }
+    Choices { key: "wheel_dest"; label: "WHEEL"; x: 40; y: panel.sectionTop + 96; width: 70 }
+    // MORPH: while lit, knobs set their morph targets (blue); the wheel (or
+    // velocity) then sweeps them. CLEAR removes the edited slot's targets.
+    PanelButton {
+        x: 116
+        y: panel.sectionTop + 100
+        width: 72
+        height: 26
+        dark: true
+        tint: Krimson.morphEdit ? "#4FA3FF" : "transparent"
+        faceText: "MORPH"
+        text: "Morph edit" + (Krimson.morphEdit ? ": on" : "")
+        onClicked: Krimson.morphEdit = !Krimson.morphEdit
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "morph"
+            round: false
+        }
+    }
+    PanelButton {
+        x: 116
+        y: panel.sectionTop + 132
+        width: 72
+        height: 20
+        dark: true
+        faceText: "CLEAR"
+        text: "Clear the slot's morph targets"
+        onClicked: Krimson.clearAllMorph()
+    }
     Item { // program display (programs arrive in C7)
-        x: 150
+        x: 206
         y: panel.sectionTop + 96
         PanelLabel { x: 0; y: 0; text: "PROGRAM"; inverse: true; font.pixelSize: 10; horizontalAlignment: Text.AlignLeft }
         Rectangle {

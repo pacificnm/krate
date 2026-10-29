@@ -25,11 +25,12 @@ A fixed-size panel drawn at **1600 × 900** design pixels, scaled to the window.
 
 | Control | Kind |
 | --- | --- |
-| Knobs | `RingKnob` (new, shared in the `Krate` module): a black knob inside an LED ring showing its value (bipolar knobs light from the top), with a second, blue arc reserved for the morph range (C5); label above, value under |
+| Knobs | `RingKnob` (new, shared in the `Krate` module): a black knob inside an LED ring showing its value (bipolar knobs light from the top), with a second, blue arc for the morph range (from the value to the target); while MORPH is lit, the ring turns blue and the knob shows and sets its target; label above, value under |
 | Choices | Waves, filter type, key tracking, LFO waves and destinations, voice mode, wheel, chorus: a list with an LED per choice; click a choice to pick it; learnable as one control |
 | Switches | Sync, Ring, OSC 2 KBD, ARP, HOLD, slot ON: small buttons, red when on |
 | Slot buttons A–D | Click: play and edit that slot; Shift-click: layer; LED = lit (the keyboard plays it); highlighted = the slot being edited; learnable as actions `slotA`…`slotD` |
 | Slot setup | The edited slot's MIDI channel (or none), zone (whole, lower, upper), on/off, and the split key (or off) |
+| MORPH, CLEAR | MORPH (blue while lit) toggles morph editing; CLEAR clears the edited slot's targets |
 | Program display | `--` until programs (C7) |
 | Wheels | Pitch (springs back) and mod, mouse-draggable; they act on the lit slots |
 | Keyboard | `PianoKeyboard` (shared with Kalliope, moved to the `Krate` module): two octaves from C3 shifted by Octave, mouse-playable, lights keys held in any slot |

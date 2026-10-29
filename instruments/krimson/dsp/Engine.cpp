@@ -26,6 +26,9 @@ constexpr std::int8_t kKeyUp = -128;
 
 Engine::Engine()
 {
+    for (auto &slot : m_morph)
+        for (auto &target : slot)
+            target.store(-1.0f, std::memory_order_relaxed);
     for (int slot = 0; slot < SlotCount; ++slot) {
         m_channel[std::size_t(slot)].store(kDefaultFirstChannel + slot, std::memory_order_relaxed);
         m_on[std::size_t(slot)].store(true, std::memory_order_relaxed);
@@ -74,10 +77,39 @@ std::uint64_t Engine::takeParamsChangedByAudio() noexcept
     return changed;
 }
 
-SlotSettings Engine::settings(int slot) const noexcept
+void Engine::setMorph(int slot, ParamId id, float target) noexcept
 {
-    const Store &p = m_slots[std::size_t(std::clamp(slot, 0, SlotCount - 1))];
-    const auto v = [&p](ParamId id) { return p.get(int(id)); };
+    if (slot < 0 || slot >= SlotCount || !morphable(id))
+        return;
+    m_morph[std::size_t(slot)][std::size_t(id)].store(target < 0.0f ? -1.0f : std::min(target, 1.0f),
+                                                     std::memory_order_relaxed);
+}
+
+void Engine::clearMorph(int slot) noexcept
+{
+    for (auto &target : m_morph[std::size_t(slot)])
+        target.store(-1.0f, std::memory_order_relaxed);
+}
+
+bool Engine::hasMorph(int slot) const noexcept
+{
+    for (const auto &target : m_morph[std::size_t(slot)])
+        if (target.load(std::memory_order_relaxed) >= 0.0f)
+            return true;
+    return false;
+}
+
+SlotSettings Engine::settings(int slot, bool atMorph) const noexcept
+{
+    slot = std::clamp(slot, 0, SlotCount - 1);
+    const Store &p = m_slots[std::size_t(slot)];
+    const auto &targets = m_morph[std::size_t(slot)];
+    const auto v = [&](ParamId id) {
+        if (atMorph && isSlotParam(int(id)))
+            if (const float t = targets[std::size_t(id)].load(std::memory_order_relaxed); t >= 0.0f)
+                return t;
+        return p.get(int(id));
+    };
     const auto pick = [&](ParamId id, int count) { return units::index(v(id), count); };
     namespace q = positions;
     static constexpr Wave kOsc1[] = {Wave::Sine, Wave::Triangle, Wave::Saw, Wave::Pulse};
@@ -120,7 +152,7 @@ SlotSettings Engine::settings(int slot) const noexcept
     s.ampVelocity = v(ParamId::AmpVel);
     s.glideSeconds = units::glideSeconds(v(ParamId::Glide)) / 3.0; // the knob shows the time to get (almost) there
     s.gain = units::gain(v(ParamId::Gain));
-    const SlotState &state = m_state[std::size_t(std::clamp(slot, 0, SlotCount - 1))];
+    const SlotState &state = m_state[std::size_t(slot)];
     s.bendSemis = state.bend * units::bendSemitones(v(ParamId::BendRange));
     // The wheel: vibrato when Wheel is set to Vibrato (morph arrives in C5).
     s.vibratoSemis = pick(ParamId::WheelDest, q::kWheelDest) == 1 ? kMaxVibratoSemis * state.wheel : 0.0;
@@ -415,9 +447,20 @@ void Engine::render(float *left, float *right, std::uint32_t frames) noexcept
         std::fill_n(m_bufferL.begin(), 2 * n, 0.0f);
         std::fill_n(m_bufferR.begin(), 2 * n, 0.0f);
         for (int v = 0; v < kVoices; ++v) {
+            Voice &voice = m_voices[std::size_t(v)];
+            if (!voice.active())
+                continue;
             const auto slot = std::size_t(m_voiceSlot[std::size_t(v)]);
-            m_voices[std::size_t(v)].render(m_bufferL.data(), m_bufferR.data(), n, m_lfo2Values[slot].data(),
-                                            m_vibratoValues.data(), m_settings[slot]);
+            if (!m_morphing[slot]) {
+                voice.render(m_bufferL.data(), m_bufferR.data(), n, m_lfo2Values[slot].data(), m_vibratoValues.data(),
+                             m_settings[slot]);
+                continue;
+            }
+            // Morph: the slot's wheel, or this voice's velocity, between panel and targets.
+            const double amount = m_wheelMorph[slot] ? m_state[slot].wheel : voice.velocity();
+            const SlotSettings morphed = blend(m_settings[slot], m_morphSettings[slot], amount);
+            voice.render(m_bufferL.data(), m_bufferR.data(), n, m_lfo2Values[slot].data(), m_vibratoValues.data(),
+                         morphed);
         }
         for (std::uint32_t i = 0; i < n; ++i) {
             left[i] = m_decimatorL.process(m_bufferL[2 * i], m_bufferL[2 * i + 1]);
@@ -450,8 +493,15 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     for (std::uint32_t e = 0; e <= block.midiCount; ++e) {
         const std::uint32_t until = e < block.midiCount ? std::min(block.midi[e].frame, block.frames) : block.frames;
         if (until > done) {
-            for (int slot = 0; slot < SlotCount; ++slot)
-                m_settings[std::size_t(slot)] = settings(slot); // bend and wheel can change between events
+            for (int slot = 0; slot < SlotCount; ++slot) { // bend and wheel can change between events
+                const auto i = std::size_t(slot);
+                m_settings[i] = settings(slot);
+                m_morphing[i] = hasMorph(slot);
+                if (m_morphing[i]) {
+                    m_morphSettings[i] = settings(slot, true);
+                    m_wheelMorph[i] = units::index(m_slots[i].get(int(ParamId::WheelDest)), positions::kWheelDest) == 0;
+                }
+            }
             render(left + done, right + done, until - done);
             done = until;
         }

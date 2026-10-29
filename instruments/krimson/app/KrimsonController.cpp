@@ -62,7 +62,9 @@ void KrimsonController::setEditedSlot(int slot)
     if (slot == m_engine.editedSlot() || slot < 0 || slot >= krimson::SlotCount)
         return;
     m_engine.setEditedSlot(slot); // the panel follows through the changed bits
+    ++m_morphRevision;            // and shows the new slot's morph targets
     emit editedSlotChanged();
+    emit morphChanged();
 }
 
 void KrimsonController::noteOn(int note)
@@ -91,6 +93,66 @@ void KrimsonController::pitchBend(qreal amount)
 void KrimsonController::modWheel(qreal amount)
 {
     m_engine.postKeyboard(0xB0, 1, std::uint8_t(std::clamp(int(std::lround(amount * 127.0)), 0, 127)));
+}
+
+namespace {
+int paramIndex(const QString &key)
+{
+    for (int i = 0; i < krimson::ParamCount; ++i) {
+        const auto k = krimson::kParams[std::size_t(i)].key;
+        if (key == QLatin1StringView(k.data(), qsizetype(k.size())))
+            return i;
+    }
+    return -1;
+}
+} // namespace
+
+void KrimsonController::setMorphEdit(bool on)
+{
+    if (on == m_morphEdit)
+        return;
+    m_morphEdit = on;
+    emit morphChanged();
+}
+
+bool KrimsonController::morphable(const QString &key) const
+{
+    const int i = paramIndex(key);
+    return i >= 0 && krimson::Engine::morphable(krimson::ParamId(i));
+}
+
+qreal KrimsonController::morph(const QString &key) const
+{
+    const int i = paramIndex(key);
+    return morphable(key) ? m_engine.morph(m_engine.editedSlot(), krimson::ParamId(i)) : -1.0;
+}
+
+void KrimsonController::setMorph(const QString &key, qreal target)
+{
+    if (!morphable(key))
+        return;
+    m_engine.setMorph(m_engine.editedSlot(), krimson::ParamId(paramIndex(key)), float(std::clamp(target, 0.0, 1.0)));
+    ++m_morphRevision;
+    emit morphChanged();
+    emit paramsChanged(); // the slot's sound changed: slots.json saves it
+}
+
+void KrimsonController::clearMorph(const QString &key)
+{
+    if (!morphable(key))
+        return;
+    m_engine.setMorph(m_engine.editedSlot(), krimson::ParamId(paramIndex(key)), -1.0f);
+    ++m_morphRevision;
+    emit morphChanged();
+    emit paramsChanged();
+}
+
+void KrimsonController::clearAllMorph()
+{
+    m_engine.clearMorph(m_engine.editedSlot());
+    ++m_morphRevision;
+    emit morphChanged();
+    emit paramsChanged();
 }
 
 void KrimsonController::poll()

@@ -85,6 +85,11 @@ void SlotController::load()
             if (const QJsonValue v = params.value(keyOf(i)); v.isDouble())
                 m_engine.setSlotParam(slot, krimson::ParamId(i),
                                       krate::snapToDetent(krimson::kParams[std::size_t(i)], float(std::clamp(v.toDouble(), 0.0, 1.0))));
+        const QJsonObject morph = so.value(u"morph").toObject();
+        for (auto it = morph.begin(); it != morph.end(); ++it)
+            for (int i = 0; i < krimson::SlotParamCount; ++i)
+                if (keyOf(i) == it.key() && it.value().isDouble())
+                    m_engine.setMorph(slot, krimson::ParamId(i), float(std::clamp(it.value().toDouble(), 0.0, 1.0)));
         m_engine.setSlotChannel(slot, std::clamp(so.value(u"channel").toInt(3 + slot), 0, 16) - 1);
         m_engine.setSlotOn(slot, so.value(u"on").toBool(true));
         const QString zone = so.value(u"zone").toString();
@@ -104,11 +109,15 @@ void SlotController::save()
     m_saveTimer.stop();
     QJsonArray slotList;
     for (int slot = 0; slot < krimson::SlotCount; ++slot) {
-        QJsonObject params;
-        for (int i = 0; i < krimson::SlotParamCount; ++i)
+        QJsonObject params, morph;
+        for (int i = 0; i < krimson::SlotParamCount; ++i) {
             params.insert(keyOf(i), double(m_engine.slotParam(slot, krimson::ParamId(i))));
+            if (const float target = m_engine.morph(slot, krimson::ParamId(i)); target >= 0.0f)
+                morph.insert(keyOf(i), double(target));
+        }
         slotList.append(QJsonObject{
             {QStringLiteral("params"), params},
+            {QStringLiteral("morph"), morph},
             {QStringLiteral("channel"), channel(slot)},
             {QStringLiteral("on"), isOn(slot)},
             {QStringLiteral("zone"), QString::fromLatin1(kZones[zone(slot)])},

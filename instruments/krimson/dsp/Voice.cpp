@@ -20,6 +20,44 @@ constexpr double kStealFadeSeconds = 0.002;
 double noteHz(double note) { return 440.0 * std::exp2((note - 69.0) / 12.0); }
 } // namespace
 
+SlotSettings blend(const SlotSettings &a, const SlotSettings &b, double t) noexcept
+{
+    if (t <= 0.0)
+        return a;
+    t = std::min(t, 1.0);
+    const auto lin = [t](double x, double y) { return x + (y - x) * t; };
+    const auto log = [t](double x, double y) { // times and rates: as their knobs move (exponentially)
+        return x > 0.0 && y > 0.0 ? x * std::pow(y / x, t) : x + (y - x) * t;
+    };
+    const auto times = [&](const Envelope::Times &x, const Envelope::Times &y) {
+        return Envelope::Times{log(x.attack, y.attack), log(x.decay, y.decay), lin(x.sustain, y.sustain),
+                               log(x.release, y.release)};
+    };
+    SlotSettings s = a;
+    s.osc2Semis = lin(a.osc2Semis, b.osc2Semis);
+    s.pw = lin(a.pw, b.pw);
+    s.mix = lin(a.mix, b.mix);
+    s.fm = lin(a.fm, b.fm);
+    s.menv = times(a.menv, b.menv);
+    s.menvAmount = lin(a.menvAmount, b.menvAmount);
+    s.lfo1Hz = log(a.lfo1Hz, b.lfo1Hz);
+    s.lfo1Amount = lin(a.lfo1Amount, b.lfo1Amount);
+    s.lfo2Amount = lin(a.lfo2Amount, b.lfo2Amount);
+    s.cutoffOctaves = lin(a.cutoffOctaves, b.cutoffOctaves);
+    s.res = lin(a.res, b.res);
+    s.drive = lin(a.drive, b.drive);
+    s.fenvOctaves = lin(a.fenvOctaves, b.fenvOctaves);
+    s.fenvVelocity = lin(a.fenvVelocity, b.fenvVelocity);
+    s.fenv = times(a.fenv, b.fenv);
+    s.aenv = times(a.aenv, b.aenv);
+    s.ampVelocity = lin(a.ampVelocity, b.ampVelocity);
+    s.gain = lin(a.gain, b.gain);
+    s.glideSeconds = lin(a.glideSeconds, b.glideSeconds);
+    s.slotGain = lin(a.slotGain, b.slotGain);
+    s.slotPan = lin(a.slotPan, b.slotPan);
+    return s;
+}
+
 void Voice::prepare(double sampleRate2x) noexcept
 {
     m_rate = sampleRate2x;

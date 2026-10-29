@@ -12,7 +12,9 @@ void Instance::triggerAction(const QString &action)
 {
     if (action.size() == 5 && action.startsWith(u"slot")) // slotA..slotD: play and edit that slot
         slotSetup.pressSlot(action.at(4).unicode() - u'A', false);
-    // Programs, store, arpeggiator, morph and octave arrive in later milestones.
+    else if (action == u"morph")
+        controller.setMorphEdit(!controller.morphEdit());
+    // Programs, store, the arpeggiator and octave actions arrive in later milestones.
 }
 
 krate::InstrumentEntry registryEntry()

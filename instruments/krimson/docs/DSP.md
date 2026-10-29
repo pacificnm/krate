@@ -33,7 +33,7 @@ OSC 2 can be the noise source; with keyboard tracking off it stays at middle C p
 
 ## Morph
 
-Every continuous parameter of a slot has an optional **morph value**. The morph source moves the parameter from its panel value toward that value, linearly in its normalized range. The source is the mod wheel when `wheel_dest` is Morph, else velocity. This happens per voice, at control rate (every 32 samples at 2×), so a wheel sweep changes cutoff, FM, envelope times and so on all together. Morph values are stored in programs.
+Every continuous slot parameter can have a **morph target** (`Engine::setMorph`; −1 = none; detented ones are ignored). Each block, a slot with targets gets its sound worked out twice: at the panel values and with every target in place (`settings(slot, true)`). Each voice then plays `blend(panel, targets, amount)`. Here `amount` is the slot's mod wheel when its Wheel is set to Morph, else the voice's velocity. The blend is linear for levels, amounts, cutoff (already in octaves), semitones and pan. Envelope times, glide and LFO rate blend in the log domain, so they move as their exponential knobs do. Lists and switches come from the panel values. It costs a few dozen multiply-adds per voice per segment.
 
 ## Voices and slots
 
@@ -49,4 +49,4 @@ Every continuous parameter of a slot has an optional **morph value**. The morph 
 
 ## CPU
 
-Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C3 measures 16 voices with sync, FM, drive and full resonance at 10.5 % (one voice: 0.71 %).
+Budget: 16 voices at 2× with all four slots' effects under 15 % of a core at 48 kHz / 64 frames (`krimson-render --bench`). C5 measures 16 voices with sync, FM, drive and full resonance at 10.2 % (one voice: 0.71 %).

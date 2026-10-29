@@ -54,7 +54,7 @@ foreach(test tst_voice tst_voices)
     add_test(NAME krimson_${test} COMMAND krimson_${test})
 endforeach()
 
-foreach(test tst_krimson tst_slots)
+foreach(test tst_krimson tst_slots tst_morph)
 add_executable(${test}
     tests/${test}.cpp
     app/KrimsonController.h

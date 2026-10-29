@@ -21,9 +21,12 @@ Poly; Mono (last note, retrigger); Legato (last note, no retrigger, glide only b
 
 ## Morph
 
-1. Hold **MORPH** (or SHIFT + wheel) and turn any knob: that knob's morph value is set (its LED ring shows the range).
-2. Release MORPH: the wheel (or velocity, `wheel_dest`) now sweeps every morphed knob from panel value to morph value.
-3. MORPH + CLEAR removes a slot's morph values.
+1. Press **MORPH** (it turns blue; learnable as the `morph` action): every knob now shows and sets its **morph target**, starting from its current value. A target appears as a blue arc on the knob's ring, from its value to the target.
+2. Press MORPH again: the knobs edit values again, and the morph source sweeps every knob with a target from its value to its target.
+3. **Source**: the mod wheel when WHEEL is set to Morph; with WHEEL on Vibrato, each note's velocity (soft = the panel's sound, hard = the targets).
+4. With MORPH lit, right-click a knob to clear its target; **CLEAR** clears the edited slot's targets.
+
+Only continuous controls morph; waves, filter type, switches and lists don't. Each slot has its own targets; they are saved in `slots.json` with the slot (and in programs from C7).
 
 ## Arpeggiator (per slot)
 
