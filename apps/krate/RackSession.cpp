@@ -81,7 +81,9 @@ void RackSession::load()
         }
         if (const int focus = int(m_ids.indexOf(json.value(u"focus").toString())); focus >= 0)
             m_controller.setFocus(focus);
-        m_controller.setMixerShown(json.value(u"view").toString() == u"mixer"); // after focus (which shows the panel)
+        // After focus (which shows the panel).
+        m_controller.setMixerShown(json.value(u"view").toString() == u"mixer");
+        m_controller.setSongShown(json.value(u"view").toString() == u"song");
 
         m_rack.clearMappings();
         m_learn.loadMappings(json.value(u"mappings").toArray());
@@ -90,6 +92,7 @@ void RackSession::load()
     // From here on, any change is saved.
     connect(&m_controller, &RackController::focusChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::mixerShownChanged, this, &RackSession::changed);
+    connect(&m_controller, &RackController::songShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::bpmChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::mixerChanged, this, &RackSession::changed);
     connect(&m_learn, &RackMidiLearn::mappingsChanged, this, &RackSession::changed);
@@ -116,7 +119,9 @@ void RackSession::save()
         {QStringLiteral("version"), kVersion},
         {QStringLiteral("tempo"), m_controller.bpm()},
         {QStringLiteral("focus"), m_ids.value(m_controller.focus())},
-        {QStringLiteral("view"), m_controller.mixerShown() ? QStringLiteral("mixer") : QStringLiteral("instrument")},
+        {QStringLiteral("view"), m_controller.mixerShown()  ? QStringLiteral("mixer")
+                                 : m_controller.songShown() ? QStringLiteral("song")
+                                                            : QStringLiteral("instrument")},
         {QStringLiteral("midiInput"), m_midiInput},
         {QStringLiteral("master"), m_controller.fader(-1)},
         {QStringLiteral("devices"), devices},

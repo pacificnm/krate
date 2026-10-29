@@ -65,6 +65,12 @@ public:
     // The instrument's CC map and MIDI Learn state, if it supports MIDI Learn.
     virtual MidiLearnMap *midiLearnMap() noexcept { return nullptr; }
 
+    // Any thread. An instrument with its own pattern sequencer (k303, K909,
+    // Kalliope's step sequencer) stops following the transport while this is
+    // off, so a song can play it from MIDI instead. On by default; nothing for
+    // instruments without one.
+    virtual void setSequencerEnabled(bool) noexcept {}
+
     // Realtime: no allocation, locks, I/O or blocking.
     virtual void process(const AudioBlock &block) noexcept = 0;
 };

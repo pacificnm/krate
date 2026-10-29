@@ -160,9 +160,10 @@ void Engine::process(const krate::AudioBlock &block) noexcept
 
     static constexpr krate::TransportState kStopped{};
     const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
-    if (transport.playing && (transport.restarted || !m_sequencer.running()))
+    const bool sequence = transport.playing && m_sequencerEnabled.load(std::memory_order_relaxed);
+    if (sequence && (transport.restarted || !m_sequencer.running()))
         m_sequencer.start();
-    else if (!transport.playing && m_sequencer.running())
+    else if (!sequence && m_sequencer.running())
         m_sequencer.stop(); // voices ring out
     const double beatsPerSample = transport.bpm / 60.0 / m_sampleRate;
 
@@ -181,7 +182,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
             renderTo(i);
             handleMidi(block.midi[nextEvent++]);
         }
-        if (transport.playing) {
+        if (sequence) {
             const Hits hits = m_sequencer.tick(transport.beatAtBlockStart + double(i) * beatsPerSample);
             if (hits.on) {
                 renderTo(i);

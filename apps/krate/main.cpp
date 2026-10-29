@@ -15,6 +15,7 @@
 #include "RackController.h"
 #include "RackMidiLearn.h"
 #include "RackSession.h"
+#include "SongController.h"
 #include "app/HostController.h"
 #include "app/InstrumentRegistry.h"
 #include "app/K303Instrument.h"
@@ -28,6 +29,7 @@
 #include "host/JackHost.h"
 #include "rack/Rack.h"
 #include "rack/RackProcessor.h"
+#include "song/SongPlayer.h"
 
 Q_IMPORT_QML_PLUGIN(KratePlugin)
 Q_IMPORT_QML_PLUGIN(K303Plugin)
@@ -58,6 +60,7 @@ int main(int argc, char *argv[])
     // then the host (closing JACK), then the instruments, then rack and transport.
     krate::Transport transport;
     krate::Rack rack;
+    krate::song::SongPlayer songPlayer; // plays a loaded song into the rack (docs/SONG_PLAYER.md)
     std::vector<std::unique_ptr<krate::InstrumentInstance>> instances;
     std::vector<std::string> ids;
 
@@ -91,6 +94,8 @@ int main(int argc, char *argv[])
                                     rackController.setPlaying(!rackController.playing());
                                 else if (action == u"mixer")
                                     rackController.setMixerShown(!rackController.mixerShown());
+                                else if (action == u"song")
+                                    rackController.setSongShown(!rackController.songShown());
                             },
                             nullptr);
     QObject::connect(&rackController, &RackController::focusChanged, &midiLearn, &RackMidiLearn::focusChanged);
@@ -103,7 +108,18 @@ int main(int argc, char *argv[])
                         rackController, rack, midiLearn, deviceIds, nullptr);
     session.load();
 
+    // The Song screen: ~/.config/krate/songs.json remembers each song's set-up and the last song.
+    std::vector<krate::IInstrument *> instruments;
+    for (const auto &instance : instances)
+        instruments.push_back(&instance->instrument());
+    SongController songController(songPlayer, rackController, entries, std::move(instruments),
+                                  QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
+                                      + QStringLiteral("/songs.json"),
+                                  nullptr);
+    songController.reopenLast();
+
     krate::RackProcessor processor(rack, transport, ids);
+    processor.setEventSource(&songPlayer);
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
     host.setMidiInputMatch(session.midiInput());

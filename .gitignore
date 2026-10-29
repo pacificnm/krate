@@ -3,3 +3,6 @@ build*/
 .qtcreator/
 compile_commands.json
 reference/
+
+# Renders (krate-render, song renders of your own song files): never committed
+*.wav

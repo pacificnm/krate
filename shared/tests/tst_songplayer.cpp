@@ -19,7 +19,7 @@ constexpr std::uint32_t kBlock = 64;
 Event on(Tick t, int ch, int key, int vel = 100) { return {t, std::uint8_t(0x90 | ch), std::uint8_t(key), std::uint8_t(vel)}; }
 Event off(Tick t, int ch, int key) { return {t, std::uint8_t(0x80 | ch), std::uint8_t(key), 0}; }
 
-// Two tracks at 480 ppq, 120 BPM: a bass line on string channels 0-1 with a
+// Two tracks at 480 ppq, 120 BPM: a bass part on string channels 0-1 with a
 // bend and a held note, and drums.
 std::unique_ptr<Song> makeSong()
 {

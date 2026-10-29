@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "song/Score.h"
 #include "song/Song.h"
 
@@ -22,5 +24,16 @@ enum class TrackRole { Drums, Bass, Guitar, Keys, Other };
 TrackRole guessRole(const Track &track, const ScoreTrack *score = nullptr) noexcept;
 
 const char *roleName(TrackRole role) noexcept;
+
+// A suggested instrument for each track: drums to the drum machine, the first
+// bass to the bass synth, keys and the rest to the polysynth parts in order
+// (part 0, 1, ...), guitars to nothing (they're for the player). Tracks
+// without notes get nothing.
+struct Suggestion
+{
+    enum class Kind { None, Drums, Bass, Poly } kind = Kind::None;
+    int part = 0; // Poly: 0, 1, 2 ...
+};
+std::vector<Suggestion> suggestInstruments(const Song &song, const std::vector<const ScoreTrack *> &score = {});
 
 } // namespace krate::song

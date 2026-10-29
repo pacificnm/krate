@@ -68,6 +68,37 @@ TrackRole guessRole(const Track &track, const ScoreTrack *score) noexcept
     return TrackRole::Other;
 }
 
+std::vector<Suggestion> suggestInstruments(const Song &song, const std::vector<const ScoreTrack *> &score)
+{
+    std::vector<Suggestion> out(song.tracks.size());
+    bool bassTaken = false;
+    int part = 0;
+    for (std::size_t t = 0; t < song.tracks.size(); ++t) {
+        const Track &track = song.tracks[t];
+        if (track.noteCount == 0)
+            continue;
+        switch (guessRole(track, t < score.size() ? score[t] : nullptr)) {
+        case TrackRole::Drums:
+            out[t].kind = Suggestion::Kind::Drums;
+            break;
+        case TrackRole::Bass:
+            if (!bassTaken) {
+                out[t].kind = Suggestion::Kind::Bass;
+                bassTaken = true;
+                break;
+            }
+            [[fallthrough]]; // a second bass part: a polysynth part
+        case TrackRole::Keys:
+        case TrackRole::Other:
+            out[t] = {Suggestion::Kind::Poly, part++};
+            break;
+        case TrackRole::Guitar:
+            break;
+        }
+    }
+    return out;
+}
+
 const char *roleName(TrackRole role) noexcept
 {
     switch (role) {

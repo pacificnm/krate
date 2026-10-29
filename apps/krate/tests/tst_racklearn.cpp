@@ -254,6 +254,26 @@ private slots:
         f.rack.setFocus(0); // as a learned focus button does
         QTRY_VERIFY(!f.controller->mixerShown());
         QCOMPARE(spy.count(), 4);
+        // The song screen: one or the other.
+        f.controller->setMixerShown(true);
+        f.controller->setSongShown(true);
+        QVERIFY(f.controller->songShown());
+        QVERIFY(!f.controller->mixerShown());
+        f.controller->setFocus(1);
+        QVERIFY(!f.controller->songShown());
+        // Saved and restored.
+        QTemporaryDir dir;
+        const QString path = dir.filePath("rack.json");
+        f.controller->setSongShown(true);
+        {
+            RackSession session(path, *f.controller, f.rack, *f.learn, {"alpha", "beta"}, nullptr);
+            session.save();
+        }
+        Fixture g;
+        RackSession session(path, *g.controller, g.rack, *g.learn, {"alpha", "beta"}, nullptr);
+        session.load();
+        QVERIFY(g.controller->songShown());
+        QVERIFY(!g.controller->mixerShown());
     }
 
     void clearAndClearAll()

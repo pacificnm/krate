@@ -64,14 +64,27 @@ void RackController::setFocus(int device)
     m_focus = device;
     emit focusChanged();
     setMixerShown(false);
+    setSongShown(false);
 }
 
 void RackController::setMixerShown(bool shown)
 {
     if (shown == m_mixerShown)
         return;
+    if (shown)
+        setSongShown(false);
     m_mixerShown = shown;
     emit mixerShownChanged();
+}
+
+void RackController::setSongShown(bool shown)
+{
+    if (shown == m_songShown)
+        return;
+    if (shown)
+        setMixerShown(false);
+    m_songShown = shown;
+    emit songShownChanged();
 }
 
 bool RackController::playing() const { return m_transport.playing(); }
@@ -244,6 +257,11 @@ void RackController::poll()
         m_focus = focus;
         emit focusChanged();
         setMixerShown(false);
+        setSongShown(false);
+    }
+    if (const double bpm = m_transport.bpm(); bpm != m_shownBpm) { // set by a song's tempo map too
+        m_shownBpm = bpm;
+        emit bpmChanged();
     }
 
     // Beat LED: lit for the first quarter of each beat while playing.

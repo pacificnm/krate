@@ -140,22 +140,16 @@ int renderSong(const SongOptions &o)
         names[std::size_t(t)] = instrument + (instrument == "krimson" ? std::string(" ") + char('A' + slot) : "");
         return true;
     };
-    if (o.assigns.empty()) {
-        bool bassTaken = false;
-        int nextKeys = 0; // Kalliope, then Krimson A-D
+    if (o.assigns.empty()) { // polysynth parts: Kalliope, then Krimson A-D
+        const auto suggested = s::suggestInstruments(*song, scoreTracks);
         for (int t = 0; t < trackCount; ++t) {
-            const s::Track &track = song->tracks[std::size_t(t)];
-            if (track.noteCount == 0)
-                continue;
-            const s::TrackRole role = s::guessRole(track, t < int(scoreTracks.size()) ? scoreTracks[std::size_t(t)] : nullptr);
-            if (role == s::TrackRole::Drums)
+            const s::Suggestion &g = suggested[std::size_t(t)];
+            if (g.kind == s::Suggestion::Kind::Drums)
                 assign(t, "k909", 0);
-            else if (role == s::TrackRole::Bass && !bassTaken)
-                bassTaken = assign(t, "k303", 0);
-            else if (role != s::TrackRole::Guitar && nextKeys < 5) {
-                assign(t, nextKeys == 0 ? "kalliope" : "krimson", nextKeys - 1);
-                ++nextKeys;
-            }
+            else if (g.kind == s::Suggestion::Kind::Bass)
+                assign(t, "k303", 0);
+            else if (g.kind == s::Suggestion::Kind::Poly && g.part < 5)
+                assign(t, g.part == 0 ? "kalliope" : "krimson", g.part - 1);
         }
     } else {
         for (const std::string &a : o.assigns) {

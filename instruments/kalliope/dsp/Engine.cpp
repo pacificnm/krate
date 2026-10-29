@@ -319,7 +319,8 @@ void Engine::arpUpdate(const krate::TransportState &transport) noexcept
     m_arpClock.setStepsPerBeat(kArpStepsPerBeat[units::index(m_params.get(int(ParamId::ArpRate)), positions::kArpRate)]);
     m_arpClock.setGateLength(kArpGate);
     m_arpClock.setLength(m_playMode == PlayMode::Sequencer ? m_sequence.length : 16);
-    const bool run = m_playMode != PlayMode::Note && transport.playing;
+    const bool run = m_playMode != PlayMode::Note && transport.playing
+                     && (m_playMode != PlayMode::Sequencer || m_sequencerEnabled.load(std::memory_order_relaxed));
     if (run && (transport.restarted || !m_arpClock.running())) {
         arpRelease();
         seqRelease();

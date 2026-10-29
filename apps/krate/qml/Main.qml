@@ -3,9 +3,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Krate
 
-// The Krate rack window: transport bar, instrument tabs (click = focus) and a
-// MIXER tab; below them the focused instrument's panel scaled to fit, or the
-// mixer screen.
+// The Krate rack window: transport bar, instrument tabs (click = focus), the
+// Mixer and Song tabs; below them the focused instrument's panel scaled to
+// fit, the mixer screen or the song screen.
 Window {
     id: root
 
@@ -28,6 +28,10 @@ Window {
     Shortcut {
         sequence: "M"
         onActivated: Rack.mixerShown = !Rack.mixerShown
+    }
+    Shortcut {
+        sequence: "S"
+        onActivated: Rack.songShown = !Rack.songShown
     }
     Shortcut {
         sequence: "L"
@@ -67,7 +71,7 @@ Window {
                 required property int index
                 required property string modelData
                 readonly property bool focused: Rack.focus === index
-                readonly property bool shown: focused && !Rack.mixerShown
+                readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown
 
                 width: 150
                 height: 40
@@ -153,6 +157,42 @@ Window {
             Accessible.role: Accessible.PageTab
             Accessible.name: "Mixer" + (Rack.mixerShown ? " (shown)" : "")
         }
+
+        Rectangle { // the song screen (learnable, S)
+            id: songTab
+            width: 130
+            height: 40
+            radius: 4
+            color: Rack.songShown ? Theme.silverLight : Theme.lowerDeck
+            border.color: Rack.songShown ? Theme.accentUi : Theme.deckLine
+            border.width: Rack.songShown ? 3 : 1
+
+            Led {
+                x: 12
+                anchors.verticalCenter: parent.verticalCenter
+                on: Rack.songShown
+            }
+            Text {
+                x: 34
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Song"
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 18
+                font.bold: Rack.songShown
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: Rack.songShown = !Rack.songShown
+            }
+            LearnOverlay {
+                anchors.fill: parent
+                paramKey: "rack:song"
+                round: false
+            }
+            Accessible.role: Accessible.PageTab
+            Accessible.name: "Song" + (Rack.songShown ? " (shown)" : "")
+        }
     }
 
     Item { // the focused instrument's panel, scaled to fit
@@ -161,7 +201,7 @@ Window {
         y: tabs.y + tabs.height + 10
         width: root.width - 32
         height: root.height - y - 16
-        visible: !Rack.mixerShown
+        visible: !Rack.mixerShown && !Rack.songShown
 
         Repeater {
             model: Rack.deviceCount
@@ -224,5 +264,13 @@ Window {
                 height: mixer.stripHeight
             }
         }
+    }
+
+    SongScreen {
+        x: 16
+        y: panelArea.y
+        width: root.width - 32
+        height: panelArea.height
+        visible: Rack.songShown
     }
 }

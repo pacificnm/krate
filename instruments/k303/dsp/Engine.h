@@ -79,7 +79,7 @@ public:
 
     // Any thread. Off: the sequencer doesn't follow the transport and MIDI keys
     // play the voice while it plays too (a song track playing k303). On by default.
-    void setSequencerEnabled(bool on) noexcept { m_sequencerEnabled.store(on, std::memory_order_relaxed); }
+    void setSequencerEnabled(bool on) noexcept override { m_sequencerEnabled.store(on, std::memory_order_relaxed); }
     bool sequencerEnabled() const noexcept { return m_sequencerEnabled.load(std::memory_order_relaxed); }
 
     // GUI thread (single consumer).
