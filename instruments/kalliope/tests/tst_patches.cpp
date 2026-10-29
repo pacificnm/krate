@@ -161,6 +161,11 @@ private slots:
         QCOMPARE(k.controller.value(QStringLiteral("play_mode")), 0.0); // back to Note
         instance->triggerAction(QStringLiteral("hold"));
         QCOMPARE(k.controller.value(QStringLiteral("arp_hold")), 1.0);
+        instance->triggerAction(QStringLiteral("octave_up"));
+        QCOMPARE(units::octaveShift(float(k.controller.value(QStringLiteral("octave")))), 1);
+        instance->triggerAction(QStringLiteral("octave_down"));
+        instance->triggerAction(QStringLiteral("octave_down"));
+        QCOMPARE(units::octaveShift(float(k.controller.value(QStringLiteral("octave")))), -1);
         instance->triggerAction(QStringLiteral("write"));
         QVERIFY(k.patches.writing());
         instance->triggerAction(QStringLiteral("write"));

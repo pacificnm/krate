@@ -69,16 +69,17 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | | `delay_level` | Delay Level | 0–100% wet |
 | | `delay_time` | Delay Time | 1/16, 1/8T, 1/8, 1/8 dotted, 1/4, 1/4 dotted, 1/2 (7), synced to the tempo |
 | | `delay_fb` | Delay Feedback | 0–90% |
+| Keys | `octave` | Octave | −3 … +3 octaves on every key, the LX49's and the on-screen keyboard's (7) *panel* |
 | Master | `volume` | Volume | output level *panel* |
 | | `tempo` | Tempo | 40–240 BPM; drives the standalone transport, unused in the rack (as k303 and K909) *panel* |
 
-50 parameters, within `ParamValues`' limit of 64.
+51 parameters, within `ParamValues`' limit of 64.
 
 ## MIDI
 
 | Message | Effect |
 | --- | --- |
-| Note on/off | Play voices per Key Mode, or feed the arpeggiator; velocity scaled by `velocity` |
+| Note on/off | Play voices per Key Mode, or feed the arpeggiator or the sequencer; shifted by Octave (each key keeps the shift it went down with); velocity scaled by `velocity` |
 | Pitch bend | ±`bend_range` semitones on every voice |
 | CC 1 (mod wheel) | Adds LFO vibrato to every voice's pitch, up to ±1 semitone at full, on top of VCO LFO Mod |
 | CC 64 (sustain) | Holds released notes until the pedal lifts |
@@ -92,7 +93,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | id / name | `kalliope` / `Kalliope` |
 | default MIDI channel | 1 (channel 2) |
 | QML module / panel | `Kalliope` / `Panel` |
-| actions | `bank1` … `bank8`, `patch1` … `patch8`, `note`, `arp`, `seq`, `hold`, `write`, `start`, `rest`, `tie`, `generate` |
+| actions | `bank1` … `bank8`, `patch1` … `patch8`, `note`, `arp`, `seq`, `hold`, `write`, `start`, `rest`, `tie`, `generate`, `octave_down`, `octave_up` |
 
 ## Outputs
 

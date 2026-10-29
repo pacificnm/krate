@@ -17,6 +17,7 @@ double cutoffHz(float v) { return 20.0 * std::pow(1000.0, double(v)); }
 double envSeconds(float v) { return 0.001 * std::pow(10000.0, double(v)); }
 double fineCents(float v) { return (double(v) - 0.5) * 100.0; }
 int bendSemitones(float v) { return 1 + index(v, positions::kBendRange); }
+int octaveShift(float v) { return index(v, positions::kOctave) - 3; }
 double delayFeedback(float v) { return 0.9 * double(v); }
 double tempoBpm(float v) { return kTempoMinBpm + (kTempoMaxBpm - kTempoMinBpm) * double(v); }
 double tempoValue(double bpm) { return (bpm - kTempoMinBpm) / (kTempoMaxBpm - kTempoMinBpm); }
@@ -77,6 +78,11 @@ std::string arpRate(float v) { return choice<4>(v, {"1/8", "1/16", "1/8T", "1/16
 std::string chorus(float v) { return choice<3>(v, {"Off", "I", "II"}); }
 std::string delayTime(float v) { return choice<7>(v, {"1/16", "1/8T", "1/8", "1/8.", "1/4", "1/4.", "1/2"}); }
 std::string delayFb(float v) { return std::format("{}%", std::lround(units::delayFeedback(v) * 100.0)); }
+std::string octave(float v)
+{
+    const int shift = units::octaveShift(v);
+    return shift == 0 ? std::string("0") : std::format("{:+}", shift);
+}
 std::string tempo(float v) { return std::format("{} BPM", std::lround(units::tempoBpm(v))); }
 
 } // namespace format

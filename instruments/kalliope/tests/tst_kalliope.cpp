@@ -24,7 +24,7 @@ private slots:
     void parameterTable()
     {
         QCOMPARE(int(kParams.size()), ParamCount);
-        QCOMPARE(ParamCount, 50);
+        QCOMPARE(ParamCount, 51);
         QCOMPARE(paramDescriptor(ParamId::LfoRate).key, std::string_view("lfo_rate"));
         QCOMPARE(paramDescriptor(ParamId::Cutoff).key, std::string_view("cutoff"));
         QCOMPARE(paramDescriptor(ParamId::Env2R).key, std::string_view("env2_r"));
@@ -67,6 +67,7 @@ private slots:
         QVERIFY(inPatch(ParamId::Cutoff));
         QVERIFY(inPatch(ParamId::PlayMode));
         QVERIFY(!inPatch(ParamId::GenDensity));
+        QVERIFY(!inPatch(ParamId::Octave));
     }
 
     void entryDescribesKalliope()
@@ -77,7 +78,7 @@ private slots:
         QCOMPARE(entry.qmlModule, QStringLiteral("Kalliope"));
         QCOMPARE(entry.panelComponent, QStringLiteral("Panel"));
         QCOMPARE(entry.defaultMidiChannel, 1);
-        QCOMPARE(entry.actions.size(), 25);
+        QCOMPARE(entry.actions.size(), 27);
         QVERIFY(entry.actions.contains(QStringLiteral("bank8")));
         QVERIFY(entry.actions.contains(QStringLiteral("patch1")));
         QVERIFY(entry.actions.contains(QStringLiteral("write")));
@@ -134,6 +135,32 @@ private slots:
         QVERIFY(!k.engine.noteHeld(64));
         QCOMPARE(k.controller.detents(QStringLiteral("vco2_range")), 5);
         QCOMPARE(k.controller.detents(QStringLiteral("cutoff")), 0);
+    }
+
+    // Octave shifts MIDI keys; a key's note-off matches its note-on even if
+    // Octave changed in between; the on-screen keyboard is not shifted again.
+    void octaveShiftsMidiKeys()
+    {
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        std::array<float, 64> l, r;
+        const auto send = [&](std::uint8_t status, std::uint8_t note) {
+            const krate::MidiEvent e{0, 3, {status, note, 100}};
+            krate::processStereo(engine, l.data(), r.data(), 64, &e, 1);
+        };
+        engine.setParam(ParamId::Octave, position(4, positions::kOctave)); // +1
+        send(0x90, 60);
+        QVERIFY(engine.noteHeld(72));
+        engine.setParam(ParamId::Octave, position(1, positions::kOctave)); // -2, while held
+        send(0x80, 60);
+        QVERIFY(!engine.noteHeld(72));
+        send(0x90, 60);
+        QVERIFY(engine.noteHeld(36));
+        send(0x80, 60);
+        engine.postNote(64, 100); // the on-screen keyboard: as shown
+        krate::processStereo(engine, l.data(), r.data(), 64);
+        QVERIFY(engine.noteHeld(64));
+        QCOMPARE(paramDescriptor(ParamId::Octave).format(position(4, positions::kOctave)), std::string("+1"));
     }
 
     // A note plays, and learned CCs move their parameters (snapped to detents).

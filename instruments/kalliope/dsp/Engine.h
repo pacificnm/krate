@@ -150,6 +150,9 @@ private:
 
     std::array<std::uint8_t, 16> m_held{};
     int m_heldCount = 0;
+    // Octave: each MIDI key's shift as it went down, so its note-off matches
+    // even if Octave changed while it was held (-128 = not down).
+    std::array<std::int8_t, 128> m_keyShift{};
 
     // Arpeggiator (docs/PLAY.md#arpeggiator).
     krate::StepClock m_arpClock; // the arpeggiator's and the sequencer's (never both at once)

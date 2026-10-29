@@ -24,6 +24,7 @@ enum class ParamId : int {
     KeyMode, Velocity, BendRange,
     PlayMode, ArpMode, ArpRange, ArpRate, ArpHold, GenDensity,
     Chorus, DelayLevel, DelayTime, DelayFb,
+    Octave,
     Volume,
     Tempo,
     Count
@@ -58,6 +59,7 @@ std::string arpRate(float v);
 std::string chorus(float v);
 std::string delayTime(float v);
 std::string delayFb(float v);
+std::string octave(float v);
 std::string tempo(float v);
 } // namespace format
 
@@ -79,6 +81,7 @@ inline constexpr int kArpRange = 4;  // 1..4 octaves
 inline constexpr int kArpRate = 4;   // 1/8, 1/16, 1/8T, 1/16T
 inline constexpr int kChorus = 3;    // Off, I, II
 inline constexpr int kDelayTime = 7; // 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2
+inline constexpr int kOctave = 7;    // -3 .. +3 octaves on the keys
 } // namespace positions
 
 // The normalized value of position `index` of an n-position control.
@@ -134,17 +137,19 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"delay_level", "Delay Level",       0.0f,                         0,             &format::percent},
     {"delay_time",  "Delay Time",        position(2, p::kDelayTime),   p::kDelayTime, &format::delayTime},
     {"delay_fb",    "Delay Feedback",    0.3f,                         0,             &format::delayFb},
+    {"octave",      "Octave",            position(3, p::kOctave),      p::kOctave,    &format::octave},
     {"volume",      "Volume",            0.8f,                         0,             &format::level},
     {"tempo",       "Tempo",             0.4f,                         0,             &format::tempo}, // 120 BPM in 40..240
 }};
 
 inline constexpr const krate::ParamDescriptor &paramDescriptor(ParamId id) { return kParams[std::size_t(id)]; }
 
-// True for the parameters a patch stores (all but Volume, Tempo, Hold and the
-// generator's Density; docs/PLAY.md#patches).
+// True for the parameters a patch stores (all but Volume, Tempo, Hold, the
+// generator's Density and the keys' Octave; docs/PLAY.md#patches).
 constexpr bool inPatch(ParamId id)
 {
-    return id != ParamId::Volume && id != ParamId::Tempo && id != ParamId::ArpHold && id != ParamId::GenDensity;
+    return id != ParamId::Volume && id != ParamId::Tempo && id != ParamId::ArpHold && id != ParamId::GenDensity
+           && id != ParamId::Octave;
 }
 
 namespace units {
@@ -159,6 +164,7 @@ double cutoffHz(float v);        // 20..20000 Hz, exponential
 double envSeconds(float v);      // 0.001..10 s, exponential
 double fineCents(float v);       // -50..+50
 int bendSemitones(float v);      // 1..12
+int octaveShift(float v);        // -3..+3
 double delayFeedback(float v);   // 0..0.9
 double tempoBpm(float v);
 double tempoValue(double bpm);

@@ -23,6 +23,7 @@ constexpr int kCcSustain = 64;
 constexpr int kCcAllSoundOff = 120;
 constexpr int kCcAllNotesOff = 123;
 constexpr double kUnisonDetuneCents = 12.0; // voices spread -12 .. +12 cents
+constexpr std::int8_t kKeyUp = -128;        // m_keyShift: the key is not down
 // Arp Rate positions as steps per beat: 1/8, 1/16, 1/8T, 1/16T.
 constexpr int kArpStepsPerBeat[] = {2, 4, 3, 6};
 constexpr double kArpGate = 0.5; // each arpeggio note lasts half a step
@@ -36,6 +37,7 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
     for (Voice &voice : m_voices)
         voice.prepare(2.0 * sampleRate);
     m_heldCount = 0;
+    m_keyShift.fill(kKeyUp);
     m_sustained.fill(false);
     m_sustain = false;
     m_mode = keyMode();
@@ -130,6 +132,7 @@ void Engine::applyKeyMode(KeyMode mode) noexcept
 void Engine::allNotesOff() noexcept
 {
     m_heldCount = 0;
+    m_keyShift.fill(kKeyUp);
     m_latchedCount = 0;
     m_arpNote = -1;
     m_seqCount = 0;
@@ -475,12 +478,24 @@ void Engine::handleMidi(const krate::MidiEvent &event) noexcept
         else if (m.data1 == kCcAllNotesOff || m.data1 == kCcAllSoundOff)
             allNotesOff();
         break;
-    case krate::MidiMessage::Type::NoteOn:
-        noteOn(m.data1, m.data2);
+    case krate::MidiMessage::Type::NoteOn: {
+        // Octave shifts MIDI keys (the on-screen keyboard already shows the shifted range).
+        const int shift = 12 * units::octaveShift(m_params.get(int(ParamId::Octave)));
+        const int note = m.data1 + shift;
+        if (note < 0 || note > 127)
+            break;
+        m_keyShift[m.data1] = std::int8_t(shift);
+        noteOn(note, m.data2);
         break;
-    case krate::MidiMessage::Type::NoteOff:
-        noteOff(m.data1);
+    }
+    case krate::MidiMessage::Type::NoteOff: {
+        const int shift = m_keyShift[m.data1];
+        if (shift == kKeyUp)
+            break;
+        m_keyShift[m.data1] = kKeyUp;
+        noteOff(m.data1 + shift);
         break;
+    }
     case krate::MidiMessage::Type::ProgramChange:
         m_programs.push(std::uint8_t(m.data1)); // the patch controller selects the patch
         break;

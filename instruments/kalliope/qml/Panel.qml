@@ -846,19 +846,60 @@ Item {
     DeckLabel { x: 225 - width / 2; y: 800; text: "TEMPO"; visible: Kalliope.ownsTransport }
     ParamKnob { key: "tempo"; x: 195; y: 828; width: 60; height: 60; visible: Kalliope.ownsTransport }
 
-    // Octave shift for the on-screen keyboard (Z / X)
-    property int baseNote: 48 // the keyboard's lowest C
+    // Octave (Z / X): shifts the keys, the LX49's and the on-screen keyboard's, -3..+3
+    readonly property int octave: Kalliope.revision >= 0 ? Math.round(Kalliope.value("octave") * 6) - 3 : 0
+    function shiftOctave(delta) {
+        Kalliope.setValue("octave", (Math.max(-3, Math.min(3, octave + delta)) + 3) / 6)
+    }
     DeckLabel { x: 160 - width / 2; y: 940; text: "OCTAVE" }
-    PanelButton { x: 62; y: 962; width: 52; height: 40; faceText: "◂"; text: "Octave down"; onClicked: panel.baseNote = Math.max(24, panel.baseNote - 12) }
-    PanelButton { x: 206; y: 962; width: 52; height: 40; faceText: "▸"; text: "Octave up"; onClicked: panel.baseNote = Math.min(84, panel.baseNote + 12) }
+    ActionButton {
+        action: "octave_down"
+        x: 62
+        y: 962
+        width: 52
+        height: 40
+        faceText: "◂"
+        text: "Octave down"
+        onClicked: panel.shiftOctave(-1)
+    }
+    ActionButton {
+        action: "octave_up"
+        x: 206
+        y: 962
+        width: 52
+        height: 40
+        faceText: "▸"
+        text: "Octave up"
+        onClicked: panel.shiftOctave(1)
+    }
     Text {
+        id: octaveText
         x: 160 - width / 2
-        y: 970
-        text: "C" + (panel.baseNote / 12 - 1)
+        y: 960
+        text: "C" + (3 + panel.octave)
         color: "#FF3A26"
         font.family: "monospace"
         font.pixelSize: 22
         font.bold: true
+
+        Accessible.role: Accessible.StaticText
+        Accessible.name: "Octave " + Kalliope.displayText("octave", Kalliope.value("octave"))
+    }
+    ValueText {
+        x: 160 - width / 2
+        y: 988
+        width: 60
+        text: panel.octave === 0 ? "" : (panel.octave > 0 ? "+" : "") + panel.octave + " oct"
+    }
+    Item {
+        LearnOverlay { // a knob or slider can drive Octave as a selector
+            x: 124
+            y: 956
+            width: 72
+            height: 48
+            paramKey: "octave"
+            round: false
+        }
     }
 
     Keyboard {
@@ -866,7 +907,7 @@ Item {
         y: 806
         width: 960
         height: 250
-        baseNote: panel.baseNote
+        baseNote: 48 + 12 * panel.octave
     }
 
     // Utilities: clear all MIDI mappings, audio (click to reconnect), MIDI Learn
@@ -931,8 +972,8 @@ Item {
         if (event.modifiers !== Qt.NoModifier && event.modifiers !== Qt.KeypadModifier)
             return
         switch (event.key) {
-        case Qt.Key_Z: panel.baseNote = Math.max(24, panel.baseNote - 12); break
-        case Qt.Key_X: panel.baseNote = Math.min(84, panel.baseNote + 12); break
+        case Qt.Key_Z: panel.shiftOctave(-1); break
+        case Qt.Key_X: panel.shiftOctave(1); break
         case Qt.Key_L: MidiLearn.active = !MidiLearn.active; break
         case Qt.Key_Escape:
             if (!MidiLearn.active)
