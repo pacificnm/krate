@@ -82,8 +82,8 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(16));
-        QCOMPARE(pedalTypes()[4]->type, std::string_view("green_drive"));
+        QCOMPARE(pedalTypes().size(), std::size_t(17));
+        QCOMPARE(pedalTypes()[5]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
             QVERIFY(p);
@@ -426,6 +426,69 @@ private slots:
         const auto y = run(p, sine(48000, 98.0, 0.8f));
         float peak = 0.0f;
         for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak) && peak < 4.0f);
+    }
+
+    // The octave stage: the note an octave up instead of the note (into a
+    // mild fuzz and amp, small enough that they don't add their own).
+    void hazeOctave()
+    {
+        const auto ratio = [](float octave) {
+            Haze h;
+            h.prepare(kRate);
+            h.setKnob(Haze::Octave, octave);
+            h.setKnob(Haze::Fuzz, 0.0f);
+            h.setKnob(Haze::Amp, 0.0f);
+            h.setKnob(Haze::Room, 0.0f);
+            const auto y = run(h, sine(24000, 330.0, 0.05f));
+            return db(level(y, 660.0, 12000, 9600)) - db(level(y, 330.0, 12000, 9600));
+        };
+        QVERIFY(ratio(0.0f) < -15.0); // mostly the note
+        QVERIFY(ratio(1.0f) > 30.0);  // the octave, the note gone
+        QVERIFY(ratio(0.5f) > ratio(0.0f) + 10.0);
+    }
+
+    // Low FUZZ answers the pick (it cleans up); high is saturated.
+    void hazeCleansUp()
+    {
+        const auto spread = [](float fuzz) {
+            const auto out = [fuzz](float amplitude) {
+                Haze h;
+                h.prepare(kRate);
+                h.setKnob(Haze::Fuzz, fuzz);
+                h.setKnob(Haze::Room, 0.0f);
+                const auto y = run(h, sine(24000, 196.0, amplitude));
+                return db(level(y, 196.0, 12000, 9600));
+            };
+            return out(0.2f) - out(0.02f);
+        };
+        QVERIFY2(spread(0.0f) > 5.0, qPrintable(QString::number(spread(0.0f))));
+        QVERIFY2(spread(1.0f) < 2.0, qPrintable(QString::number(spread(1.0f))));
+    }
+
+    void hazeRoomAndBounds()
+    {
+        Haze h;
+        h.prepare(kRate);
+        h.setKnob(Haze::Room, 1.0f);
+        std::vector<float> warm(4800, 0.0f);
+        run(h, warm);
+        std::vector<float> y(24000, 0.0f);
+        for (std::size_t i = 0; i < 480; ++i)
+            y[i] = 0.3f * float(std::sin(2.0 * std::numbers::pi * 220.0 * double(i) / kRate));
+        y = run(h, y);
+        double tail = 0.0;
+        for (std::size_t i = 4800; i < 9600; ++i)
+            tail = std::max(tail, double(std::fabs(y[i])));
+        QVERIFY(tail > 1e-4); // the room rings on after the note
+        Haze loud;
+        loud.prepare(kRate);
+        for (int k : {Haze::Octave, Haze::Fuzz, Haze::Amp, Haze::Tone, Haze::Room, Haze::Level})
+            loud.setKnob(k, 1.0f);
+        const auto z = run(loud, sine(48000, 82.41, 0.8f));
+        float peak = 0.0f;
+        for (float v : z)
             peak = std::max(peak, std::fabs(v));
         QVERIFY(std::isfinite(peak) && peak < 4.0f);
     }

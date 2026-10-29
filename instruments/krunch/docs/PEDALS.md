@@ -69,7 +69,7 @@ The early-80s neoclassical metal lead and rhythm sound, made for the **clean cha
 | `double` | off … 100 % | 30 % |
 | `level` | −12 … +12 dB | 0 dB |
 
-A black case with white polka dots (PedalInfo's `pattern`: `dots:` and `pyramid:` are drawn on the board; patterned cases get plates behind the name, and the dots a panel behind the knobs). Set Krunch's channel to the Clean voice with its gain low (the pedal is the drive), pick a 4×12 IR, and start in FRONT; a Delay or Reverb in the LOOP finishes the lead sound.
+A black case with white polka dots (PedalInfo's `pattern`: `dots:`, `pyramid:` and `paisley:` are drawn on the board; patterned cases get plates behind the name, and the dots a panel behind the knobs). Set Krunch's channel to the Clean voice with its gain low (the pedal is the drive), pick a 4×12 IR, and start in FRONT; a Delay or Reverb in the LOOP finishes the lead sound.
 
 ### Pyramid
 
@@ -92,6 +92,27 @@ The mid-80s British twin-guitar heavy metal sound, made for the **clean channel*
 | `level` | −12 … +12 dB | 0 dB |
 
 A yellow case with a pyramid. Use the Clean voice with its gain low, a 4×12 IR, and start in FRONT.
+
+### Haze
+
+The late-60s psychedelic fuzz sound, made for the **clean channel**: a germanium round fuzz into a cranked British amp, and on the solos the octave-up fuzz, a full-wave rectifier that flips the wave's lower half up so it rings an octave higher (best above the 12th fret, on the neck pickup). Haze is that chain:
+
+- **OCTAVE** (0 = off): the rectified signal (twice the frequency, its offset removed, as loud as the guitar) blended in before the fuzz, at 4×. At full the note itself is gone and the octave rings.
+- **FUZZ**: the Round Fuzz on germanium, from mild (it cleans up: at 0, 20 dB more pick is 8 dB louder) to full (saturated).
+- **AMP**: Krunch's two-stage British preamp (the Crunch voice), cranked, mids up; **TONE** its treble and presence.
+- **ROOM**: a 60s studio room (a short reverb).
+- **LEVEL**: about 3 dB over bypass at the defaults.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `octave` | off … 10 | off |
+| `fuzz` | 0 … 10 | 7 |
+| `amp` | 0 … 10 | 6 |
+| `tone` | 0 … 10 | 5.5 |
+| `room` | off … 10 | 3.5 |
+| `level` | −12 … +12 dB | 0 dB |
+
+A purple case with gold paisleys. Use the Clean voice with its gain low and start in FRONT; roll the guitar's volume back and it cleans up, as the original did.
 
 ## Vibe
 
@@ -216,4 +237,4 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (Pyramid: a dynamic crunch, Gain adding drive, Bite brightening, the echo on time, bounded; Madman: the distortion's gain range, saturated at its defaults, Gain adding distortion, the mid push, the doubler adding takes at an even level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (Haze: the octave in place of the note, cleaning up at low fuzz and saturated at high, the room's tail, bounded; Pyramid: a dynamic crunch, Gain adding drive, Bite brightening, the echo on time, bounded; Madman: the distortion's gain range, saturated at its defaults, Gain adding distortion, the mid push, the doubler adding takes at an even level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

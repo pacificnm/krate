@@ -331,4 +331,89 @@ void Pyramid::processEffect(float *buffer, std::uint32_t frames) noexcept
     m_level = target;
 }
 
+// --- Haze -------------------------------------------------------------------------
+
+const PedalInfo Haze::kInfo = []() {
+    static const KnobInfo knobs[] = {
+        {"octave", "OCTAVE", 0.0f, &partText},
+        {"fuzz", "FUZZ", 0.7f, &tenthText},
+        {"amp", "AMP", 0.6f, &tenthText},
+        {"tone", "TONE", 0.55f, &tenthText},
+        {"room", "ROOM", 0.35f, &partText},
+        {"level", "LEVEL", 0.5f, &levelText},
+    };
+    PedalInfo info{"haze", "Haze", "#5B2A86", knobs, false, 1.6f};
+    info.pattern = "paisley:#E9A93A";
+    return info;
+}();
+
+void Haze::prepareEffect(double sampleRate) noexcept
+{
+    m_rate = sampleRate;
+    m_octaveDc.setCutoff(sampleRate * Oversampler4x::kFactor, 40.0);
+    m_fuzz.setKnob(RoundFuzz::Type, 0.0f); // germanium
+    m_fuzz.setKnob(RoundFuzz::Bias, 0.5f);
+    m_fuzz.setKnob(RoundFuzz::Volume, 0.6f);
+    m_fuzz.prepare(sampleRate);
+    m_amp.prepare(sampleRate);
+    m_room.setKnob(Reverb::Decay, 0.12f); // a room, not a hall
+    m_room.setKnob(Reverb::Tone, 0.45f);
+    m_room.prepare(sampleRate);
+}
+
+void Haze::resetEffect() noexcept
+{
+    m_oversampler.reset();
+    m_octaveDc.reset();
+    m_fuzz.prepare(m_rate);
+    m_amp.reset();
+    m_room.prepare(m_rate);
+    m_level = -1.0f;
+}
+
+void Haze::processEffect(float *buffer, std::uint32_t frames) noexcept
+{
+    // The octave: the wave's lower half flipped up (twice the frequency),
+    // blended in by OCTAVE, at 4x (a rectifier makes harmonics without end).
+    if (const float octave = knob(Octave); octave >= kOff) {
+        float up[Oversampler4x::kFactor];
+        for (std::uint32_t n = 0; n < frames; ++n) {
+            m_oversampler.up(buffer[n], up);
+            for (float &u : up) {
+                const float flipped = m_octaveDc.highpass(2.0f * std::fabs(u)); // as loud as the guitar
+                u = u + octave * (flipped - u);
+            }
+            buffer[n] = m_oversampler.down(up);
+        }
+    }
+
+    m_fuzz.setKnob(RoundFuzz::Fuzz, knob(Fuzz)); // from mild (it cleans up) to full
+    m_fuzz.process(buffer, frames);
+
+    Preamp::Settings amp;
+    amp.voice = Voice::Crunch; // the cranked British amp
+    amp.gain = 0.1f + 0.55f * knob(Amp);
+    amp.bass = 0.55f;
+    amp.mid = 0.7f;
+    amp.treble = knob(Tone);
+    amp.presence = 0.3f + 0.5f * knob(Tone);
+    m_amp.set(amp);
+    m_amp.process(buffer, frames);
+
+    const float room = knob(Room);
+    m_room.setOn(room >= kOff);
+    m_room.setKnob(Reverb::Mix, 0.35f * room);
+    m_room.process(buffer, frames);
+
+    const float target = float(std::pow(10.0, (-12.0 + 24.0 * double(knob(Level))) / 20.0) * 0.15); // ~4 dB over bypass
+    if (m_level < 0.0f)
+        m_level = target;
+    const float step = (target - m_level) / float(frames);
+    for (std::uint32_t n = 0; n < frames; ++n) {
+        m_level += step;
+        buffer[n] *= m_level;
+    }
+    m_level = target;
+}
+
 } // namespace krunch

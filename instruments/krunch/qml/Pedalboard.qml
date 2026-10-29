@@ -185,8 +185,64 @@ Rectangle {
                     }
                 }
 
+                // "paisley:#RRGGBB": 60s paisleys in that colour, scattered over the case.
+                Canvas {
+                    id: paisley
+                    readonly property string pattern: pedal.info.pattern ?? ""
+                    visible: pattern.startsWith("paisley:")
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    onPatternChanged: requestPaint()
+                    onWidthChanged: requestPaint()
+                    onHeightChanged: requestPaint()
+                    // One paisley: a teardrop with a curled tail, an inner outline and a dot.
+                    function drawOne(ctx, x, y, size, angle, colour) {
+                        ctx.save()
+                        ctx.translate(x, y)
+                        ctx.rotate(angle)
+                        ctx.scale(size, size)
+                        const shape = scale => {
+                            ctx.beginPath()
+                            ctx.moveTo(0.35 * scale, -1.15 * scale)
+                            ctx.bezierCurveTo(1.1 * scale, -0.6 * scale, 1.0 * scale, 0.95 * scale, 0.0, 1.0 * scale)
+                            ctx.bezierCurveTo(-0.95 * scale, 1.0 * scale, -0.9 * scale, -0.2 * scale, -0.15 * scale, -0.45 * scale)
+                            ctx.bezierCurveTo(0.25 * scale, -0.6 * scale, 0.15 * scale, -0.95 * scale, 0.35 * scale, -1.15 * scale)
+                            ctx.closePath()
+                        }
+                        ctx.lineWidth = 0.12
+                        ctx.strokeStyle = colour
+                        shape(1.0)
+                        ctx.stroke()
+                        ctx.lineWidth = 0.08
+                        shape(0.6)
+                        ctx.stroke()
+                        ctx.fillStyle = colour
+                        ctx.beginPath()
+                        ctx.arc(0.0, 0.35, 0.16, 0, 2 * Math.PI)
+                        ctx.fill()
+                        ctx.restore()
+                    }
+                    onPaint: {
+                        const ctx = getContext("2d")
+                        ctx.reset()
+                        if (!visible)
+                            return
+                        const colour = pattern.slice(8)
+                        // A fixed scatter, so the case looks the same every time.
+                        let seed = 7
+                        const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 }
+                        const step = 46
+                        for (let row = 0; row * step < height + step; ++row)
+                            for (let col = 0; col * step < width + step; ++col) {
+                                const x = col * step + (row % 2 ? step / 2 : 0) + (random() - 0.5) * 12
+                                const y = row * step + (random() - 0.5) * 12
+                                drawOne(ctx, x, y, 13 + random() * 6, random() * 2 * Math.PI, colour)
+                            }
+                    }
+                }
+
                 Rectangle { // on a patterned case, a panel behind the knobs and their labels
-                    visible: dots.visible && knobRow.visible
+                    visible: (dots.visible || paisley.visible) && knobRow.visible
                     x: 5
                     y: 14
                     width: parent.width - 10
@@ -309,7 +365,7 @@ Rectangle {
                 }
 
                 Rectangle { // on a patterned case, a plate behind the name so it reads
-                    visible: dots.visible || pyramid.visible
+                    visible: dots.visible || pyramid.visible || paisley.visible
                     x: 14
                     y: (pedal.info.sliders ?? false) ? 106 : 98
                     width: parent.width - 28
@@ -324,7 +380,7 @@ Rectangle {
                     width: parent.width - 16
                     horizontalAlignment: Text.AlignHCenter
                     text: pedal.info.name ?? ""
-                    color: dots.visible || pyramid.visible ? "#F4F1E6" : pedal.lettering // on its plate, or on the case
+                    color: dots.visible || pyramid.visible || paisley.visible ? "#F4F1E6" : pedal.lettering // on its plate, or on the case
                     style: pedal.lightCase ? Text.Normal : Text.Raised
                     styleColor: "#80000000"
                     font.family: Theme.labelFont

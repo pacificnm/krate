@@ -133,4 +133,34 @@ private:
     float m_level = -1.0f; // ramped
 };
 
+// Haze: the late-60s psychedelic fuzz sound, for the clean channel: a
+// germanium round fuzz into a cranked British amp, and on the solos the
+// octave-up fuzz (a full-wave rectifier: the wave's lower half flipped up, so
+// it rings an octave higher, best high on the neck). Haze is that chain: the
+// octave stage (OCTAVE, 0 = off, blended in before the fuzz), the Round Fuzz
+// on germanium (FUZZ), Krunch's two-stage British preamp cranked (AMP, with
+// TONE), a 60s studio room (ROOM) and the level.
+class Haze final : public Pedal
+{
+public:
+    enum Knob : int { Octave, Fuzz, Amp, Tone, Room, Level };
+    static const PedalInfo kInfo;
+
+    Haze() : Pedal(kInfo) {}
+
+protected:
+    void prepareEffect(double sampleRate) noexcept override;
+    void resetEffect() noexcept override;
+    void processEffect(float *buffer, std::uint32_t frames) noexcept override;
+
+private:
+    double m_rate = 48000.0;
+    Oversampler4x m_oversampler; // the rectifier, at 4x
+    OnePole m_octaveDc;          // the flipped wave's offset, removed (at 4x)
+    RoundFuzz m_fuzz;
+    Preamp m_amp;
+    Reverb m_room;
+    float m_level = -1.0f; // ramped
+};
+
 } // namespace krunch
