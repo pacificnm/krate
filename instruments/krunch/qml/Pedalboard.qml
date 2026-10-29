@@ -59,6 +59,9 @@ Rectangle {
                 readonly property var info: Pedals.layoutRevision >= 0 ? Pedals.pedals()[index] : ({})
                 readonly property bool on: Pedals.revision >= 0 && Pedals.isOn(index)
                 readonly property bool loop: Pedals.revision >= 0 && Pedals.inLoop(index)
+                // Lettering that reads on its case: dark on light cases, cream on dark ones.
+                readonly property bool lightCase: Qt.color(info.colour ?? "#444").hslLightness > 0.6
+                readonly property color lettering: lightCase ? "#1A1A1A" : "#F4F1E6"
 
                 Binding on x { // where its place is, except while it's being dragged
                     when: !bodyDrag.drag.active
@@ -116,6 +119,7 @@ Rectangle {
                                 name: (pedal.info.name ?? "") + " " + knobColumn.modelData.label
                                 value: Pedals.revision >= 0 ? Pedals.knob(pedal.index, knobColumn.index) : 0
                                 defaultValue: knobColumn.modelData.defaultValue
+                                detents: knobColumn.modelData.detents ?? 0
                                 displayText: Pedals.knobText(pedal.index, knobColumn.index, value)
                                 capColor: "#1E1E1E"
                                 capShadeColor: "#000"
@@ -149,8 +153,8 @@ Rectangle {
                     width: parent.width - 16
                     horizontalAlignment: Text.AlignHCenter
                     text: pedal.info.name ?? ""
-                    color: "#F4F1E6"
-                    style: Text.Raised
+                    color: pedal.lettering
+                    style: pedal.lightCase ? Text.Normal : Text.Raised
                     styleColor: "#80000000"
                     font.family: Theme.labelFont
                     font.pixelSize: 19
@@ -180,11 +184,11 @@ Rectangle {
                                 width: placement.width / 2
                                 height: placement.height
                                 radius: 4
-                                color: chosen ? "#F4F1E6" : "transparent"
+                                color: chosen ? (pedal.lightCase ? "#1A1A1A" : "#F4F1E6") : "transparent"
                                 Text {
                                     anchors.centerIn: parent
                                     text: placeChoice.modelData
-                                    color: placeChoice.chosen ? "#101010" : "#F4F1E6"
+                                    color: placeChoice.chosen === pedal.lightCase ? "#F4F1E6" : "#101010"
                                     font.family: Theme.labelFont
                                     font.pixelSize: 10
                                     font.bold: true

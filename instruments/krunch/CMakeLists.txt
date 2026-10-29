@@ -11,6 +11,8 @@ add_library(krunch_dsp STATIC
     dsp/GreenDrive.cpp
     dsp/Krunch.h
     dsp/Krunch.cpp
+    dsp/ModPedals.h
+    dsp/ModPedals.cpp
     dsp/Oversampler.h
     dsp/Pedal.h
     dsp/Pedal.cpp

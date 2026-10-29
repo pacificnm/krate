@@ -29,6 +29,28 @@ The classic green mid-boost overdrive, modelled on its circuit in broad strokes 
 | `tone` | 0 … 10 | 5 |
 | `level` | −24 … +12 dB | −6 dB |
 
+## Phaser
+
+The classic one-knob four-stage phaser (`dsp/ModPedals.cpp`): four first-order all-pass stages swept together (their corner from about 140 Hz to 1.6 kHz, the LFO bent to linger low as a FET's sweep does), mixed half and half with the guitar: two notches moving through the low mids. **MODE**: Smooth (no feedback: notches about 60 dB deep, flat peaks), or Deep, which feeds the last stage back to the first (0.6) as the later version of the pedal does: resonant peaks about 3 dB up, notches about 16 dB deep, trimmed so it isn't louder overall.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `speed` | 0.1 … 8 Hz | about 0.5 Hz |
+| `mode` | Smooth / Deep (a switch) | Smooth |
+
+## Flanger
+
+The classic analog bucket-brigade flanger in broad strokes (`dsp/ModPedals.cpp`): the guitar mixed half and half with a copy through a short delay, swept by a slow triangle evenly in pitch (exponentially) from 0.25 ms up to the Range setting (1 … 10 ms); **COLOR** feeds the copy back (up to 0.85) for the resonant, metallic sweep; the copy loses its top above about 8 kHz, as through the chip; the delay is read between samples with a 4-point (Hermite) curve so the fast-moving read stays clean. **MATRIX** (Filter Matrix) stops the sweep: Range then sets the delay by hand over the whole 0.25 … 10 ms, for a fixed comb.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `rate` | 0.05 … 3 Hz | about 0.2 Hz |
+| `range` | top of the sweep 1 … 10 ms (Matrix: the delay) | about 4 ms |
+| `color` | 0 … 10 (feedback 0 … 0.85) | 5.5 |
+| `matrix` | Sweep / Matrix (a switch) | Sweep |
+
+Both start in FRONT, where these usually go (in front of the drive or between it and the amp); either works in the loop too.
+
 ## Chorus
 
 The guitar mixed with a copy through a short delay (7 ms) swept by a sine LFO (`dsp/TimePedals.cpp`).
@@ -62,4 +84,4 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

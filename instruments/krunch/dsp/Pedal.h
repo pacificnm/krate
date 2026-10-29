@@ -18,6 +18,7 @@ struct KnobInfo
     std::string_view label; // on the pedal
     float defaultValue;     // 0..1
     std::string (*format)(float);
+    int detents = 0;        // 0 = continuous; N = a switch with N positions
 };
 
 // A kind of pedal (docs/PEDALS.md).

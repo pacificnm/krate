@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "dsp/GreenDrive.h"
+#include "dsp/ModPedals.h"
 #include "dsp/TimePedals.h"
 
 namespace krunch {
@@ -17,8 +18,13 @@ Pedal::Pedal(const PedalInfo &info)
 
 void Pedal::setKnob(int index, float value) noexcept
 {
-    if (index >= 0 && index < kMaxKnobs)
-        m_knobs[std::size_t(index)].store(std::clamp(value, 0.0f, 1.0f), std::memory_order_relaxed);
+    if (index < 0 || index >= kMaxKnobs)
+        return;
+    value = std::clamp(value, 0.0f, 1.0f);
+    if (std::size_t(index) < m_info.knobs.size())
+        if (const int detents = m_info.knobs[std::size_t(index)].detents; detents > 1) // a switch: snap
+            value = std::round(value * float(detents - 1)) / float(detents - 1);
+    m_knobs[std::size_t(index)].store(value, std::memory_order_relaxed);
 }
 
 void Pedal::prepare(double sampleRate) noexcept
@@ -51,7 +57,8 @@ void Pedal::process(float *buffer, std::uint32_t frames) noexcept
 
 std::span<const PedalInfo *const> pedalTypes()
 {
-    static const PedalInfo *const kTypes[] = {&GreenDrive::kInfo, &Chorus::kInfo, &Delay::kInfo, &Reverb::kInfo};
+    static const PedalInfo *const kTypes[] = {&GreenDrive::kInfo, &Phaser::kInfo, &Flanger::kInfo, &Chorus::kInfo,
+                                              &Delay::kInfo, &Reverb::kInfo};
     return kTypes;
 }
 
@@ -59,6 +66,10 @@ std::unique_ptr<Pedal> makePedal(std::string_view type)
 {
     if (type == GreenDrive::kInfo.type)
         return std::make_unique<GreenDrive>();
+    if (type == Flanger::kInfo.type)
+        return std::make_unique<Flanger>();
+    if (type == Phaser::kInfo.type)
+        return std::make_unique<Phaser>();
     if (type == Chorus::kInfo.type)
         return std::make_unique<Chorus>();
     if (type == Delay::kInfo.type)

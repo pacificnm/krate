@@ -72,7 +72,8 @@ QVariantList PedalController::pedals() const
             knobs << QVariantMap{{QStringLiteral("key"), QString::fromUtf8(info.knobs[k].key)},
                                  {QStringLiteral("label"), QString::fromUtf8(info.knobs[k].label)},
                                  {QStringLiteral("value"), pedal.knob(int(k))},
-                                 {QStringLiteral("defaultValue"), info.knobs[k].defaultValue}};
+                                 {QStringLiteral("defaultValue"), info.knobs[k].defaultValue},
+                                 {QStringLiteral("detents"), info.knobs[k].detents}};
         result << QVariantMap{{QStringLiteral("type"), QString::fromUtf8(info.type)},
                               {QStringLiteral("name"), QString::fromUtf8(info.name)},
                               {QStringLiteral("colour"), QString::fromUtf8(info.colour)},

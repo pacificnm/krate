@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "dsp/GreenDrive.h"
+#include "dsp/ModPedals.h"
 #include "dsp/Pedal.h"
 #include "dsp/TimePedals.h"
 
@@ -76,7 +77,7 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(4));
+        QCOMPARE(pedalTypes().size(), std::size_t(6));
         QCOMPARE(pedalTypes()[0]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
@@ -198,6 +199,97 @@ private slots:
             (std::fabs(f - nearest) <= 3.0 * kRate / double(n) && nearest > 0.0 ? harmonic : other) += std::norm(sum);
         }
         QVERIFY(other / (harmonic + other) < 0.01);
+    }
+
+    // --- Flanger and phaser ------------------------------------------------------------
+
+    void switchesSnap()
+    {
+        Flanger f;
+        f.setKnob(Flanger::Matrix, 0.7f);
+        QCOMPARE(f.knob(Flanger::Matrix), 1.0f);
+        f.setKnob(Flanger::Matrix, 0.3f);
+        QCOMPARE(f.knob(Flanger::Matrix), 0.0f);
+        f.setKnob(Flanger::Range, 0.3f); // a knob stays where it's put
+        QCOMPARE(f.knob(Flanger::Range), 0.3f);
+    }
+
+    // Filter Matrix: a fixed comb, its first notch where the delay puts it
+    // (half a cycle late), its first peak an octave up.
+    void flangerMatrixIsAFixedComb()
+    {
+        const auto at = [](float color, double hz) {
+            Flanger f;
+            f.prepare(kRate);
+            f.setKnob(Flanger::Matrix, 1.0f);
+            f.setKnob(Flanger::Range, 0.5f);
+            f.setKnob(Flanger::Color, color);
+            const auto y = run(f, sine(24000, hz, 0.1f));
+            return db(level(y, hz, 12000, 9600) / 0.1);
+        };
+        const double delay = Flanger::delayMs(1.0f, 0.5) / 1000.0;
+        const double notch = 0.5 / delay, peak = 1.0 / delay;
+        QVERIFY2(at(0.0f, peak) - at(0.0f, notch) > 20.0, qPrintable(QStringLiteral("%1 vs %2").arg(at(0.0f, peak)).arg(at(0.0f, notch))));
+        QVERIFY(at(1.0f, peak) > at(0.0f, peak) + 4.0); // Color: sharper, resonant peaks
+    }
+
+    void flangerSweeps()
+    {
+        Flanger f;
+        f.prepare(kRate);
+        f.setKnob(Flanger::Rate, 1.0f); // 3 Hz
+        const auto y = run(f, sine(48000, 1000.0, 0.1f));
+        double lo = 1e9, hi = 0.0;
+        for (std::size_t at = 4800; at + 480 < y.size(); at += 480) {
+            const double l = level(y, 1000.0, at, 480);
+            lo = std::min(lo, l);
+            hi = std::max(hi, l);
+        }
+        QVERIFY2(db(hi) - db(lo) > 15.0, qPrintable(QStringLiteral("%1 dB").arg(db(hi) - db(lo))));
+    }
+
+    void flangerFullColorStaysBounded()
+    {
+        Flanger f;
+        f.prepare(kRate);
+        f.setKnob(Flanger::Color, 1.0f);
+        const auto y = run(f, sine(48000 * 2, 330.0, 0.8f));
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak) && peak < 6.0f);
+    }
+
+    // Two notches moving through the low mids: at a fixed frequency the
+    // level dips and comes back as they pass. DEEP's feedback makes the peaks
+    // between the notches stand out (and the notches shallower).
+    void phaserNotchesMove()
+    {
+        struct Swing { double low, high; };
+        const auto swing = [](float mode, double hz) {
+            Phaser p;
+            p.prepare(kRate);
+            p.setKnob(Phaser::Speed, 0.2f); // slow (0.24 Hz): each 10 ms window sees the sweep stand still
+            p.setKnob(Phaser::Mode, mode);
+            const auto y = run(p, sine(48000 * 5, hz, 0.1f));
+            Swing s{1e9, 0.0};
+            for (std::size_t at = 4800; at + 480 < y.size(); at += 480) {
+                const double l = level(y, hz, at, 480) / 0.1;
+                s.low = std::min(s.low, l);
+                s.high = std::max(s.high, l);
+            }
+            return s;
+        };
+        const Swing smooth = swing(0.0f, 500.0), deep = swing(1.0f, 500.0);
+        QVERIFY(db(smooth.high) - db(smooth.low) > 15.0);
+        QVERIFY(db(deep.high) - db(deep.low) > 10.0);
+        QVERIFY(db(deep.high) > db(smooth.high) + 2.0); // resonant peaks
+    }
+
+    void phaserSpeedRange()
+    {
+        QVERIFY(std::fabs(Phaser::speedHz(0.0f) - 0.1) < 1e-9);
+        QVERIFY(std::fabs(Phaser::speedHz(1.0f) - 8.0) < 1e-9);
     }
 
     // --- Pedalboard -------------------------------------------------------------------
