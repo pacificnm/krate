@@ -14,6 +14,8 @@ namespace krate::song {
 
 using Tick = std::int64_t;
 
+inline constexpr int kDrumChannel = 9; // channel 10, the drum-kit channel
+
 struct TempoChange
 {
     Tick tick = 0;
@@ -90,11 +92,17 @@ struct Track
     int lowestNote = -1, highestNote = -1;
 };
 
+// Readers call this once a track's events are in: sorts nothing (events must
+// already be in tick order), pairs note-ons with note-offs per channel and key
+// (a repeated key ends the earlier note; notes still on end at `end`; stray
+// note-offs go), counts the notes and sets `channel` and `drums`.
+void finishTrack(Track &track, Tick end);
+
 struct Song
 {
     std::string title;
     TempoMap tempo;
-    std::vector<Track> tracks; // only tracks with notes
+    std::vector<Track> tracks; // MIDI files: tracks with notes; tab files: one per score track (empty ones silent)
     Tick length = 0;           // the last event's tick
 };
 

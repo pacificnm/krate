@@ -2,6 +2,7 @@
 // they line up before the real readers are written (docs/SONG_PLAYER.md, S0).
 //
 //   song-dump [--bars N] [--track T] [--xml OUT] FILE...
+//   song-dump --compare FILE.gp FILE.mid   (Krate's tab reader against the MIDI file)
 //
 // For a .gp file: the zip's entries, the score's tracks (name, instrument,
 // tuning, capo), bar count, time signatures, repeats, tempo changes, and the
@@ -16,6 +17,7 @@
 
 #include <zlib.h>
 
+#include "song/GpFile.h"
 #include "song/MidiFile.h"
 
 #include <cstdio>
@@ -513,6 +515,51 @@ void dumpMidi(const QString &path)
                     t.drums ? " (drums)" : "", t.program, t.noteCount, t.events.size());
 }
 
+// Krate's .gp reader against a MIDI file of the same song: per track, how
+// many note-ons match (same pitch, within a 64th note), in quarter-note time.
+void compare(const QString &gpPath, const QString &midPath)
+{
+    const auto gp = krate::song::readGpFile(gpPath.toStdString());
+    const auto mid = krate::song::readMidiFile(midPath.toStdString());
+    if (!gp.song || !mid.song) {
+        std::printf("can't compare: %s %s\n", gp.error.c_str(), mid.error.c_str());
+        return;
+    }
+    const krate::song::Song &a = *gp.song, &b = *mid.song;
+    std::printf("tab: %zu tracks, %zu bars played (%zu written), %.1f s | MIDI: %zu tracks, %.1f s\n", a.tracks.size(),
+                gp.score->playOrder.size(), gp.score->bars.size(), a.tempo.secondsAt(a.length), b.tracks.size(),
+                b.tempo.secondsAt(b.length));
+    const auto onsets = [](const krate::song::Song &s, const krate::song::Track &t) {
+        std::multimap<int, double> out; // pitch -> beat
+        for (const auto &e : t.events)
+            if (e.type() == 0x90)
+                out.emplace(e.data1, s.tempo.beatAt(e.tick));
+        return out;
+    };
+    for (std::size_t i = 0; i < std::min(a.tracks.size(), b.tracks.size()); ++i) {
+        auto x = onsets(a, a.tracks[i]);
+        auto y = onsets(b, b.tracks[i]);
+        const std::size_t tabNotes = x.size();
+        int matched = 0;
+        double worst = 0.0;
+        for (auto it = x.begin(); it != x.end(); ++it) {
+            auto [lo, hi] = y.equal_range(it->first);
+            auto best = y.end();
+            for (auto j = lo; j != hi; ++j)
+                if (best == y.end() || std::abs(j->second - it->second) < std::abs(best->second - it->second))
+                    best = j;
+            if (best != y.end() && std::abs(best->second - it->second) <= 1.0 / 16.0) {
+                worst = std::max(worst, std::abs(best->second - it->second));
+                ++matched;
+                y.erase(best);
+            }
+        }
+        std::printf("  [%zu] %-40.40s tab %5zu notes, MIDI %5zu: %5d match (%.1f%%), worst offset %.4f beats, MIDI-only %zu\n",
+                    i, a.tracks[i].name.c_str(), tabNotes, std::size_t(b.tracks[i].noteCount), matched,
+                    tabNotes == 0 ? 100.0 : 100.0 * matched / double(tabNotes), worst, y.size());
+    }
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -529,8 +576,14 @@ int main(int argc, char **argv)
             track = args[++i].toInt();
         else if (args[i] == u"--xml" && i + 1 < args.size())
             xmlOut = args[++i];
+        else if (args[i] == u"--compare")
+            continue;
         else
             files << args[i];
+    }
+    if (files.size() == 2 && args.contains(QStringLiteral("--compare"))) {
+        compare(files[0], files[1]);
+        return 0;
     }
     if (files.isEmpty()) {
         std::fprintf(stderr, "usage: song-dump [--bars N] [--track T] [--xml OUT] FILE.gp|FILE.mid ...\n");

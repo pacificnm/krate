@@ -11,7 +11,6 @@ namespace krate::song {
 
 namespace {
 
-constexpr int kDrumChannel = 9;
 constexpr std::size_t kMaxFileBytes = 64u << 20;
 
 class Reader
@@ -76,43 +75,6 @@ struct Part
     std::vector<Event> events;
     int program = -1;
 };
-
-// Pairs note-ons and note-offs per channel and key: a note-on on a sounding
-// key ends the earlier note first, and notes still on at the end are ended
-// there. Also counts the notes and finds the track's main channel.
-void closeNotes(Track &track, Tick end)
-{
-    std::array<std::array<std::uint8_t, 128>, 16> on{};
-    std::array<int, 16> perChannel{};
-    std::vector<Event> out;
-    out.reserve(track.events.size());
-    for (const Event &e : track.events) {
-        std::uint8_t &count = on[std::size_t(e.channel())][e.data1];
-        if (e.type() == 0x90) {
-            if (count > 0) {
-                out.push_back({e.tick, std::uint8_t(0x80 | e.channel()), e.data1, 0});
-                --count;
-            }
-            ++count;
-            ++track.noteCount;
-            ++perChannel[std::size_t(e.channel())];
-            track.lowestNote = track.lowestNote < 0 ? e.data1 : std::min<int>(track.lowestNote, e.data1);
-            track.highestNote = std::max<int>(track.highestNote, e.data1);
-        } else if (e.type() == 0x80) {
-            if (count == 0)
-                continue; // a stray note-off
-            --count;
-        }
-        out.push_back(e);
-    }
-    for (int channel = 0; channel < 16; ++channel)
-        for (int key = 0; key < 128; ++key)
-            for (std::uint8_t &count = on[std::size_t(channel)][std::size_t(key)]; count > 0; --count)
-                out.push_back({end, std::uint8_t(0x80 | channel), std::uint8_t(key), 0});
-    track.events = std::move(out);
-    track.channel = int(std::max_element(perChannel.begin(), perChannel.end()) - perChannel.begin());
-    track.drums = track.noteCount > 0 && perChannel[std::size_t(kDrumChannel)] == track.noteCount;
-}
 
 // Names in files are often Latin-1; the rest of Krate expects UTF-8.
 std::string toUtf8(const std::string &s)
@@ -288,7 +250,7 @@ MidiFileResult readMidiFile(std::span<const std::uint8_t> data)
     }
 
     const auto addTrack = [&](Track track) {
-        closeNotes(track, songEnd);
+        finishTrack(track, songEnd);
         if (track.noteCount > 0)
             song.tracks.push_back(std::move(track));
     };
