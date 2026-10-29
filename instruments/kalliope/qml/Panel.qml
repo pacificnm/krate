@@ -876,7 +876,7 @@ Item {
         id: octaveText
         x: 160 - width / 2
         y: 960
-        text: "C" + (3 + panel.octave)
+        text: "C" + (3 + panel.octave + keys.controllerOctave) // your keyboard's octave (as the keys show it) plus Kalliope's own
         color: "#FF3A26"
         font.family: "monospace"
         font.pixelSize: 22
@@ -903,6 +903,7 @@ Item {
     }
 
     ControllerPianoKeyboard { // key for key with your MIDI keyboard (the rack's KEYS setting)
+        id: keys
         instrument: Kalliope
         x: 320
         y: 806

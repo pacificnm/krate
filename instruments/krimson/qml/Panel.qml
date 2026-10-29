@@ -364,10 +364,11 @@ Item {
             x: 82; y: 22; width: 30; height: 26; dark: true; faceText: "▸"; text: "Octave up"; onClicked: octave.step(1)
             LearnOverlay { anchors.fill: parent; paramKey: "octave_up"; round: false }
         }
-        Text {
+        Text { // the octave you're playing in: your keyboard's (as the keys show it) plus Krimson's own
+            readonly property int total: octave.shift + keys.controllerOctave
             x: 58 - width / 2
             y: 24
-            text: (octave.shift > 0 ? "+" : "") + octave.shift
+            text: (total > 0 ? "+" : "") + total
             color: panel.led
             font.family: "monospace"
             font.pixelSize: 18
@@ -788,6 +789,7 @@ Item {
     }
 
     ControllerPianoKeyboard { // key for key with your MIDI keyboard (the rack's KEYS setting)
+        id: keys
         instrument: Krimson
         x: 200
         y: 540
