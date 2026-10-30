@@ -12,6 +12,7 @@
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
+#include "NoteTargets.h"
 #include "SongLibrary.h"
 #include "app/InstrumentRegistry.h"
 #include "song/BackingTrack.h"
@@ -80,14 +81,7 @@ class SongController : public QObject
 
 public:
     // An instrument a track can play on.
-    struct Choice
-    {
-        QString label; // "Krimson B"
-        QString key;   // "krimson:B" (stable, for songs.json)
-        int device = -1;
-        int channel = 0;
-        bool drumMap = false;
-    };
+    using Choice = NoteTarget;
 
     SongController(krate::song::SongPlayer &player, RackController &rack, const QList<krate::InstrumentEntry> &entries,
                    std::vector<krate::InstrumentInstance *> instances, SongLibrary &library, QObject *parent);

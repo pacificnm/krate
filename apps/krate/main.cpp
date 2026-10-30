@@ -34,6 +34,11 @@
 #include "rack/Rack.h"
 #include "rack/RackProcessor.h"
 #include "song/SongPlayer.h"
+#include "core/EventMerge.h"
+#include "seq/Sequencer.h"
+#include "NoteTargets.h"
+#include "SequencerFile.h"
+#include "app/JsonFile.h"
 
 Q_IMPORT_QML_PLUGIN(KratePlugin)
 Q_IMPORT_QML_PLUGIN(K303Plugin)
@@ -140,8 +145,30 @@ int main(int argc, char *argv[])
     else
         songController.reopenLast();
 
+    // The rack sequencer (docs/SEQUENCER.md), from ~/.local/share/krate/sequencer.json.
+    krate::seq::Sequencer sequencer;
+    {
+        QJsonObject json;
+        const QString path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/sequencer.json");
+        SequencerState state = krate::files::readVersionedJson(path, 1, &json) == krate::files::LoadResult::Loaded
+                                   ? sequencerFromJson(json)
+                                   : SequencerState{};
+        const std::vector<NoteTarget> targets = noteTargets(entries);
+        for (int t = 0; t < krate::seq::kTracks; ++t) {
+            for (const NoteTarget &target : targets)
+                if (target.key == state.targets[std::size_t(t)])
+                    sequencer.setTarget(t, {target.device, target.channel});
+            sequencer.setMute(t, state.mutes[std::size_t(t)]);
+        }
+        sequencer.setRunning(state.running);
+        sequencer.cue(state.pattern);
+        sequencer.setBank(std::move(state.bank));
+    }
+
+    // The song player and the sequencer both play into the rack.
+    krate::EventMerge<2> eventSources({&songPlayer, &sequencer});
     krate::RackProcessor processor(rack, transport, ids);
-    processor.setEventSource(&songPlayer);
+    processor.setEventSource(&eventSources);
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
     host.setMidiInputMatch(session.midiInput());

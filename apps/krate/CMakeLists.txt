@@ -18,6 +18,10 @@ qt_add_qml_module(krate
         RackRunControl.cpp
         RackSession.h
         RackSession.cpp
+        NoteTargets.h
+        NoteTargets.cpp
+        SequencerFile.h
+        SequencerFile.cpp
         SongController.h
         SongController.cpp
         SongLibrary.h
@@ -44,7 +48,7 @@ target_link_libraries(krate PRIVATE
     krunch_ui krunch_uiplugin
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin
-    krate_rack krate_host krate_song
+    krate_rack krate_host krate_song krate_seq
     Qt6::Gui Qt6::Sql Qt6::Quick Qt6::QuickControls2
 )
 
@@ -70,6 +74,8 @@ add_test(NAME tst_racklearn COMMAND tst_racklearn)
 # The Song screen's controller, with generated song files and fake instruments.
 add_executable(tst_song
     tests/tst_song.cpp
+    NoteTargets.h
+    NoteTargets.cpp
     RackController.h
     RackController.cpp
     RackRunControl.h
@@ -83,6 +89,13 @@ target_include_directories(tst_song PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_song PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_song PRIVATE krate_rack krate_song krate_app Qt6::Qml Qt6::Sql Qt6::Test)
 add_test(NAME tst_song COMMAND tst_song)
+
+# The sequencer's file.
+add_executable(tst_sequencerfile tests/tst_sequencerfile.cpp SequencerFile.h SequencerFile.cpp)
+target_include_directories(tst_sequencerfile PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_sequencerfile PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_sequencerfile PRIVATE krate_seq Qt6::Core Qt6::Test)
+add_test(NAME tst_sequencerfile COMMAND tst_sequencerfile)
 
 # The song library's database, with generated files.
 add_executable(tst_library tests/tst_library.cpp SongLibrary.h SongLibrary.cpp)

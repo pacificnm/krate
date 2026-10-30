@@ -86,6 +86,17 @@ target_include_directories(krate_song PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE
 target_link_libraries(krate_song PUBLIC krate_core PRIVATE ZLIB::ZLIB)
 target_compile_options(krate_song PRIVATE ${KRATE_WARNINGS})
 
+# --- krate_seq: the rack sequencer (patterns, the player); no Qt
+add_library(krate_seq STATIC
+    seq/Pattern.h
+    seq/Sequencer.h
+    seq/Sequencer.cpp
+    core/EventMerge.h
+)
+target_include_directories(krate_seq PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(krate_seq PUBLIC krate_core)
+target_compile_options(krate_seq PRIVATE ${KRATE_WARNINGS})
+
 # --- krate_app: Qt helpers for any instrument app (files, screenshot hook)
 add_library(krate_app STATIC
     app/RunControl.h
@@ -180,6 +191,11 @@ add_executable(tst_gpfile tests/tst_gpfile.cpp)
 target_compile_options(tst_gpfile PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_gpfile PRIVATE krate_song ZLIB::ZLIB Qt6::Test)
 add_test(NAME tst_gpfile COMMAND tst_gpfile)
+
+add_executable(tst_racksequencer tests/tst_racksequencer.cpp)
+target_compile_options(tst_racksequencer PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_racksequencer PRIVATE krate_seq krate_rack Qt6::Test)
+add_test(NAME tst_racksequencer COMMAND tst_racksequencer)
 
 add_executable(tst_songplayer tests/tst_songplayer.cpp)
 target_compile_options(tst_songplayer PRIVATE -Wall -Wextra -Wpedantic)

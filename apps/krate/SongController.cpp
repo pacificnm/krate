@@ -62,25 +62,9 @@ SongController::SongController(s::SongPlayer &player, RackController &rack, cons
     Q_ASSERT(!s_instance);
     s_instance = this;
 
-    // Every instrument that plays notes; one choice per channel for
-    // instruments with several (Krimson's slots A-D). The metronome and the amp play none.
     for (const krate::InstrumentEntry &e : entries)
         m_ids << e.id;
-    for (qsizetype i = 0; i < entries.size(); ++i) {
-        const krate::InstrumentEntry &e = entries[i];
-        if (!e.playsNotes)
-            continue;
-        if (e.extraMidiChannels.isEmpty()) {
-            m_choices.push_back({e.name, e.id, int(i), std::max(0, e.defaultMidiChannel), e.id == u"k909"});
-            continue;
-        }
-        QList<int> channels{e.defaultMidiChannel};
-        channels += e.extraMidiChannels;
-        for (qsizetype k = 0; k < channels.size(); ++k) {
-            const QChar slot(char16_t(u'A' + k));
-            m_choices.push_back({e.name + u' ' + slot, e.id + u':' + slot, int(i), std::max(0, channels[k]), false});
-        }
-    }
+    m_choices = noteTargets(entries); // every instrument that plays notes
 
     m_timer.setInterval(kPollIntervalMs);
     connect(&m_timer, &QTimer::timeout, this, &SongController::pollPosition);
