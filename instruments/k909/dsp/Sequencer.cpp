@@ -76,6 +76,91 @@ Pattern factoryPattern(int index)
         };
         return makePattern(t);
     }
+    // ---- Industrial (for the Industrial, EBM, Gated 80s, Crushed and Machine Shop kits)
+    case 4: { // Stomp: four on the floor, a booming downbeat, metal and clank on the offbeats
+        constexpr TrackSteps t[] = {
+            {DrumId::Bd, "X...X...X...X..."},
+            {DrumId::Sd, "....X.......X..."},
+            {DrumId::Ch, "x.xxx.xxx.xxx.xx"},
+            {DrumId::Me, "..x.......x....."},
+            {DrumId::Ck, "......x.......x."},
+            {DrumId::Bm, "X..............."},
+        };
+        return makePattern(t);
+    }
+    case 5: { // Drive: the kick on every eighth, snare and clap together, sixteenth hats
+        constexpr TrackSteps t[] = {
+            {DrumId::Bd, "X.x.X.x.X.x.X.x."},
+            {DrumId::Sd, "....X.......X..."},
+            {DrumId::Cp, "....x.......x..."},
+            {DrumId::Ch, "XxxxXxxxXxxxXxxx"},
+            {DrumId::Nz, "...............x"},
+        };
+        return makePattern(t);
+    }
+    case 6: { // Anvil: a broken kick under struck metal
+        constexpr TrackSteps t[] = {
+            {DrumId::Bd, "X..x..X...x..x.."},
+            {DrumId::Sd, "....X.......X..."},
+            {DrumId::Me, "x.......x...x..."},
+            {DrumId::Ck, "..x...x...x...x."},
+            {DrumId::Oh, "..x...x...x...x."},
+        };
+        return makePattern(t);
+    }
+    case 7: { // Machine Gun: a snare roll into the bar, noise stabs, rim ticks
+        constexpr TrackSteps t[] = {
+            {DrumId::Bd, "X...X...X...X..."},
+            {DrumId::Sd, "....X..x....XxxX"},
+            {DrumId::Ch, "x.x.x.x.x.x.x.x."},
+            {DrumId::Nz, "..X.......X....."},
+            {DrumId::Rs, "...x..x....x..x."},
+        };
+        return makePattern(t);
+    }
+    case 8: { // Half-Time: heavy and slow, the boom under the kick
+        constexpr TrackSteps t[] = {
+            {DrumId::Bd, "X.........x....."},
+            {DrumId::Sd, "........X......."},
+            {DrumId::Bm, "X..............."},
+            {DrumId::Me, "....x.......x..."},
+            {DrumId::Ch, "x.x.x.x.x.x.x.x."},
+            {DrumId::Nz, "............x..x"},
+        };
+        return makePattern(t);
+    }
+    case 9: { // Clatter: clank running through, rim and metal accents
+        constexpr TrackSteps t[] = {
+            {DrumId::Bd, "X..x...xX..x...."},
+            {DrumId::Sd, "....X.......X..."},
+            {DrumId::Ck, "x.xx.x.xx.x.xx.x"},
+            {DrumId::Rs, "..x...x...x...x."},
+            {DrumId::Me, "..............X."},
+        };
+        return makePattern(t);
+    }
+    case 10: { // Gated Floor: for the gated reverb, with a tom fill
+        constexpr TrackSteps t[] = {
+            {DrumId::Bd, "X...X...X...X..."},
+            {DrumId::Sd, "....X.......X..."},
+            {DrumId::Mt, ".............x.."},
+            {DrumId::Lt, "..............x."},
+            {DrumId::Ch, "x.x.x.x.x.x.x.x."},
+            {DrumId::Oh, "..x...x...x...x."},
+        };
+        return makePattern(t);
+    }
+    case 11: { // Breakdown: the boom, struck metal on the beat, a crash and a noise wash
+        constexpr TrackSteps t[] = {
+            {DrumId::Bd, "x..............."},
+            {DrumId::Bm, "X.......x......."},
+            {DrumId::Me, "x...x...x...x..."},
+            {DrumId::Nz, "........X......."},
+            {DrumId::Cr, "X..............."},
+            {DrumId::Ck, "....x.......x..x"},
+        };
+        return makePattern(t);
+    }
     }
 }
 

@@ -28,7 +28,17 @@ double logCosh(double u)
 }
 
 // Output trim per voice so default-level hits peak in a similar range.
-constexpr std::array<double, DrumCount> kTrim{0.9, 0.75, 0.8, 0.8, 0.8, 0.35, 0.9, 1.4, 1.4, 1.9, 1.75};
+constexpr std::array<double, DrumCount> kTrim{0.9, 0.75, 0.8, 0.8, 0.8, 0.35, 0.9, 1.4, 1.4, 1.9, 1.75,
+                                              1.0, 0.85, 1.0, 1.15};
+
+// Metal's modes: a free bar or pipe (stretched, far apart) to a plate or sheet
+// (dense, close together); Material morphs between them (log-frequency).
+constexpr std::array<double, 6> kPipeRatios{1.0, 2.756, 5.404, 8.933, 13.344, 18.64};
+constexpr std::array<double, 6> kPlateRatios{1.0, 1.36, 1.67, 2.10, 2.42, 2.98};
+constexpr std::array<double, 6> kModeAmp{1.0, 0.7, 0.55, 0.4, 0.3, 0.22};
+constexpr std::array<double, 6> kModeDecay{1.0, 0.8, 0.6, 0.45, 0.35, 0.25}; // of the Decay time
+constexpr double kClankRatio1 = 1.4142;
+constexpr double kClankRatio2 = 3.7321;
 
 constexpr std::array<double, 6> kHatRatios{1.0, 1.48, 1.80, 2.55, 2.63, 3.90};
 constexpr std::array<double, 6> kCrashRatios{1.0, 1.34, 1.73, 2.21, 2.76, 3.43};
@@ -304,6 +314,45 @@ void Voices::trigger(DrumId drum, const Hit &hit) noexcept
         m_rdBellAmp.start(1.0, 0.9, rate);
         break;
     }
+    case DrumId::Me: {
+        const double f0 = expMap(hit.tune, 120.0, 1500.0);
+        const double decay = expMap(hit.decay, 0.15, 3.0);
+        for (std::size_t i = 0; i < std::size_t(kModes); ++i) {
+            const double ratio = std::exp(std::log(kPipeRatios[i]) * (1.0 - hit.extra[0])
+                                          + std::log(kPlateRatios[i]) * hit.extra[0]);
+            m_meHz[i] = f0 * ratio;
+            m_meAmp[i] = m_meHz[i] < 0.45 * rate ? kModeAmp[i] : 0.0; // nothing over Nyquist
+            m_meModes[i].reset();
+            m_meEnv[i].start(1.0, decay * kModeDecay[i], rate);
+        }
+        m_meStrike.start(1.0, 0.012, rate);
+        m_meStrikeBand.set(std::min(3.0 * f0, 0.4 * rate), 1.5, rate);
+        m_meStrikeBand.reset();
+        break;
+    }
+    case DrumId::Ck:
+        m_ckHz = expMap(hit.tune, 80.0, 900.0);
+        m_ckIndex = 12.0 * hit.extra[0];
+        m_ckCarrier = m_ckMod1 = m_ckMod2 = 0.0;
+        m_ckAmp.start(1.0, expMap(hit.decay, 0.05, 1.2), rate);
+        m_ckIndexEnv.start(1.0, std::max(0.015, 0.3 * expMap(hit.decay, 0.05, 1.2)), rate);
+        m_ckClick.start(1.0, 0.006, rate);
+        break;
+    case DrumId::Nz: {
+        m_nzHz = expMap(hit.tune, 300.0, 8000.0);
+        m_nzSweepOctaves = 4.0 * hit.extra[0];
+        const double decay = expMap(hit.decay, 0.03, 1.5);
+        m_nzAmp.start(1.0, decay, rate);
+        m_nzSweepEnv.start(1.0, 0.5 * decay, rate);
+        m_nzFilter.reset();
+        break;
+    }
+    case DrumId::Bm:
+        m_bmBase = expMap(hit.tune, 28.0, 65.0);
+        m_bmOsc.reset();
+        m_bmAmp.start(1.0, expMap(hit.decay, 0.3, 3.0), rate);
+        m_bmPitch.start(1.0, 0.25, rate);
+        break;
     case DrumId::Count:
         break;
     }
@@ -402,6 +451,53 @@ float Voices::tick(DrumId drum) noexcept
         if (a < kSilent)
             m_active[std::size_t(drum)] = false;
         return float(a * m_rdLp.process(m_rdHp.process(metal).hp).lp + 0.25 * bell);
+    }
+    case DrumId::Me: {
+        double sum = 0.0, loudest = 0.0;
+        for (std::size_t i = 0; i < std::size_t(kModes); ++i) {
+            const double e = m_meEnv[i].next();
+            loudest = std::max(loudest, e * m_meAmp[i]);
+            if (m_meAmp[i] > 0.0)
+                sum += m_meAmp[i] * e * m_meModes[i].next(m_meHz[i], rate);
+        }
+        const double strike = m_meStrike.next() * m_meStrikeBand.process(m_meNoise.next()).bp;
+        if (loudest < kSilent)
+            m_active[std::size_t(drum)] = false;
+        return float(0.4 * sum + 1.5 * strike);
+    }
+    case DrumId::Ck: {
+        const double index = m_ckIndex * m_ckIndexEnv.next();
+        constexpr double kTwoPi = 2.0 * std::numbers::pi;
+        const double mod = std::sin(kTwoPi * m_ckMod1) + 0.5 * std::sin(kTwoPi * m_ckMod2);
+        const double out = std::sin(kTwoPi * m_ckCarrier + index * mod);
+        const double step = m_ckHz / rate;
+        m_ckCarrier += step;
+        m_ckMod1 += step * kClankRatio1;
+        m_ckMod2 += step * kClankRatio2;
+        m_ckCarrier -= std::floor(m_ckCarrier);
+        m_ckMod1 -= std::floor(m_ckMod1);
+        m_ckMod2 -= std::floor(m_ckMod2);
+        const double a = m_ckAmp.next();
+        if (a < kSilent)
+            m_active[std::size_t(drum)] = false;
+        return float(a * out + 0.4 * m_ckClick.next() * m_ckNoise.next());
+    }
+    case DrumId::Nz: {
+        const double hz = m_nzHz * std::exp2(m_nzSweepOctaves * m_nzSweepEnv.next());
+        m_nzFilter.set(std::min(hz, 0.45 * rate), 3.0, rate);
+        const Svf::Out f = m_nzFilter.process(m_nzNoise.next());
+        const double a = m_nzAmp.next();
+        if (a < kSilent)
+            m_active[std::size_t(drum)] = false;
+        return float(a * std::tanh(1.5 * (f.lp + 0.6 * f.bp)) / std::tanh(1.5));
+    }
+    case DrumId::Bm: {
+        const double hz = m_bmBase * (1.0 + 2.0 * double(m_bmPitch.next()));
+        const double body = std::tanh(2.5 * double(m_bmOsc.next(hz, rate))) / std::tanh(2.5);
+        const double a = m_bmAmp.next();
+        if (a < kSilent)
+            m_active[std::size_t(drum)] = false;
+        return float(a * body);
     }
     case DrumId::Count:
         break;

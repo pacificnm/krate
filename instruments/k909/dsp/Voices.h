@@ -5,8 +5,9 @@
 
 namespace k909 {
 
-// The eleven voices in panel and track order (docs/DSP.md#voices).
-enum class DrumId : int { Bd, Sd, Lt, Mt, Ht, Rs, Cp, Ch, Oh, Cr, Rd, Count };
+// The voices in panel and track order (docs/DSP.md#voices): the classic
+// eleven, then the industrial four (Metal, Clank, Noise, Boom).
+enum class DrumId : int { Bd, Sd, Lt, Mt, Ht, Rs, Cp, Ch, Oh, Cr, Rd, Me, Ck, Nz, Bm, Count };
 inline constexpr int DrumCount = int(DrumId::Count);
 
 // ---- Building blocks (docs/DSP.md#building-blocks). Realtime-safe, no allocation.
@@ -208,6 +209,32 @@ private:
     Env m_crAmp, m_rdAmp, m_rdBellAmp;
     Noise m_cyNoise{0x8192A3B4u};
     double m_rdBellHz = 800.0;
+
+    // Metal: struck modes (anvil, pipe, sheet), plus the strike's noise.
+    static constexpr int kModes = 6;
+    std::array<Sine, kModes> m_meModes{};
+    std::array<Env, kModes> m_meEnv{};
+    std::array<double, kModes> m_meHz{}, m_meAmp{};
+    Env m_meStrike;
+    Svf m_meStrikeBand;
+    Noise m_meNoise{0xA3B4C5D6u};
+
+    // Clank: FM, two modulators at inharmonic ratios, the index falling fast.
+    double m_ckCarrier = 0.0, m_ckMod1 = 0.0, m_ckMod2 = 0.0; // phases 0..1
+    double m_ckHz = 300.0, m_ckIndex = 4.0;
+    Env m_ckAmp, m_ckIndexEnv, m_ckClick;
+    Noise m_ckNoise{0xB4C5D6E7u};
+
+    // Noise Stab: a resonant filter sweeping down through noise, with grit.
+    Svf m_nzFilter;
+    Env m_nzAmp, m_nzSweepEnv;
+    Noise m_nzNoise{0xC5D6E7F8u};
+    double m_nzHz = 1500.0, m_nzSweepOctaves = 2.0;
+
+    // Boom: a long sub with a slow pitch drop, saturated.
+    Sine m_bmOsc;
+    Env m_bmAmp, m_bmPitch;
+    double m_bmBase = 40.0;
 };
 
 } // namespace k909

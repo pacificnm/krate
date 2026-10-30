@@ -32,9 +32,10 @@ namespace {
 constexpr std::uint32_t kBlock = 64;
 
 // The first note of each voice in docs/BRIEF.md#midi-notes, in DrumId order.
-constexpr int kNotes[k909::DrumCount] = {36, 38, 41, 45, 48, 37, 39, 42, 46, 49, 51};
+constexpr int kNotes[k909::DrumCount] = {36, 38, 41, 45, 48, 37, 39, 42, 46, 49, 51, 56, 54, 52, 34};
 constexpr const char *kNames[k909::DrumCount] = {"bass drum", "snare drum", "low tom", "mid tom", "hi tom",
-                                                  "rim", "clap", "closed hat", "open hat", "crash", "ride"};
+                                                  "rim", "clap", "closed hat", "open hat", "crash", "ride",
+                                                  "metal", "clank", "noise", "boom"};
 
 struct NoteAt
 {
@@ -193,8 +194,27 @@ int main(int argc, char **argv)
         const auto t0 = std::chrono::steady_clock::now();
         render(instrument, master, notes, frames, out);
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-        std::printf("rendered 60 s at %d Hz (all 11 voices every beat) in %.3f s: %.2f%% of one core\n", rate,
-                    seconds, seconds / 60.0 * 100.0);
+        std::printf("rendered 60 s at %d Hz (all %d voices every beat) in %.3f s: %.2f%% of one core\n", rate,
+                    k909::DrumCount, seconds, seconds / 60.0 * 100.0);
+
+        // The same with everything on: every voice driven and sent to both
+        // effects, the gated reverb, the compressor and the crusher.
+        k909::Engine full;
+        full.prepare(rate, kBlock);
+        for (int d = 0; d < k909::DrumCount; ++d) {
+            full.setParam(int(k909::ParamId::BdDrive) + d, 0.5f);
+            full.setParam(int(k909::ParamId::BdRev) + d, 0.3f);
+            full.setParam(int(k909::ParamId::BdDly) + d, 0.3f);
+        }
+        full.setParam(int(k909::ParamId::RevGate), 1.0f);
+        full.setParam(int(k909::ParamId::Comp), 0.5f);
+        full.setParam(int(k909::ParamId::Crush), 0.3f);
+        out.clear();
+        const auto t1 = std::chrono::steady_clock::now();
+        render(full, master, notes, frames, out);
+        const double fullSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t1).count();
+        std::printf("with drive, both effects, compressor and crusher on: %.3f s: %.2f%% of one core\n", fullSeconds,
+                    fullSeconds / 60.0 * 100.0);
         return 0;
     }
 

@@ -28,6 +28,10 @@ qt_add_qml_module(k909_ui
     SOURCES
         app/DrumsController.h
         app/DrumsController.cpp
+        app/KitController.h
+        app/KitController.cpp
+        app/KitFile.h
+        app/KitFile.cpp
         app/K909Instrument.h
         app/K909Instrument.cpp
         app/PatternFile.h
@@ -66,6 +70,10 @@ add_executable(tst_k909
     tests/tst_k909.cpp
     app/DrumsController.h
     app/DrumsController.cpp
+    app/KitController.h
+    app/KitController.cpp
+    app/KitFile.h
+    app/KitFile.cpp
     app/K909Instrument.h
     app/K909Instrument.cpp
     app/PatternFile.h

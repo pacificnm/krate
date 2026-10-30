@@ -31,6 +31,8 @@ Branding: "Krate" wordmark top left, **K909** large, **Drum Machine** on the rig
 └────────┴────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+The industrial voices have their own sections after CYMBAL: METAL (TUNE, LEVEL, DECAY, MATERIAL), CLANK (TUNE, LEVEL, DECAY, HARD), NOISE (TONE, LEVEL, DECAY, SWEEP), BOOM (TUNE, LEVEL, DECAY); the track strip has a cell per voice (BASS DRUM two, the rest one). The LCD block has a fifth row, **KIT**, with **WRITE** beside it ([KITS.md](KITS.md)), and the pattern buttons a page switch, **A–H / I–P**.
+
 The knob sections have three rows and two pages: **SOUND** (each voice's own knobs, as drawn above with the newer ones in a third row) and **MIX** (a strip per voice: PAN, DRIVE, REVERB, DELAY); the SOUND / MIX buttons sit under DRUM MACHINE. Between the LCD block and TEMPO, **EFFECTS**: REV SIZE, GATE, DLY TIME, FEEDBACK, COMP, CRUSH, each with its value under it.
 
 The reference layout's timing-scale strip above the step buttons (note symbols) is replaced by the LED row, which shows both the playhead and the selected track's steps.

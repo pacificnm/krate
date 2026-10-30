@@ -12,12 +12,14 @@ Each milestone ends with something you can run and check, and is committed and p
 | D5 ✅ | **MIDI Learn and the rack** | Learn for all knobs, A–H and `startstop`; K909 in the Krate rack on channel 10 (Tempo and START/STOP hidden there); `krate-render` includes it; rack tests extended; on the LX49, pads play K909 on channel 10 while the keys play the focused instrument. Result: UNMAP / AUDIO / LEARN, status line and meter on the panel (L, Esc); START learnable as `startstop`; K909 between k303 and Klick in the rack (saved mappings are keyed by id, so existing sessions keep working); `krate-render --k909 LEVEL [--k909-pattern N]` (without it the render is byte-identical to before); `k909_tst_rack` (channel 10 reaches K909 whatever has focus). K909 includes are now `k909/dsp/...`, `k909/app/...`, since k303 has files of the same names. LX49 pads: to be confirmed on the hardware |
 | D6 ✅ | **Polish** | Voices tuned by ear (DSP.md updated with final values); qmllint clean; accessibility names; README section. Result: −3 dB output trim for headroom (demo beat peaks at −3.5 dBFS before the soft clip); accessible names everywhere (`ParamController::label()`, `LcdField.name`, full-word parameter labels); step buttons keyboard-reachable; DSP.md and README updated; qmllint clean. Ear tuning continues from listening feedback (see Later) |
 
+| D7 ✅ | **Engine** | Kick SWEEP / BEND / TONE, snare DECAY / CRACK, rim and clap TUNE / DECAY, clap SPREAD, hat TUNE; a MIX page (per-voice PAN, DRIVE, REVERB and DELAY sends); the gated reverb, delay, bus compressor and crusher; 92 parameters (`ParamValues` past 64). Result: every new control defaults to the original kit (all reference renders byte-identical); `k909_tst_character` |
+| D8 ✅ | **Industrial voices and kits** | METAL, CLANK, NOISE, BOOM; 16 kits with six factory kits (Classic, Industrial, EBM, Gated 80s, Crushed, Machine Shop), KIT display and WRITE; patterns I–P with eight industrial factory patterns. Result: 123 parameters; every factory kit on every factory pattern measured (all peaks under 0 dBFS); the compressor's makeup raised to ¾ of the reduction; bench 1.9 % (15 voices), 3.4 % with everything on ([KITS.md](KITS.md)) |
+
 ## Later
 
 | Feature | Notes |
 | --- | --- |
 | Sound tuning by ear | Per-voice adjustments from listening (kick body and click, snare snap, hat brightness, clap spread); DSP.md follows |
-| Kits | Saved knob sets with a KIT display and WRITE, as in the reference layout |
 | Flam | Per-step flam, a fourth step state |
 | Parameter locks | Per-step tune/decay values |
 | Per-voice outputs | `outputChannels()` > 2; the rack gives each a port pair |

@@ -20,7 +20,7 @@ struct Command;
 }
 
 // QML singleton "Drums": K909's knobs (krate::ParamController by key), the
-// pattern bank A..H (edited live, saved to patterns.json 2 s after an edit and
+// pattern bank A..P (edited live, saved to patterns.json 2 s after an edit and
 // on destruction), plus START/STOP and Tempo. Standalone, those drive the
 // transport it is given; in the Krate rack it is given none, because the
 // rack's transport bar owns them.
@@ -37,10 +37,10 @@ class DrumsController : public krate::ParamController
     Q_PROPERTY(bool canRun READ canRun NOTIFY playingChanged)
     // Playing step 0..15, or -1 when stopped. Display only: polled at 60 Hz.
     Q_PROPERTY(int currentStep READ currentStep NOTIFY currentStepChanged)
-    // The track the step buttons edit: 0 = bass drum .. 10 = ride.
+    // The track the step buttons edit: 0 = bass drum .. 14 = boom.
     Q_PROPERTY(int selectedTrack READ selectedTrack WRITE setSelectedTrack NOTIFY selectedTrackChanged)
 
-    // The pattern shown and edited, 0..7 = A..H. While playing, a new choice
+    // The pattern shown and edited, 0..15 = A..P. While playing, a new choice
     // starts at the end of the current pass: playingPattern says which one is
     // sounding, queuedPattern which is waiting (-1 = none).
     Q_PROPERTY(int patternIndex READ patternIndex WRITE setPatternIndex NOTIFY patternChanged)

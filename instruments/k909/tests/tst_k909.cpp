@@ -12,6 +12,7 @@
 #include <QTemporaryDir>
 
 #include "k909/app/K909Instrument.h"
+#include "k909/app/KitFile.h"
 #include "k909/app/PatternFile.h"
 #include "core/Transport.h"
 #include "k909/dsp/Params.h"
@@ -27,7 +28,7 @@ private slots:
     void parameterTable()
     {
         QCOMPARE(int(kParams.size()), ParamCount);
-        QCOMPARE(ParamCount, 92);
+        QCOMPARE(ParamCount, 123);
         QCOMPARE(paramDescriptor(ParamId::Accent).key, std::string_view("accent"));
         QCOMPARE(paramDescriptor(ParamId::BdDecay).key, std::string_view("bd_decay"));
         QCOMPARE(paramDescriptor(ParamId::RdTune).key, std::string_view("rd_tune"));
@@ -36,7 +37,8 @@ private slots:
         for (const auto &info : kParams)
             QVERIFY(keys.insert(info.key).second);
         // The mixer's blocks run in voice order (the engine indexes them so).
-        static constexpr const char *kPrefix[] = {"bd", "sd", "lt", "mt", "ht", "rs", "cp", "ch", "oh", "cr", "rd"};
+        static constexpr const char *kPrefix[] = {"bd", "sd", "lt", "mt", "ht", "rs", "cp", "ch",
+                                                  "oh", "cr", "rd", "me", "ck", "nz", "bm"};
         for (int d = 0; d < DrumCount; ++d)
             for (const auto &[first, suffix] : {std::pair{ParamId::BdPan, "_pan"}, std::pair{ParamId::BdDrive, "_drive"},
                                                 std::pair{ParamId::BdRev, "_rev"}, std::pair{ParamId::BdDly, "_dly"}})
@@ -54,9 +56,10 @@ private slots:
         QCOMPARE(entry.qmlModule, QStringLiteral("K909"));
         QCOMPARE(entry.panelComponent, QStringLiteral("Panel"));
         QCOMPARE(entry.defaultMidiChannel, 9);
-        QCOMPARE(entry.actions.size(), 9);
+        QCOMPARE(entry.actions.size(), 17);
         QVERIFY(entry.actions.contains(QStringLiteral("patternA")));
         QVERIFY(entry.actions.contains(QStringLiteral("patternH")));
+        QVERIFY(entry.actions.contains(QStringLiteral("patternP")));
         QVERIFY(entry.actions.contains(QStringLiteral("startstop")));
         QVERIFY(bool(entry.create));
     }
@@ -86,12 +89,90 @@ private slots:
 
     void defaultBankHasTheFactoryPatterns()
     {
+        // A-D classic, E-H empty, I-P industrial.
         const auto bank = persistence::defaultBank();
-        for (int i = 0; i < kFactoryPatternCount; ++i)
+        for (int i = 0; i < kClassicPatternCount; ++i)
             QVERIFY(bank.patterns[std::size_t(i)] == factoryPattern(i));
-        for (int i = kFactoryPatternCount; i < persistence::kPatternCount; ++i)
+        for (int i = kClassicPatternCount; i < 8; ++i)
             QVERIFY(bank.patterns[std::size_t(i)] == Pattern{});
+        for (int i = 8; i < persistence::kPatternCount; ++i)
+            QVERIFY(bank.patterns[std::size_t(i)] == factoryPattern(i - 8 + kClassicPatternCount));
         QCOMPARE(bank.current, 0);
+    }
+
+    // An older patterns.json (8 patterns) keeps its patterns, cleared tracks
+    // included, and gains the industrial bank I-P.
+    void olderPatternFileGainsTheIndustrialBank()
+    {
+        persistence::PatternBank old = persistence::defaultBank();
+        old.patterns[0].tracks[std::size_t(DrumId::Bd)].fill(StepState::Off); // the user cleared A's kick
+        QJsonObject json = persistence::toJson(old);
+        QJsonArray patterns = json.value(u"patterns").toArray();
+        while (patterns.size() > 8)
+            patterns.removeLast();
+        json.insert(QStringLiteral("patterns"), patterns);
+        const persistence::PatternBank loaded = persistence::fromJson(json);
+        QVERIFY(loaded.patterns[0] == old.patterns[0]);
+        QVERIFY(loaded.patterns[8] == factoryPattern(kClassicPatternCount));
+    }
+
+    // Factory kits name real parameters only; Classic is every default; no kit keeps Volume, Tempo, Shuffle.
+    void factoryKitsAreValid()
+    {
+        std::set<QString> keys;
+        for (const auto &d : kParams)
+            keys.insert(QString::fromUtf8(d.key.data(), qsizetype(d.key.size())));
+        const persistence::Kit init = persistence::initKit();
+        QCOMPARE(persistence::factoryKit(0).values, init.values);
+        for (int i = 0; i < persistence::kKitCount; ++i) {
+            const persistence::Kit kit = persistence::factoryKit(i);
+            QCOMPARE(kit.values.size(), init.values.size()); // no unknown key slipped in
+            for (auto it = kit.values.begin(); it != kit.values.end(); ++it) {
+                QVERIFY2(keys.count(it.key()), qPrintable(it.key()));
+                QVERIFY(it.value() >= 0.0 && it.value() <= 1.0);
+            }
+            QVERIFY(!kit.values.contains(QStringLiteral("volume")) && !kit.values.contains(QStringLiteral("tempo"))
+                    && !kit.values.contains(QStringLiteral("shuffle")));
+        }
+        QCOMPARE(persistence::factoryKit(1).name, QStringLiteral("Industrial"));
+        QCOMPARE(persistence::factoryKit(persistence::kFactoryKitCount).name, QStringLiteral("Init"));
+    }
+
+    // Choosing a kit loads it (Volume stays); an edit shows; WRITE, an arrow, WRITE stores; it all persists.
+    void kitsLoadEditAndWrite()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        {
+            const auto instance = registryEntry().create(context);
+            auto &k = static_cast<Instance &>(*instance);
+            QCOMPARE(k.kits.index(), 0);
+            QVERIFY(!k.kits.edited()); // a fresh panel is the Classic kit
+            k.drums.setValue(QStringLiteral("volume"), 0.3);
+            k.kits.select(1);
+            QCOMPARE(k.kits.name(), QStringLiteral("Industrial"));
+            QVERIFY(std::abs(k.drums.value(QStringLiteral("bd_drive")) - 0.55) < 1e-6);
+            QVERIFY(std::abs(k.drums.value(QStringLiteral("volume")) - 0.3) < 1e-6);
+            QVERIFY(!k.kits.edited());
+            k.drums.setValue(QStringLiteral("sd_crack"), 0.9);
+            QVERIFY(k.kits.edited());
+            k.kits.pressWrite();
+            QVERIFY(k.kits.writing());
+            for (int i = 0; i < 6; ++i)
+                k.kits.step(1); // to slot 8 (Init)
+            QCOMPARE(k.kits.target(), 7);
+            k.kits.pressWrite();
+            QVERIFY(!k.kits.writing());
+            QCOMPARE(k.kits.index(), 7);
+            QCOMPARE(k.kits.name(), QStringLiteral("Kit 8"));
+            QVERIFY(!k.kits.edited());
+            QCOMPARE(k.kits.kitBank().kits[1], persistence::factoryKit(1)); // Industrial untouched
+        }
+        QVERIFY(QFile::exists(dir.filePath("data/kits.json")));
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        QCOMPARE(k.kits.index(), 7);
+        QVERIFY(std::abs(k.kits.kitBank().kits[7].values.value(QStringLiteral("sd_crack")) - 0.9) < 1e-6);
     }
 
     void patternJsonRoundTrip()
@@ -122,7 +203,7 @@ private slots:
                                                 {"tracks", QJsonObject{{"bd", "21x9"}, {"zz", "1111"}}}}}},
         };
         const auto bank = persistence::fromJson(json);
-        QCOMPARE(bank.current, 7);
+        QCOMPARE(bank.current, persistence::kPatternCount - 1);
         const Pattern &p = bank.patterns[0];
         QCOMPARE(int(p.length), 16);
         QCOMPARE(int(p.stepsPerBeat), 4);

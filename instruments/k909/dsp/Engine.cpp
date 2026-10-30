@@ -36,6 +36,10 @@ constexpr std::array<VoiceKnobs, DrumCount> kVoiceKnobs{{
     {ParamId::HhTune, ParamId::OhLevel, ParamId::OhDecay},
     {ParamId::CrTune, ParamId::CrLevel, kNone},
     {ParamId::RdTune, ParamId::RdLevel, kNone},
+    {ParamId::MeTune, ParamId::MeLevel, ParamId::MeDecay, {ParamId::MeMaterial, kNone, kNone, kNone}},
+    {ParamId::CkTune, ParamId::CkLevel, ParamId::CkDecay, {ParamId::CkHard, kNone, kNone, kNone}},
+    {ParamId::NzTone, ParamId::NzLevel, ParamId::NzDecay, {ParamId::NzSweep, kNone, kNone, kNone}},
+    {ParamId::BmTune, ParamId::BmLevel, ParamId::BmDecay},
 }};
 // The mixer's parameters are in DrumId order, one block per kind.
 constexpr ParamId mixParam(ParamId first, int drum) { return ParamId(int(first) + drum); }
@@ -85,6 +89,10 @@ DrumId Engine::drumForNote(int note) noexcept
     case 48: case 50: return DrumId::Ht;
     case 49: case 57: return DrumId::Cr;
     case 51: case 59: return DrumId::Rd;
+    case 56: case 67: return DrumId::Me; // cowbell, high agogo
+    case 54: case 69: return DrumId::Ck; // tambourine, cabasa
+    case 52: case 70: return DrumId::Nz; // Chinese cymbal, maracas
+    case 34: case 33: return DrumId::Bm; // below the GM kit: no clash
     default: return DrumId::Count;
     }
 }
@@ -185,12 +193,12 @@ void Engine::processBus(float *left, float *right, std::uint32_t frames) noexcep
     if (comp > 0.0) {
         // Feed-forward, stereo-linked: a peak detector (instant attack; release
         // 150 ms, gentle glue, down to 40 ms at full, pumping with the beat), the
-        // gain computed in dB (threshold -6 .. -30 dB, ratio 1.5 .. 10), half the
-        // reduction made up. Reduction applies at once (no overshoot on the
+        // gain computed in dB (threshold -6 .. -30 dB, ratio 1.5 .. 10), three
+        // quarters of the reduction made up. Reduction applies at once (no overshoot on the
         // hits), recovery is smoothed.
         const double threshold = -6.0 - 24.0 * comp;
         const double slope = 1.0 - 1.0 / (1.5 + 8.5 * comp);
-        const double makeup = 0.5 * -threshold * slope;
+        const double makeup = 0.75 * -threshold * slope;
         const double release = 1.0 - std::exp(-1.0 / ((0.15 - 0.11 * comp) * m_sampleRate));
         for (std::uint32_t i = 0; i < frames; ++i) {
             const double peak = std::max(std::fabs(left[i]), std::fabs(right[i]));

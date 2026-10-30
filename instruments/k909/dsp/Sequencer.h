@@ -21,9 +21,11 @@ struct Pattern
     bool operator==(const Pattern &) const = default;
 };
 
-// Built-in grooves for a new install; factory pattern 0 also plays at startup
-// and in k909-render --pattern.
-inline constexpr int kFactoryPatternCount = 4;
+// Built-in grooves for a new install (docs/SEQUENCER.md#factory-patterns):
+// 0-3 the classic ones (slots A-D), 4-11 the industrial ones (slots I-P).
+// Factory pattern 0 also plays at startup and in k909-render --pattern.
+inline constexpr int kFactoryPatternCount = 12;
+inline constexpr int kClassicPatternCount = 4;
 Pattern factoryPattern(int index); // 0..kFactoryPatternCount-1
 
 // The voices to play on one sample: bit n = DrumId n.

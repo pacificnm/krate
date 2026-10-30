@@ -31,7 +31,7 @@ Item {
     readonly property real sectionTop: 286
     readonly property real sectionBottom: 594
     readonly property var rowLabelY: [326, 416, 506]
-    readonly property real knobSize: 56
+    readonly property real knobSize: mixPage ? 44 : 56
 
     readonly property var sections: [
         { title: "ACCENT", columns: 1, knobs: [
@@ -67,7 +67,19 @@ Item {
             { key: "hh_tune", label: "TUNE", col: 0.5, row: 2 } ] },
         { title: "CYMBAL", columns: 2, knobs: [
             { key: "cr_level", label: "CRASH LVL", col: 0, row: 0 }, { key: "rd_level", label: "RIDE LVL", col: 1, row: 0 },
-            { key: "cr_tune", label: "CRASH TUNE", col: 0, row: 1 }, { key: "rd_tune", label: "RIDE TUNE", col: 1, row: 1 } ] }
+            { key: "cr_tune", label: "CRASH TUNE", col: 0, row: 1 }, { key: "rd_tune", label: "RIDE TUNE", col: 1, row: 1 } ] },
+        { title: "METAL", columns: 2, knobs: [
+            { key: "me_tune", label: "TUNE", col: 0, row: 0 }, { key: "me_level", label: "LEVEL", col: 1, row: 0 },
+            { key: "me_decay", label: "DECAY", col: 0, row: 1 }, { key: "me_material", label: "MATERIAL", col: 1, row: 1 } ] },
+        { title: "CLANK", columns: 2, knobs: [
+            { key: "ck_tune", label: "TUNE", col: 0, row: 0 }, { key: "ck_level", label: "LEVEL", col: 1, row: 0 },
+            { key: "ck_decay", label: "DECAY", col: 0, row: 1 }, { key: "ck_hard", label: "HARD", col: 1, row: 1 } ] },
+        { title: "NOISE", columns: 2, knobs: [
+            { key: "nz_tone", label: "TONE", col: 0, row: 0 }, { key: "nz_level", label: "LEVEL", col: 1, row: 0 },
+            { key: "nz_decay", label: "DECAY", col: 0, row: 1 }, { key: "nz_sweep", label: "SWEEP", col: 1, row: 1 } ] },
+        { title: "BOOM", columns: 1, knobs: [
+            { key: "bm_tune", label: "TUNE", col: 0, row: 0 }, { key: "bm_level", label: "LEVEL", col: 0, row: 1 },
+            { key: "bm_decay", label: "DECAY", col: 0, row: 2 } ] }
     ]
 
     // MIX page: a strip per voice, in track order.
@@ -75,7 +87,8 @@ Item {
         { prefix: "bd", title: "BASS DRUM" }, { prefix: "sd", title: "SNARE" }, { prefix: "lt", title: "LOW TOM" },
         { prefix: "mt", title: "MID TOM" }, { prefix: "ht", title: "HI TOM" }, { prefix: "rs", title: "RIM" },
         { prefix: "cp", title: "CLAP" }, { prefix: "ch", title: "CLOSED HAT" }, { prefix: "oh", title: "OPEN HAT" },
-        { prefix: "cr", title: "CRASH" }, { prefix: "rd", title: "RIDE" }
+        { prefix: "cr", title: "CRASH" }, { prefix: "rd", title: "RIDE" }, { prefix: "me", title: "METAL" },
+        { prefix: "ck", title: "CLANK" }, { prefix: "nz", title: "NOISE" }, { prefix: "bm", title: "BOOM" }
     ]
     readonly property var mixSections: voices.map(v => ({ title: v.title, columns: 2, knobs: [
         { key: v.prefix + "_pan", label: "PAN", col: 0, row: 0 }, { key: v.prefix + "_drive", label: "DRIVE", col: 1, row: 0 },
@@ -85,12 +98,14 @@ Item {
     readonly property real stepLeft: 220
     readonly property real stepWidth: (width - margin - stepLeft) / 16
     readonly property var tracks: [
-        { name: "BASS DRUM", first: 1, steps: 2 }, { name: "SNARE DRUM", first: 3, steps: 2 },
-        { name: "LOW TOM", first: 5, steps: 2 }, { name: "MID TOM", first: 7, steps: 2 },
-        { name: "HI TOM", first: 9, steps: 2 }, { name: "RIM", first: 11, steps: 1 },
-        { name: "CLAP", first: 12, steps: 1 }, { name: "CLOSED", first: 13, steps: 1 },
-        { name: "OPEN", first: 14, steps: 1 }, { name: "CRASH", first: 15, steps: 1 },
-        { name: "RIDE", first: 16, steps: 1 }
+        { name: "BASS DRUM", first: 1, steps: 2 }, { name: "SNARE", first: 3, steps: 1 },
+        { name: "LOW TOM", first: 4, steps: 1 }, { name: "MID TOM", first: 5, steps: 1 },
+        { name: "HI TOM", first: 6, steps: 1 }, { name: "RIM", first: 7, steps: 1 },
+        { name: "CLAP", first: 8, steps: 1 }, { name: "CLOSED", first: 9, steps: 1 },
+        { name: "OPEN", first: 10, steps: 1 }, { name: "CRASH", first: 11, steps: 1 },
+        { name: "RIDE", first: 12, steps: 1 }, { name: "METAL", first: 13, steps: 1 },
+        { name: "CLANK", first: 14, steps: 1 }, { name: "NOISE", first: 15, steps: 1 },
+        { name: "BOOM", first: 16, steps: 1 }
     ]
 
     // A knob bound to one of Drums' parameters by key, MIDI-learnable.
@@ -208,7 +223,7 @@ Item {
                     anchors.centerIn: parent
                     text: section.modelData.title
                     orange: true
-                    font.pixelSize: 15
+                    font.pixelSize: section.width < 90 ? 12 : 15
                 }
             }
 
@@ -251,37 +266,60 @@ Item {
     // Middle deck labels (controls arrive in D2-D4)
     // Pattern buttons A-H: LED = the pattern playing (blinking: waiting for the
     // end of the pass); the dark button is the one shown and edited.
-    readonly property string letters: "ABCDEFGH"
+    readonly property string letters: "ABCDEFGHIJKLMNOP"
+    property int patternPage: 0 // the buttons show A-H (0) or I-P (1); follows the pattern chosen
+    Connections {
+        target: Drums
+        function onPatternChanged() { panel.patternPage = Drums.patternIndex >= 8 ? 1 : 0 }
+    }
+    Component.onCompleted: patternPage = Drums.patternIndex >= 8 ? 1 : 0
     property bool blink: false
     Timer {
         interval: 220
         repeat: true
-        running: Drums.queuedPattern >= 0
+        running: Drums.queuedPattern >= 0 || Kits.writing
         onTriggered: panel.blink = !panel.blink
         onRunningChanged: panel.blink = false
     }
 
     PanelLabel { x: 64; y: 614; text: "PATTERN"; orange: true }
+    Repeater { // the pattern bank page: A-H classic and your own, I-P industrial
+        model: ["A–H", "I–P"]
+
+        PanelButton {
+            required property int index
+            required property string modelData
+            x: 196 + index * 62
+            y: 608
+            width: 56
+            height: 26
+            faceText: modelData
+            text: "Pattern buttons show " + modelData
+            dark: panel.patternPage === index
+            onClicked: panel.patternPage = index
+        }
+    }
     Repeater {
         model: 8
 
         PanelButton {
             id: patternButton
             required property int index
+            readonly property int slot: panel.patternPage * 8 + index
             x: 64 + (index % 4) * 78
             y: index < 4 ? 642 : 702
             width: 64
             height: 50
-            faceText: panel.letters[index]
-            text: "Pattern " + panel.letters[index]
-            dark: Drums.patternIndex === index
+            faceText: panel.letters[slot]
+            text: "Pattern " + panel.letters[slot]
+            dark: Drums.patternIndex === slot
             hasLed: true
-            ledOn: Drums.queuedPattern === index ? panel.blink : Drums.playingPattern === index
-            onClicked: Drums.patternIndex = index
+            ledOn: Drums.queuedPattern === slot ? panel.blink : Drums.playingPattern === slot
+            onClicked: Drums.patternIndex = slot
 
             LearnOverlay {
                 anchors.fill: parent
-                paramKey: "pattern" + panel.letters[patternButton.index]
+                paramKey: "pattern" + panel.letters[patternButton.slot]
                 round: false
             }
         }
@@ -292,7 +330,7 @@ Item {
         x: 400
         y: 612
         width: 440
-        height: 150
+        height: 166
         radius: 4
         color: "transparent"
         border.color: Theme.deckLine
@@ -301,13 +339,13 @@ Item {
     Repeater {
         model: [
             { label: "PATTERN", row: 0 }, { label: "LENGTH", row: 1 },
-            { label: "SCALE", row: 2 }, { label: "ORDER", row: 3 }
+            { label: "SCALE", row: 2 }, { label: "ORDER", row: 3 }, { label: "KIT", row: 4 }
         ]
 
         PanelLabel {
             required property var modelData
             x: 418
-            y: 626 + modelData.row * 34
+            y: 624 + modelData.row * 30
             text: modelData.label
             font.pixelSize: 13
         }
@@ -315,22 +353,22 @@ Item {
     LcdField {
         name: "Pattern"
         x: 510
-        y: 620
+        y: 618
         width: 316
-        height: 30
+        height: 26
         text: "Pattern " + panel.letters[Drums.patternIndex]
               + (Drums.queuedPattern === Drums.patternIndex ? "  (next)"
                  : Drums.playing && Drums.playingPattern !== Drums.patternIndex
                    ? "  (" + panel.letters[Drums.playingPattern] + " playing)" : "")
-        onUp: Drums.patternIndex = Math.min(7, Drums.patternIndex + 1)
+        onUp: Drums.patternIndex = Math.min(15, Drums.patternIndex + 1)
         onDown: Drums.patternIndex = Math.max(0, Drums.patternIndex - 1)
     }
     LcdField {
         name: "Length"
         x: 510
-        y: 654
+        y: 648
         width: 316
-        height: 30
+        height: 26
         text: Drums.length + (Drums.length === 1 ? " step" : " steps")
         onUp: Drums.length = Drums.length + 1
         onDown: Drums.length = Drums.length - 1
@@ -338,9 +376,9 @@ Item {
     LcdField {
         name: "Scale"
         x: 510
-        y: 688
+        y: 678
         width: 316
-        height: 30
+        height: 26
         text: Drums.scaleNames[Drums.scaleIndex]
         onUp: Drums.scaleIndex = Math.min(Drums.scaleNames.length - 1, Drums.scaleIndex + 1)
         onDown: Drums.scaleIndex = Math.max(0, Drums.scaleIndex - 1)
@@ -348,13 +386,36 @@ Item {
     LcdField {
         name: "Play order"
         x: 510
-        y: 722
+        y: 708
         width: 316
-        height: 30
+        height: 26
         text: Drums.orderNames[Drums.orderIndex]
         onUp: Drums.orderIndex = Math.min(Drums.orderNames.length - 1, Drums.orderIndex + 1)
         onDown: Drums.orderIndex = Math.max(0, Drums.orderIndex - 1)
     }
+    // Kits (docs/KITS.md): the kit loaded (a dot: edited), or while writing the slot to store into
+    LcdField {
+        name: "Kit"
+        x: 510
+        y: 738
+        width: 240
+        height: 26
+        text: Kits.writing ? "WRITE to " + (Kits.target + 1) + " " + Kits.targetName
+                           : (Kits.index + 1) + " " + Kits.name + (Kits.edited ? "  •" : "")
+        onUp: Kits.step(1)
+        onDown: Kits.step(-1)
+    }
+    PanelButton {
+        x: 762
+        y: 738
+        width: 66
+        height: 26
+        faceText: "WRITE"
+        text: "Write the kit: press, choose the slot with the arrows, press again (Esc cancels)"
+        dark: Kits.writing && panel.blink
+        onClicked: Kits.pressWrite()
+    }
+
     // Effects: the reverb (and its gate) and delay the voices send to, the bus compressor and crusher
     PanelLabel { x: 862; y: 614; text: "EFFECTS"; orange: true }
     Repeater {
@@ -372,6 +433,8 @@ Item {
                 detents: fxSlot.modelData.detents
                 x: fxSlot.modelData.cx - width / 2
                 y: 664
+                width: 56
+                height: 56
             }
             PanelLabel {
                 centerX: fxSlot.modelData.cx
@@ -644,14 +707,15 @@ Item {
             event.accepted = true
             return
         }
-        if (event.key === Qt.Key_Escape && MidiLearn.active) {
+        if (event.key === Qt.Key_Escape && (MidiLearn.active || Kits.writing)) {
             MidiLearn.active = false
+            Kits.cancel()
             event.accepted = true
             return
         }
-        // A-H select a pattern (no modifiers, so shortcuts elsewhere stay free).
+        // A-H select a pattern on the page shown (no modifiers, so shortcuts elsewhere stay free).
         if (event.key >= Qt.Key_A && event.key <= Qt.Key_H && event.modifiers === Qt.NoModifier) {
-            Drums.patternIndex = event.key - Qt.Key_A
+            Drums.patternIndex = panel.patternPage * 8 + event.key - Qt.Key_A
             event.accepted = true
         }
     }

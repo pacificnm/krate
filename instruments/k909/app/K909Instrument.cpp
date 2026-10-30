@@ -5,6 +5,7 @@ namespace k909 {
 Instance::Instance(const krate::InstrumentContext &context)
     : drums(engine, context.configDir + QStringLiteral("/panel.json"), context.dataDir + QStringLiteral("/patterns.json"),
             context.transport, nullptr)
+    , kits(drums, context.dataDir + QStringLiteral("/kits.json"), nullptr)
 {
     if (context.run)
         drums.setRunControl(context.run, QStringLiteral("k909"));
@@ -14,7 +15,7 @@ void Instance::triggerAction(const QString &action)
 {
     if (action == u"startstop")
         drums.setPlaying(!drums.playing());
-    else if (action.size() == 8 && action.startsWith(u"pattern")) // patternA..patternH
+    else if (action.size() == 8 && action.startsWith(u"pattern")) // patternA..patternP
         drums.setPatternIndex(action.at(7).unicode() - u'A');
 }
 
@@ -29,6 +30,8 @@ krate::InstrumentEntry registryEntry()
     entry.actions = {
         QStringLiteral("patternA"), QStringLiteral("patternB"), QStringLiteral("patternC"), QStringLiteral("patternD"),
         QStringLiteral("patternE"), QStringLiteral("patternF"), QStringLiteral("patternG"), QStringLiteral("patternH"),
+        QStringLiteral("patternI"), QStringLiteral("patternJ"), QStringLiteral("patternK"), QStringLiteral("patternL"),
+        QStringLiteral("patternM"), QStringLiteral("patternN"), QStringLiteral("patternO"), QStringLiteral("patternP"),
         QStringLiteral("startstop"),
     };
     entry.create = [](const krate::InstrumentContext &context) -> std::unique_ptr<krate::InstrumentInstance> {

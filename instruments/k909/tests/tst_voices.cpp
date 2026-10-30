@@ -12,7 +12,7 @@ namespace {
 
 constexpr double kRate = 48000.0;
 constexpr std::uint32_t kBlock = 64;
-constexpr int kNotes[DrumCount] = {36, 38, 41, 45, 48, 37, 39, 42, 46, 49, 51};
+constexpr int kNotes[DrumCount] = {36, 38, 41, 45, 48, 37, 39, 42, 46, 49, 51, 56, 54, 52, 34};
 
 struct Render
 {

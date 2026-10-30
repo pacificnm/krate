@@ -2,7 +2,7 @@
 
 2026-10-28
 
-K909 is a drum machine for the [Krate](../../../README.md) suite. It has eleven synthesized drum voices, a tracks × steps sequencer and a hardware-style panel. It runs standalone (`k909`) and as a device in the Krate rack.
+K909 is a drum machine for the [Krate](../../../README.md) suite. It has fifteen synthesized drum voices (the classic eleven and four industrial ones), a per-voice mixer with drive and two effects, kits, a tracks × steps sequencer and a hardware-style panel. It runs standalone (`k909`) and as a device in the Krate rack.
 
 It follows the classic early-80s analog/hybrid drum machine layout. Every name, logo and graphic is our own: the panel reads "K909" and "Drum Machine". No third-party names, logos or artwork are used, and the reference screenshot used for layout stays out of the repository (`reference/` is git-ignored).
 
@@ -16,7 +16,7 @@ Related docs: [DSP.md](DSP.md) (the voices), [SEQUENCER.md](SEQUENCER.md), [UI.m
 - **MIDI**: notes play the voices (General MIDI drum note numbers); MIDI Learn for every knob, pattern button and start/stop; in the rack, default channel 10.
 - **Storage**: `~/.config/k909/panel.json` and `midimap.json`, `~/.local/share/k909/patterns.json`. Shared with the rack, as k303's are.
 
-Not in v1 (see [ROADMAP.md](ROADMAP.md#later)): kits (saved knob sets), flam, per-step parameter locks, per-voice outputs, song mode.
+Kits: [KITS.md](KITS.md). Not in v1 (see [ROADMAP.md](ROADMAP.md#later)): flam, per-step parameter locks, per-voice outputs, song mode.
 
 ## Parameters
 
@@ -37,7 +37,11 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; the ta
 | `hh_tune` | Hi Hat | Both hats' pitch |
 | `cr_level`, `cr_tune` | Crash | Level, pitch |
 | `rd_level`, `rd_tune` | Ride | Level, pitch |
-| `<voice>_pan`, `<voice>_drive`, `<voice>_rev`, `<voice>_dly` | Mixer | Per voice (`bd`, `sd`, … `rd`): pan, drive, reverb send, delay send |
+| `me_tune`, `me_level`, `me_decay`, `me_material` | Metal | Pitch, level, ring, pipe … plate |
+| `ck_tune`, `ck_level`, `ck_decay`, `ck_hard` | Clank | Pitch, level, decay, FM hardness |
+| `nz_tone`, `nz_level`, `nz_decay`, `nz_sweep` | Noise | Filter, level, decay, filter sweep |
+| `bm_tune`, `bm_level`, `bm_decay` | Boom | Pitch, level, decay |
+| `<voice>_pan`, `<voice>_drive`, `<voice>_rev`, `<voice>_dly` | Mixer | Per voice (`bd`, `sd`, … `rd`, `me`, `ck`, `nz`, `bm`): pan, drive, reverb send, delay send |
 | `rev_size`, `rev_gate` | Reverb | Decay (gate hold when gated); gate Off/On |
 | `dly_time`, `dly_fb` | Delay | 1/16 … 1/2, synced; feedback |
 | `comp`, `crush` | Bus | Compressor amount; bit and rate reduction |
@@ -45,7 +49,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; the ta
 | `shuffle` | Shuffle | Delays every second step (0 = straight, 6 positions) |
 | `tempo` | Tempo | 40–240 BPM; drives the transport standalone, stored but unused in the rack (as k303) |
 
-92 parameters in all (more than 64: `krate::ParamValues` folds the changed-by-audio flags of parameters 63 and up into bit 63; hosts only ask whether anything changed). Level knobs use gain = v², as Klick and k303 do. Every new parameter's default plays the original sound exactly.
+123 parameters in all (more than 64: `krate::ParamValues` folds the changed-by-audio flags of parameters 63 and up into bit 63; hosts only ask whether anything changed). Level knobs use gain = v², as Klick and k303 do. Every new parameter's default plays the original sound exactly.
 
 ## MIDI notes
 
@@ -62,6 +66,10 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; the ta
 | Hi Tom | 48, 50 |
 | Crash | 49, 57 |
 | Ride | 51, 59 |
+| Metal | 56, 67 |
+| Clank | 54, 69 |
+| Noise | 52, 70 |
+| Boom | 33, 34 (under the General MIDI kit) |
 
 Velocity 100 and above plays the hit accented. Played notes do not record into the pattern in v1.
 
@@ -72,7 +80,7 @@ Velocity 100 and above plays the hit accented. Played notes do not record into t
 | id / name | `k909` / `K909` |
 | default MIDI channel | 9 (channel 10, the usual drum channel) |
 | QML module / panel | `K909` / `Panel` |
-| actions | `patternA` … `patternH`, `startstop` |
+| actions | `patternA` … `patternP`, `startstop` |
 
 ## Outputs
 

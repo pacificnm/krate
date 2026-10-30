@@ -106,6 +106,18 @@ class TestCharacter : public QObject
         return std::hypot(ah, bh) / std::hypot(a1, b1);
     }
 
+    // The amplitude of the component at `hz` over [from, to) seconds.
+    static double partial(const std::vector<float> &x, double hz, double from, double to)
+    {
+        double a = 0, b = 0;
+        for (auto n = std::size_t(from * kRate); n < std::size_t(to * kRate); ++n) {
+            const double w = 2.0 * std::numbers::pi * hz * double(n) / kRate;
+            a += x[n] * std::sin(w);
+            b += x[n] * std::cos(w);
+        }
+        return std::hypot(a, b);
+    }
+
 private slots:
     // Drive keeps the peak and brings the tail up (the body sustains, as through a distortion).
     void driveThickensAndKeepsThePeak()
@@ -245,6 +257,64 @@ private slots:
             const double v = double(r.left[i]) / (0.7071 * 0.64); // back through Volume and the trim
             QVERIFY2(std::fabs(v / step - std::round(v / step)) < 0.01, qPrintable(QString::number(v)));
         }
+    }
+
+    // ---- The industrial voices
+
+    // Metal's Material: a pipe's modes far apart (2.76 x the lowest), a plate's close (1.36 x).
+    void metalMaterialMovesTheModes()
+    {
+        const double f0 = 120.0 * std::pow(1500.0 / 120.0, 0.5); // Tune 50 %
+        const auto mode = [&](float material, double ratio) {
+            const Render r = hit(56, {{ParamId::MeMaterial, material}, {ParamId::MePan, 0.5f}}, 0.4);
+            return partial(r.left, f0 * ratio, 0.05, 0.35) / partial(r.left, f0, 0.05, 0.35);
+        };
+        QVERIFY2(mode(0.0f, 2.756) > 5.0 * mode(0.0f, 1.36), qPrintable(QStringLiteral("%1 %2").arg(mode(0.0f, 2.756)).arg(mode(0.0f, 1.36))));
+        QVERIFY2(mode(1.0f, 1.36) > 5.0 * mode(1.0f, 2.756), qPrintable(QStringLiteral("%1 %2").arg(mode(1.0f, 1.36)).arg(mode(1.0f, 2.756))));
+    }
+
+    // Metal and Boom ring for their Decay.
+    void metalAndBoomDecay()
+    {
+        for (const auto &[note, id] : {std::pair{56, ParamId::MeDecay}, std::pair{34, ParamId::BmDecay}}) {
+            const auto tail = [&](float decay) { return rms(hit(note, {{id, decay}}, 1.2).left, 0.6, 1.0); };
+            QVERIFY2(tail(1.0f) > 30.0 * tail(0.0f) + 1e-9, qPrintable(QStringLiteral("note %1: %2 %3").arg(note).arg(tail(0.0f)).arg(tail(1.0f))));
+        }
+    }
+
+    // Clank's Hardness: more FM, a brighter strike.
+    void clankHardnessBrightens()
+    {
+        const double soft = centroid(hit(54, {{ParamId::CkHard, 0.0f}}, 0.05).left, 2048);
+        const double hard = centroid(hit(54, {{ParamId::CkHard, 1.0f}}, 0.05).left, 2048);
+        QVERIFY2(hard > 2.0 * soft, qPrintable(QStringLiteral("%1 %2").arg(soft).arg(hard)));
+    }
+
+    // Noise Stab's Sweep: the filter starts high and falls (bright, then darker).
+    void noiseSweepFalls()
+    {
+        const Render r = hit(52, {{ParamId::NzSweep, 1.0f}, {ParamId::NzDecay, 0.8f}}, 0.4);
+        const std::vector<float> late(r.left.begin() + 9600, r.left.end());
+        const double early = centroid(r.left, 2048), after = centroid(late, 2048);
+        QVERIFY2(early > 1.5 * after, qPrintable(QStringLiteral("%1 %2").arg(early).arg(after)));
+    }
+
+    // Boom: a sub well under the kick, dropping in pitch as it goes.
+    void boomIsALowDroppingSub()
+    {
+        const Render r = hit(34, {}, 1.0);
+        const double start = frequency(r.left, 0.01, 0.06), later = frequency(r.left, 0.5, 0.8);
+        QVERIFY2(later < 50.0 && later > 30.0, qPrintable(QString::number(later)));
+        QVERIFY2(start > 1.5 * later, qPrintable(QStringLiteral("%1 %2").arg(start).arg(later)));
+    }
+
+    // Each new voice answers its notes.
+    void newVoicesHaveNotes()
+    {
+        QCOMPARE(Engine::drumForNote(56), DrumId::Me);
+        QCOMPARE(Engine::drumForNote(54), DrumId::Ck);
+        QCOMPARE(Engine::drumForNote(52), DrumId::Nz);
+        QCOMPARE(Engine::drumForNote(34), DrumId::Bm);
     }
 };
 

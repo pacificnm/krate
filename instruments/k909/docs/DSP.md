@@ -29,9 +29,14 @@ The voice set is deterministic for a given sample rate and trigger sequence, so 
 | **Crash** | `MetalBank` (base 300 Hz, wider spacing) plus noise, highpass 4 kHz, lowpass 13 kHz, 1.6 s decay | Tune: bank pitch ×0.75–1.33 |
 | **Ride** | `MetalBank` (base 480 Hz) with a bell partial (a sine at the bank's 4th partial, 0.9 s), highpass 5 kHz, lowpass 13 kHz, 1.5 s decay | Tune: bank pitch ×0.75–1.33 |
 
+| **Metal** | Six struck modes (sines, each with its own exponential decay: the higher, the shorter, ×1 … ×0.25 of Decay) plus a 12 ms burst of noise through a bandpass at 3× the lowest mode (the strike). Material morphs the modes' frequency ratios (log-frequency) from a free bar or pipe (1, 2.76, 5.40, 8.93, 13.3, 18.6: far apart, clangy) to a plate or sheet (1, 1.36, 1.67, 2.10, 2.42, 2.98: dense). Modes above 0.45 × the rate are dropped | Tune: lowest mode 120–1500 Hz. Decay 0.15–3 s. Material |
+| **Clank** | FM (phase modulation): a sine carrier, two sine modulators at inharmonic ratios (×1.414 and ×3.732, the second at half depth), index up to 12 × Hardness, falling at 0.3 × the amplitude decay (bright metallic strike, then a duller ring), plus a 6 ms noise click | Tune: carrier 80–900 Hz. Decay 50 ms–1.2 s. Hardness |
+| **Noise** (stab) | White noise through a resonant state-variable filter (Q 3; lowpass plus 0.6 × bandpass) whose cutoff starts Sweep × 4 octaves above Tone and falls over half the decay, then tanh grit | Tone 300 Hz–8 kHz. Decay 30 ms–1.5 s. Sweep 0–4 octaves |
+| **Boom** | A long sub: a sine falling from 3× to its pitch (60 dB in 250 ms), through tanh(2.5x) for weight | Tune: 28–65 Hz. Decay 0.3–3 s |
+
 `MetalBank` squares alias at 48 kHz: PolyBLEP keeps that low at these pitches. `tst_voices` checks that under 2% of each metallic voice's energy is above 20 kHz (measured: hats 0.6%, cymbals under 0.1%). If it is ever audible, the bank can run at 2× through k303's half-band decimator (moved to `shared/` then).
 
-**Levels.** Each voice has a fixed output trim (`kTrim` in `dsp/Voices.cpp`: BD 0.9, SD 0.75, toms 0.8, rim 0.35, clap 0.9, hats 1.4, crash 1.9, ride 1.75) so default-level hits sit in a sensible balance; `k909-render` prints every voice's peak, normal and accented. The engine then applies Volume and a fixed −3 dB output trim (`kOutputTrim`), so the demo beat at the default Volume peaks around −3.5 dBFS, under the host's tanh soft clip. Velocity maps 1..127 to 0.5..1.0 of the voice's gain.
+**Levels.** Each voice has a fixed output trim (`kTrim` in `dsp/Voices.cpp`: BD 0.9, SD 0.75, toms 0.8, rim 0.35, clap 0.9, hats 1.4, crash 1.9, ride 1.75; metal 1.0, clank 0.85, noise 1.0, boom 1.15) so default-level hits sit in a sensible balance; `k909-render` prints every voice's peak, normal and accented. The engine then applies Volume and a fixed −3 dB output trim (`kOutputTrim`), so the demo beat at the default Volume peaks around −3.5 dBFS, under the host's tanh soft clip. Velocity maps 1..127 to 0.5..1.0 of the voice's gain.
 
 ## Mixer and effects
 
@@ -49,7 +54,7 @@ The effects run on the sends' buses, rendered 256 frames at a time, and their we
 | --- | --- |
 | **Reverb** | `krate::Reverb` (the shared eight-line FDN). REV SIZE: decay 0.4–8 s. **GATE** on: the reverb rings long and dense (3.8 s) and a gate on its wet output opens (1 ms) whenever a send rises above −50 dBFS, holds 80–500 ms (REV SIZE), then closes over 15 ms: the big, chopped 80s / industrial snare |
 | **Delay** | `krate::Delay` (shared ping-pong). DLY TIME: 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2 at the transport's tempo (the Tempo knob standalone). FEEDBACK 0–90 % (darker each repeat) |
-| **Comp** | On the whole mix: feed-forward, stereo-linked; a peak detector with instant attack and a release from 150 ms (gentle glue) down to 40 ms at full (it pumps with the beat); threshold −6 … −30 dB, ratio 1.5 … 10, half the reduction made up. Reduction applies at once (no overshoot on the hits), recovery over 5 ms. Measured on the first factory pattern (Floor): the peak-to-average ratio from 10.2 to 6.7 at full. 0 = bypassed |
+| **Comp** | On the whole mix: feed-forward, stereo-linked; a peak detector with instant attack and a release from 150 ms (gentle glue) down to 40 ms at full (it pumps with the beat); threshold −6 … −30 dB, ratio 1.5 … 10, three quarters of the reduction made up (the compressed factory kits come out denser than Classic: RMS about 2–4 dB up at 8–10 dB more headroom). Reduction applies at once (no overshoot on the hits), recovery over 5 ms. Measured on the first factory pattern (Floor): the peak-to-average ratio from 10.2 to 6.7 at full. 0 = bypassed |
 | **Crush** | After the compressor: bits 16 → 4 and the sample rate down to 1/16 (each sample held 1–16 frames, 1 + 15 × Crush²). 0 = bypassed |
 
 ## Accent and velocity
@@ -64,4 +69,4 @@ Each voice is monophonic: a new hit restarts it, with a 1 ms fade of the previou
 
 ## CPU
 
-Budget: all eleven voices ringing at once under 2% of a core at 48 kHz / 64 frames, measured by `k909-render --bench`. D1 measured 1.05% with every voice hit on every beat; with the mixer in place (effects off), 1.36%. Voices that have decayed below −100 dB are skipped.
+Budget: all voices ringing at once under 2% of a core at 48 kHz / 64 frames, measured by `k909-render --bench`. D1 measured 1.05% with the 11 voices hit on every beat; now all 15 voices, 1.9%; with every voice driven and sent to both effects, the gated reverb, the compressor and the crusher on, 3.4%. Voices that have decayed below −100 dB are skipped.

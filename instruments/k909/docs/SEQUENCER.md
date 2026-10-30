@@ -5,15 +5,15 @@ Runs on the audio thread, sample-accurately, on the shared `krate::StepClock` (a
 ## Pattern data
 
 ```
-Pattern (one of 8 bank slots, A..H)
+Pattern (one of 16 bank slots, A..P)
   length       1..16 steps
   scale        steps per beat: 4 (1/16, default), 8 (1/32), 3 (1/8T), 6 (1/16T)
   order        Forward, Reverse, Fwd+Rev, Random (krate::StepClock::Order)
-  tracks[11]   one per voice, in panel order: BD SD LT MT HT RS CP CH OH CR RD
+  tracks[15]   one per voice, in panel order: BD SD LT MT HT RS CP CH OH CR RD ME CK NZ BM
     steps[16]  0 = off, 1 = on, 2 = accent
 ```
 
-8 patterns, A–H. Total Accent, Shuffle and Tempo are panel knobs (they belong to the sound, not the pattern), as on the original style of machine.
+16 patterns in two pages of eight: A–H and I–P (the A–H / I–P buttons switch which the pattern buttons show; choosing a pattern shows its page). Total Accent, Shuffle and Tempo are panel knobs (they belong to the sound, not the pattern), as on the original style of machine.
 
 ## Playback
 
@@ -35,14 +35,33 @@ The controller (`Drums`) keeps the GUI's copy of the bank and sends every edit t
 | --- | --- |
 | Select track | Click a voice name in the track strip under the step buttons, or ↑ ↓ |
 | Toggle a step | Click step 1–16: off → on → accent → off |
-| Pattern | A–H buttons, keys A–H, or the PATTERN LCD ▲▼. The dark button is the pattern shown; its LED is the one playing, blinking while it waits for the end of the pass |
+| Pattern | The pattern buttons (A–H or I–P, as the page switch shows), keys A–H (on the page shown), or the PATTERN LCD ▲▼. The dark button is the pattern shown; its LED is the one playing, blinking while it waits for the end of the pass |
 | Length, scale, order | LCD ▲▼ |
 | Clear | Clears the selected track; Shift+Clear clears the whole pattern |
 | Run/stop | START and STOP buttons (standalone; in the rack they follow the rack's transport, as k303's are hidden) |
 
+## Factory patterns
+
+| Slot | Name | Groove |
+| --- | --- | --- |
+| A | Floor | Four on the floor, offbeat open hats, clap on 2 and 4 |
+| B | Broken | Syncopated kick, snare with ghost notes, busy hats |
+| C | Groove | Made for Shuffle: ride and toms |
+| D | Fill | A one-bar tom and snare fill into a crash |
+| I | Stomp | Four on the floor, a boom on the downbeat, metal and clank on the offbeats |
+| J | Drive | The kick on every eighth, snare and clap together, accented sixteenth hats |
+| K | Anvil | A broken kick under struck metal and clank |
+| L | Machine Gun | A snare roll into the bar, noise stabs, rim ticks |
+| M | Half-Time | Heavy and slow, the boom under the kick |
+| N | Clatter | Clank running through on sixteenths |
+| O | Gated Floor | Made for the Gated 80s kit: a straight beat with a tom fill |
+| P | Breakdown | The boom twice a bar, metal on the beat, a crash and a noise wash |
+
+They sound like the classic machine on the Classic kit; load an industrial kit (KITS.md) for their intended sound.
+
 ## Storage
 
-`~/.local/share/k909/patterns.json`, saved 2 s after the last edit and on quit, through `krate::JsonFile` (`app/PatternFile`, as k303's). The first run seeds A–D with the factory patterns (Floor, Broken, Groove, Fill); E–H start empty. `current` is the pattern shown when K909 starts.
+`~/.local/share/k909/patterns.json`, saved 2 s after the last edit and on quit, through `krate::JsonFile` (`app/PatternFile`, as k303's). The first run seeds A–D with the classic factory patterns (Floor, Broken, Groove, Fill), E–H start empty, and I–P hold the industrial ones (below). An older file of 8 patterns keeps them and gains I–P. `current` is the pattern shown when K909 starts.
 
 ```json
 {
@@ -55,4 +74,4 @@ The controller (`Drums`) keeps the GUI's copy of the bank and sends every edit t
 }
 ```
 
-Tracks are strings of `0`/`1`/`2`, one character per step, keyed `bd sd lt mt ht rs cp ch oh cr rd`; empty tracks are left out and missing ones are empty. Out-of-range values are clamped. Unknown keys are ignored so the format can grow (flam, parameter locks).
+Tracks are strings of `0`/`1`/`2`, one character per step, keyed `bd sd lt mt ht rs cp ch oh cr rd me ck nz bm`; empty tracks are left out and missing ones are empty. Out-of-range values are clamped. Unknown keys are ignored so the format can grow (flam, parameter locks).

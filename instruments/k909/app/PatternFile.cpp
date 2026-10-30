@@ -7,8 +7,8 @@
 namespace k909::persistence {
 
 namespace {
-constexpr std::array<const char *, DrumCount> kTrackKeys{"bd", "sd", "lt", "mt", "ht", "rs",
-                                                          "cp", "ch", "oh", "cr", "rd"};
+constexpr std::array<const char *, DrumCount> kTrackKeys{"bd", "sd", "lt", "mt", "ht", "rs", "cp", "ch",
+                                                          "oh", "cr", "rd", "me", "ck", "nz", "bm"};
 
 int clampStepsPerBeat(int steps)
 {
@@ -24,8 +24,10 @@ QString trackKey(int track)
 PatternBank defaultBank()
 {
     PatternBank bank;
-    for (int i = 0; i < kFactoryPatternCount && i < kPatternCount; ++i)
+    for (int i = 0; i < kClassicPatternCount; ++i)
         bank.patterns[std::size_t(i)] = factoryPattern(i);
+    for (int i = kClassicPatternCount; i < kFactoryPatternCount; ++i)
+        bank.patterns[std::size_t(8 + i - kClassicPatternCount)] = factoryPattern(i);
     return bank;
 }
 
@@ -59,12 +61,13 @@ QJsonObject toJson(const PatternBank &bank)
 
 PatternBank fromJson(const QJsonObject &json)
 {
-    PatternBank bank;
+    PatternBank bank = defaultBank();
     bank.current = std::clamp(json.value(u"current").toInt(0), 0, kPatternCount - 1);
     const QJsonArray patterns = json.value(u"patterns").toArray();
     for (int i = 0; i < kPatternCount && i < patterns.size(); ++i) {
         const QJsonObject po = patterns.at(i).toObject();
         Pattern &p = bank.patterns[std::size_t(i)];
+        p = Pattern{};
         p.length = std::uint8_t(std::clamp(po.value(u"length").toInt(16), 1, 16));
         p.stepsPerBeat = std::uint8_t(clampStepsPerBeat(po.value(u"scale").toInt(4)));
         p.order = std::uint8_t(std::clamp(po.value(u"order").toInt(0), 0, 3));
