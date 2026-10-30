@@ -21,8 +21,11 @@ pw-jack ./build/bin/k909      # standalone; or pw-jack ./build/bin/krate for the
 
 Patterns: `~/.local/share/k909/patterns.json`. Kits: `~/.local/share/k909/kits.json`. Knobs: `~/.config/k909/panel.json`. MIDI map: `~/.config/k909/midimap.json` (in the rack, the rack's session).
 
+**Manual**: [docs/MANUAL.md](docs/MANUAL.md): every control, what it does and how to use it, with recipes and troubleshooting. In the app, **HELP** on the panel opens it (with a search).
+
 | Doc | Contents |
 | --- | --- |
+| [MANUAL.md](docs/MANUAL.md) | The player's manual (also in the app: HELP) |
 | [BRIEF.md](docs/BRIEF.md) | Scope, parameters, MIDI notes, registry entry |
 | [DSP.md](docs/DSP.md) | How each voice is synthesized |
 | [SEQUENCER.md](docs/SEQUENCER.md) | Pattern data, playback, shuffle, editing, factory patterns, storage |

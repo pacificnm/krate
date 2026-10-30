@@ -154,6 +154,21 @@ Item {
         font.bold: true
         font.italic: true
     }
+    PanelButton { // the manual
+        x: 196
+        y: 50
+        width: 72
+        height: 30
+        dark: true
+        faceText: "HELP"
+        text: "K909's manual: what every control does and how to use it"
+        onClicked: manual.open()
+    }
+    ManualView {
+        id: manual
+        title: "K909"
+        source: "qrc:/qt/qml/K909/docs/MANUAL.md"
+    }
     Text {
         x: 60
         y: 150

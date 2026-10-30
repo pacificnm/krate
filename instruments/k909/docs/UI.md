@@ -46,6 +46,7 @@ The reference layout's timing-scale strip above the step buttons (note symbols) 
 | PATTERN / LENGTH / SCALE / ORDER displays | The pattern shown (with "(next)" or "(X playing)" while a change waits), its length 1–16, steps per beat, play order; ▲▼ to change |
 | TEMPO | Standalone only; hidden in the rack (the transport bar owns tempo) |
 | VOLUME, SHUFFLE | Output level; swing amount |
+| HELP | `PanelButton` beside the Krate wordmark | Opens the manual (`docs/MANUAL.md`, a module resource) in the shared `ManualView`: sections and search |
 | UNMAP, AUDIO, LEARN, ABOUT | As k303: clear all mappings, audio status (click to reconnect), MIDI Learn mode, about box |
 | START / STOP | Run and stop the transport (standalone; hidden in the rack). Learnable as `startstop`. Space also toggles |
 | CLEAR | Clear the selected track; Shift+click clears the whole pattern |

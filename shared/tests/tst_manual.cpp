@@ -46,6 +46,7 @@ private slots:
         QTest::addColumn<QString>("instrument");
         QTest::newRow("krimson") << QStringLiteral("krimson");
         QTest::newRow("kalliope") << QStringLiteral("kalliope");
+        QTest::newRow("k909") << QStringLiteral("k909");
     }
     void manualCoversThePanel()
     {
