@@ -13,6 +13,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include "NoteTargets.h"
+#include "SongImport.h"
 #include "SongLibrary.h"
 #include "app/InstrumentRegistry.h"
 #include "song/BackingTrack.h"
@@ -40,6 +41,8 @@ class InstrumentInstance;
 // what was there before.
 // While a song is loaded the instruments' own sequencers are off, so only the
 // song plays them. QML singleton "Song".
+class SequencerController;
+
 class SongController : public QObject
 {
     Q_OBJECT
@@ -63,6 +66,11 @@ class SongController : public QObject
     Q_PROPERTY(int myTrack READ myTrack WRITE setMyTrack NOTIFY tracksChanged)
     // The track the tab / notes view shows (click a track to see it); "my track" when a song opens.
     Q_PROPERTY(int viewTrack READ viewTrack WRITE setViewTrack NOTIFY tracksChanged)
+    // Copying bars to the sequencer (docs/SEQUENCER.md, Q3): how many bars
+    // there are (as written), and the bars selected in the tab view (0-based, written; -1 = none).
+    Q_PROPERTY(int writtenBarCount READ writtenBarCount NOTIFY songChanged)
+    Q_PROPERTY(int selectionFrom READ selectionFrom NOTIFY selectionChanged)
+    Q_PROPERTY(int selectionTo READ selectionTo NOTIFY selectionChanged)
     Q_PROPERTY(int bar READ bar NOTIFY positionChanged)        // 1-based
     Q_PROPERTY(int beat READ beat NOTIFY positionChanged)      // 1-based
     Q_PROPERTY(int barCount READ barCount NOTIFY songChanged)
@@ -154,6 +162,22 @@ public:
     // where the song is, else its first.
     Q_INVOKABLE void jumpToBar(int writtenBar);
 
+    int writtenBarCount() const; // as the tab numbers them (a MIDI file alone: its bars)
+    int selectionFrom() const { return m_selectionFrom; }
+    int selectionTo() const { return m_selectionTo; }
+    // Select bars from..to (either order); a shift-click extends from the first one.
+    Q_INVOKABLE void selectBars(int from, int to);
+    Q_INVOKABLE void extendSelection(int bar);
+    Q_INVOKABLE void clearSelection();
+    // What copying bars from..to (0-based) of `track` from sequencer pattern
+    // `pattern` (0-based) on would do: {patterns, fits, overwrite (1-based numbers
+    // of the patterns whose `seqTrack` has notes), bars}.
+    Q_INVOKABLE QVariantMap planCopy(int track, int from, int to, int pattern, int seqTrack) const;
+    // Copies them, the sequencer track playing `choice` (as in instrumentChoices);
+    // returns what happened, for the screen.
+    Q_INVOKABLE QString copyToSequencer(int track, int from, int to, int pattern, int seqTrack, int choice);
+    void setSequencer(SequencerController *sequencer) { m_sequencer = sequencer; }
+
     // For the session and tests.
     void reopenLast();
     // Once: S4's songs.json (its last song and that song's track setup) into
@@ -172,6 +196,7 @@ signals:
     void errorChanged();
     void libraryChanged();
     void backingChanged();
+    void selectionChanged();
 
 private:
     struct TrackSettings
@@ -246,6 +271,8 @@ private:
     std::vector<TrackSettings> m_tracks;
     int m_myTrack = -1;
     int m_viewTrack = -1;
+    int m_selectionFrom = -1, m_selectionTo = -1;
+    SequencerController *m_sequencer = nullptr;
 
     QTimer m_timer;
     int m_bar = 1, m_beat = 1;

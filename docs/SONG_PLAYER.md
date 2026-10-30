@@ -16,6 +16,7 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
   - A track sent to k303 plays one note at a time, the newest (k303 is monophonic); its own sequencer is switched off while it plays a song track.
   - Assigning goes straight to the instrument, whatever its MIDI channel or focus, so the keyboard still plays whichever instrument it plays now.
 - **Any track in view**: click a track to see it; **TAB / NOTES** switches between tab and standard notation (drum tracks: drum notation).
+- **Copy to the sequencer**: Shift-click bars of the track in view to select them, then **TO SEQ** copies them into the rack sequencer's patterns ([SEQUENCER.md](SEQUENCER.md#copying-bars-from-a-song)).
 - **Your track**: pick the track you are playing on guitar. Its tab is shown. Its sound can be **muted** or played quietly as a **guide** (if it is assigned to an instrument).
 - **Tab view**: six lines (or as many strings as the track has, e.g. 4 for bass, 7 for a 7-string), tuning at the left, bar numbers, fret numbers on the strings with rhythm stems under them, and technique marks (h, p, /, \, b, PM, x, ~, tied notes). A few systems fit on screen. A **cursor** follows the transport to the exact beat, and the view pages ahead so the next line is always visible. Click a bar to move there.
 - **Transport**: the rack's transport plays the song. Play/stop, return to start, bar position; the tempo follows the song's tempo map (changes included).

@@ -1,4 +1,5 @@
 #include "SongController.h"
+#include "SequencerController.h"
 
 #include <algorithm>
 #include <cmath>
@@ -66,6 +67,7 @@ SongController::SongController(s::SongPlayer &player, RackController &rack, cons
         m_ids << e.id;
     m_choices = noteTargets(entries); // every instrument that plays notes
 
+    connect(this, &SongController::songChanged, this, &SongController::clearSelection); // another song: other bars
     m_timer.setInterval(kPollIntervalMs);
     connect(&m_timer, &QTimer::timeout, this, &SongController::pollPosition);
     m_timer.start();
@@ -569,6 +571,108 @@ void SongController::jumpToBar(int writtenBar)
     if (pick == order.size())
         return;
     m_player.cue(starts[pick]);
+}
+
+int SongController::writtenBarCount() const
+{
+    return m_song ? songimport::barCount(*m_song, score()) : 0;
+}
+
+void SongController::selectBars(int from, int to)
+{
+    const int count = writtenBarCount();
+    if (count <= 0)
+        return clearSelection();
+    from = std::clamp(from, 0, count - 1);
+    to = std::clamp(to, 0, count - 1);
+    if (from > to)
+        std::swap(from, to);
+    if (from == m_selectionFrom && to == m_selectionTo)
+        return;
+    m_selectionFrom = from;
+    m_selectionTo = to;
+    emit selectionChanged();
+}
+
+void SongController::extendSelection(int bar)
+{
+    if (m_selectionFrom < 0)
+        selectBars(bar, bar);
+    else
+        selectBars(m_selectionFrom, bar);
+}
+
+void SongController::clearSelection()
+{
+    if (m_selectionFrom < 0)
+        return;
+    m_selectionFrom = m_selectionTo = -1;
+    emit selectionChanged();
+}
+
+QVariantMap SongController::planCopy(int track, int from, int to, int pattern, int seqTrack) const
+{
+    if (!m_song || !m_sequencer || track < 0 || track >= int(m_song->tracks.size()))
+        return {};
+    const auto spans = songimport::barSpans(*m_song, score(), std::min(from, to), std::max(from, to));
+    const songimport::Result r = songimport::convert(*m_song, track, spans, {});
+    const int patterns = int(r.chunks.size());
+    QVariantList overwrite;
+    for (int p : m_sequencer->patternsWithNotes(pattern, patterns, seqTrack))
+        overwrite << p + 1;
+    return {{QStringLiteral("patterns"), patterns},
+            {QStringLiteral("fits"), pattern + patterns <= krate::seq::kPatterns},
+            {QStringLiteral("overwrite"), overwrite},
+            {QStringLiteral("bars"), int(spans.size())}};
+}
+
+QString SongController::copyToSequencer(int track, int from, int to, int pattern, int seqTrack, int choice)
+{
+    if (!m_song || !m_sequencer || track < 0 || track >= int(m_song->tracks.size()))
+        return {};
+    if (from > to)
+        std::swap(from, to);
+    const NoteTarget *target = choice > 0 && choice <= int(m_choices.size()) ? &m_choices[std::size_t(choice - 1)] : nullptr;
+    songimport::Options options;
+    options.drumMap = target && target->drumMap;
+    options.mono = target && target->key == u"k303";
+    const auto spans = songimport::barSpans(*m_song, score(), from, to);
+    const songimport::Result r = songimport::convert(*m_song, track, spans, options);
+    if (r.chunks.empty())
+        return QStringLiteral("Nothing to copy: those bars don't play.");
+    const int written = m_sequencer->importChunks(pattern, seqTrack, r.chunks, choice);
+
+    int lastBar = from;
+    if (written > 0) {
+        const songimport::Chunk &last = r.chunks[std::size_t(written - 1)];
+        lastBar = from + last.firstBar + last.barCount - 1;
+    }
+    QString text = QStringLiteral("Copied bars %1–%2 into ").arg(from + 1).arg(lastBar + 1);
+    text += written == 1 ? QStringLiteral("pattern %1").arg(pattern + 1)
+                         : QStringLiteral("patterns %1–%2").arg(pattern + 1).arg(pattern + written);
+    text += QStringLiteral(", track %1").arg(seqTrack + 1);
+    if (target)
+        text += QStringLiteral(" (%1)").arg(target->label);
+    int notes = 0;
+    for (int i = 0; i < written; ++i)
+        notes += int(r.chunks[std::size_t(i)].notes.size());
+    text += QStringLiteral(": %1 notes.").arg(notes);
+    QStringList fitted;
+    if (r.report.snapped)
+        fitted << QStringLiteral("%1 moved to the grid").arg(r.report.snapped);
+    if (r.report.reduced)
+        fitted << (options.mono ? QStringLiteral("%1 chord notes left out (k303 plays one at a time)")
+                                : QStringLiteral("%1 doubled notes merged"))
+                      .arg(r.report.reduced);
+    if (r.report.dropped)
+        fitted << QStringLiteral("%1 drum notes K909 has no voice for").arg(r.report.dropped);
+    if (r.report.overflow)
+        fitted << QStringLiteral("%1 notes over a pattern's limit").arg(r.report.overflow);
+    if (written < int(r.chunks.size()))
+        fitted << QStringLiteral("bars past pattern 16 not copied");
+    if (!fitted.isEmpty())
+        text += u' ' + fitted.join(QStringLiteral("; ")) + u'.';
+    return text;
 }
 
 void SongController::pollPosition()

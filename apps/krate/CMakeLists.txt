@@ -24,6 +24,8 @@ qt_add_qml_module(krate
         SequencerFile.cpp
         SequencerController.h
         SequencerController.cpp
+        SongImport.h
+        SongImport.cpp
         SongController.h
         SongController.cpp
         SongLibrary.h
@@ -79,6 +81,12 @@ add_executable(tst_song
     tests/tst_song.cpp
     NoteTargets.h
     NoteTargets.cpp
+    SequencerController.h
+    SequencerController.cpp
+    SequencerFile.h
+    SequencerFile.cpp
+    SongImport.h
+    SongImport.cpp
     RackController.h
     RackController.cpp
     RackRunControl.h
@@ -90,7 +98,7 @@ add_executable(tst_song
 )
 target_include_directories(tst_song PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_song PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_song PRIVATE krate_rack krate_song krate_app Qt6::Qml Qt6::Sql Qt6::Test)
+target_link_libraries(tst_song PRIVATE krate_rack krate_song krate_seq krate_app Qt6::Qml Qt6::Sql Qt6::Test)
 add_test(NAME tst_song COMMAND tst_song)
 
 # The sequencer's file.
@@ -100,12 +108,19 @@ target_compile_options(tst_sequencerfile PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_sequencerfile PRIVATE krate_seq Qt6::Core Qt6::Test)
 add_test(NAME tst_sequencerfile COMMAND tst_sequencerfile)
 
+# Copying a song's bars into the sequencer.
+add_executable(tst_songimport tests/tst_songimport.cpp SongImport.h SongImport.cpp)
+target_include_directories(tst_songimport PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_songimport PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_songimport PRIVATE krate_seq krate_song Qt6::Test)
+add_test(NAME tst_songimport COMMAND tst_songimport)
+
 # The sequencer screen's controller.
 add_executable(tst_seqcontroller tests/tst_seqcontroller.cpp SequencerController.h SequencerController.cpp
-               SequencerFile.h SequencerFile.cpp NoteTargets.h NoteTargets.cpp)
+               SequencerFile.h SequencerFile.cpp NoteTargets.h NoteTargets.cpp SongImport.h SongImport.cpp)
 target_include_directories(tst_seqcontroller PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_seqcontroller PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_seqcontroller PRIVATE krate_seq krate_app Qt6::Qml Qt6::Test)
+target_link_libraries(tst_seqcontroller PRIVATE krate_seq krate_song krate_app Qt6::Qml Qt6::Test)
 add_test(NAME tst_seqcontroller COMMAND tst_seqcontroller)
 
 # The song library's database, with generated files.

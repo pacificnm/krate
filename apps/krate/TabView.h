@@ -49,6 +49,8 @@ public:
 
     // A click in content coordinates: jump to that bar.
     Q_INVOKABLE void clickAt(qreal x, qreal y);
+    // The written bar at a point in content coordinates (-1: none).
+    Q_INVOKABLE int barAtPoint(qreal x, qreal y) const;
     // The top of a system (for paging).
     Q_INVOKABLE qreal systemTop(int system) const;
 

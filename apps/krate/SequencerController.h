@@ -12,6 +12,7 @@
 
 #include "NoteTargets.h"
 #include "SequencerFile.h"
+#include "SongImport.h"
 #include "seq/Sequencer.h"
 
 class QQmlEngine;
@@ -102,6 +103,14 @@ public:
     Q_INVOKABLE void clearPattern();
     Q_INVOKABLE void copyPattern();
     Q_INVOKABLE void pastePattern();
+
+    // Bars from a song (the Song screen): each chunk replaces track `track`'s
+    // notes in a pattern, from `firstPattern` on, and sets that pattern's
+    // length and grid; the track plays target `choice` (0 = leave it).
+    // Returns how many patterns were written (they stop at pattern 16).
+    int importChunks(int firstPattern, int track, const std::vector<songimport::Chunk> &chunks, int choice);
+    // Of the `count` patterns from `firstPattern`, those whose track `track` has notes (0-based).
+    QList<int> patternsWithNotes(int firstPattern, int count, int track) const;
 
     // The GUI's copy (tests, the Song screen's import).
     const SequencerState &state() const { return m_state; }

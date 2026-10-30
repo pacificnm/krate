@@ -326,6 +326,46 @@ void SequencerController::pastePattern()
     edited();
 }
 
+int SequencerController::importChunks(int firstPattern, int track, const std::vector<songimport::Chunk> &chunks,
+                                      int choice)
+{
+    if (track < 0 || track >= kTracks || firstPattern < 0)
+        return 0;
+    int written = 0;
+    for (std::size_t i = 0; i < chunks.size() && firstPattern + int(i) < kPatterns; ++i) {
+        Pattern &p = m_state.bank->patterns[std::size_t(firstPattern) + i];
+        const songimport::Chunk &chunk = chunks[i];
+        p.length = std::uint16_t(std::clamp<int>(chunk.length, 1, kMaxTicks));
+        p.grid = std::uint8_t(std::min<int>(chunk.grid, int(kGridTicks.size()) - 1));
+        TrackNotes &tn = p.tracks[std::size_t(track)];
+        tn.count = 0;
+        for (const Note &n : chunk.notes)
+            if (n.start < p.length)
+                tn.add(n);
+        ++written;
+    }
+    if (choice > 0 && choice <= int(m_targets.size())) {
+        m_state.targets[std::size_t(track)] = m_targets[std::size_t(choice - 1)].key;
+        applyTargets();
+    }
+    m_state.pattern = std::clamp(firstPattern, 0, kPatterns - 1);
+    m_sequencer.cue(m_state.pattern);
+    m_track = track;
+    edited();
+    return written;
+}
+
+QList<int> SequencerController::patternsWithNotes(int firstPattern, int count, int track) const
+{
+    QList<int> list;
+    if (track < 0 || track >= kTracks)
+        return list;
+    for (int p = std::max(firstPattern, 0); p < std::min(firstPattern + count, kPatterns); ++p)
+        if (m_state.bank->patterns[std::size_t(p)].tracks[std::size_t(track)].count > 0)
+            list << p;
+    return list;
+}
+
 // --- Internals ------------------------------------------------------------------------
 
 void SequencerController::applyTargets()

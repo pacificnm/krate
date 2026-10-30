@@ -132,6 +132,13 @@ int main(int argc, char *argv[])
                         rackController, rack, midiLearn, deviceIds, nullptr);
     session.load();
 
+    // The rack sequencer (docs/SEQUENCER.md), from ~/.local/share/krate/sequencer.json.
+    krate::seq::Sequencer sequencer;
+    SequencerController sequencerController(
+        sequencer, noteTargets(entries),
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/sequencer.json"), nullptr);
+    sequencerController.load();
+
     // The Song screen and the song library (~/.local/share/krate/library: the
     // songs' files, library.db with each song's set-up and sounds).
     SongLibrary library(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/library"));
@@ -139,19 +146,13 @@ int main(int argc, char *argv[])
     for (const auto &instance : instances)
         songInstances.push_back(instance.get());
     SongController songController(songPlayer, rackController, entries, std::move(songInstances), library, nullptr);
+    songController.setSequencer(&sequencerController);
     songController.setBackingTrack(&static_cast<BackingInstance *>(instances.back().get())->track);
     if (const QString old = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/songs.json");
         QFileInfo::exists(old))
         songController.importSongsJson(old); // from before the library
     else
         songController.reopenLast();
-
-    // The rack sequencer (docs/SEQUENCER.md), from ~/.local/share/krate/sequencer.json.
-    krate::seq::Sequencer sequencer;
-    SequencerController sequencerController(
-        sequencer, noteTargets(entries),
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/sequencer.json"), nullptr);
-    sequencerController.load();
 
     // The song player and the sequencer both play into the rack.
     krate::EventMerge<2> eventSources({&songPlayer, &sequencer});

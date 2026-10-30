@@ -44,6 +44,7 @@ void TabView::setSong(SongController *song)
         });
         connect(m_song, &SongController::tracksChanged, this, &TabView::relayout); // "my track" may have moved
         connect(m_song, &SongController::tickChanged, this, &TabView::updateCursor);
+        connect(m_song, &SongController::selectionChanged, this, [this] { update(); });
     }
     emit songChanged();
     m_track = -2;
@@ -140,6 +141,11 @@ void TabView::clickAt(qreal x, qreal y)
         m_song->jumpToBar(bar);
 }
 
+int TabView::barAtPoint(qreal x, qreal y) const
+{
+    return krate::song::barAt(m_layout, x, y);
+}
+
 void TabView::paint(QPainter *painter)
 {
     using krate::song::TabItem;
@@ -150,6 +156,16 @@ void TabView::paint(QPainter *painter)
     QFont font(QStringLiteral("sans-serif"));
     QFont music(QStringLiteral("Noto Music")); // clefs, rests, sharps; falls back to any font that has them
     music.setStyleHint(QFont::Serif);
+    // The bars selected for copying to the sequencer, under everything.
+    const int selFrom = m_song ? m_song->selectionFrom() : -1, selTo = m_song ? m_song->selectionTo() : -1;
+    if (selFrom >= 0)
+        for (const auto &system : m_layout.systems) {
+            if (system.top + system.height < top || system.top > bottom)
+                continue;
+            for (const auto &bar : system.bars)
+                if (bar.bar >= selFrom && bar.bar <= selTo)
+                    painter->fillRect(QRectF(bar.x0, system.top, bar.x1 - bar.x0, system.height), QColor(42, 127, 255, 48));
+        }
     for (const auto &system : m_layout.systems) {
         if (system.top + system.height < top || system.top > bottom)
             continue;

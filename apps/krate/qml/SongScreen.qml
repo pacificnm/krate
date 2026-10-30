@@ -611,7 +611,26 @@ Item {
                     font.pixelSize: 13
                     font.bold: true
                     elide: Text.ElideRight
-                    width: Math.min(implicitWidth, tabArea.width - 200)
+                    width: Math.min(implicitWidth, tabArea.width - 420)
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Song.selectionFrom < 0 ? "Shift-click bars to select them"
+                          : (Song.selectionFrom === Song.selectionTo ? "Bar " + (Song.selectionFrom + 1)
+                                                                     : "Bars " + (Song.selectionFrom + 1) + "–" + (Song.selectionTo + 1))
+                            + " selected"
+                    color: Song.selectionFrom < 0 ? "#8A8C90" : Theme.accentUi
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                }
+                PanelButton {
+                    visible: Song.selectionFrom >= 0
+                    width: 24
+                    height: 22
+                    anchors.verticalCenter: parent.verticalCenter
+                    faceText: "×"
+                    text: "Clear the selected bars"
+                    onClicked: Song.clearSelection()
                 }
             }
             Row {
@@ -619,6 +638,16 @@ Item {
                 anchors.rightMargin: 10
                 y: 4
                 spacing: 4
+                PanelButton {
+                    width: 84
+                    height: 24
+                    faceText: "TO SEQ"
+                    text: "Copy bars of this track into the sequencer"
+                    enabled: tabArea.viewed !== null
+                    opacity: enabled ? 1.0 : 0.4
+                    onClicked: copyDialog.openFor(Song.viewTrack)
+                }
+                Item { width: 8; height: 1 }
                 PanelButton {
                     width: 56
                     height: 24
@@ -662,7 +691,16 @@ Item {
                 MouseArea {
                     width: flick.contentWidth
                     height: flick.contentHeight
-                    onClicked: mouse => tab.clickAt(mouse.x, mouse.y)
+                    // Click: go to that bar. Shift-click: select bars (from the first one picked) to copy to the sequencer.
+                    onClicked: mouse => {
+                        if (mouse.modifiers & Qt.ShiftModifier) {
+                            const bar = tab.barAtPoint(mouse.x, mouse.y)
+                            if (bar >= 0)
+                                Song.extendSelection(bar)
+                        } else {
+                            tab.clickAt(mouse.x, mouse.y)
+                        }
+                    }
                     cursorShape: Qt.PointingHandCursor
                 }
 
@@ -789,6 +827,188 @@ Item {
                         Song.removeFromLibrary(Song.songId)
                         editor.close()
                     }
+                }
+            }
+        }
+    }
+
+    // --- Copy bars to the sequencer (docs/SEQUENCER.md, Q3) ---------------------------
+    Popup {
+        id: copyDialog
+        parent: Overlay.overlay
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        width: 560
+        modal: true
+        padding: 20
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        property int track: -1
+        property string result: ""
+        readonly property var trackInfo: track >= 0 && track < Song.tracks.length ? Song.tracks[track] : null
+        readonly property var plan: Song.planCopy(track, fromBox.value - 1, toBox.value - 1, patternBox.value - 1,
+                                                  seqTrackBox.value - 1)
+
+        function openFor(songTrack) {
+            track = songTrack
+            result = ""
+            const last = Song.writtenBarCount
+            fromBox.value = Song.selectionFrom >= 0 ? Song.selectionFrom + 1 : 1
+            toBox.value = Song.selectionFrom >= 0 ? Song.selectionTo + 1 : Math.min(last, fromBox.value + 3)
+            const choice = trackInfo ? trackInfo.choice : 0
+            instrumentBox.currentIndex = choice
+            // The sequencer track already playing that instrument, else the first unused one.
+            const tracks = Sequencer.tracks
+            let pick = -1
+            for (let i = 0; i < tracks.length && pick < 0; ++i)
+                if (choice > 0 && tracks[i].choice === choice)
+                    pick = i
+            for (let i = 0; i < tracks.length && pick < 0; ++i)
+                if (tracks[i].choice === 0)
+                    pick = i
+            seqTrackBox.value = (pick < 0 ? 0 : pick) + 1
+            patternBox.value = Sequencer.pattern + 1
+            open()
+        }
+
+        background: Rectangle {
+            radius: 8
+            color: Theme.silverLight
+            border.color: Theme.deckLine
+            border.width: 2
+        }
+
+        Column {
+            width: parent.width
+            spacing: 12
+
+            Text {
+                text: "Copy to the sequencer"
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 20
+                font.bold: true
+            }
+            Text {
+                width: parent.width
+                text: copyDialog.trackInfo ? "From the song's track: " + copyDialog.trackInfo.name : ""
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+                elide: Text.ElideRight
+            }
+
+            Grid {
+                columns: 4
+                columnSpacing: 10
+                rowSpacing: 8
+                verticalItemAlignment: Grid.AlignVCenter
+                visible: copyDialog.result === ""
+
+                Text { text: "Bars"; font.family: Theme.labelFont; font.pixelSize: 13; color: Theme.ink }
+                SpinBox {
+                    id: fromBox
+                    from: 1
+                    to: Math.max(1, Song.writtenBarCount)
+                    editable: true
+                    Accessible.name: "From bar"
+                }
+                Text { text: "to"; font.family: Theme.labelFont; font.pixelSize: 13; color: Theme.ink }
+                SpinBox {
+                    id: toBox
+                    from: 1
+                    to: Math.max(1, Song.writtenBarCount)
+                    editable: true
+                    Accessible.name: "To bar"
+                }
+
+                Text { text: "Into pattern"; font.family: Theme.labelFont; font.pixelSize: 13; color: Theme.ink }
+                SpinBox {
+                    id: patternBox
+                    from: 1
+                    to: 16
+                    Accessible.name: "Into pattern"
+                }
+                Text { text: "track"; font.family: Theme.labelFont; font.pixelSize: 13; color: Theme.ink }
+                SpinBox {
+                    id: seqTrackBox
+                    from: 1
+                    to: 8
+                    Accessible.name: "Sequencer track"
+                }
+
+                Text { text: "Playing"; font.family: Theme.labelFont; font.pixelSize: 13; color: Theme.ink }
+                ComboBox {
+                    id: instrumentBox
+                    width: 170
+                    model: Sequencer.targetChoices
+                    Accessible.name: "Instrument for the sequencer track"
+                }
+            }
+
+            Text { // what it will do
+                width: parent.width
+                visible: copyDialog.result === ""
+                wrapMode: Text.WordWrap
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+                text: {
+                    const p = copyDialog.plan
+                    if (!p || p.patterns === undefined)
+                        return ""
+                    const first = patternBox.value
+                    const last = Math.min(16, first + p.patterns - 1)
+                    let t = p.bars + (p.bars === 1 ? " bar" : " bars") + " → "
+                          + (last === first ? "pattern " + first : "patterns " + first + "–" + last)
+                          + ", track " + seqTrackBox.value + " (up to 4 bars a pattern)."
+                    if (p.overwrite.length > 0)
+                        t += "\nTrack " + seqTrackBox.value + " already has notes in pattern"
+                             + (p.overwrite.length > 1 ? "s " : " ") + p.overwrite.join(", ") + ": they'll be replaced."
+                    if (!p.fits)
+                        t += "\nThere are 16 patterns: bars past pattern 16 won't be copied."
+                    return t
+                }
+            }
+            Text { // what it did
+                width: parent.width
+                visible: copyDialog.result !== ""
+                text: copyDialog.result
+                wrapMode: Text.WordWrap
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+            }
+
+            Row {
+                spacing: 10
+                PanelButton {
+                    visible: copyDialog.result === ""
+                    width: 90
+                    height: 34
+                    faceText: "COPY"
+                    text: "Copy the bars into the sequencer"
+                    onClicked: copyDialog.result = Song.copyToSequencer(copyDialog.track, fromBox.value - 1, toBox.value - 1,
+                                                                        patternBox.value - 1, seqTrackBox.value - 1,
+                                                                        instrumentBox.currentIndex)
+                }
+                PanelButton {
+                    visible: copyDialog.result !== ""
+                    width: 130
+                    height: 34
+                    faceText: "SHOW IN SEQ"
+                    text: "Show the sequencer"
+                    onClicked: {
+                        copyDialog.close()
+                        Rack.seqShown = true
+                    }
+                }
+                PanelButton {
+                    width: 90
+                    height: 34
+                    faceText: copyDialog.result === "" ? "CANCEL" : "CLOSE"
+                    text: copyDialog.result === "" ? "Don't copy" : "Close"
+                    onClicked: copyDialog.close()
                 }
             }
         }

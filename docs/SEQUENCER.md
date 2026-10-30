@@ -28,11 +28,26 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
   - Mouse wheel over a note, or drag its bar in the **velocity** lane: how hard it plays (for K909, 100 and up plays accented).
 - The red line is the playhead (when the pattern shown is the one playing).
 
+## Copying bars from a song
+
+On the Song screen, with a song open:
+
+1. Click a track to view it, then **Shift-click** a bar in its tab (or notes) and **Shift-click** another: the bars between are selected (blue). **×** clears the selection.
+2. **TO SEQ** opens the copy dialog: the bars (from the selection; edit them if you like), the pattern to start at, the sequencer track, and the instrument it plays (the song track's, to begin with). It picks the sequencer track already playing that instrument, or the first free one.
+3. It says what will happen: how many patterns (4 bars each; 3/4 bars five to a pattern), and which patterns' notes on that track will be replaced. **COPY** does it and says what was fitted.
+
+What's fitted, automatically:
+- **Timing**: each pattern gets the grid that moves the fewest notes (1/16, else 16th triplets, else 1/32), and notes are snapped to it; the count of moved notes is reported.
+- **Drums** going to K909 are mapped to its voices as the song player maps them; drum sounds it has no voice for are left out (counted).
+- **k303** plays one note at a time: a chord keeps its top note (counted).
+- **Repeats**: bars are numbered as written in the tab; a bar that plays more than once is taken from its first time through.
+- Only that track of each pattern changes; the pattern takes the copied bars' length and grid. Patterns stop at 16.
+
 ## Build plan
 
 | # | Milestone | Done when |
 | --- | --- | --- |
 | Q1 ✅ | **Engine** (`shared/seq`, no Qt): the bank (16 patterns × 8 tracks of notes), the player as an `IEventSource` on the rack's transport (loops, cued pattern switches at the loop end, note-offs on stop, retarget and mute; nothing hangs), an event merger so the song player and the sequencer both play into the rack; the file (`sequencer.json`); wired into the krate app | `tst_racksequencer`: notes on the exact sample at several tempos and grids, loop wrap, cued switch, chords, offs on stop / mute / retarget / bank swap, merge order; file round trip. Result: `krate_seq` (`seq/Pattern.h`, `seq/Sequencer`), `core/EventMerge.h` (the krate app plays the song player and the sequencer through one `EventMerge<2>`), `apps/krate/SequencerFile`, `NoteTargets` (the instrument list shared with the Song screen); `tst_racksequencer` (8 tests), `tst_sequencerfile` (2) |
 | Q2 ✅ | **Screen**: a SEQ tab beside MIXER and SONG: the 8 tracks (target, mute), pattern select / copy / clear, length and grid, RUN; a piano-roll editor for the selected track (add, move, resize, delete notes; velocity); the playhead | Edits play at once; screenshot; qmllint clean. Result: `SequencerController` (QML singleton `Sequencer`: the GUI's copy of the bank, every edit hands the player a fresh copy, saved a second later; a newer version's file is left alone), `qml/SeqScreen.qml` (RUN, patterns 1–16 with used / chosen / playing marks, COPY / PASTE / CLEAR, LENGTH by bars (steps below a bar), GRID; the 8 tracks with instrument, note count and M; the piano roll: 128 keys or, for K909, its 16 voices by name; a drag previews and commits on release; the velocity lane; the playhead); the Seq tab (**Q**, learnable `rack:seq`, `"view": "seq"` in rack.json); the rack's tabs now fit the window. `tst_seqcontroller` |
-| Q3 | **Song import**: on the Song screen, select a track and a range of bars and copy them into a pattern and track (4 bars per pattern, longer ranges continue into the next patterns), confirming before anything is overwritten. Notes are fitted automatically and the result is reported (snapped to the grid; drum notes mapped to K909's voices; k303 tracks keep the top note of a chord) | `tst_song` import tests; a real song copied and played back |
+| Q3 ✅ | **Song import**: on the Song screen, select a track and a range of bars and copy them into a pattern and track (4 bars per pattern, longer ranges continue into the next patterns), confirming before anything is overwritten. Notes are fitted automatically and the result is reported (snapped to the grid; drum notes mapped to K909's voices; k303 tracks keep the top note of a chord) | `tst_songimport`, `tst_seqcontroller`; a real song copied and played back. Result: `SongImport` (bars to spans: a written bar from the first time it plays, a MIDI file's bars by the tempo map; bars into patterns of up to 16 beats; the grid that moves fewest notes, 1/16 before 1/16T before 1/32; doubles merged; drums through the song player's kit map; k303's chords to their top note; a note held into a bar the song doesn't play next stops at its bar's end), `SequencerController::importChunks` (replaces one track's notes per pattern, sets length and grid, the other tracks stay), `SongController` (`writtenBarCount`, the selection, `planCopy`, `copyToSequencer` with its report), the Song screen (Shift-click bars, TO SEQ, the copy dialog), the tab view paints the selection. Measured: bars 31–34 of a real tab file, bass to k303 and drums to K909: 64 + 90 notes, none moved or dropped; played twice through the rack with the real engines, every note sent, peak −5.8 dBFS |
 | Q4 | **Chain**: a list of patterns (with repeats) that plays as a song; live pattern switching from a controller (learnable) | Chain plays through and loops; switching is learnable |

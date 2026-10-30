@@ -98,6 +98,40 @@ private slots:
         c.deleteNote(0);
         QCOMPARE(c.notes().size(), 0);
     }
+
+    // Bars from a song: each chunk replaces one track's notes in a pattern (the
+    // other tracks stay), sets the pattern's length and grid, and stops at pattern 16.
+    void importChunks()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        c.setPattern(14);
+        c.setTrack(1);
+        c.addNote(0, 40, 24, 100);  // track 1: stays
+        c.setTrack(0);
+        c.addNote(96, 30, 24, 100); // track 0: replaced
+        QCOMPARE(c.patternsWithNotes(14, 3, 0), (QList<int>{14}));
+
+        std::vector<songimport::Chunk> chunks(3);
+        for (auto &chunk : chunks) {
+            chunk.length = 8 * kTicksPerBeat;
+            chunk.grid = 2;
+            chunk.notes = {{0, 16, 36, 110}, {48, 16, 38, 90}};
+        }
+        QCOMPARE(c.importChunks(14, 0, chunks, 2), 2); // patterns 15 and 16; the third doesn't fit
+        const Pattern &p = c.state().bank->patterns[14];
+        QCOMPARE(p.length, std::uint16_t(8 * kTicksPerBeat));
+        QCOMPARE(p.grid, std::uint8_t(2));
+        QCOMPARE(p.tracks[0].count, std::uint16_t(2));
+        QCOMPARE(p.tracks[0].notes[0].pitch, std::uint8_t(36));
+        QCOMPARE(p.tracks[1].count, std::uint16_t(1));
+        QCOMPARE(c.state().bank->patterns[15].tracks[0].count, std::uint16_t(2));
+        QCOMPARE(c.tracks()[0].toMap().value(u"choice"_s).toInt(), 2); // K909
+        QCOMPARE(c.pattern(), 14);
+        QCOMPARE(c.track(), 0);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestSeqController)
