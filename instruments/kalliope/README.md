@@ -4,8 +4,11 @@ A sixteen-voice polyphonic synthesizer for the [Krate](../../README.md) suite: t
 
 Status: P6. Playable standalone (`pw-jack ./build/bin/kalliope`) and in the Krate rack (`pw-jack ./build/bin/krate`, MIDI channel 2): 16 voices, the full panel, on-screen keyboard, chorus, delay and reverb, 64 patches with 16 factory sounds, the arpeggiator and a 16-step sequencer with a pattern generator, all on the transport. Polish (P8) to come. `pw-jack ./build/bin/kalliope`; `./build/bin/kalliope-render --out-dir build` writes `kalliope-sounds.wav`. See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
 
+**Manual**: [docs/MANUAL.md](docs/MANUAL.md): every control, what it does and how to use it, with recipes and troubleshooting. In the app, **HELP** on the panel opens it (with a search).
+
 | Doc | Contents |
 | --- | --- |
+| [MANUAL.md](docs/MANUAL.md) | The player's manual (also in the app: HELP) |
 | [BRIEF.md](docs/BRIEF.md) | Scope, parameters, MIDI, registry entry |
 | [DSP.md](docs/DSP.md) | Oscillators, filters, envelopes, voices, effects |
 | [PLAY.md](docs/PLAY.md) | Key modes, arpeggiator, patches and storage |

@@ -211,6 +211,21 @@ Item {
         font.bold: true
         font.italic: true
     }
+    PanelButton { // the manual
+        x: 54
+        y: 124
+        width: 72
+        height: 30
+        dark: true
+        faceText: "HELP"
+        text: "Kalliope's manual: what every control does and how to use it"
+        onClicked: manual.open()
+    }
+    ManualView {
+        id: manual
+        title: "Kalliope"
+        source: "qrc:/qt/qml/Kalliope/docs/MANUAL.md"
+    }
     Text {
         id: wordmark
         anchors.right: parent.right

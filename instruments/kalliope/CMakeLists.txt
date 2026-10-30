@@ -50,6 +50,8 @@ qt_add_qml_module(kalliope_ui
     QML_FILES
         qml/Main.qml
         qml/Panel.qml
+    RESOURCES
+        docs/MANUAL.md
 )
 # Generated type registration includes headers by bare name.
 target_include_directories(kalliope_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)

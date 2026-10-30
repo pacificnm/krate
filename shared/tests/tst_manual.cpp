@@ -5,7 +5,7 @@
 
 #include "app/ManualReader.h"
 
-// The manual reader, and Krimson's manual covering every control on its panel.
+// The manual reader, and each instrument's manual covering every control on its panel.
 class TestManual : public QObject
 {
     Q_OBJECT
@@ -39,17 +39,26 @@ private slots:
         QCOMPARE(reader.search(sections, "nothing"), QVariantList{});
     }
 
-    // Every label on Krimson's panel is explained in its manual.
-    void krimsonManualCoversThePanel()
+    // Every label on an instrument's panel is explained in its manual (a
+    // two-line label, "CUTOFF\nFREQ", as its words: "CUTOFF FREQ").
+    void manualCoversThePanel_data()
     {
-        const QString manual = read(QStringLiteral(KRATE_SOURCE_DIR "/instruments/krimson/docs/MANUAL.md"));
-        const QString panel = read(QStringLiteral(KRATE_SOURCE_DIR "/instruments/krimson/qml/Panel.qml"));
+        QTest::addColumn<QString>("instrument");
+        QTest::newRow("krimson") << QStringLiteral("krimson");
+        QTest::newRow("kalliope") << QStringLiteral("kalliope");
+    }
+    void manualCoversThePanel()
+    {
+        QFETCH(QString, instrument);
+        const QString dir = QStringLiteral(KRATE_SOURCE_DIR "/instruments/") + instrument;
+        const QString manual = read(dir + QStringLiteral("/docs/MANUAL.md"));
+        const QString panel = read(dir + QStringLiteral("/qml/Panel.qml"));
         QVERIFY(!manual.isEmpty() && !panel.isEmpty());
         QVERIFY(ManualReader::split(manual).size() >= 15);
         static const QRegularExpression label(QStringLiteral(R"(label: \"([^\"]{2,})\")"));
         QStringList missing;
         for (auto it = label.globalMatch(panel); it.hasNext();) {
-            const QString l = it.next().captured(1);
+            const QString l = it.next().captured(1).replace(QStringLiteral("\\n"), QStringLiteral(" "));
             if (!manual.contains(l, Qt::CaseInsensitive))
                 missing << l;
         }
