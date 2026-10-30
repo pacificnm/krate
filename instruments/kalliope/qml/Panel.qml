@@ -869,11 +869,12 @@ Item {
         text: "Octave up"
         onClicked: panel.shiftOctave(1)
     }
-    Text {
+    Text { // the octave you're playing in, as on Krimson: your keyboard's (as the keys show it) plus Kalliope's own
         id: octaveText
+        readonly property int total: panel.octave + keys.controllerOctave
         x: 160 - width / 2
         y: 960
-        text: "C" + (3 + panel.octave + keys.controllerOctave) // your keyboard's octave (as the keys show it) plus Kalliope's own
+        text: (total > 0 ? "+" : "") + total
         color: "#FF3A26"
         font.family: "monospace"
         font.pixelSize: 22
@@ -881,12 +882,6 @@ Item {
 
         Accessible.role: Accessible.StaticText
         Accessible.name: "Octave " + Kalliope.displayText("octave", Kalliope.value("octave"))
-    }
-    ValueText {
-        x: 160 - width / 2
-        y: 988
-        width: 60
-        text: panel.octave === 0 ? "" : (panel.octave > 0 ? "+" : "") + panel.octave + " oct"
     }
     Item {
         LearnOverlay { // a knob or slider can drive Octave as a selector

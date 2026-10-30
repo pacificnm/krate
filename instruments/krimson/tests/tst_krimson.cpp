@@ -123,6 +123,16 @@ private slots:
         k.controller.noteOn(60); // on-screen: as shown, not shifted
         block();
         QVERIFY(k.engine.noteHeld(60));
+        k.controller.noteOff(60);
+        block();
+
+        // A song's notes play as written: Octave is for the player's keys.
+        k.controller.setValue(QStringLiteral("octave"), position(0, positions::kOctave)); // -3
+        const krate::MidiEvent songOn{0, 3, {0x90, 45, 100}, true}, songOff{0, 3, {0x80, 45, 0}, true};
+        block(&songOn);
+        QVERIFY(k.engine.noteHeld(45));
+        block(&songOff);
+        QVERIFY(!k.engine.noteHeld(45));
     }
 
     void controllerSwitchesSlotsAndDrivesTheTransport()

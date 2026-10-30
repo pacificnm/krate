@@ -534,9 +534,10 @@ void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
     krate::MidiMessage m = krate::decode(event);
     const int midiChannel = event.data[0] & 0x0F;
     const int channel = keyboard ? -1 : midiChannel;
-    // Octave shifts MIDI keys (the on-screen keyboard already shows the shifted range).
+    // Octave shifts MIDI keys (the on-screen keyboard already shows the shifted
+    // range); a song's notes play as written.
     if (!keyboard && m.type == krate::MidiMessage::Type::NoteOn) {
-        const int shift = 12 * units::octaveShift(m_global.get(int(ParamId::Octave)));
+        const int shift = event.sequenced ? 0 : 12 * units::octaveShift(m_global.get(int(ParamId::Octave)));
         const int note = m.data1 + shift;
         if (note < 0 || note > 127)
             return;

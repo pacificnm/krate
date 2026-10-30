@@ -153,7 +153,7 @@ void SongPlayer::beforeTransport(Transport &transport) noexcept
 void SongPlayer::send(int device, std::uint32_t frame, std::uint8_t status, std::uint8_t d1, std::uint8_t d2) noexcept
 {
     if (m_outCount < m_outCapacity)
-        m_out[m_outCount++] = DeviceEvent{device, MidiEvent{frame, 3, {status, d1, d2}}};
+        m_out[m_outCount++] = DeviceEvent{device, MidiEvent{frame, 3, {status, d1, d2}, true}};
 }
 
 void SongPlayer::flush(int track, std::uint32_t frame) noexcept

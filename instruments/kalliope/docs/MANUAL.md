@@ -196,7 +196,7 @@ The **mod wheel** adds LFO vibrato, up to ±1 semitone at full (at the LFO's RAT
 | --- | --- |
 | **VOLUME** | Kalliope's output level. |
 | **TEMPO** | Standalone only: the tempo (40–240 BPM) for the arpeggiator, the sequencer and the delay. In the Krate rack, the rack's transport sets the tempo. |
-| **OCTAVE ◂ ▸** | Shifts your MIDI keyboard and the on-screen keyboard by −3 to +3 octaves (Z and X on the computer keyboard). The display shows the octave of the keyboard's lowest C (as the keys show it, including your MIDI keyboard's own octave buttons), and the shift under it. |
+| **OCTAVE ◂ ▸** | Shifts your MIDI keyboard and the on-screen keyboard by −3 to +3 octaves (Z and X on the computer keyboard). The display shows the octave you're playing in, as on Krimson: 0 is where the keys play as marked; it adds your MIDI keyboard's own octave buttons (as the keys show it) to Kalliope's shift. A song's notes always play as written, whatever OCTAVE is set to. |
 | **The on-screen keyboard** | Two octaves, played with the mouse (press and glide). Keys held from MIDI light up. |
 
 ## MIDI and MIDI Learn

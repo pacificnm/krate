@@ -39,7 +39,7 @@ The left of the panel holds controls for the whole instrument and the edited slo
 | Control | What it does |
 | --- | --- |
 | **MASTER LEVEL** | The whole instrument's volume (all four slots). |
-| **OCTAVE ◂ ▸** | Shifts what your MIDI keyboard plays by −3 to +3 octaves (the on-screen keyboard shows the shifted range). |
+| **OCTAVE ◂ ▸** | Shifts what your MIDI keyboard plays by −3 to +3 octaves (the on-screen keyboard shows the shifted range). The display adds your MIDI keyboard's own octave buttons; 0 is where the keys play as marked. A song's notes always play as written, whatever OCTAVE is set to. |
 | **TEMPO** | Standalone only: the tempo for the arpeggiator and tempo-synced delay. In the Krate rack the transport bar sets the tempo. |
 | **WHEEL** | What the mod wheel does for the edited slot: **Morph** (moves the sound towards its morph targets, see *Morph*) or **Vibrato** (pitch vibrato, up to 0.7 semitones at full). |
 | **MORPH** | Switches the knobs into morph-target editing (see *Morph*). |

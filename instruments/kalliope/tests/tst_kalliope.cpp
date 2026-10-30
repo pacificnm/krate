@@ -165,6 +165,22 @@ private slots:
         QCOMPARE(paramDescriptor(ParamId::Octave).format(position(4, positions::kOctave)), std::string("+1"));
     }
 
+    // A song's notes play as written: Octave is for the player's keys. At -3 a
+    // song's A2 played as A-1 (14 Hz) and clipped.
+    void octaveLeavesSongNotesAlone()
+    {
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        std::array<float, 64> l, r;
+        engine.setParam(ParamId::Octave, position(0, positions::kOctave)); // -3
+        const krate::MidiEvent on{0, 3, {0x90, 45, 100}, true}, off{0, 3, {0x80, 45, 0}, true};
+        krate::processStereo(engine, l.data(), r.data(), 64, &on, 1);
+        QVERIFY(engine.noteHeld(45));
+        engine.setParam(ParamId::Octave, position(5, positions::kOctave)); // +2, while held
+        krate::processStereo(engine, l.data(), r.data(), 64, &off, 1);
+        QVERIFY(!engine.noteHeld(45));
+    }
+
     // A note plays, and learned CCs move their parameters (snapped to detents).
     void engineLearnsCcsAndPlaysNotes()
     {

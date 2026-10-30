@@ -515,8 +515,9 @@ void Engine::handleMidi(const krate::MidiEvent &event) noexcept
             allNotesOff();
         break;
     case krate::MidiMessage::Type::NoteOn: {
-        // Octave shifts MIDI keys (the on-screen keyboard already shows the shifted range).
-        const int shift = 12 * units::octaveShift(m_params.get(int(ParamId::Octave)));
+        // Octave shifts MIDI keys (the on-screen keyboard already shows the shifted
+        // range); a song's notes play as written.
+        const int shift = event.sequenced ? 0 : 12 * units::octaveShift(m_params.get(int(ParamId::Octave)));
         const int note = m.data1 + shift;
         if (note < 0 || note > 127)
             break;

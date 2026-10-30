@@ -15,6 +15,9 @@ struct MidiEvent
     std::uint32_t frame = 0;
     std::uint8_t size = 0;
     std::uint8_t data[3] = {0, 0, 0};
+    // From a sequence (the song player), not from someone playing: instruments
+    // play it as written (a key-octave shift is for the player's keys only).
+    bool sequenced = false;
 };
 
 // Shared clock, supplied by the host every block (docs/SHARED_FOUNDATIONS.MD#transport).
