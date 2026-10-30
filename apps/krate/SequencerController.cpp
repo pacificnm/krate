@@ -632,6 +632,20 @@ void SequencerController::closeSequence()
     m_saveTimer.start();
 }
 
+void SequencerController::newSequence()
+{
+    SequencerState fresh;
+    fresh.targets = m_state.targets; // the tracks keep their instruments
+    fresh.running = m_state.running;
+    m_state = std::move(fresh);
+    m_before.reset(); // what's on the rack now stays (there's no sequence to close)
+    m_clipboard.reset();
+    m_track = 0;
+    applyState();
+    m_dirty = true;
+    m_saveTimer.start();
+}
+
 bool SequencerController::renameSequence(int id, const QString &name)
 {
     const QString trimmed = name.trimmed();

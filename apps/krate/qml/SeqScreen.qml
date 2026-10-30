@@ -266,9 +266,32 @@ Item {
             Row {
                 x: 8
                 y: 36
-                spacing: 6
+                spacing: 5
+                PanelButton { // NEW: asks once more when there are unsaved changes
+                    id: newButton
+                    property bool confirming: false
+                    width: confirming ? 150 : 56
+                    height: 30
+                    faceText: confirming ? "DROP CHANGES?" : "NEW"
+                    text: confirming ? "Press again to clear it all without saving" : "Start a new, empty sequence"
+                    onClicked: {
+                        if (Sequencer.modified && !confirming) {
+                            confirming = true
+                            newConfirmTimer.restart()
+                            return
+                        }
+                        confirming = false
+                        Sequencer.newSequence()
+                    }
+                    Timer {
+                        id: newConfirmTimer
+                        interval: 4000
+                        onTriggered: newButton.confirming = false
+                    }
+                }
                 PanelButton {
-                    width: 70
+                    visible: !newButton.confirming
+                    width: 62
                     height: 30
                     faceText: "SAVE"
                     text: Sequencer.sequenceId > 0 ? "Save over " + Sequencer.sequenceName : "Save it in the library"
@@ -280,16 +303,17 @@ Item {
                     }
                 }
                 PanelButton {
-                    width: 106
+                    visible: !newButton.confirming
+                    width: 88
                     height: 30
                     faceText: "LIBRARY…"
                     text: "Saved sequences: open, save as, rename, delete"
                     onClicked: library.open()
                 }
                 PanelButton {
-                    width: 96
+                    width: 64
                     height: 30
-                    visible: Sequencer.sequenceId > 0
+                    visible: Sequencer.sequenceId > 0 && !newButton.confirming
                     faceText: "CLOSE"
                     text: "Close it: back to what was here before, sounds and mixer too"
                     onClicked: Sequencer.closeSequence()

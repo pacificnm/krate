@@ -144,6 +144,11 @@ public:
     // the first one opened) comes back on close.
     Q_INVOKABLE bool openSequence(int id);
     Q_INVOKABLE void closeSequence();
+    // A new, empty sequence: every pattern, the chain, the range and play
+    // mode, and the mutes back to the start; the tracks keep their
+    // instruments; no longer a saved sequence. RUN, the sounds and the mixer
+    // stay. (The screen asks first when there are unsaved changes.)
+    Q_INVOKABLE void newSequence();
     Q_INVOKABLE bool renameSequence(int id, const QString &name);
     Q_INVOKABLE bool deleteSequence(int id);
 

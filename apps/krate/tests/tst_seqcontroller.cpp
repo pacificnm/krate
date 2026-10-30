@@ -272,6 +272,43 @@ private slots:
         play(48000 + 640, 72000 + 640);
         QCOMPARE(c.pattern(), 0);
     }
+
+    // NEW: every pattern, the chain, the range and mode, the mutes cleared;
+    // the tracks keep their instruments; RUN stays; no longer saved, not changed.
+    void newSequence()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        c.setTarget(2, 3);
+        c.setMute(2, true);
+        c.setPattern(6);
+        c.setTrack(2);
+        c.addNote(0, 60, 24, 100);
+        c.setLength(2 * 384);
+        c.addToChain(6);
+        c.setPlayMode(1);
+        c.setRangeTo(9);
+        c.setRunning(false);
+        QVERIFY(c.modified());
+
+        c.newSequence();
+        QVERIFY(!c.modified());
+        QCOMPARE(c.sequenceId(), 0);
+        QCOMPARE(c.pattern(), 0);
+        QCOMPARE(c.track(), 0);
+        for (const QVariant &used : c.patternsUsed())
+            QVERIFY(!used.toBool());
+        QCOMPARE(c.chain().size(), 0);
+        QCOMPARE(c.playMode(), 0);
+        QCOMPARE(c.rangeTo(), 3);
+        QCOMPARE(c.tracks()[2].toMap().value(u"choice"_s).toInt(), 3); // its instrument kept
+        QVERIFY(!c.tracks()[2].toMap().value(u"mute"_s).toBool());
+        QVERIFY(!c.running()); // RUN as it was
+        QCOMPARE(c.state().bank->patterns[6].length, std::uint16_t(384));
+        QVERIFY(seq.rangeMode() == false);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestSeqController)
