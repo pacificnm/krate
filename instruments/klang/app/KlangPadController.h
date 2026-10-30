@@ -68,6 +68,9 @@ public:
     // at its hits, onto it and the pads after it (as far as pad 16).
     Q_INVOKABLE void slice(int pad, int count);
     Q_INVOKABLE void sliceAtHits(int pad);
+    // The starter kit (Klang's own sounds) written into the library and onto
+    // the 16 pads with their settings. On first run (no pads.json) it is there already.
+    Q_INVOKABLE void installStarterKit();
     // Where the hits are in `pad`'s region (fractions of the sample), for tests and the view.
     std::vector<double> hits(int pad) const;
 

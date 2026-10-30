@@ -10,6 +10,8 @@ add_library(klang_dsp STATIC
     dsp/Params.cpp
     dsp/Pattern.h
     dsp/Sample.h
+    dsp/StarterKit.h
+    dsp/StarterKit.cpp
     dsp/Voice.h
     dsp/Voice.cpp
 )
@@ -43,6 +45,8 @@ qt_add_qml_module(klang_ui
     QML_FILES
         qml/Main.qml
         qml/Panel.qml
+    RESOURCES
+        docs/MANUAL.md
 )
 target_include_directories(klang_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
 # krate_song: MP3 decoding (dr_mp3).

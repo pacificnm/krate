@@ -15,6 +15,7 @@ namespace p = klang::positions;
 namespace {
 
 constexpr double kRate = 48000.0;
+// Levels below are at the output, after Klang's -10 dB trim: a sounding test sine is about 0.07 RMS.
 constexpr std::uint32_t kBlock = 64;
 
 Sample sine(double hz, double seconds, double rate = 44100.0)
@@ -192,7 +193,7 @@ private slots:
         rig.set(0, ParamId::Mode, position(2, p::kMode)); // loop
         rig.run(1.2, {{0.0, kNoteOn, 36, 127}});
         QVERIFY(std::abs(frequency(rig.left, 0.05, 0.45) - 880.0) < 2.0);
-        QVERIFY(rms(rig.left, 0.6, 1.1) > 0.2); // looping on past the region's 0.5 s
+        QVERIFY(rms(rig.left, 0.6, 1.1) > 0.06); // looping on past the region's 0.5 s
     }
 
     // Reverse plays the ramp falling; START and END pick the region.
@@ -219,9 +220,9 @@ private slots:
         rig.engine.setSample(0, &s);
         rig.set(0, ParamId::Mode, position(2, p::kMode));
         rig.run(1.0, {{0.0, kNoteOn, 36, 127}});
-        // A plain wrap would jump by the ramp's whole height (1.0 at the pad's level).
-        QVERIFY2(largestJump(rig.left, 0.01, 0.95) < 0.02, qPrintable(QString::number(largestJump(rig.left, 0.01, 0.95))));
-        QVERIFY(rms(rig.left, 0.5, 0.95) > 0.1); // still looping
+        // A plain wrap would jump by the ramp's whole height (0.2 at the output).
+        QVERIFY2(largestJump(rig.left, 0.01, 0.95) < 0.006, qPrintable(QString::number(largestJump(rig.left, 0.01, 0.95))));
+        QVERIFY(rms(rig.left, 0.5, 0.95) > 0.03); // still looping
     }
 
     // Modes: One shot plays on when the key is let go; Gate and Loop stop.
@@ -242,7 +243,7 @@ private slots:
         rig.engine.setSample(0, &s);
         rig.set(0, ParamId::Mode, position(mode, p::kMode));
         rig.run(0.6, {{0.0, kNoteOn, 36, 127}, {0.2, kNoteOff, 36, 0}});
-        QCOMPARE(rms(rig.left, 0.3, 0.6) > 0.1, playsOn);
+        QCOMPARE(rms(rig.left, 0.3, 0.6) > 0.03, playsOn);
     }
 
     // A pad in a choke group cuts the others in it (an open hat by a closed one), within a few ms.
@@ -258,9 +259,9 @@ private slots:
         rig.set(0, ParamId::Choke, position(1, p::kChoke));
         rig.set(1, ParamId::Choke, position(1, p::kChoke));
         rig.run(0.5, {{0.0, kNoteOn, 36, 127}, {0.2, kNoteOn, 37, 127}});
-        QVERIFY(rms(rig.left, 0.1, 0.19) > 0.2);
+        QVERIFY(rms(rig.left, 0.1, 0.19) > 0.06);
         QVERIFY(rms(rig.left, 0.21, 0.5) < 1e-6); // pad 0, cut
-        QVERIFY(rms(rig.right, 0.21, 0.5) > 0.2); // pad 1, playing
+        QVERIFY(rms(rig.right, 0.21, 0.5) > 0.06); // pad 1, playing
     }
 
     // Hitting a pad again mid-sound fades the last hit out instead of cutting it.
@@ -271,7 +272,7 @@ private slots:
         rig.engine.setSample(0, &s);
         rig.set(0, ParamId::Start, 0.3f); // starting mid-wave, too
         rig.run(0.5, {{0.0, kNoteOn, 36, 127}, {0.1003, kNoteOn, 36, 127}, {0.2007, kNoteOn, 36, 127}});
-        const double expected = 2.0 * std::numbers::pi * 110.0 / kRate * 0.5 * 1.42; // the sine's own steepest step
+        const double expected = 2.0 * std::numbers::pi * 110.0 / kRate * 0.5 * 1.42 * 0.3162; // the sine's own steepest step
         QVERIFY2(largestJump(rig.left, 0.0, 0.5) < 3.0 * expected, qPrintable(QString::number(largestJump(rig.left, 0.0, 0.5))));
     }
 
@@ -333,9 +334,9 @@ private slots:
             const double t = k * step;
             const double level = rms(rig.left, t + 0.01, t + step - 0.01);
             if (k % 2 == 0)
-                QVERIFY2(level > 0.2, qPrintable(QString::number(level)));
+                QVERIFY2(level > 0.05, qPrintable(QString::number(level)));
             else
-                QVERIFY2(level < 0.01, qPrintable(QString::number(level)));
+                QVERIFY2(level < 0.003, qPrintable(QString::number(level)));
         }
     }
 
@@ -350,7 +351,7 @@ private slots:
         rig.engine.setParam(ParamId::ReverbLevel, 0.0f);
         rig.run(0.6, {{0.0, kNoteOn, 36, 127}});
         QVERIFY(rms(rig.left, 0.1, 0.36) < 1e-4);
-        QVERIFY(rms(rig.left, 0.38, 0.42) > 0.05);
+        QVERIFY(rms(rig.left, 0.38, 0.42) > 0.015);
     }
 
     // A new sample stops the pad's voices at once; the engine counts its blocks.

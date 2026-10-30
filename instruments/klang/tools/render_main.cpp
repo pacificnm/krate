@@ -3,10 +3,10 @@
 //   klang-render [--out-dir DIR] [--rate HZ]
 //   klang-render --bench [--rate HZ]
 //
-// Writes DIR/klang-sounds.wav: four sounds Klang makes for itself (a kick, a
-// metal clank, a noise burst, a drone loop) played on the transport at 120 BPM
-// through pads with the gate, the crusher, the ring modulator, the filter, the
-// delay and the reverb. No sample files are read.
+// Writes DIR/klang-sounds.wav: the starter kit (sounds Klang makes itself, no
+// sample files) playing patterns A and B, two bars each, on the transport at
+// 120 BPM, through the pads' gate, crusher, ring modulator, filter, delay and
+// reverb, as the app's first run sets them up.
 
 #include <algorithm>
 #include <chrono>
@@ -14,98 +14,18 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <numbers>
 #include <string>
 #include <vector>
 
 #include "core/MasterStage.h"
 #include "core/Transport.h"
 #include "klang/dsp/Engine.h"
+#include "klang/dsp/StarterKit.h"
 #include "tools/WavFile.h"
 
 namespace {
-
-using klang::ParamId;
-using klang::Sample;
 constexpr std::uint32_t kBlock = 64;
-
-std::uint32_t g_noise = 0x2545F491u;
-double noise()
-{
-    g_noise ^= g_noise << 13;
-    g_noise ^= g_noise >> 17;
-    g_noise ^= g_noise << 5;
-    return double(std::int32_t(g_noise)) / 2147483648.0;
 }
-
-Sample make(double seconds, double rate, double (*f)(double t), const char *name)
-{
-    std::vector<float> x(std::size_t(seconds * rate));
-    for (std::size_t i = 0; i < x.size(); ++i)
-        x[i] = float(f(double(i) / rate));
-    return Sample::fromChannels(std::move(x), {}, rate, name);
-}
-
-double kick(double t)
-{
-    const double phase = 2.0 * std::numbers::pi * (45.0 * t + 120.0 * (1.0 - std::exp(-t * 30.0)) / 30.0);
-    return 0.9 * std::sin(phase) * std::exp(-t * 7.0);
-}
-double clank(double t)
-{
-    double y = 0.0;
-    for (double f : {317.0, 523.0, 811.0, 1297.0, 2083.0})
-        y += std::sin(2.0 * std::numbers::pi * f * t);
-    return 0.25 * y * std::exp(-t * 9.0);
-}
-double burst(double t) { return 0.7 * noise() * std::exp(-t * 25.0); }
-double drone(double t)
-{
-    double y = 0.0;
-    for (double f : {55.0, 82.41, 110.3})
-        y += 2.0 * (f * t - std::floor(f * t + 0.5));
-    return 0.25 * y;
-}
-
-void play(klang::Engine &engine, krate::MasterStage &master, double seconds, int rate, std::vector<float> &out)
-{
-    krate::Transport transport;
-    transport.setBpm(120.0);
-    transport.setPlaying(true);
-    std::vector<float> l(kBlock), r(kBlock);
-    const double step = 0.125; // 1/16 at 120 BPM
-    // Kick on the beats, clank on the off-beats, bursts on two, the drone held.
-    std::vector<std::pair<double, int>> hits;
-    for (int s = 0; s < int(seconds / step); ++s) {
-        if (s % 4 == 0)
-            hits.push_back({s * step, 0});
-        if (s % 4 == 2)
-            hits.push_back({s * step, 1});
-        if (s % 8 == 4 || s % 16 == 15)
-            hits.push_back({s * step, 2});
-    }
-    hits.push_back({0.0, 3});
-    std::sort(hits.begin(), hits.end());
-    std::size_t next = 0;
-    for (std::uint64_t f = 0; f < std::uint64_t(seconds * rate); f += kBlock) {
-        std::vector<krate::MidiEvent> midi;
-        while (next < hits.size() && std::uint64_t(hits[next].first * rate) < f + kBlock) {
-            midi.push_back({std::uint32_t(std::uint64_t(hits[next].first * rate) - f), 3,
-                            {0x90, std::uint8_t(36 + hits[next].second), 110}});
-            ++next;
-        }
-        const krate::TransportState state = transport.advance(kBlock, rate);
-        krate::processStereo(engine, l.data(), r.data(), kBlock, midi.data(), std::uint32_t(midi.size()), &state);
-        float *const outputs[2] = {l.data(), r.data()};
-        master.process(outputs, 2, kBlock);
-        for (std::uint32_t i = 0; i < kBlock; ++i) {
-            out.push_back(l[i]);
-            out.push_back(r[i]);
-        }
-    }
-}
-
-} // namespace
 
 int main(int argc, char **argv)
 {
@@ -125,33 +45,22 @@ int main(int argc, char **argv)
             return 2;
         }
     }
-    const Sample sounds[] = {make(0.6, 44100.0, kick, "kick"), make(0.5, 44100.0, clank, "clank"),
-                             make(0.3, 44100.0, burst, "burst"), make(2.0, 44100.0, drone, "drone")};
-    krate::MasterStage master;
+    const std::vector<klang::StarterSound> kit = klang::starterSounds();
     klang::Engine engine;
     engine.prepare(rate, kBlock);
-    for (int pad = 0; pad < 4; ++pad)
-        engine.setSample(pad, &sounds[pad]);
-    namespace p = klang::positions;
-    engine.setPadParam(1, ParamId::Ring, 0.6f);         // clank: ring-modulated, crushed, echoed
-    engine.setPadParam(1, ParamId::Bits, klang::position(9, p::kBits));
-    engine.setPadParam(1, ParamId::DelaySend, 0.5f);
-    engine.setPadParam(2, ParamId::Filter, klang::position(2, p::kFilter)); // burst: high-passed, reverb
-    engine.setPadParam(2, ParamId::Cutoff, 0.6f);
-    engine.setPadParam(2, ParamId::ReverbSend, 0.6f);
-    engine.setPadParam(3, ParamId::Mode, klang::position(2, p::kMode));     // drone: looped, gated, filtered
-    engine.setPadParam(3, ParamId::Sync, klang::position(3, p::kSync));     // 4 beats
-    engine.setPadParam(3, ParamId::Gate, 1.0f);
-    engine.setPadParam(3, ParamId::Filter, klang::position(1, p::kFilter));
-    engine.setPadParam(3, ParamId::Cutoff, 0.5f);
-    engine.setPadParam(3, ParamId::Res, 0.6f);
-    engine.setPadParam(3, ParamId::Drive, 0.4f);
-    engine.setPadParam(3, ParamId::PadLevel, 0.6f);
+    for (int pad = 0; pad < klang::Engine::kPads; ++pad) {
+        engine.setSample(pad, &kit[std::size_t(pad)].sample);
+        klang::applyStarterPad(engine, pad);
+    }
+    for (int i = 0; i < klang::kPatterns; ++i)
+        engine.setPattern(i, klang::starterPattern(i));
+    std::vector<float> l(kBlock), r(kBlock);
 
     if (bench) {
-        // The heaviest case: all 16 pads looping the drone with every effect, 60 s.
+        // The heaviest case: all 16 pads looping the drone through every effect, 60 s.
+        using klang::ParamId;
         for (int pad = 0; pad < klang::Engine::kPads; ++pad) {
-            engine.setSample(pad, &sounds[3]);
+            engine.setSample(pad, &kit[9].sample);
             for (ParamId id : {ParamId::Mode, ParamId::Filter, ParamId::Gate})
                 engine.setPadParam(pad, id, 1.0f);
             engine.setPadParam(pad, ParamId::Drive, 0.8f);
@@ -161,10 +70,9 @@ int main(int argc, char **argv)
             engine.setPadParam(pad, ParamId::DelaySend, 0.3f);
             engine.setPadParam(pad, ParamId::ReverbSend, 0.3f);
         }
-        krate::processStereo(engine, nullptr, nullptr, 0); // take the samples
+        krate::processStereo(engine, l.data(), r.data(), kBlock); // take the samples and settings
         for (int pad = 0; pad < klang::Engine::kPads; ++pad)
             engine.hit(pad, 1.0f);
-        std::vector<float> l(kBlock), r(kBlock);
         const auto t0 = std::chrono::steady_clock::now();
         for (std::uint64_t f = 0; f < std::uint64_t(60.0 * rate); f += kBlock)
             krate::processStereo(engine, l.data(), r.data(), kBlock);
@@ -174,8 +82,26 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    krate::MasterStage master;
+    krate::Transport transport;
+    transport.setBpm(120.0);
+    transport.setPlaying(true);
     std::vector<float> out;
-    play(engine, master, 8.0, rate, out);
+    const double seconds = 8.0 + 1.5; // A for two bars, B for two, the tails
+    for (std::uint64_t f = 0; f < std::uint64_t(seconds * rate); f += kBlock) {
+        if (f >= std::uint64_t(2.0 * rate) && engine.cuedPattern() == 0)
+            engine.cuePattern(1); // B from bar 3
+        if (f >= std::uint64_t(8.0 * rate))
+            transport.setPlaying(false);
+        const krate::TransportState state = transport.advance(kBlock, rate);
+        krate::processStereo(engine, l.data(), r.data(), kBlock, nullptr, 0, &state);
+        float *const outputs[2] = {l.data(), r.data()};
+        master.process(outputs, 2, kBlock);
+        for (std::uint32_t i = 0; i < kBlock; ++i) {
+            out.push_back(l[i]);
+            out.push_back(r[i]);
+        }
+    }
     float peak = 0.0f;
     for (float s : out)
         peak = std::max(peak, std::fabs(s));

@@ -8,6 +8,7 @@
 
 #include "app/JsonFile.h"
 #include "klang/dsp/Engine.h"
+#include "klang/dsp/StarterKit.h"
 
 Q_LOGGING_CATEGORY(lcKlangPatterns, "klang.patterns")
 
@@ -38,7 +39,9 @@ KlangPatternController::KlangPatternController(klang::Engine &engine, const QStr
     case krate::files::LoadResult::NewerVersion:
         m_filePath += QStringLiteral(".v1");
         break;
-    case krate::files::LoadResult::Missing:
+    case krate::files::LoadResult::Missing: // first run: the starter patterns
+        for (int i = 0; i < kPatterns; ++i)
+            m_bank[std::size_t(i)] = klang::starterPattern(i);
         break;
     }
     for (int i = 0; i < kPatterns; ++i) // before processing starts

@@ -117,6 +117,21 @@ Item {
         font.bold: true
         font.italic: true
     }
+    PanelButton { // the manual
+        x: 44
+        y: 76
+        width: 64
+        height: 26
+        dark: true
+        faceText: "HELP"
+        text: "Klang's manual: what every control does and how to use it"
+        onClicked: manual.open()
+    }
+    ManualView {
+        id: manual
+        title: "Klang"
+        source: "qrc:/qt/qml/Klang/docs/MANUAL.md"
+    }
     Text {
         id: wordmark
         anchors.right: parent.right
@@ -201,6 +216,16 @@ Item {
         color: panel.deck
     }
     SectionTitle { x: 40; y: 128; text: "PADS" }
+    PanelButton {
+        x: 404
+        y: 124
+        width: 104
+        height: 22
+        dark: true
+        faceText: "STARTER KIT"
+        text: "Put the starter kit (Klang's own sounds) back on the pads"
+        onClicked: Pads.installStarterKit()
+    }
     Grid {
         x: 40
         y: 152

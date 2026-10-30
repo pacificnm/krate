@@ -1,6 +1,6 @@
 // krate-render: render the Krate rack offline to a WAV file. k303 and Klick
 // (K909 with --k909, Kalliope with --kalliope, Krimson with --krimson, Kobalt
-// with --kobalt) play
+// with --kobalt, Klang with --klang) play
 // together on one transport,
 // through the rack's mixer and master stage, exactly as the rack app runs them.
 // Without those flags the output is unchanged from before they existed (a
@@ -8,12 +8,13 @@
 // arpeggiator on (Up & Down, 2 octaves, 1/16), so it plays in time; Krimson
 // holds one on channel 3 (slot A, Sync-Lead-like) with slot A's arpeggiator
 // on (Up, 1 octave, 1/8); Kobalt plays a 16-step bass line from its own
-// sequencer on channel 7, some steps legato (they slide, with Portamento Auto).
+// sequencer on channel 7, some steps legato (they slide, with Portamento Auto);
+// Klang plays its starter kit's pattern A (sounds it makes itself) on channel 11.
 //
 //   krate-render [--out file.wav] [--bars N] [--tempo BPM] [--rate HZ]
 //                [--k303 LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]
 //                [--k909 LEVEL] [--k909-pattern N] [--kalliope LEVEL] [--krimson LEVEL]
-//                [--kobalt LEVEL]
+//                [--kobalt LEVEL] [--klang LEVEL]
 //
 // Song mode (docs/SONG_PLAYER.md) plays a .gp tab file or a .mid file through
 // all the instruments, each track on the instrument it's assigned to:
@@ -43,6 +44,8 @@
 #include "k909/dsp/Engine.h"
 #include "kalliope/dsp/Engine.h"
 #include "kobalt/dsp/Engine.h"
+#include "klang/dsp/Engine.h"
+#include "klang/dsp/StarterKit.h"
 #include "krimson/dsp/Engine.h"
 #include "rack/Rack.h"
 #include "song/Arrange.h"
@@ -59,7 +62,7 @@ void usage()
                  "usage: krate-render [--out file.wav] [--bars N] [--tempo BPM] [--rate HZ]\n"
                  "                    [--k303 LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]\n"
                  "                    [--k909 LEVEL] [--k909-pattern 0..3] [--kalliope LEVEL]\n"
-                 "                    [--krimson LEVEL] [--kobalt LEVEL]\n"
+                 "                    [--krimson LEVEL] [--kobalt LEVEL] [--klang LEVEL]\n"
                  "       krate-render --song FILE.gp|FILE.mid [--out file.wav] [--assign TRACK:INSTRUMENT[:SLOT]]...\n"
                  "                    [--start-bar N] [--bars N] [--speed 0.25..2] [--click] [--rate HZ]\n"
                  "  LEVEL is mixer gain, 1 = unity; INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D), kobalt or none\n");
@@ -268,6 +271,7 @@ int main(int argc, char **argv)
     float kalliopeLevel = -1.0f; // < 0: Kalliope not in the rack
     float krimsonLevel = -1.0f;  // < 0: Krimson not in the rack
     float kobaltLevel = -1.0f;   // < 0: Kobalt not in the rack
+    float klangLevel = -1.0f;    // < 0: Klang not in the rack
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -285,6 +289,7 @@ int main(int argc, char **argv)
         else if (arg == "--kalliope" && hasValue) kalliopeLevel = float(std::atof(argv[++i]));
         else if (arg == "--krimson" && hasValue) krimsonLevel = float(std::atof(argv[++i]));
         else if (arg == "--kobalt" && hasValue) kobaltLevel = float(std::atof(argv[++i]));
+        else if (arg == "--klang" && hasValue) klangLevel = float(std::atof(argv[++i]));
         else {
             usage();
             return 2;
@@ -303,6 +308,8 @@ int main(int argc, char **argv)
     kalliope::Engine poly;
     krimson::Engine lead;
     kobalt::Engine mono;
+    klang::Engine sampler;
+    const std::vector<klang::StarterSound> kit = klangLevel >= 0.0f ? klang::starterSounds() : std::vector<klang::StarterSound>{};
     krate::Rack rack(kBlock);
     const int bassIndex = rack.addDevice(bass, /*midiChannel*/ 0);
     const int klickIndex = rack.addDevice(metronome);
@@ -368,7 +375,18 @@ int main(int argc, char **argv)
         mono.setSequence(line);
         monoIndex = rack.addDevice(mono, /*midiChannel*/ 6);
     }
+    int samplerIndex = -1;
+    if (klangLevel >= 0.0f) {
+        for (int pad = 0; pad < klang::Engine::kPads; ++pad) {
+            sampler.setSample(pad, &kit[std::size_t(pad)].sample);
+            klang::applyStarterPad(sampler, pad);
+        }
+        sampler.setPattern(0, klang::starterPattern(0));
+        samplerIndex = rack.addDevice(sampler, /*midiChannel*/ 10);
+    }
     rack.prepare(rate);
+    if (samplerIndex >= 0)
+        rack.setLevel(samplerIndex, klangLevel);
     if (monoIndex >= 0)
         rack.setLevel(monoIndex, kobaltLevel);
     if (leadIndex >= 0)
@@ -424,9 +442,9 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "krate-render: could not write %s\n", out.c_str());
         return 1;
     }
-    std::printf("wrote %s: k303 + Klick%s%s%s%s through the rack, %d bars at %.0f BPM, %.1f s\n", out.c_str(),
+    std::printf("wrote %s: k303 + Klick%s%s%s%s%s through the rack, %d bars at %.0f BPM, %.1f s\n", out.c_str(),
                 k909Level >= 0.0f ? " + K909" : "", kalliopeLevel >= 0.0f ? " + Kalliope" : "",
-                krimsonLevel >= 0.0f ? " + Krimson" : "", kobaltLevel >= 0.0f ? " + Kobalt" : "", bars, bpm,
+                krimsonLevel >= 0.0f ? " + Krimson" : "", kobaltLevel >= 0.0f ? " + Kobalt" : "", klangLevel >= 0.0f ? " + Klang" : "", bars, bpm,
                 double(frames) / rate);
     return 0;
 }

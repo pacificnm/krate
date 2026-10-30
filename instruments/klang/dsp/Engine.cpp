@@ -10,6 +10,10 @@ namespace klang {
 
 namespace {
 constexpr double kVolumeSmoothingSeconds = 0.01;
+// Samples come mastered near full scale and the pads add up: -10 dB puts a
+// busy pattern of them level with the other instruments (measured: the starter
+// patterns at -18 dB RMS, as a k303 line).
+constexpr double kOutputTrim = 0.3162;
 constexpr int kCcAllSoundOff = 120;
 constexpr int kCcAllNotesOff = 123;
 constexpr std::uint64_t kPadParamBits = (std::uint64_t(1) << PadParamCount) - 1;
@@ -420,7 +424,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
                 sounding |= 1u << pad;
     m_soundingMask.store(sounding, std::memory_order_relaxed);
 
-    const double target = units::gain(global(ParamId::Volume));
+    const double target = kOutputTrim * units::gain(global(ParamId::Volume));
     if (m_volume < 0.0)
         m_volume = target;
     for (std::uint32_t i = 0; i < block.frames; ++i) {

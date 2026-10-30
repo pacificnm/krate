@@ -247,7 +247,7 @@ private slots:
             before = std::max(before, double(std::fabs(rig.out[i])));
         for (auto i = std::size_t(0.15 * kRate); i < std::size_t(0.45 * kRate); ++i)
             after = std::max(after, double(std::fabs(rig.out[i])));
-        QVERIFY(before > 0.1);
+        QVERIFY(before > 0.03);
         QCOMPARE(after, 0.0);
     }
 };

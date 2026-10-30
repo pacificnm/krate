@@ -91,16 +91,17 @@ private slots:
             QCOMPARE(k.pads.name(3), QStringLiteral("hit.wav"));
             QVERIFY(std::abs(k.pads.seconds(2) - 1.0) < 0.001);
             QVERIFY(QFile::exists(dir.filePath("data/samples/break.wav")));
-            QCOMPARE(k.pads.library(), (QStringList{"break.wav", "hit.wav"}));
+            QVERIFY(k.pads.library().contains(QStringLiteral("break.wav")) && k.pads.library().contains(QStringLiteral("hit.wav")));
+            const auto librarySize = k.pads.library().size();
             QCOMPARE(k.pads.waveform(2, 50).size(), 50);
             k.engine.setPadParam(3, ParamId::Tune, position(36, positions::kTune)); // +12
             k.pads.loadUrls(4, {url(dir.filePath("notes.txt"))});
             QVERIFY(k.pads.message().startsWith(QStringLiteral("Could not load notes.txt")));
-            QCOMPARE(k.pads.name(4), QString());
+            QCOMPARE(k.pads.name(4), QStringLiteral("05 clank.wav")); // a failed load leaves the pad as it was
             k.pads.loadUrls(5, {url(a)}); // the same file again: the library's copy, not a second one
-            QCOMPARE(k.pads.library().size(), 2);
-            k.pads.step(5, 1); // the next in the library
-            QCOMPARE(k.pads.name(5), QStringLiteral("hit.wav"));
+            QCOMPARE(k.pads.library().size(), librarySize);
+            k.pads.step(5, 1); // the next in the library (sorted: the starter kit's "01 kick.wav" ... come first)
+            QCOMPARE(k.pads.name(5), k.pads.library().at(k.pads.library().indexOf(QStringLiteral("break.wav")) + 1));
             k.pads.save();
         }
         const auto instance = registryEntry().create(context);
@@ -137,6 +138,31 @@ private slots:
         QVERIFY(peak > 0.01f);
     }
 
+    // First run: the starter kit's 16 sounds written into the library and onto the pads.
+    void starterKit()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        QCOMPARE(k.pads.library().size(), 16);
+        QCOMPARE(k.pads.name(0), QStringLiteral("01 kick.wav"));
+        QCOMPARE(k.pads.name(8), QStringLiteral("09 break 120.wav"));
+        QVERIFY(std::abs(k.pads.seconds(8) - 2.0) < 0.001); // one bar at 120 BPM
+        QCOMPARE(units::syncBeats(k.engine.padParam(8, ParamId::Sync)), 4);
+        QCOMPARE(k.engine.padParam(9, ParamId::Gate), 1.0f); // the drone, gated
+        // The break slices at its hits: kick, snare, hats...
+        QVERIFY(k.pads.hits(8).size() >= 8);
+        // Each sound is something, and nothing clips.
+        for (int pad = 0; pad < 16; ++pad) {
+            const auto peaks = k.pads.waveform(pad, 100);
+            double peak = 0.0;
+            for (const QVariant &v : peaks)
+                peak = std::max(peak, v.toDouble());
+            QVERIFY2(peak > 0.1 && peak <= 1.0, qPrintable(k.pads.name(pad) + u' ' + QString::number(peak)));
+        }
+    }
+
     // Equal slices onto the pad and the ones after it; slices at the hits.
     void slicing()
     {
@@ -154,7 +180,7 @@ private slots:
             QVERIFY(std::abs(k.engine.padParam(pad, ParamId::End) - (pad + 1) * 0.25f) < 1e-6f);
             QCOMPARE(k.engine.padParam(pad, ParamId::Mode), 0.0f);
         }
-        QCOMPARE(k.pads.name(4), QString());
+        QCOMPARE(k.pads.name(4), QStringLiteral("05 clank.wav")); // the starter kit's, untouched
 
         k.engine.setPadParam(0, ParamId::Start, 0.0f);
         k.engine.setPadParam(0, ParamId::End, 1.0f);
@@ -177,6 +203,8 @@ private slots:
             const auto instance = registryEntry().create(context);
             auto &k = static_cast<Instance &>(*instance);
             KlangPatternController &p = k.patterns;
+            QVERIFY(p.used(0) && p.used(1)); // the starter patterns
+            p.clear();
             p.pressStep(0, 0);
             QVERIFY(p.stepOn(0, 0));
             p.setTool(Tool::Roll);

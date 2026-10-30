@@ -16,7 +16,9 @@
 #include "klang/app/KlangController.h"
 #include "klang/dsp/Engine.h"
 #include "klang/dsp/Params.h"
+#include "klang/dsp/StarterKit.h"
 #include "song/BackingTrack.h"
+#include "tools/WavFile.h"
 
 Q_LOGGING_CATEGORY(lcKlangPads, "klang.pads")
 
@@ -312,26 +314,29 @@ std::vector<double> KlangPadController::hits(int pad) const
     const auto a = std::size_t(double(m_engine.padParam(pad, ParamId::Start)) * frames);
     const auto b = std::size_t(double(m_engine.padParam(pad, ParamId::End)) * frames);
     cuts.push_back(double(a) / frames);
-    // The energy in 5 ms windows; a hit where it jumps well above the last 40 ms.
+    // The energy of the signal's changes (its highs: where hits start, while a
+    // kick's tail is low) in 5 ms windows; a hit where it at least doubles over
+    // the last 10 ms and isn't near silence.
     const auto window = std::max<std::size_t>(16, std::size_t(0.005 * s.rate));
     const auto gap = std::size_t(0.06 * s.rate); // hits at least 60 ms apart
     std::vector<double> energy;
     for (std::size_t i = a; i + window <= b; i += window) {
         double e = 0.0;
-        for (std::size_t j = i; j < i + window; ++j) {
-            const double x = s.stereo() ? 0.5 * (double(s.left[j]) + double(s.right[j])) : double(s.left[j]);
-            e += x * x;
+        for (std::size_t j = std::max<std::size_t>(i, 1); j < i + window; ++j) {
+            const auto at = [&](std::size_t k) {
+                return s.stereo() ? 0.5 * (double(s.left[k]) + double(s.right[k])) : double(s.left[k]);
+            };
+            const double change = at(j) - at(j - 1);
+            e += change * change;
         }
         energy.push_back(e / double(window));
     }
+    const double loudest = energy.empty() ? 0.0 : *std::max_element(energy.begin(), energy.end());
     std::size_t last = a;
-    for (std::size_t w = 8; w < energy.size() && cuts.size() < std::size_t(kPads); ++w) {
-        double before = 0.0;
-        for (std::size_t k = w - 8; k < w; ++k)
-            before += energy[k];
-        before /= 8.0;
+    for (std::size_t w = 2; w < energy.size() && cuts.size() < std::size_t(kPads); ++w) {
+        const double before = std::max(energy[w - 1], energy[w - 2]);
         const std::size_t at = a + w * window;
-        if (energy[w] > 4.0 * before + 1e-5 && energy[w] > energy[w - 1] && at - last >= gap) {
+        if (energy[w] > 2.0 * before && energy[w] > 0.01 * loudest && at - last >= gap) {
             cuts.push_back(double(at) / frames);
             last = at;
         }
@@ -348,6 +353,36 @@ void KlangPadController::sliceAtHits(int pad)
         return;
     }
     sliceInto(pad, cuts);
+}
+
+void KlangPadController::installStarterKit()
+{
+    QDir().mkpath(m_libraryDir);
+    const std::vector<klang::StarterSound> sounds = klang::starterSounds();
+    for (int pad = 0; pad < kPads && pad < int(sounds.size()); ++pad) {
+        const klang::Sample &s = sounds[std::size_t(pad)].sample;
+        const QString name = QString::fromStdString(sounds[std::size_t(pad)].file);
+        const QString path = m_libraryDir + u'/' + name;
+        if (!QFile::exists(path)) {
+            std::vector<float> interleaved;
+            interleaved.reserve(2 * s.frames());
+            for (std::size_t i = 0; i < s.frames(); ++i) {
+                interleaved.push_back(s.left[i]);
+                interleaved.push_back(s.stereo() ? s.right[i] : s.left[i]);
+            }
+            krate::writeStereoWav(path.toStdString(), interleaved, int(s.rate));
+        }
+        for (int i = 0; i < klang::PadParamCount; ++i) // the pad from its defaults
+            m_engine.setPadParam(pad, ParamId(i), klang::kParams[std::size_t(i)].defaultValue);
+        QString error;
+        if (const SamplePtr sample = decode(path, &error))
+            use(pad, sample, name);
+        klang::applyStarterPad(m_engine, pad);
+    }
+    rescan();
+    m_engine.reportAllChanged();
+    m_message = QStringLiteral("The starter kit is on the pads (and in the library)");
+    edited();
 }
 
 // --- pads.json -------------------------------------------------------------------------
@@ -380,8 +415,16 @@ void KlangPadController::save()
 void KlangPadController::load()
 {
     QJsonObject json;
-    if (krate::files::readVersionedJson(m_path, kFileVersion, &json) != krate::files::LoadResult::Loaded)
+    switch (krate::files::readVersionedJson(m_path, kFileVersion, &json)) {
+    case krate::files::LoadResult::Loaded:
+        break;
+    case krate::files::LoadResult::Missing: // first run: the starter kit
+        installStarterKit();
         return;
+    default:
+        qCWarning(lcKlangPads) << "could not read" << m_path;
+        return;
+    }
     const QJsonArray pads = json.value(u"pads").toArray();
     for (int pad = 0; pad < kPads && pad < pads.size(); ++pad) {
         const QJsonObject po = pads.at(pad).toObject();
