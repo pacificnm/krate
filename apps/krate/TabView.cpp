@@ -69,14 +69,18 @@ void TabView::setScroll(qreal scroll)
     update();
 }
 
+// The cursor's system, if it is in the layout (bindings can ask while the
+// layout is being replaced).
 qreal TabView::cursorY() const
 {
-    return m_cursor.system >= 0 ? m_layout.systems[std::size_t(m_cursor.system)].top : 0.0;
+    return m_cursor.system >= 0 && m_cursor.system < int(m_layout.systems.size())
+               ? m_layout.systems[std::size_t(m_cursor.system)].top
+               : 0.0;
 }
 
 qreal TabView::cursorHeight() const
 {
-    if (m_cursor.system < 0)
+    if (m_cursor.system < 0 || m_cursor.system >= int(m_layout.systems.size()))
         return 0.0;
     const auto &s = m_layout.systems[std::size_t(m_cursor.system)];
     return s.staffBottom + 26.0 - s.top;
@@ -105,6 +109,8 @@ void TabView::relayout()
     m_width = width();
     m_laidOutNotation = m_notation;
     m_layout = {};
+    const bool hadCursor = m_cursor.system >= 0;
+    m_cursor = {}; // it pointed into the old layout; set again below
     if (!m_song || !m_song->loaded())
         m_message.clear();
     else if (!score)
@@ -121,6 +127,8 @@ void TabView::relayout()
         m_message = m_layout.systems.empty() ? tr("This track has no tab") : QString();
     }
     emit layoutChanged();
+    if (hadCursor)
+        emit cursorChanged();
     updateCursor();
     update();
 }
