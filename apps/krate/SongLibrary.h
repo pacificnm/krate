@@ -77,6 +77,23 @@ public:
     QJsonObject sounds(qint64 id) const;
     QJsonObject mixer(qint64 id) const;
 
+    // Saved sequences (docs/SEQUENCER.md#saved-sequences): the sequencer's
+    // file, the instruments' sounds and the mixer, by name.
+    struct Sequence
+    {
+        qint64 id = 0;
+        QString name;
+        QDateTime saved;
+        QJsonObject data, sounds, mixer; // empty in sequences()
+    };
+    // Saves a new one (id 0) or over one; returns its id (0 on failure).
+    qint64 saveSequence(qint64 id, const QString &name, const QJsonObject &data, const QJsonObject &sounds,
+                        const QJsonObject &mixer);
+    QList<Sequence> sequences() const; // by name, without their contents
+    std::optional<Sequence> sequence(qint64 id) const;
+    bool renameSequence(qint64 id, const QString &name);
+    bool removeSequence(qint64 id);
+
     // The song open when the rack last closed (0 = none).
     void setLastSong(qint64 id);
     qint64 lastSong() const;

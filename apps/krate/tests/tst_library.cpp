@@ -234,6 +234,61 @@ private slots:
         lib.setBackingOffset(id, -1.5);
         QCOMPARE(lib.song(id)->backingOffset, -1.5);
     }
+
+    // Saved sequences: save, list by name, read back, save over, rename, remove.
+    void sequences()
+    {
+        QTemporaryDir home;
+        SongLibrary lib(home.filePath("library"));
+        const QJsonObject data{{"pattern", 3}}, sounds{{"k303", QJsonObject{{"tone", 0.25}}}}, mixer{{"master", 0.7}};
+        const qint64 b = lib.saveSequence(0, "bravo", data, sounds, mixer);
+        const qint64 a = lib.saveSequence(0, "Alpha", {}, {}, {});
+        QVERIFY(a > 0 && b > 0 && a != b);
+        const auto list = lib.sequences();
+        QCOMPARE(list.size(), 2);
+        QCOMPARE(list[0].name, QStringLiteral("Alpha")); // by name, any case
+        QVERIFY(list[1].data.isEmpty());                // the list carries no contents
+        const auto got = lib.sequence(b);
+        QVERIFY(got);
+        QCOMPARE(got->data, data);
+        QCOMPARE(got->sounds, sounds);
+        QCOMPARE(got->mixer, mixer);
+        QVERIFY(got->saved.isValid());
+        QCOMPARE(lib.saveSequence(b, "bravo", QJsonObject{{"pattern", 4}}, sounds, mixer), b);
+        QCOMPARE(lib.sequence(b)->data.value("pattern").toInt(), 4);
+        QVERIFY(lib.renameSequence(b, "Charlie"));
+        QCOMPARE(lib.sequence(b)->name, QStringLiteral("Charlie"));
+        QVERIFY(lib.removeSequence(a));
+        QVERIFY(!lib.sequence(a));
+        QVERIFY(!lib.removeSequence(a));
+        QCOMPARE(lib.saveSequence(9999, "x", {}, {}, {}), qint64(0)); // no such one to save over
+    }
+
+    // A library from before saved sequences (schema 2) opens and gains them, its songs kept.
+    void upgradesAVersion2Library()
+    {
+        QTemporaryDir downloads, home;
+        qint64 id = 0;
+        {
+            SongLibrary lib(home.filePath("library"));
+            id = lib.add(write(downloads, "a.gp", "tab"), {}, details("A", "B", "C"))->id;
+        }
+        {
+            QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), QStringLiteral("downgrade2"));
+            db.setDatabaseName(home.filePath("library/library.db"));
+            QVERIFY(db.open());
+            QSqlQuery q(db);
+            QVERIFY(q.exec(QStringLiteral("DROP TABLE sequences")));
+            QVERIFY(q.exec(QStringLiteral("PRAGMA user_version = 2")));
+            db.close();
+        }
+        QSqlDatabase::removeDatabase(QStringLiteral("downgrade2"));
+        SongLibrary lib(home.filePath("library"));
+        QVERIFY(lib.isOpen());
+        QCOMPARE(lib.song(id)->details.title, QStringLiteral("C"));
+        QVERIFY(lib.saveSequence(0, "first", {}, {}, {}) > 0);
+        QCOMPARE(lib.sequences().size(), 1);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestLibrary)

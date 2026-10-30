@@ -34,6 +34,9 @@ QJsonObject sequencerToJson(const SequencerState &state)
             {QStringLiteral("pattern"), state.pattern},
             {QStringLiteral("running"), state.running},
             {QStringLiteral("chainMode"), state.chainMode},
+            {QStringLiteral("sequenceId"), state.sequenceId},
+            {QStringLiteral("sequenceName"), state.sequenceName},
+            {QStringLiteral("modified"), state.modified},
             {QStringLiteral("rangeMode"), state.rangeMode},
             {QStringLiteral("rangeFrom"), state.rangeFrom + 1},
             {QStringLiteral("rangeTo"), state.rangeTo + 1},
@@ -48,6 +51,9 @@ SequencerState sequencerFromJson(const QJsonObject &json)
     state.pattern = std::clamp(json.value(u"pattern").toInt(0), 0, kPatterns - 1);
     state.running = json.value(u"running").toBool(true);
     state.chainMode = json.value(u"chainMode").toBool(false);
+    state.sequenceId = std::max<qint64>(0, json.value(u"sequenceId").toInteger(0));
+    state.sequenceName = json.value(u"sequenceName").toString();
+    state.modified = json.value(u"modified").toBool(false);
     state.rangeMode = json.value(u"rangeMode").toBool(false) && !state.chainMode;
     state.rangeFrom = std::clamp(json.value(u"rangeFrom").toInt(1), 1, kPatterns) - 1;
     state.rangeTo = std::clamp(json.value(u"rangeTo").toInt(4), 1, kPatterns) - 1;

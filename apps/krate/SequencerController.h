@@ -11,12 +11,14 @@
 #include <QtQml/qqmlregistration.h>
 
 #include "NoteTargets.h"
+#include "RackSounds.h"
 #include "SequencerFile.h"
 #include "SongImport.h"
 #include "seq/Sequencer.h"
 
 class QQmlEngine;
 class RackRunControl;
+class SongLibrary;
 class QJSEngine;
 
 // QML singleton "Sequencer": the SEQ screen's view of the rack sequencer
@@ -50,6 +52,13 @@ class SequencerController : public QObject
     // For a drum track (K909): its voices, top to bottom: {name, note}.
     Q_PROPERTY(QVariantList drumLanes READ drumLanes CONSTANT)
     Q_PROPERTY(bool hasClipboard READ hasClipboard NOTIFY changed)
+    // Saved sequences in the library (docs/SEQUENCER.md#saved-sequences): the
+    // one open (0 = none), its name, whether it changed since; the list
+    // ({id, name, saved}).
+    Q_PROPERTY(int sequenceId READ sequenceId NOTIFY changed)
+    Q_PROPERTY(QString sequenceName READ sequenceName NOTIFY changed)
+    Q_PROPERTY(bool modified READ modified NOTIFY changed)
+    Q_PROPERTY(QVariantList savedSequences READ savedSequences NOTIFY libraryChanged)
     // A copied track's notes, and where they came from ("Pattern 2, track 3"; "" = none).
     Q_PROPERTY(QString trackClipboard READ trackClipboard NOTIFY changed)
     // CHAIN mode and the chain: {pattern (0-based), repeats} per step.
@@ -119,6 +128,24 @@ public:
     // rack, when nothing else is running); off while the rack plays, it joins.
     Q_INVOKABLE void toggleRun();
     void setRunControl(RackRunControl *run) { m_run = run; }
+    // Where sequences are saved, and the rack's sounds and mixer to save with them.
+    void setLibrary(SongLibrary *library, const RackSounds *sounds);
+
+    int sequenceId() const { return int(m_state.sequenceId); }
+    QString sequenceName() const { return m_state.sequenceName; }
+    bool modified() const { return m_state.modified; }
+    QVariantList savedSequences() const;
+    // Saves over the open sequence (false if none is open).
+    Q_INVOKABLE bool saveSequence();
+    // Saves as a new sequence with this name, which becomes the open one.
+    Q_INVOKABLE bool saveSequenceAs(const QString &name);
+    // Opens a saved sequence: its patterns, tracks, chain and range, the
+    // instruments' sounds and the mixer. What was there before (from before
+    // the first one opened) comes back on close.
+    Q_INVOKABLE bool openSequence(int id);
+    Q_INVOKABLE void closeSequence();
+    Q_INVOKABLE bool renameSequence(int id, const QString &name);
+    Q_INVOKABLE bool deleteSequence(int id);
 
     Q_INVOKABLE void setTarget(int track, int choice); // 0 = none
     Q_INVOKABLE void setMute(int track, bool mute);
@@ -160,12 +187,14 @@ public:
 signals:
     void changed();
     void positionChanged();
+    void libraryChanged();
 
 private:
     krate::seq::Pattern &current() { return m_state.bank->patterns[std::size_t(m_state.pattern)]; }
     const krate::seq::Pattern &current() const { return m_state.bank->patterns[std::size_t(m_state.pattern)]; }
     krate::seq::TrackNotes &currentNotes() { return current().tracks[std::size_t(m_track)]; }
     int choiceOf(int track) const;
+    void applyState(); // hand the player all of m_state
     void applyTargets();
     void edited(); // hand the player the bank, tell the screen, save soon
     void save();
@@ -174,6 +203,15 @@ private:
     static SequencerController *s_instance;
     krate::seq::Sequencer &m_sequencer;
     RackRunControl *m_run = nullptr;
+    SongLibrary *m_library = nullptr;
+    const RackSounds *m_sounds = nullptr;
+    // From before the first saved sequence opened: put back on close.
+    struct Before
+    {
+        RackSounds::Snapshot sounds;
+        QJsonObject sequencer;
+    };
+    std::optional<Before> m_before;
     std::vector<NoteTarget> m_targets;
     QString m_path;
     SequencerState m_state;

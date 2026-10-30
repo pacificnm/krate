@@ -24,6 +24,11 @@ struct SequencerState
     bool rangeMode = false;
     int rangeFrom = 0, rangeTo = 3; // 0-based, inclusive
     int pattern = 0;
+    // The library's sequence this came from (docs/SEQUENCER.md#saved-sequences;
+    // 0 = none), its name, and whether it changed since it was opened or saved.
+    qint64 sequenceId = 0;
+    QString sequenceName;
+    bool modified = false;
 };
 
 QJsonObject sequencerToJson(const SequencerState &state);

@@ -5,6 +5,7 @@
 #include <QJSEngine>
 
 #include "RackRunControl.h"
+#include "SongLibrary.h"
 #include "app/JsonFile.h"
 
 using namespace krate::seq;
@@ -68,6 +69,11 @@ void SequencerController::load()
     if (result == krate::files::LoadResult::Loaded)
         m_state = sequencerFromJson(json);
     m_readOnly = result == krate::files::LoadResult::NewerVersion; // a newer Krate's file: leave it be
+    applyState();
+}
+
+void SequencerController::applyState()
+{
     applyTargets();
     for (int t = 0; t < kTracks; ++t)
         m_sequencer.setMute(t, m_state.mutes[std::size_t(t)]);
@@ -230,6 +236,7 @@ void SequencerController::setTarget(int track, int choice)
     m_state.targets[std::size_t(track)] = choice > 0 ? m_targets[std::size_t(choice - 1)].key : QString();
     applyTargets();
     m_dirty = true;
+    m_state.modified = true;
     m_saveTimer.start();
     ++m_revision;
     emit changed();
@@ -242,6 +249,7 @@ void SequencerController::setMute(int track, bool mute)
     m_state.mutes[std::size_t(track)] = mute;
     m_sequencer.setMute(track, mute);
     m_dirty = true;
+    m_state.modified = true;
     m_saveTimer.start();
     ++m_revision;
     emit changed();
@@ -403,6 +411,7 @@ void SequencerController::setPlayMode(int mode)
     m_sequencer.setChainMode(m_state.chainMode);
     m_sequencer.setRangeMode(m_state.rangeMode);
     m_dirty = true;
+    m_state.modified = true;
     m_saveTimer.start();
     ++m_revision;
     emit changed();
@@ -417,6 +426,7 @@ void SequencerController::setRangeFrom(int pattern)
     m_state.rangeTo = std::max(m_state.rangeTo, pattern);
     m_sequencer.setRange(m_state.rangeFrom, m_state.rangeTo);
     m_dirty = true;
+    m_state.modified = true;
     m_saveTimer.start();
     ++m_revision;
     emit changed();
@@ -431,6 +441,7 @@ void SequencerController::setRangeTo(int pattern)
     m_state.rangeFrom = std::min(m_state.rangeFrom, pattern);
     m_sequencer.setRange(m_state.rangeFrom, m_state.rangeTo);
     m_dirty = true;
+    m_state.modified = true;
     m_saveTimer.start();
     ++m_revision;
     emit changed();
@@ -509,6 +520,150 @@ void SequencerController::pasteTrack()
     edited();
 }
 
+// --- Saved sequences ------------------------------------------------------------------
+
+void SequencerController::setLibrary(SongLibrary *library, const RackSounds *sounds)
+{
+    m_library = library;
+    m_sounds = sounds;
+    emit libraryChanged();
+}
+
+QVariantList SequencerController::savedSequences() const
+{
+    QVariantList list;
+    if (!m_library)
+        return list;
+    for (const SongLibrary::Sequence &s : m_library->sequences())
+        list << QVariantMap{{QStringLiteral("id"), int(s.id)},
+                            {QStringLiteral("name"), s.name},
+                            {QStringLiteral("saved"), s.saved.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm"))}};
+    return list;
+}
+
+bool SequencerController::saveSequence()
+{
+    if (!m_library || m_state.sequenceId <= 0)
+        return false;
+    const RackSounds::Snapshot now = m_sounds ? m_sounds->capture() : RackSounds::Snapshot{};
+    m_state.modified = false;
+    if (!m_library->saveSequence(m_state.sequenceId, m_state.sequenceName, sequencerToJson(m_state), now.sounds,
+                                 now.mixer)) {
+        m_state.modified = true;
+        return false;
+    }
+    m_dirty = true;
+    m_saveTimer.start();
+    ++m_revision;
+    emit changed();
+    emit libraryChanged();
+    return true;
+}
+
+bool SequencerController::saveSequenceAs(const QString &name)
+{
+    const QString trimmed = name.trimmed();
+    if (!m_library || trimmed.isEmpty())
+        return false;
+    const RackSounds::Snapshot now = m_sounds ? m_sounds->capture() : RackSounds::Snapshot{};
+    const qint64 oldId = m_state.sequenceId;
+    const QString oldName = m_state.sequenceName;
+    m_state.sequenceId = 0;
+    m_state.sequenceName = trimmed;
+    m_state.modified = false;
+    const qint64 id = m_library->saveSequence(0, trimmed, sequencerToJson(m_state), now.sounds, now.mixer);
+    if (id <= 0) {
+        m_state.sequenceId = oldId;
+        m_state.sequenceName = oldName;
+        m_state.modified = true;
+        return false;
+    }
+    m_state.sequenceId = id;
+    m_dirty = true;
+    m_saveTimer.start();
+    ++m_revision;
+    emit changed();
+    emit libraryChanged();
+    return true;
+}
+
+bool SequencerController::openSequence(int id)
+{
+    if (!m_library)
+        return false;
+    const auto saved = m_library->sequence(id);
+    if (!saved)
+        return false;
+    if (!m_before) // what to put back on close: from before the first one opened
+        m_before = Before{m_sounds ? m_sounds->capture() : RackSounds::Snapshot{}, sequencerToJson(m_state)};
+    const bool running = m_state.running;
+    m_state = sequencerFromJson(saved->data);
+    m_state.running = running; // RUN is yours, not the sequence's
+    m_state.sequenceId = saved->id;
+    m_state.sequenceName = saved->name;
+    m_state.modified = false;
+    m_clipboard.reset();
+    if (m_sounds)
+        m_sounds->restore({saved->sounds, saved->mixer});
+    applyState();
+    m_dirty = true;
+    m_saveTimer.start();
+    return true;
+}
+
+void SequencerController::closeSequence()
+{
+    if (m_state.sequenceId <= 0 && !m_before)
+        return;
+    const bool running = m_state.running;
+    if (m_before) {
+        if (m_sounds)
+            m_sounds->restore(m_before->sounds);
+        m_state = sequencerFromJson(m_before->sequencer);
+        m_before.reset();
+    } else { // opened before the rack last started: nothing to go back to, so it's just let go
+        m_state.sequenceId = 0;
+        m_state.sequenceName.clear();
+        m_state.modified = false;
+    }
+    m_state.running = running;
+    applyState();
+    m_dirty = true;
+    m_saveTimer.start();
+}
+
+bool SequencerController::renameSequence(int id, const QString &name)
+{
+    const QString trimmed = name.trimmed();
+    if (!m_library || trimmed.isEmpty() || !m_library->renameSequence(id, trimmed))
+        return false;
+    if (id == m_state.sequenceId) {
+        m_state.sequenceName = trimmed;
+        m_dirty = true;
+        m_saveTimer.start();
+        ++m_revision;
+        emit changed();
+    }
+    emit libraryChanged();
+    return true;
+}
+
+bool SequencerController::deleteSequence(int id)
+{
+    if (!m_library || !m_library->removeSequence(id))
+        return false;
+    if (id == m_state.sequenceId) { // what's on screen stays, no longer saved anywhere
+        m_state.sequenceId = 0;
+        m_state.modified = true;
+        m_dirty = true;
+        m_saveTimer.start();
+        ++m_revision;
+        emit changed();
+    }
+    emit libraryChanged();
+    return true;
+}
+
 // --- Internals ------------------------------------------------------------------------
 
 void SequencerController::applyTargets()
@@ -528,6 +683,7 @@ void SequencerController::edited()
 {
     m_sequencer.setBank(std::make_unique<Bank>(*m_state.bank));
     m_dirty = true;
+    m_state.modified = true;
     m_saveTimer.start();
     ++m_revision;
     emit changed();

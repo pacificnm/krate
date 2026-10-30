@@ -16,7 +16,7 @@ Q_LOGGING_CATEGORY(lcLibrary, "krate.library")
 
 namespace {
 
-constexpr int kSchemaVersion = 2; // 2: songs' backing tracks
+constexpr int kSchemaVersion = 3; // 2: songs' backing tracks; 3: saved sequences
 
 // A name that is safe as a folder or file name.
 QString safeName(QString name, const QString &fallback)
@@ -118,8 +118,20 @@ bool SongLibrary::createSchema()
         QStringLiteral("ALTER TABLE songs ADD COLUMN backing_file TEXT NOT NULL DEFAULT ''"),
         QStringLiteral("ALTER TABLE songs ADD COLUMN backing_offset REAL NOT NULL DEFAULT 0"),
     };
+    // Version 3: the rack sequencer's saved sequences (docs/SEQUENCER.md#saved-sequences).
+    const QStringList toVersion3{
+        QStringLiteral(R"(CREATE TABLE IF NOT EXISTS sequences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            saved TEXT NOT NULL,
+            data TEXT NOT NULL,
+            sounds TEXT NOT NULL DEFAULT '{}',
+            mixer TEXT NOT NULL DEFAULT '{}'))"),
+    };
     QStringList all = version < 1 ? statements : QStringList();
-    all += toVersion2;
+    if (version < 2)
+        all += toVersion2;
+    all += toVersion3;
     all << QStringLiteral("PRAGMA user_version = %1").arg(kSchemaVersion);
     db.transaction();
     for (const QString &sql : all)
@@ -130,6 +142,77 @@ bool SongLibrary::createSchema()
             return false;
         }
     return db.commit();
+}
+
+namespace {
+QString jsonText(const QJsonObject &o) { return QString::fromUtf8(QJsonDocument(o).toJson(QJsonDocument::Compact)); }
+QJsonObject jsonObject(const QString &text) { return QJsonDocument::fromJson(text.toUtf8()).object(); }
+} // namespace
+
+qint64 SongLibrary::saveSequence(qint64 id, const QString &name, const QJsonObject &data, const QJsonObject &sounds,
+                                 const QJsonObject &mixer)
+{
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    if (id > 0) {
+        q.prepare(QStringLiteral("UPDATE sequences SET name = ?, saved = ?, data = ?, sounds = ?, mixer = ? WHERE id = ?"));
+    } else {
+        q.prepare(QStringLiteral("INSERT INTO sequences (name, saved, data, sounds, mixer) VALUES (?, ?, ?, ?, ?)"));
+    }
+    q.addBindValue(name);
+    q.addBindValue(QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    q.addBindValue(jsonText(data));
+    q.addBindValue(jsonText(sounds));
+    q.addBindValue(jsonText(mixer));
+    if (id > 0)
+        q.addBindValue(id);
+    if (!q.exec()) {
+        m_error = q.lastError().text();
+        return 0;
+    }
+    if (id > 0)
+        return q.numRowsAffected() > 0 ? id : 0;
+    return q.lastInsertId().toLongLong();
+}
+
+QList<SongLibrary::Sequence> SongLibrary::sequences() const
+{
+    QList<Sequence> list;
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    if (!q.exec(QStringLiteral("SELECT id, name, saved FROM sequences ORDER BY name COLLATE NOCASE, id")))
+        return list;
+    while (q.next())
+        list << Sequence{q.value(0).toLongLong(), q.value(1).toString(),
+                         QDateTime::fromString(q.value(2).toString(), Qt::ISODate), {}, {}, {}};
+    return list;
+}
+
+std::optional<SongLibrary::Sequence> SongLibrary::sequence(qint64 id) const
+{
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    q.prepare(QStringLiteral("SELECT id, name, saved, data, sounds, mixer FROM sequences WHERE id = ?"));
+    q.addBindValue(id);
+    if (!q.exec() || !q.next())
+        return std::nullopt;
+    return Sequence{q.value(0).toLongLong(), q.value(1).toString(),
+                    QDateTime::fromString(q.value(2).toString(), Qt::ISODate), jsonObject(q.value(3).toString()),
+                    jsonObject(q.value(4).toString()), jsonObject(q.value(5).toString())};
+}
+
+bool SongLibrary::renameSequence(qint64 id, const QString &name)
+{
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    q.prepare(QStringLiteral("UPDATE sequences SET name = ? WHERE id = ?"));
+    q.addBindValue(name);
+    q.addBindValue(id);
+    return q.exec() && q.numRowsAffected() > 0;
+}
+
+bool SongLibrary::removeSequence(qint64 id)
+{
+    QSqlQuery q(QSqlDatabase::database(m_connection));
+    q.prepare(QStringLiteral("DELETE FROM sequences WHERE id = ?"));
+    q.addBindValue(id);
+    return q.exec() && q.numRowsAffected() > 0;
 }
 
 SongLibrary::Details SongLibrary::detailsFromFileName(const QString &path)

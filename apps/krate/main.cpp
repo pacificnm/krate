@@ -164,6 +164,11 @@ int main(int argc, char *argv[])
         songInstances.push_back(instance.get());
     SongController songController(songPlayer, rackController, entries, std::move(songInstances), library, nullptr);
     songController.setSequencer(&sequencerController);
+    std::vector<krate::InstrumentInstance *> soundInstances;
+    for (const auto &instance : instances)
+        soundInstances.push_back(instance.get());
+    const RackSounds rackSounds(rackController, deviceIds, std::move(soundInstances));
+    sequencerController.setLibrary(&library, &rackSounds);
     songController.setBackingTrack(&static_cast<BackingInstance *>(instances.back().get())->track);
     if (const QString old = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/songs.json");
         QFileInfo::exists(old))

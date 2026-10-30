@@ -13,6 +13,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include "NoteTargets.h"
+#include "RackSounds.h"
 #include "SongImport.h"
 #include "SongLibrary.h"
 #include "app/InstrumentRegistry.h"
@@ -222,12 +223,9 @@ private:
     void useBacking(std::unique_ptr<krate::song::AudioClip> clip, const QString &path);
 
     // Every instrument's sound (by id) and the mixer.
-    struct Snapshot
-    {
-        QJsonObject sounds, mixer;
-    };
-    Snapshot capture() const;
-    void restore(const Snapshot &snapshot);
+    using Snapshot = RackSounds::Snapshot;
+    Snapshot capture() const { return m_sounds.capture(); }
+    void restore(const Snapshot &snapshot) { m_sounds.restore(snapshot); }
     // Puts back, from m_before, what the open song owns (and forgets both).
     void restoreOwned();
 
@@ -237,6 +235,7 @@ private:
     RackController &m_rack;
     std::vector<krate::InstrumentInstance *> m_instances; // in the entries' order
     QStringList m_ids;
+    RackSounds m_sounds; // capture() and restore()
     std::vector<Choice> m_choices;
     SongLibrary &m_library;
     qint64 m_songId = 0;

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "RackController.h"
+#include "SequencerController.h"
 #include "SongController.h"
 #include "app/InstrumentRegistry.h"
 #include "core/Instrument.h"
@@ -520,6 +521,74 @@ private slots:
         f.player.render(f.transport.advance(512, 48000.0), 512, 48000.0, out.data(), std::uint32_t(out.size()));
         f.song->pollPosition();
         QCOMPARE(f.song->bar(), 1);
+    }
+
+    // Saved sequences (docs/SEQUENCER.md#saved-sequences): SAVE AS keeps the
+    // sequencer and every sound; edits mark it changed until SAVE; opening one
+    // puts its notes and sounds back; CLOSE goes back to what was there before
+    // the first one opened; rename, delete; still there after a restart.
+    void savedSequences()
+    {
+        Fixture f;
+        krate::seq::Sequencer seq;
+        SequencerController c(seq, noteTargets(f.entries), f.path("sequencer.json"));
+        c.load();
+        std::vector<InstrumentInstance *> list;
+        for (const auto &i : f.instances)
+            list.push_back(i.get());
+        QStringList ids;
+        for (const auto &e : f.entries)
+            ids << e.id;
+        const RackSounds sounds(*f.rackController, ids, list);
+        c.setLibrary(f.library.get(), &sounds);
+
+        f.fakes[0].tone = 0.2f;
+        c.setTarget(0, 1); // k303
+        c.addNote(0, 40, 24, 100);
+        QVERIFY(c.modified());
+        QVERIFY(!c.saveSequence()); // none open yet: it needs a name
+        QVERIFY(!c.saveSequenceAs(QStringLiteral("  ")));
+        QVERIFY(c.saveSequenceAs(QStringLiteral("Groove")));
+        const int id = c.sequenceId();
+        QVERIFY(id > 0);
+        QCOMPARE(c.sequenceName(), QStringLiteral("Groove"));
+        QVERIFY(!c.modified());
+        QCOMPARE(c.savedSequences().size(), 1);
+
+        c.addNote(48, 43, 24, 100);
+        QVERIFY(c.modified());
+        c.setPattern(5); // choosing a pattern is no change
+        c.setPattern(0);
+        QVERIFY(c.saveSequence());
+        QVERIFY(!c.modified());
+
+        // Something else now: other notes, another sound.
+        c.closeSequence(); // never opened from the library: just let go
+        QCOMPARE(c.sequenceId(), 0);
+        c.clearPattern();
+        f.fakes[0].tone = 0.9f;
+        QVERIFY(c.openSequence(id));
+        QCOMPARE(c.sequenceName(), QStringLiteral("Groove"));
+        QCOMPARE(c.notes().size(), 2);
+        QCOMPARE(f.fakes[0].tone, 0.2f); // its sound
+        QVERIFY(!c.modified());
+
+        c.closeSequence(); // back to before it opened
+        QCOMPARE(c.sequenceId(), 0);
+        QCOMPARE(c.notes().size(), 0);
+        QCOMPARE(f.fakes[0].tone, 0.9f);
+
+        QVERIFY(c.renameSequence(id, QStringLiteral("Groove 2")));
+        f.make(); // the rack starts again
+        c.setLibrary(f.library.get(), &sounds);
+        QCOMPARE(c.savedSequences().size(), 1);
+        QCOMPARE(c.savedSequences()[0].toMap().value(QStringLiteral("name")).toString(), QStringLiteral("Groove 2"));
+        QVERIFY(c.openSequence(id));
+        QVERIFY(c.deleteSequence(id));
+        QCOMPARE(c.sequenceId(), 0);
+        QVERIFY(c.modified()); // still on screen, saved nowhere
+        QCOMPARE(c.notes().size(), 2);
+        QCOMPARE(c.savedSequences().size(), 0);
     }
 };
 

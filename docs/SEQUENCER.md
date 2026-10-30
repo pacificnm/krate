@@ -30,6 +30,16 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
   - Mouse wheel over a note, or drag its bar in the **velocity** lane: how hard it plays (for K909, 100 and up plays accented).
 - The red line is the playhead (when the pattern shown is the one playing).
 
+## Saved sequences
+
+Sequences are kept in the song library (`library.db`, table `sequences`), by name. Each one keeps everything in the sequencer (patterns, tracks and their instruments and mutes, the chain, the range and play mode) and, like a song's SAVE, every instrument's sound (all its knobs; Krimson's slots too) and the mixer.
+
+- The box above the tracks shows the sequence's name (or "Not saved yet") and "changed" when it was edited since it was opened or saved. Choosing a pattern or track, or RUN, is not a change.
+- **SAVE** saves over the open sequence (the first time, it asks for a name). **LIBRARY…** lists the saved sequences: **OPEN**, **RENAME**, **DELETE** (pressed twice), and **SAVE AS** with a new name.
+- **Opening** a sequence puts its notes, sounds and mixer on the rack (RUN stays as it is). If what's in the sequencer has unsaved changes, OPEN asks once more.
+- **CLOSE** goes back to what was there before the first sequence was opened: the sequencer, the instruments' sounds and the mixer. (A sequence still open when the rack is quit stays open next time; closing it then just lets it go, as there's nothing earlier to go back to.)
+- Deleting the open sequence leaves it on screen, saved nowhere.
+
 ## Chains and playing live
 
 - **PATTERN / RANGE / CHAIN** (above the piano roll) choose what plays. **RANGE** shows FROM and TO: the rack's PLAY (or RUN) plays pattern FROM, then each one up to TO, then FROM again; the patterns in the range have a blue bar under their number, and a red dot marks the one playing. Switched on while playing, it takes over at the end of the current pass (from FROM if the pattern playing isn't in the range). Empty patterns in the range play as silent bars of their length.

@@ -58,13 +58,18 @@ SongController::SongController(s::SongPlayer &player, RackController &rack, cons
     , m_player(player)
     , m_rack(rack)
     , m_instances(std::move(instances))
+    , m_ids([&entries] {
+        QStringList ids;
+        for (const krate::InstrumentEntry &e : entries)
+            ids << e.id;
+        return ids;
+    }())
+    , m_sounds(rack, m_ids, m_instances)
     , m_library(library)
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
 
-    for (const krate::InstrumentEntry &e : entries)
-        m_ids << e.id;
     m_choices = noteTargets(entries); // every instrument that plays notes
 
     connect(this, &SongController::songChanged, this, &SongController::clearSelection); // another song: other bars
@@ -823,25 +828,6 @@ void SongController::useBacking(std::unique_ptr<s::AudioClip> clip, const QStrin
         return !m_backing || m_backing->blocksProcessed() >= r.after + 2;
     });
     emit backingChanged();
-}
-
-SongController::Snapshot SongController::capture() const
-{
-    Snapshot s;
-    for (std::size_t i = 0; i < m_instances.size() && i < std::size_t(m_ids.size()); ++i)
-        if (m_instances[i])
-            s.sounds[m_ids[qsizetype(i)]] = m_instances[i]->saveSound();
-    s.mixer = m_rack.mixerState();
-    return s;
-}
-
-void SongController::restore(const Snapshot &snapshot)
-{
-    for (std::size_t i = 0; i < m_instances.size() && i < std::size_t(m_ids.size()); ++i)
-        if (m_instances[i] && snapshot.sounds.contains(m_ids[qsizetype(i)]))
-            m_instances[i]->loadSound(snapshot.sounds.value(m_ids[qsizetype(i)]).toObject());
-    if (!snapshot.mixer.isEmpty())
-        m_rack.setMixerState(snapshot.mixer);
 }
 
 void SongController::restoreOwned()
