@@ -9,6 +9,7 @@
 #include "core/EventSource.h"
 #include "core/Instrument.h"
 #include "core/MasterStage.h"
+#include "rack/ChannelEq.h"
 #include "core/SpscQueue.h"
 
 namespace krate {
@@ -75,7 +76,11 @@ public:
 
     // A mixer strip's controls (Mapping::Kind::Mixer targets). Fader and Pan
     // follow the CC; Mute and Solo are buttons (a press toggles).
-    enum MixerControl : int { MixerFader, MixerPan, MixerMute, MixerSolo };
+    enum MixerControl : int {
+        MixerFader, MixerPan, MixerMute, MixerSolo,
+        // The strip's EQ knobs, in ChannelEq::Band order.
+        MixerEqFirst, MixerEqLast = MixerEqFirst + ChannelEq::Count - 1,
+    };
     static constexpr bool isMixerButton(int control) { return control == MixerMute || control == MixerSolo; }
 
     // Audio -> GUI: a mapped mixer control moved; the GUI's mixer applies it
@@ -131,6 +136,9 @@ public:
     // Mixer. Level is linear gain (1 = unity); pan -1 (left) .. +1 (right), balance law.
     void setLevel(int device, float gain) noexcept;
     void setPan(int device, float pan) noexcept;
+    // A strip's EQ setting (ChannelEq::Band: dB, Hz or Q).
+    void setEq(int device, int band, float value) noexcept;
+    float eq(int device, int band) const noexcept;
     void setMute(int device, bool mute) noexcept;
     void setSolo(int device, bool solo) noexcept;
     void setMasterLevel(float gain) noexcept { m_masterLevel.store(gain, std::memory_order_relaxed); }
@@ -168,6 +176,8 @@ private:
 
         std::atomic<float> level{1.0f};
         std::atomic<float> pan{0.0f};
+        std::array<std::atomic<float>, ChannelEq::Count> eq{};
+        ChannelEq eqDsp; // audio thread
         std::atomic<bool> mute{false};
         std::atomic<bool> solo{false};
         std::atomic<bool> focusable{true};

@@ -189,6 +189,122 @@ void RackController::setPan(int device, qreal pan)
     emit mixerChanged();
 }
 
+namespace {
+// Each EQ knob's range: low, high, logarithmic.
+struct EqRange
+{
+    double low, high;
+    bool log;
+};
+constexpr EqRange kEqRanges[krate::ChannelEq::Count] = {
+    {-krate::ChannelEq::kMaxGainDb, krate::ChannelEq::kMaxGainDb, false}, // low gain
+    {30.0, 600.0, true},                                                    // low freq
+    {-krate::ChannelEq::kMaxGainDb, krate::ChannelEq::kMaxGainDb, false}, // mid gain
+    {100.0, 10000.0, true},                                                 // mid freq
+    {0.3, 8.0, true},                                                       // mid Q
+    {-krate::ChannelEq::kMaxGainDb, krate::ChannelEq::kMaxGainDb, false}, // high gain
+    {1500.0, 16000.0, true},                                                // high freq
+};
+} // namespace
+
+double RackController::eqValue(int band, qreal position)
+{
+    if (band < 0 || band >= krate::ChannelEq::Count)
+        return 0.0;
+    const EqRange &r = kEqRanges[band];
+    const double p = qBound(0.0, position, 1.0);
+    return r.log ? r.low * std::pow(r.high / r.low, p) : r.low + (r.high - r.low) * p;
+}
+
+qreal RackController::eqPosition(int band, double value)
+{
+    if (band < 0 || band >= krate::ChannelEq::Count)
+        return 0.0;
+    const EqRange &r = kEqRanges[band];
+    const double p = r.log ? std::log(value / r.low) / std::log(r.high / r.low) : (value - r.low) / (r.high - r.low);
+    return qBound(0.0, p, 1.0);
+}
+
+std::array<qreal, krate::ChannelEq::Count> RackController::defaultEq()
+{
+    std::array<qreal, krate::ChannelEq::Count> eq{};
+    for (int b = 0; b < krate::ChannelEq::Count; ++b)
+        eq[std::size_t(b)] = eqPosition(b, krate::ChannelEq::kFlat[std::size_t(b)]);
+    return eq;
+}
+
+qreal RackController::eqDefault(int band) const
+{
+    return band >= 0 && band < krate::ChannelEq::Count ? defaultEq()[std::size_t(band)] : 0.0;
+}
+
+qreal RackController::eq(int device, int band) const
+{
+    if (device < 0 || device >= m_strips.size() || band < 0 || band >= krate::ChannelEq::Count)
+        return 0.0;
+    return m_strips[device].eq[std::size_t(band)];
+}
+
+void RackController::setEq(int device, int band, qreal position)
+{
+    if (device < 0 || device >= m_strips.size() || band < 0 || band >= krate::ChannelEq::Count)
+        return;
+    qreal p = qBound(0.0, position, 1.0);
+    const bool gain = band == krate::ChannelEq::LowGain || band == krate::ChannelEq::MidGain || band == krate::ChannelEq::HighGain;
+    if (gain && std::fabs(p - 0.5) < 0.005)
+        p = 0.5; // a gain near the middle is 0 dB exactly (so a strip can be flat again)
+    m_strips[device].eq[std::size_t(band)] = p;
+    m_rack.setEq(device, band, float(eqValue(band, p)));
+    ++m_mixerRevision;
+    emit mixerChanged();
+}
+
+void RackController::resetEq(int device)
+{
+    for (int b = 0; b < krate::ChannelEq::Count; ++b)
+        setEq(device, b, eqDefault(b));
+}
+
+bool RackController::eqFlat(int device) const
+{
+    if (device < 0 || device >= m_strips.size())
+        return true;
+    krate::ChannelEq::Settings s{};
+    for (int b = 0; b < krate::ChannelEq::Count; ++b)
+        s[std::size_t(b)] = float(eqValue(b, m_strips[device].eq[std::size_t(b)]));
+    return krate::ChannelEq::flat(s);
+}
+
+QString RackController::eqText(int band, qreal position) const
+{
+    const double v = eqValue(band, position);
+    switch (band) {
+    case krate::ChannelEq::LowGain:
+    case krate::ChannelEq::MidGain:
+    case krate::ChannelEq::HighGain:
+        return std::fabs(v) < 0.05 ? QStringLiteral("0 dB") : QStringLiteral("%1%2 dB").arg(v > 0 ? "+" : "").arg(v, 0, 'f', 1);
+    case krate::ChannelEq::MidQ:
+        return QStringLiteral("Q %1").arg(v, 0, 'f', v < 1.0 ? 2 : 1);
+    default:
+        return v >= 1000.0 ? QStringLiteral("%1 kHz").arg(v / 1000.0, 0, 'f', v >= 10000.0 ? 1 : 2)
+                           : QStringLiteral("%1 Hz").arg(qRound(v));
+    }
+}
+
+QJsonArray RackController::eqJson(int device) const
+{
+    QJsonArray a;
+    for (int b = 0; b < krate::ChannelEq::Count; ++b)
+        a.append(eq(device, b));
+    return a;
+}
+
+void RackController::setEqJson(int device, const QJsonArray &values)
+{
+    for (int b = 0; b < krate::ChannelEq::Count; ++b)
+        setEq(device, b, b < values.size() ? values[b].toDouble(eqDefault(b)) : eqDefault(b));
+}
+
 bool RackController::mute(int device) const
 {
     return device >= 0 && device < m_strips.size() && m_strips[device].mute;
@@ -267,7 +383,8 @@ QJsonObject RackController::mixerState() const
         strips[m_entries[i].id] = QJsonObject{{QStringLiteral("fader"), m_strips[i].fader},
                                               {QStringLiteral("pan"), m_strips[i].pan},
                                               {QStringLiteral("mute"), m_strips[i].mute},
-                                              {QStringLiteral("solo"), m_strips[i].solo}};
+                                              {QStringLiteral("solo"), m_strips[i].solo},
+                                              {QStringLiteral("eq"), eqJson(int(i))}};
     return QJsonObject{{QStringLiteral("strips"), strips}, {QStringLiteral("master"), m_masterFader}};
 }
 
@@ -282,6 +399,7 @@ void RackController::setMixerState(const QJsonObject &state)
         setPan(int(i), s.value(u"pan").toDouble(0.0));
         setMute(int(i), s.value(u"mute").toBool(false));
         setSolo(int(i), s.value(u"solo").toBool(false));
+        setEqJson(int(i), s.value(u"eq").toArray()); // none saved (older files): flat
     }
     if (state.contains(u"master"))
         setFader(-1, state.value(u"master").toDouble(kUnityFader));
@@ -305,6 +423,15 @@ void RackController::applyMixerMoves()
             break;
         case krate::Rack::MixerSolo:
             setSolo(device, !solo(device));
+            break;
+        case krate::Rack::MixerEqFirst + krate::ChannelEq::LowGain:
+        case krate::Rack::MixerEqFirst + krate::ChannelEq::LowFreq:
+        case krate::Rack::MixerEqFirst + krate::ChannelEq::MidGain:
+        case krate::Rack::MixerEqFirst + krate::ChannelEq::MidFreq:
+        case krate::Rack::MixerEqFirst + krate::ChannelEq::MidQ:
+        case krate::Rack::MixerEqFirst + krate::ChannelEq::HighGain:
+        case krate::Rack::MixerEqFirst + krate::ChannelEq::HighFreq:
+            setEq(device, move->control - krate::Rack::MixerEqFirst, move->value / 127.0);
             break;
         default:
             break;

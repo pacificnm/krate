@@ -183,6 +183,22 @@ QML singletons: k303 uses singletons (`Synth`, `Pattern`, `MidiLearn`). That wor
 
 JACK ports in the rack: `<device>:out_L` / `<device>:out_R` for every device (pre-mixer, post-device), plus `master_L` / `master_R` (post-mixer, post-limiter). Auto-connect sends only the master pair to the speakers (the device chosen under **AUDIO**, or the first hardware outputs); the per-device pairs are there for recording or mixing in a DAW.
 
+### Mixer EQ
+
+Every instrument's strip has an EQ above its pan knob (`krate::ChannelEq`, `shared/rack/ChannelEq.h`), applied after the instrument and before the fader (the device's own JACK output stays before it):
+
+| Band | Knobs | Range |
+| --- | --- | --- |
+| **HI** (high shelf) | gain, HI FREQ | ±15 dB; 1.5–16 kHz (default 8 kHz) |
+| **MID** (peak) | gain, MID FREQ, MID Q | ±15 dB; 100 Hz–10 kHz (default 1 kHz); Q 0.3–8 (default 0.7: wide; higher is narrower) |
+| **LO** (low shelf) | gain, LO FREQ | ±15 dB; 30–600 Hz (default 100 Hz) |
+
+- Gains at 0 dB (the knob's middle, which snaps there) make the strip **flat**: the EQ is skipped entirely, bit for bit. The EQ box is outlined in blue and says "on" while it does something; double-click **EQ** to make it flat again; double-click a knob for its default.
+- The filters are the shared `krate::Biquad` (`shared/dsp/Biquad.h`, cookbook shelves and peak; Krunch's tone stacks use it too). Retuned between 64-frame chunks with their state kept, so turning a knob doesn't click.
+- Saved with the mixer: in `rack.json` (each device's `"eq"`: the 7 knob positions), and in a song's or a saved sequence's mixer. Older files without it load flat.
+- MIDI Learn: every EQ knob, keys `rack:mix:<n>:lowgain|lowfreq|midgain|midfreq|midq|highgain|highfreq`.
+- Measured (`tst_rack`): each band on a sine within 0.2 dB of the filter's response.
+
 ### Master stage
 
 `krate::MasterStage` (`shared/core/MasterStage.h`) is the last stage before the outputs, in the rack and in every standalone host and render tool: a soft clip plus the master meter. The instruments don't limit; this stage makes sure nothing ever leaves as a hard over. The curve is linear up to the knee at 0.5 (−6 dBFS), untouched, then `0.5 + 0.5·tanh((|x| − 0.5) / 0.5)` above it: the same slope where they meet (no corner), approaching 1.0.

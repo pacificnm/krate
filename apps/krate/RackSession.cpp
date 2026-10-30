@@ -65,6 +65,7 @@ void RackSession::load()
             const QJsonObject d = devices.value(m_ids[i]).toObject();
             m_controller.setFader(i, d.value(u"fader").toDouble(RackController::kUnityFader));
             m_controller.setPan(i, d.value(u"pan").toDouble(0.0));
+            m_controller.setEqJson(i, d.value(u"eq").toArray());
             m_controller.setMute(i, d.value(u"mute").toBool(false));
             m_controller.setSolo(i, d.value(u"solo").toBool(false));
             // Channel routing: notes on these channels (1..16) go to the instrument;
@@ -140,6 +141,7 @@ void RackSession::save()
         devices.insert(m_ids[i], QJsonObject{
                                      {QStringLiteral("fader"), m_controller.fader(i)},
                                      {QStringLiteral("pan"), m_controller.pan(i)},
+                                     {QStringLiteral("eq"), m_controller.eqJson(i)},
                                      {QStringLiteral("mute"), m_controller.mute(i)},
                                      {QStringLiteral("solo"), m_controller.solo(i)},
                                      {QStringLiteral("channels"), channels},

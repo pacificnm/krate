@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include <numbers>
+
 #include <cmath>
 #include <memory>
 #include <span>
@@ -62,9 +64,18 @@ public:
             received.push_back(block.midi[i]);
         if (block.transport)
             transports.push_back(*block.transport);
+        if (sineHz > 0.0) { // a sine of amplitude dc instead
+            for (std::uint32_t i = 0; i < block.frames; ++i) {
+                block.outputs[0][i] = block.outputs[1][i] = dc * float(std::sin(phase));
+                phase += 2.0 * std::numbers::pi * sineHz / sampleRate;
+            }
+            return;
+        }
         std::fill_n(block.outputs[0], block.frames, dc);
         std::fill_n(block.outputs[1], block.frames, dc);
     }
+    double sineHz = 0.0;
+    double phase = 0.0;
 
     std::span<const ParamDescriptor> params;
     std::vector<float> values;
@@ -475,6 +486,69 @@ private slots:
         QCOMPARE(out.devices[0].back(), 0.25f);
         QCOMPARE(out.devices[1].back(), 0.25f);
         QVERIFY(std::abs(out.left.back()) < 1e-6f);
+    }
+
+    // The strip EQ: each band measured on a sine matches the filter's response
+    // (within 0.2 dB); flat, the sound passes untouched; the device's own
+    // output stays before it.
+    void stripEq()
+    {
+        const auto measure = [](double hz, ChannelEq::Settings eq) {
+            FakeDevice a(kParamsA, 0.1f); // well under the master stage's knee
+            a.sineHz = hz;
+            Rack rack;
+            rack.addDevice(a);
+            rack.prepare(48000.0);
+            for (int b = 0; b < ChannelEq::Count; ++b)
+                rack.setEq(0, b, eq[std::size_t(b)]);
+            const auto out = run(rack, 48000);
+            // Amplitude from the RMS (sample peaks of a high sine fall short of its true peak).
+            double sum = 0.0, deviceSum = 0.0;
+            for (std::size_t i = 24000; i < out.left.size(); ++i) {
+                sum += double(out.left[i]) * out.left[i];
+                deviceSum += double(out.devices[0][i]) * out.devices[0][i];
+            }
+            const double n = double(out.left.size() - 24000), amplitude = 0.1 / std::sqrt(2.0);
+            return std::pair{20.0 * std::log10(std::sqrt(sum / n) / amplitude),
+                             20.0 * std::log10(std::sqrt(deviceSum / n) / amplitude)};
+        };
+        auto eq = ChannelEq::kFlat;
+        eq[ChannelEq::MidGain] = 9.0f;
+        eq[ChannelEq::MidFreq] = 1000.0f;
+        eq[ChannelEq::MidQ] = 1.0f;
+        const auto [mid, before] = measure(1000.0, eq);
+        QVERIFY2(std::fabs(mid - 9.0) < 0.2, qPrintable(QString::number(mid)));
+        QVERIFY2(std::fabs(before) < 0.05, qPrintable(QString::number(before))); // the device's own output: no EQ
+        const double away = measure(4000.0, eq).first;
+        QVERIFY2(std::fabs(away - 20.0 * std::log10(ChannelEq::magnitude(eq, 48000.0, 4000.0))) < 0.2,
+                 qPrintable(QString::number(away)));
+
+        eq = ChannelEq::kFlat;
+        eq[ChannelEq::LowGain] = -12.0f;
+        eq[ChannelEq::LowFreq] = 200.0f;
+        const double low = measure(40.0, eq).first;
+        QVERIFY2(std::fabs(low - 20.0 * std::log10(ChannelEq::magnitude(eq, 48000.0, 40.0))) < 0.2,
+                 qPrintable(QString::number(low)));
+        QVERIFY(low < -10.0);
+
+        eq = ChannelEq::kFlat;
+        eq[ChannelEq::HighGain] = 6.0f;
+        eq[ChannelEq::HighFreq] = 4000.0f;
+        const double high = measure(14000.0, eq).first;
+        QVERIFY2(std::fabs(high - 20.0 * std::log10(ChannelEq::magnitude(eq, 48000.0, 14000.0))) < 0.2,
+                 qPrintable(QString::number(high)));
+        QVERIFY(high > 5.0);
+
+        // Flat: bit for bit what it was without an EQ.
+        FakeDevice a(kParamsA, 0.25f);
+        a.sineHz = 440.0;
+        Rack rack;
+        rack.addDevice(a);
+        rack.prepare(48000.0);
+        rack.setEq(0, ChannelEq::MidFreq, 2000.0f); // a frequency, no gain: still flat
+        const auto out = run(rack, 4800);
+        for (std::size_t i = 0; i < out.left.size(); ++i)
+            QCOMPARE(out.left[i], MasterStage::shape(out.devices[0][i]));
     }
 
     void meters()

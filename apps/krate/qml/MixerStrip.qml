@@ -1,8 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Krate
 
-// One mixer channel: name, pan, mute/solo, fader, meter, MIDI channel.
-// device -1 = master.
+// One mixer channel: name, EQ (high shelf, parametric mid, low shelf), pan,
+// mute/solo, fader, meter, MIDI channel. device -1 = master.
 Item {
     id: strip
 
@@ -16,7 +18,12 @@ Item {
     readonly property string learnKey: "rack:mix:" + (isMaster ? "master" : device) + ":"
 
     width: 110
-    height: 230
+    height: 420
+
+    // Where the controls under the EQ start.
+    readonly property int eqTop: 28
+    readonly property int eqHeight: isMaster ? 0 : 196
+    readonly property int below: eqTop + eqHeight
 
     Rectangle {
         anchors.fill: parent
@@ -34,10 +41,100 @@ Item {
         font.pixelSize: 13
     }
 
+    // --- EQ: HIGH (gain, freq), MID (gain, freq, Q), LOW (gain, freq) -------------------
+    // Bands as in ChannelEq: 0 low gain, 1 low freq, 2 mid gain, 3 mid freq, 4 mid Q, 5 high gain, 6 high freq.
+    Item {
+        id: eqBox
+        visible: !strip.isMaster
+        x: 4
+        y: strip.eqTop
+        width: strip.width - 8
+        height: strip.eqHeight - 6
+        readonly property bool active: strip.rev >= 0 && !Rack.eqFlat(strip.device)
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 3
+            color: "#C2C3C6"
+            border.color: eqBox.active ? Theme.accentUi : Theme.deckLine
+        }
+        Text { // EQ; double-click: flat
+            x: 6
+            y: 3
+            text: "EQ"
+            color: eqBox.active ? Theme.accentUi : Theme.ink
+            font.family: Theme.labelFont
+            font.pixelSize: 10
+            font.bold: true
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -4
+                onDoubleClicked: Rack.resetEq(strip.device)
+            }
+        }
+        Text {
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            y: 3
+            visible: eqBox.active
+            text: "on"
+            color: Theme.accentUi
+            font.family: Theme.labelFont
+            font.pixelSize: 9
+        }
+
+        component EqKnob: Item {
+            id: eqKnob
+            required property int band
+            required property string label
+            width: 44
+            height: 42
+            Knob {
+                x: (parent.width - width) / 2
+                width: 28
+                height: 28
+                name: strip.name + " EQ " + eqKnob.label
+                value: strip.rev >= 0 ? Rack.eq(strip.device, eqKnob.band) : 0.5
+                defaultValue: Rack.eqDefault(eqKnob.band)
+                displayText: Rack.eqText(eqKnob.band, value)
+                onMoved: v => Rack.setEq(strip.device, eqKnob.band, v)
+                LearnOverlay {
+                    anchors.fill: parent
+                    paramKey: strip.learnKey + ["lowgain", "lowfreq", "midgain", "midfreq", "midq", "highgain", "highfreq"][eqKnob.band]
+                }
+            }
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: 29
+                text: eqKnob.label
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 8
+                font.bold: true
+            }
+        }
+
+        Grid {
+            x: (eqBox.width - width) / 2
+            y: 16
+            columns: 2
+            columnSpacing: 4
+            rowSpacing: 0
+            EqKnob { band: 5; label: "HI" }
+            EqKnob { band: 6; label: "HI FREQ" }
+            EqKnob { band: 2; label: "MID" }
+            EqKnob { band: 3; label: "MID FREQ" }
+            EqKnob { band: 4; label: "MID Q" }
+            Item { width: 44; height: 42 }
+            EqKnob { band: 0; label: "LO" }
+            EqKnob { band: 1; label: "LO FREQ" }
+        }
+    }
+
     Knob { // pan
         visible: !strip.isMaster
         x: (strip.width - width) / 2
-        y: 30
+        y: strip.below
         width: 34
         height: 34
         name: strip.name + " pan"
@@ -51,7 +148,7 @@ Item {
     Row {
         visible: !strip.isMaster
         x: (strip.width - width) / 2
-        y: 72
+        y: strip.below + 42
         spacing: 6
 
         PanelButton {
@@ -76,7 +173,7 @@ Item {
 
     Fader {
         x: strip.width / 2 - width + 6
-        y: strip.isMaster ? 34 : 102
+        y: strip.isMaster ? 34 : strip.below + 72
         height: strip.height - y - 32
         value: strip.rev >= 0 ? Rack.fader(strip.device) : 0.8
         displayText: Rack.faderText(value)
@@ -86,7 +183,7 @@ Item {
 
     Meter {
         x: strip.width / 2 + 14
-        y: strip.isMaster ? 40 : 108
+        y: strip.isMaster ? 40 : strip.below + 78
         height: strip.height - y - 38
         level: strip.isMaster ? Host.outputLevel : (Rack.meters[strip.device] ?? 0)
     }

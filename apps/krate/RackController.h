@@ -1,11 +1,16 @@
 #pragma once
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
 #include <QStringList>
 #include <QTimer>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
+
+#include <array>
+
+#include "rack/ChannelEq.h"
 
 namespace krate {
 class Rack;
@@ -83,6 +88,17 @@ public:
     Q_INVOKABLE QString faderText(qreal position) const;
     Q_INVOKABLE qreal pan(int device) const;
     Q_INVOKABLE void setPan(int device, qreal pan);
+    // A strip's EQ (docs/SHARED_FOUNDATIONS.MD#mixer-eq): band as in
+    // krate::ChannelEq::Band, knob position 0..1 (gains: 0.5 = 0 dB).
+    Q_INVOKABLE qreal eq(int device, int band) const;
+    Q_INVOKABLE void setEq(int device, int band, qreal position);
+    Q_INVOKABLE void resetEq(int device);
+    Q_INVOKABLE QString eqText(int band, qreal position) const;
+    Q_INVOKABLE qreal eqDefault(int band) const;
+    Q_INVOKABLE bool eqFlat(int device) const;
+    // Knob position <-> its value (dB, Hz or Q).
+    static double eqValue(int band, qreal position);
+    static qreal eqPosition(int band, double value);
     Q_INVOKABLE bool mute(int device) const;
     Q_INVOKABLE void setMute(int device, bool mute);
     Q_INVOKABLE bool solo(int device) const;
@@ -104,6 +120,9 @@ public:
     // The whole mixer (every strip by instrument id, and the master), for a
     // song in the library to keep and put back.
     QJsonObject mixerState() const;
+    // A strip's EQ knobs as saved ([7 positions]); missing ones are flat.
+    QJsonArray eqJson(int device) const;
+    void setEqJson(int device, const QJsonArray &values);
     void setMixerState(const QJsonObject &state);
 
 signals:
@@ -122,10 +141,12 @@ private:
     {
         qreal fader = kUnityFader;
         qreal pan = 0.0;
+        std::array<qreal, krate::ChannelEq::Count> eq = defaultEq();
         bool mute = false;
         bool solo = false;
     };
 
+    static std::array<qreal, krate::ChannelEq::Count> defaultEq();
     static qreal gainFor(qreal fader) { return (fader / kUnityFader) * (fader / kUnityFader); }
     void poll();
 

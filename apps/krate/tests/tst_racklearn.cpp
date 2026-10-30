@@ -244,6 +244,52 @@ private slots:
         f.learn->setActive(false);
     }
 
+    // Strip EQ: knob positions map to dB / Hz / Q and back; every strip starts
+    // flat; it reaches the rack; the mixer state keeps it (older states: flat);
+    // a learned knob turns it.
+    void stripEq()
+    {
+        Fixture f;
+        for (int b = 0; b < ChannelEq::Count; ++b) {
+            QVERIFY(std::fabs(RackController::eqValue(b, f.controller->eq(0, b)) - ChannelEq::kFlat[std::size_t(b)]) < 1e-3);
+            QVERIFY(std::fabs(RackController::eqPosition(b, RackController::eqValue(b, 0.3)) - 0.3) < 1e-9);
+        }
+        QVERIFY(f.controller->eqFlat(0));
+        QCOMPARE(RackController::eqValue(ChannelEq::MidGain, 1.0), 15.0);
+        QCOMPARE(RackController::eqValue(ChannelEq::LowFreq, 0.0), 30.0);
+        QCOMPARE(f.controller->eqText(ChannelEq::MidGain, 0.6), QStringLiteral("+3.0 dB"));
+        QCOMPARE(f.controller->eqText(ChannelEq::HighFreq, 1.0), QStringLiteral("16.0 kHz"));
+        QCOMPARE(f.controller->eqText(ChannelEq::LowFreq, 0.0), QStringLiteral("30 Hz"));
+
+        f.controller->setEq(1, ChannelEq::MidGain, 0.8);
+        QVERIFY(!f.controller->eqFlat(1));
+        QVERIFY(std::fabs(f.rack.eq(1, ChannelEq::MidGain) - 9.0f) < 1e-4f);
+        f.controller->setEq(1, ChannelEq::MidGain, 0.503); // near the middle: exactly 0 dB
+        QVERIFY(f.controller->eqFlat(1));
+        f.controller->setEq(1, ChannelEq::HighGain, 0.0);
+        const QJsonObject state = f.controller->mixerState();
+        f.controller->resetEq(1);
+        QVERIFY(f.controller->eqFlat(1));
+        f.controller->setMixerState(state);
+        QCOMPARE(f.controller->eq(1, ChannelEq::HighGain), 0.0);
+        QVERIFY(std::fabs(f.rack.eq(1, ChannelEq::HighGain) + 15.0f) < 1e-4f);
+
+        QJsonObject old = state; // from before the EQ: no "eq" in its strips
+        QJsonObject strips = old.value(u"strips").toObject();
+        QJsonObject beta = strips.value(u"beta").toObject();
+        beta.remove(u"eq");
+        strips.insert(u"beta", beta);
+        old.insert(u"strips", strips);
+        f.controller->setMixerState(old);
+        QVERIFY(f.controller->eqFlat(1));
+
+        f.teach("rack:mix:0:midfreq", {cc(0, 20, 0)});
+        f.send({cc(0, 20, 127)});
+        f.controller->applyMixerMoves();
+        QCOMPARE(f.controller->eq(0, ChannelEq::MidFreq), 1.0);
+        QVERIFY(std::fabs(f.rack.eq(0, ChannelEq::MidFreq) - 10000.0f) < 0.5f);
+    }
+
     // Each instrument's own RUN / STOP runs just its sequencer; the rack's PLAY runs them all.
     void instrumentsRunOnTheirOwn()
     {

@@ -23,6 +23,8 @@ int Rack::addDevice(IInstrument &instrument, int midiChannel)
         return -1;
     Device &d = m_devices[std::size_t(m_count)];
     d.instrument = &instrument;
+    for (int b = 0; b < ChannelEq::Count; ++b)
+        d.eq[std::size_t(b)].store(ChannelEq::kFlat[std::size_t(b)], std::memory_order_relaxed);
     d.left.assign(m_maxFrames, 0.0f);
     d.right.assign(m_maxFrames, 0.0f);
     if (midiChannel >= 0 && midiChannel < kChannels)
@@ -33,8 +35,10 @@ int Rack::addDevice(IInstrument &instrument, int midiChannel)
 void Rack::prepare(double sampleRate) noexcept
 {
     m_sampleRate = sampleRate;
-    for (int i = 0; i < m_count; ++i)
+    for (int i = 0; i < m_count; ++i) {
         m_devices[std::size_t(i)].instrument->prepare(sampleRate, m_maxFrames);
+        m_devices[std::size_t(i)].eqDsp.prepare(sampleRate);
+    }
 }
 
 // --- Any thread ---------------------------------------------------------------
@@ -68,6 +72,19 @@ void Rack::setPan(int device, float pan) noexcept
 {
     if (device >= 0 && device < m_count)
         m_devices[std::size_t(device)].pan.store(std::clamp(pan, -1.0f, 1.0f), std::memory_order_relaxed);
+}
+
+void Rack::setEq(int device, int band, float value) noexcept
+{
+    if (device >= 0 && device < m_count && band >= 0 && band < ChannelEq::Count)
+        m_devices[std::size_t(device)].eq[std::size_t(band)].store(value, std::memory_order_relaxed);
+}
+
+float Rack::eq(int device, int band) const noexcept
+{
+    if (device < 0 || device >= m_count || band < 0 || band >= ChannelEq::Count)
+        return 0.0f;
+    return m_devices[std::size_t(device)].eq[std::size_t(band)].load(std::memory_order_relaxed);
 }
 
 void Rack::setMute(int device, bool mute) noexcept
@@ -375,6 +392,12 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
             std::copy_n(d.left.data(), frames, block.deviceOutputs[2 * i] + offset);
             std::copy_n(d.right.data(), frames, block.deviceOutputs[2 * i + 1] + offset);
         }
+
+        // The strip's EQ (nothing at all while it's flat).
+        ChannelEq::Settings eq;
+        for (int b = 0; b < ChannelEq::Count; ++b)
+            eq[std::size_t(b)] = d.eq[std::size_t(b)].load(std::memory_order_relaxed);
+        d.eqDsp.process(eq, d.left.data(), d.right.data(), frames);
 
         // Fader: level x balance pan; muted (or not soloed while something is) = 0.
         const bool audible = anySolo ? d.solo.load(std::memory_order_relaxed) : !d.mute.load(std::memory_order_relaxed);
