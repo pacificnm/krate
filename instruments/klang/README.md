@@ -2,7 +2,7 @@
 
 A sampler for the [Krate](../../README.md) suite: 16 pads playing your own WAV and MP3 files as one-shots, held notes or loops locked to the tempo, each through its own filter, drive, bitcrusher and ring modulator, with a trance gate, delay and reverb; patterns with accents, stutters, reverse and pitch per step; loops sliced across the pads. Built for cut-up, gated, mechanical industrial and trance sounds. Runs standalone (`klang`) and in the Krate rack (default MIDI channel 11).
 
-Status: L1. The pads play from MIDI through `klang-render` and the tests; patterns, the sample library and the panel come next. `./build/bin/klang-render --out-dir build` writes `klang-sounds.wav` (sounds Klang makes itself). See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
+Status: L2. The pads and their patterns play through `klang-render` and the tests; the sample library and the panel come next. `./build/bin/klang-render --out-dir build` writes `klang-sounds.wav` (sounds Klang makes itself). See [docs/BRIEF.md](docs/BRIEF.md) and the [roadmap](docs/ROADMAP.md).
 
 | Doc | Contents |
 | --- | --- |

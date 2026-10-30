@@ -106,6 +106,95 @@ PadSettings Engine::settings(int pad) const noexcept
     return s;
 }
 
+// --- Patterns ------------------------------------------------------------------------
+
+void Engine::setPattern(int index, const Pattern &pattern) noexcept
+{
+    if (index < 0 || index >= kPatterns)
+        return;
+    m_bank[std::size_t(index)] = pattern;
+    if (index == m_pattern)
+        m_gatePattern.store(pattern.gate, std::memory_order_relaxed);
+}
+
+double Engine::stepBeat(std::int64_t step) const noexcept
+{
+    return m_startBeat + (double(step) + ((step & 1) ? m_swing : 0.0)) * 0.25;
+}
+
+void Engine::schedule(double beat, int pad, float velocity, double pitch, bool flip, bool release) noexcept
+{
+    if (m_scheduledCount < kMaxScheduled)
+        m_scheduled[std::size_t(m_scheduledCount++)] = {beat, std::int8_t(pad), release, velocity, float(pitch), flip};
+}
+
+void Engine::sequencerUpdate(const krate::TransportState &transport) noexcept
+{
+    while (auto update = m_patternUpdates.pop())
+        setPattern(update->index, update->pattern);
+    m_swing = 2.0 * units::swingFraction(global(ParamId::Swing)) - 1.0;
+
+    const bool run = transport.playing && m_sequencerEnabled.load(std::memory_order_relaxed)
+                     && !m_sequencerSuspended.load(std::memory_order_relaxed);
+    if (!m_running) { // stopped: a cued pattern is the pattern at once
+        const int cued = std::clamp(m_cued.load(std::memory_order_relaxed), 0, kPatterns - 1);
+        if (cued != m_pattern) {
+            m_pattern = cued;
+            m_gatePattern.store(m_bank[std::size_t(cued)].gate, std::memory_order_relaxed);
+        }
+    }
+    if (run && (!m_running || transport.restarted)) {
+        m_running = true;
+        // From the top, or joining a transport that's playing: from the next bar.
+        m_startBeat = transport.restarted || transport.beatAtBlockStart <= 0.0
+                          ? transport.beatAtBlockStart
+                          : std::ceil(transport.beatAtBlockStart / 4.0 - 1e-9) * 4.0;
+        m_nextStep = 0;
+        m_passStep = 0;
+        m_scheduledCount = 0;
+    } else if (!run && m_running) {
+        m_running = false;
+        m_scheduledCount = 0;
+        for (int pad = 0; pad < kPads; ++pad)
+            if (m_settings[std::size_t(pad)].mode == PadMode::Gate)
+                releasePad(pad);
+    }
+}
+
+void Engine::fireStep(std::int64_t step) noexcept
+{
+    if (m_passStep == 0) { // a new pass: the cued pattern takes over
+        const int cued = std::clamp(m_cued.load(std::memory_order_relaxed), 0, kPatterns - 1);
+        if (cued != m_pattern) {
+            m_pattern = cued;
+            m_gatePattern.store(m_bank[std::size_t(cued)].gate, std::memory_order_relaxed);
+        }
+    }
+    const Pattern &pattern = m_bank[std::size_t(m_pattern)];
+    const int s = std::min(m_passStep, kMaxSteps - 1);
+    m_playingStep.store(s, std::memory_order_relaxed);
+    const double at = stepBeat(step);
+    for (int pad = 0; pad < kPatternPads; ++pad) {
+        const Step &st = pattern.steps[std::size_t(pad)][std::size_t(s)];
+        if (!st.on)
+            continue;
+        const float velocity = st.accent ? 1.0f : 0.75f;
+        const int repeat = std::clamp(int(st.repeat), 1, kMaxRepeat);
+        const double each = 0.25 / repeat; // beats
+        const bool gate = m_settings[std::size_t(pad)].mode == PadMode::Gate;
+        for (int k = 0; k < repeat; ++k) {
+            if (k == 0)
+                hit(pad, velocity, st.pitch, st.reverse);
+            else
+                schedule(at + k * each, pad, velocity, st.pitch, st.reverse, false);
+            if (gate) // a Gate pad holds for its part of the step
+                schedule(at + (k + 0.9) * each, pad, 0.0f, 0.0, false, true);
+        }
+    }
+    if (++m_passStep >= std::max<int>(1, pattern.length))
+        m_passStep = 0;
+}
+
 // --- Hits ----------------------------------------------------------------------------
 
 void Engine::hit(int pad, float velocity, double pitchSemis, bool flip, int note) noexcept
@@ -176,8 +265,9 @@ void Engine::handleMidi(const krate::MidiEvent &event) noexcept
             releasePad(editedPad(), m.data1);
         break;
     }
-    case krate::MidiMessage::Type::ProgramChange:
-        m_programs.push(std::uint8_t(m.data1));
+    case krate::MidiMessage::Type::ProgramChange: // a pattern, from the end of this pass
+        if (m.data1 < kPatterns)
+            cuePattern(m.data1);
         break;
     case krate::MidiMessage::Type::Other:
         break;
@@ -276,8 +366,10 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         else
             releasePad(h->pad);
     }
+    sequencerUpdate(transport);
 
-    // The voices render in runs between MIDI events: each lands on its exact sample.
+    // The voices render in runs between the frames where something happens:
+    // MIDI events, pattern steps and their repeats land on their exact sample.
     std::uint32_t done = 0;
     const auto renderTo = [&](std::uint32_t frame) {
         if (frame <= done)
@@ -285,11 +377,39 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         render(left + done, right + done, frame - done, bpm, beat + double(done) * beatsPerFrame, beatsPerFrame);
         done = frame;
     };
-    for (std::uint32_t e = 0; e < block.midiCount; ++e) {
-        renderTo(std::min(block.midi[e].frame, block.frames));
-        handleMidi(block.midi[e]);
+    std::uint32_t nextEvent = 0;
+    for (std::uint32_t i = 0; i < block.frames; ++i) {
+        while (nextEvent < block.midiCount && block.midi[nextEvent].frame <= i) {
+            renderTo(i);
+            handleMidi(block.midi[nextEvent++]);
+        }
+        if (!m_running)
+            continue;
+        const double now = transport.beatAtBlockStart + double(i) * beatsPerFrame;
+        while (now >= stepBeat(m_nextStep)) {
+            renderTo(i);
+            fireStep(m_nextStep++);
+        }
+        for (int k = 0; k < m_scheduledCount;) {
+            const Scheduled e = m_scheduled[std::size_t(k)];
+            if (now < e.beat) {
+                ++k;
+                continue;
+            }
+            renderTo(i);
+            m_scheduled[std::size_t(k)] = m_scheduled[std::size_t(--m_scheduledCount)];
+            if (e.release)
+                releasePad(e.pad);
+            else
+                hit(e.pad, e.velocity, e.pitch, e.flip);
+        }
     }
+    while (nextEvent < block.midiCount) // past the block's end (malformed): at the end
+        handleMidi(block.midi[nextEvent++]);
     renderTo(block.frames);
+    m_playingPattern.store(m_pattern, std::memory_order_relaxed);
+    if (!m_running)
+        m_playingStep.store(-1, std::memory_order_relaxed);
     if (!transport.playing)
         m_freeBeat = beat + double(block.frames) * beatsPerFrame;
 

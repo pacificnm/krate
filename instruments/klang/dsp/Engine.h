@@ -12,6 +12,7 @@
 #include "dsp/Effects.h"
 #include "dsp/Reverb.h"
 #include "klang/dsp/Params.h"
+#include "klang/dsp/Pattern.h"
 #include "klang/dsp/Sample.h"
 #include "klang/dsp/Voice.h"
 
@@ -41,6 +42,8 @@ public:
     std::uint64_t takeParamsChangedByAudio() noexcept override;
     krate::MidiLearnMap *midiLearnMap() noexcept override { return &m_learn; }
     void process(const krate::AudioBlock &block) noexcept override;
+    void setSequencerEnabled(bool on) noexcept override { m_sequencerEnabled.store(on, std::memory_order_relaxed); }
+    void setSequencerSuspended(bool on) noexcept override { m_sequencerSuspended.store(on, std::memory_order_relaxed); }
 
     float param(ParamId id) const noexcept { return param(int(id)); }
     void setParam(ParamId id, float v) noexcept { setParam(int(id), v); }
@@ -68,20 +71,27 @@ public:
     bool postHit(int pad, int velocity) noexcept { return m_hits.push({std::uint8_t(pad), std::uint8_t(velocity)}); }
     bool postRelease(int pad) noexcept { return m_hits.push({std::uint8_t(pad), 0}); }
 
-    // The trance gate's 16 steps (bit n = step n on). Any thread.
+    // The trance gate's 16 steps (bit n = step n on), until the next pattern
+    // brings its own. Any thread.
     void setGatePattern(std::uint16_t steps) noexcept { m_gatePattern.store(steps, std::memory_order_relaxed); }
     std::uint16_t gatePattern() const noexcept { return m_gatePattern.load(std::memory_order_relaxed); }
 
+    // Patterns (docs/BRIEF.md#scope-v1). GUI thread: a pattern's new contents
+    // (applied at the next block; the one playing changes on its next step).
+    // False if the queue is full.
+    bool postPattern(int index, const Pattern &pattern) noexcept { return m_patternUpdates.push({index, pattern}); }
+    // Setup (before processing) and tests.
+    void setPattern(int index, const Pattern &pattern) noexcept;
+    // Any thread: the pattern to play next. Stopped, it is the pattern at once;
+    // playing, it starts at the end of the current pass. Program Change n does the same.
+    void cuePattern(int index) noexcept { m_cued.store(index, std::memory_order_relaxed); }
+    int cuedPattern() const noexcept { return m_cued.load(std::memory_order_relaxed); }
+    // Any thread: the pattern playing (or that will, stopped) and its step, or -1.
+    int playingPattern() const noexcept { return m_playingPattern.load(std::memory_order_relaxed); }
+    int playingStep() const noexcept { return m_playingStep.load(std::memory_order_relaxed); }
+
     // Any thread: is the pad sounding (for its light)? Updated every block.
     bool padSounding(int pad) const noexcept { return (m_soundingMask.load(std::memory_order_relaxed) >> pad) & 1u; }
-
-    // GUI thread: Program Changes received, for the pattern controller.
-    std::optional<int> popProgram() noexcept
-    {
-        if (const auto p = m_programs.pop())
-            return int(*p);
-        return std::nullopt;
-    }
 
     // The pads' settings in DSP units (tests).
     PadSettings settings(int pad) const noexcept;
@@ -98,6 +108,10 @@ private:
     void handleMidi(const krate::MidiEvent &event) noexcept;
     void takeSamples() noexcept;
     void render(float *left, float *right, std::uint32_t frames, double bpm, double beat, double beatsPerFrame) noexcept;
+    void sequencerUpdate(const krate::TransportState &transport) noexcept; // once per block: start, stop
+    double stepBeat(std::int64_t step) const noexcept; // when an absolute step starts (with swing)
+    void fireStep(std::int64_t step) noexcept;
+    void schedule(double beat, int pad, float velocity, double pitch, bool flip, bool release) noexcept;
     float global(ParamId id) const noexcept { return m_global.get(int(id)); }
 
     Store m_global{kParams};
@@ -123,7 +137,6 @@ private:
         std::uint8_t pad, velocity; // velocity 0: release
     };
     krate::SpscQueue<Hit, 128> m_hits;
-    krate::SpscQueue<std::uint8_t, 16> m_programs;
 
     // Trance gate
     std::atomic<std::uint16_t> m_gatePattern{0x7777};
@@ -137,6 +150,38 @@ private:
     krate::Reverb m_reverb{192000.0};
     bool m_reverbOn = false;
     bool m_wasPlaying = false;
+
+    // Patterns and the sequencer.
+    struct PatternUpdate
+    {
+        int index;
+        Pattern pattern;
+    };
+    krate::SpscQueue<PatternUpdate, 4> m_patternUpdates;
+    std::array<Pattern, kPatterns> m_bank{};
+    std::atomic<int> m_cued{0};
+    std::atomic<int> m_playingPattern{0};
+    std::atomic<int> m_playingStep{-1};
+    std::atomic<bool> m_sequencerEnabled{true};
+    std::atomic<bool> m_sequencerSuspended{false};
+    int m_pattern = 0;            // audio thread: the pattern playing
+    bool m_running = false;
+    double m_startBeat = 0.0;     // where step 0 falls
+    std::int64_t m_nextStep = 0;  // the next absolute step to fire
+    int m_passStep = 0;           // that step's place in the pattern
+    double m_swing = 0.0;         // of a step: how late the off-beat sixteenths fall
+    struct Scheduled
+    {
+        double beat;
+        std::int8_t pad;
+        bool release;
+        float velocity;
+        float pitch;
+        bool flip;
+    };
+    static constexpr int kMaxScheduled = 128;
+    std::array<Scheduled, kMaxScheduled> m_scheduled{};
+    int m_scheduledCount = 0;
     double m_volume = -1.0;
     double m_volumeSmoothing = 0.0;
 };

@@ -8,6 +8,7 @@ add_library(klang_dsp STATIC
     dsp/Engine.cpp
     dsp/Params.h
     dsp/Params.cpp
+    dsp/Pattern.h
     dsp/Sample.h
     dsp/Voice.h
     dsp/Voice.cpp
@@ -23,7 +24,7 @@ target_link_libraries(klang-render PRIVATE klang_dsp)
 target_compile_options(klang-render PRIVATE ${KLANG_WARNINGS})
 
 # --- Tests
-foreach(test tst_pads)
+foreach(test tst_pads tst_patterns)
     add_executable(klang_${test} tests/${test}.cpp)
     target_compile_options(klang_${test} PRIVATE -Wall -Wextra -Wpedantic)
     target_link_libraries(klang_${test} PRIVATE klang_dsp krate_testing Qt6::Test)
