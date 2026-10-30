@@ -516,13 +516,13 @@ void RackController::applyMixerMoves()
         case krate::Rack::MixerSolo:
             setSolo(device, !solo(device));
             break;
-        case krate::Rack::MixerEqFirst + krate::ChannelEq::LowGain:
-        case krate::Rack::MixerEqFirst + krate::ChannelEq::LowFreq:
-        case krate::Rack::MixerEqFirst + krate::ChannelEq::MidGain:
-        case krate::Rack::MixerEqFirst + krate::ChannelEq::MidFreq:
-        case krate::Rack::MixerEqFirst + krate::ChannelEq::MidQ:
-        case krate::Rack::MixerEqFirst + krate::ChannelEq::HighGain:
-        case krate::Rack::MixerEqFirst + krate::ChannelEq::HighFreq:
+        case krate::Rack::MixerEqFirst + int(krate::ChannelEq::LowGain):
+        case krate::Rack::MixerEqFirst + int(krate::ChannelEq::LowFreq):
+        case krate::Rack::MixerEqFirst + int(krate::ChannelEq::MidGain):
+        case krate::Rack::MixerEqFirst + int(krate::ChannelEq::MidFreq):
+        case krate::Rack::MixerEqFirst + int(krate::ChannelEq::MidQ):
+        case krate::Rack::MixerEqFirst + int(krate::ChannelEq::HighGain):
+        case krate::Rack::MixerEqFirst + int(krate::ChannelEq::HighFreq):
             setEq(device, move->control - krate::Rack::MixerEqFirst, move->value / 127.0);
             break;
         case krate::Rack::MixerReverbSend:

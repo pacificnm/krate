@@ -227,7 +227,7 @@ Decided: **per-channel routing plus a focus**, so one controller can play one in
 
 | Message | Goes to |
 | --- | --- |
-| Notes on a channel assigned to a device | That device (defaults: ch 10 → K909, ch 2 → Kalliope, ch 3–6 → Krimson's slots A–D; k303 and Klick have none) |
+| Notes on a channel assigned to a device | That device (defaults: ch 10 → K909, ch 2 → Kalliope, ch 3–6 → Krimson's slots A–D, ch 7 → Kobalt; k303 and Klick have none) |
 | Notes on an unassigned channel | The focused device |
 | CC with a **fixed** mapping | The mapped device and parameter, whatever has focus |
 | CC with a **follow-focus** mapping | That parameter key on whichever device has focus (when it has one with that key) |

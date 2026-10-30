@@ -24,10 +24,51 @@ add_executable(kobalt-render tools/render_main.cpp)
 target_link_libraries(kobalt-render PRIVATE kobalt_dsp)
 target_compile_options(kobalt-render PRIVATE ${KOBALT_WARNINGS})
 
+# --- kobalt_ui: QML module "Kobalt": controllers and the panel
+set(KOBALT_APP_SOURCES
+    app/KobaltController.h
+    app/KobaltController.cpp
+    app/KobaltInstrument.h
+    app/KobaltInstrument.cpp
+    app/KobaltPatchController.h
+    app/KobaltPatchController.cpp
+    app/PatchFile.h
+    app/PatchFile.cpp
+)
+qt_add_library(kobalt_ui STATIC)
+qt_add_qml_module(kobalt_ui
+    URI Kobalt
+    VERSION 1.0
+    IMPORTS Krate
+    SOURCES ${KOBALT_APP_SOURCES}
+    QML_FILES
+        qml/Main.qml
+        qml/Panel.qml
+)
+# Generated type registration includes headers by bare name.
+target_include_directories(kobalt_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
+target_link_libraries(kobalt_ui PUBLIC kobalt_dsp krate_host krate_app krate_qml Qt6::Quick)
+target_compile_options(kobalt_ui PRIVATE -Wall -Wextra -Wpedantic)
+
 # --- Tests
 foreach(test tst_voice)
     add_executable(kobalt_${test} tests/${test}.cpp)
     target_compile_options(kobalt_${test} PRIVATE -Wall -Wextra -Wpedantic)
     target_link_libraries(kobalt_${test} PRIVATE kobalt_dsp krate_testing Qt6::Test)
+    add_test(NAME kobalt_${test} COMMAND kobalt_${test})
+endforeach()
+
+# The controllers, through the instrument's registry entry: compiled directly
+# (plain add_executable) rather than linking the QML module, so no QML plugin is involved.
+foreach(test tst_kobalt tst_patches)
+    add_executable(kobalt_${test}
+        tests/${test}.cpp
+        ${KOBALT_APP_SOURCES}
+        ${PROJECT_SOURCE_DIR}/shared/app/ParamController.h
+        ${PROJECT_SOURCE_DIR}/shared/app/ParamController.cpp
+    )
+    target_include_directories(kobalt_${test} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    target_compile_options(kobalt_${test} PRIVATE -Wall -Wextra -Wpedantic)
+    target_link_libraries(kobalt_${test} PRIVATE kobalt_dsp krate_app krate_testing Qt6::Qml Qt6::Test)
     add_test(NAME kobalt_${test} COMMAND kobalt_${test})
 endforeach()

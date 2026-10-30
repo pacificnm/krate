@@ -9,10 +9,11 @@ A suite of software instruments for Linux, and a rack that plays them together f
 | [**K909**](instruments/k909/README.md): drum machine, 15 synthesized voices (four industrial) and a sample voice, per-voice mixer with drive, gated reverb, delay, compressor and crusher, 16 kits, tracks × steps sequencer with accent and shuffle, patterns A–P | Playable, standalone and in the rack (MIDI channel 10) |
 | [**Kalliope**](instruments/kalliope/README.md): 16-voice polysynth, two oscillators with sync and cross mod, analog drift, a driven 12/24 dB ladder, chorus, delay and reverb, 64 patches, arpeggiator | Playable, standalone and in the rack (MIDI channel 2) |
 | [**Krimson**](instruments/krimson/README.md): 4-part multitimbral virtual-analog synth, 16 voices, sync / FM / ring oscillators, five-mode filter with drive, morph, per-slot effects and arpeggiators, 64 programs | Playable, standalone and in the rack (MIDI channels 3–6); sound tuning in progress |
+| [**Kobalt**](instruments/kobalt/README.md): monophonic synth after the classic one-oscillator monosynths: saw, pulse with width modulation, sub-oscillator and noise into a self-oscillating four-pole filter, one envelope with Gate + Trig / Gate / LFO triggers, portamento Off / Auto / On, bender and lever, analog drift, delay and reverb, 64 patches | Playable, standalone and in the rack (MIDI channel 7); arpeggiator and step sequencer to come |
 | **Song player**: play along with a song: open a `.gp` tab file and/or a `.mid` file, put its tracks on Krate's instruments, leave your part out ([docs/SONG_PLAYER.md](docs/SONG_PLAYER.md)) | In progress: the Song tab plays songs through the instruments with your part's tab scrolling along; a song library (SQLite) keeps every song by artist and album with its track setup, instrument sounds and mixer; practice tools to come |
 | **Sequencer**: an 8-track pattern sequencer for the whole rack: 16 patterns of up to 4 bars, each track playing one instrument, notes with length and velocity, chords ([docs/SEQUENCER.md](docs/SEQUENCER.md)) | Working: the engine, the Seq screen (piano roll, drum lanes for K909, velocity lane), copying bars from a song on the Song screen, pattern chains, and patterns switched live from a controller |
 | [**Krunch**](instruments/krunch/README.md): guitar amp, played from your audio interface's input | G0: the input passes straight through, with meters and the delay shown ([roadmap](instruments/krunch/docs/ROADMAP.md)) |
-| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + K909 + Kalliope + Krimson + Krunch + Klick), rack-wide MIDI Learn, sessions in `~/.config/krate/rack.json` |
+| **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + K909 + Kalliope + Krimson + Kobalt + Krunch + Klick), rack-wide MIDI Learn, sessions in `~/.config/krate/rack.json` |
 
 Design: [docs/SHARED_FOUNDATIONS.MD](docs/SHARED_FOUNDATIONS.MD) (shared interfaces, transport, MIDI, the rack, repo layout).
 
@@ -42,7 +43,8 @@ pw-jack ./build/bin/k303                          # k303 on its own
 pw-jack ./build/bin/k909                          # K909 on its own
 pw-jack ./build/bin/kalliope                      # Kalliope on its own
 pw-jack ./build/bin/krimson                       # Krimson on its own
-pw-jack ./build/bin/krate                         # the rack: k303 + K909 + Kalliope + Krimson + Krunch + Klick
+pw-jack ./build/bin/kobalt                        # Kobalt on its own
+pw-jack ./build/bin/krate                         # the rack: k303 + K909 + Kalliope + Krimson + Kobalt + Krunch + Klick
 ./build/bin/krate-render --bars 8 --out rack.wav  # the rack, rendered offline (add --k909 0.8 --kalliope 1 --krimson 0.8 for all five)
 ```
 
