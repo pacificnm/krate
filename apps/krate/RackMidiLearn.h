@@ -22,7 +22,8 @@ class InstrumentInstance;
 // Keys from an instrument panel refer to the focused instrument (the panel on
 // screen): a parameter key maps as fixed (that instrument's knob), or as
 // follow-focus when followFocus is on; an action key (e.g. "pattern1") maps as
-// that instrument's button. Rack keys: "rack:playstop", "rack:mixer", "rack:song", "rack:seq" (the
+// that instrument's button. Rack keys: "rack:playstop", "rack:mixer", "rack:song", "rack:seq", the sequencer's
+// "rack:seqrun", "rack:seqchain", "rack:seqnext", "rack:seqprevious", "rack:seqpattern1".."16" (the
 // rack's own actions, kRackActions), "rack:focus:<n>", "rack:next",
 // "rack:previous", and the mixer's "rack:mix:<n>:fader|pan|mute|solo" (strip
 // n) and "rack:mix:master:fader". Notes can be learned for buttons (mute and
@@ -41,8 +42,15 @@ public:
     };
 
     // The rack's own learnable actions ("rack:<name>"); the index is the mapping's action.
-    inline static const QStringList kRackActions{QStringLiteral("playstop"), QStringLiteral("mixer"), QStringLiteral("song"),
-                                                  QStringLiteral("seq")};
+    // Saved by name, so new ones go at the end.
+    inline static const QStringList kRackActions = [] {
+        QStringList list{QStringLiteral("playstop"), QStringLiteral("mixer"), QStringLiteral("song"), QStringLiteral("seq"),
+                         QStringLiteral("seqrun"),   QStringLiteral("seqchain"), QStringLiteral("seqnext"),
+                         QStringLiteral("seqprevious")};
+        for (int p = 1; p <= 16; ++p) // the sequencer's pattern buttons
+            list << QStringLiteral("seqpattern%1").arg(p);
+        return list;
+    }();
     // Mixer controls, indexed by krate::Rack::MixerControl.
     inline static const QStringList kMixerControls{QStringLiteral("fader"), QStringLiteral("pan"), QStringLiteral("mute"),
                                                    QStringLiteral("solo")};

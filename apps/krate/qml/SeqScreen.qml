@@ -57,6 +57,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 on: Sequencer.running
             }
+            LearnOverlay { anchors.fill: parent; paramKey: "rack:seqrun"; round: false }
         }
 
         Column {
@@ -71,6 +72,14 @@ Item {
             }
             Row {
                 spacing: 3
+                PanelButton {
+                    width: 26
+                    height: 30
+                    faceText: "◂"
+                    text: "Previous pattern"
+                    onClicked: Sequencer.stepPattern(-1)
+                    LearnOverlay { anchors.fill: parent; paramKey: "rack:seqprevious"; round: false }
+                }
                 Repeater {
                     model: 16
                     Rectangle {
@@ -79,7 +88,7 @@ Item {
                         readonly property bool chosen: Sequencer.pattern === index
                         readonly property bool sounding: Sequencer.playing && Sequencer.playingPattern === index
                         readonly property bool used: Sequencer.patternsUsed[index] === true
-                        width: 34
+                        width: 32
                         height: 30
                         radius: 3
                         color: chosen ? Theme.silverLight : (used ? "#B9BBBF" : Theme.lowerDeck)
@@ -106,9 +115,18 @@ Item {
                             anchors.fill: parent
                             onClicked: Sequencer.pattern = patternButton.index
                         }
+                        LearnOverlay { anchors.fill: parent; paramKey: "rack:seqpattern" + (patternButton.index + 1); round: false }
                         Accessible.role: Accessible.Button
                         Accessible.name: "Pattern " + (index + 1) + (used ? "" : " (empty)") + (chosen ? " (chosen)" : "")
                     }
+                }
+                PanelButton {
+                    width: 26
+                    height: 30
+                    faceText: "▸"
+                    text: "Next pattern"
+                    onClicked: Sequencer.stepPattern(1)
+                    LearnOverlay { anchors.fill: parent; paramKey: "rack:seqnext"; round: false }
                 }
             }
         }
@@ -287,11 +305,119 @@ Item {
         }
     }
 
+    // --- Right, top: the chain ----------------------------------------------------------
+    Row {
+        id: chainStrip
+        x: trackColumn.x + trackColumn.width + 16
+        y: trackColumn.y
+        width: screen.width - x - 16
+        height: 40
+        spacing: 6
+
+        PanelButton {
+            id: chainButton
+            width: 96
+            height: 34
+            anchors.verticalCenter: parent.verticalCenter
+            faceText: "    CHAIN"
+            text: "Play the chain instead of one pattern"
+            onClicked: Sequencer.chainMode = !Sequencer.chainMode
+            Led {
+                x: 10
+                anchors.verticalCenter: parent.verticalCenter
+                on: Sequencer.chainMode
+            }
+            LearnOverlay { anchors.fill: parent; paramKey: "rack:seqchain"; round: false }
+        }
+        Flickable { // the steps: click one to edit its pattern; wheel: repeats; right-click: remove
+            id: chainSteps
+            width: chainStrip.width - chainButton.width - addButton.width - clearChainButton.width - 3 * chainStrip.spacing
+            height: 34
+            anchors.verticalCenter: parent.verticalCenter
+            contentWidth: chainRow.implicitWidth
+            flickableDirection: Flickable.HorizontalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+            Row {
+                id: chainRow
+                spacing: 4
+                Text {
+                    visible: Sequencer.chain.length === 0
+                    height: 34
+                    verticalAlignment: Text.AlignVCenter
+                    text: "The chain is empty: + ADD puts the pattern you're on at its end."
+                    color: "#55575B"
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                }
+                Repeater {
+                    model: Sequencer.chain
+                    Rectangle {
+                        id: chainChip
+                        required property int index
+                        required property var modelData
+                        readonly property bool sounding: Sequencer.playing && Sequencer.chainStep === index
+                        width: chipText.implicitWidth + 16
+                        height: 34
+                        radius: 3
+                        color: Sequencer.pattern === modelData.pattern ? Theme.silverLight : "#D9DADC"
+                        border.color: sounding ? Theme.ledOn : Theme.deckLine
+                        border.width: sounding ? 3 : 1
+                        Text {
+                            id: chipText
+                            anchors.centerIn: parent
+                            text: (chainChip.modelData.pattern + 1)
+                                  + (chainChip.modelData.repeats > 1 ? " ×" + chainChip.modelData.repeats : "")
+                                  + (chainChip.sounding && chainChip.modelData.repeats > 1 ? " (" + (Sequencer.chainPass + 1) + ")" : "")
+                            color: Theme.ink
+                            font.family: Theme.labelFont
+                            font.pixelSize: 14
+                            font.bold: chainChip.sounding
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: mouse => {
+                                if (mouse.button === Qt.RightButton)
+                                    Sequencer.removeChainStep(chainChip.index)
+                                else
+                                    Sequencer.pattern = chainChip.modelData.pattern
+                            }
+                            onWheel: wheel => Sequencer.setChainRepeats(chainChip.index, chainChip.modelData.repeats
+                                                                        + (wheel.angleDelta.y > 0 ? 1 : -1))
+                        }
+                        Accessible.role: Accessible.Button
+                        Accessible.name: "Chain step " + (index + 1) + ": pattern " + (modelData.pattern + 1)
+                                         + ", " + modelData.repeats + (modelData.repeats === 1 ? " time" : " times")
+                    }
+                }
+            }
+        }
+        PanelButton {
+            id: addButton
+            width: 74
+            height: 34
+            anchors.verticalCenter: parent.verticalCenter
+            faceText: "+ ADD"
+            text: "Add the pattern you're on to the end of the chain"
+            onClicked: Sequencer.addToChain(Sequencer.pattern)
+        }
+        PanelButton {
+            id: clearChainButton
+            width: 74
+            height: 34
+            anchors.verticalCenter: parent.verticalCenter
+            faceText: "CLEAR"
+            text: "Empty the chain"
+            onClicked: Sequencer.clearChain()
+        }
+    }
+
     // --- Right: the piano roll ----------------------------------------------------------
     Rectangle {
         id: rollFrame
         x: trackColumn.x + trackColumn.width + 16
-        y: trackColumn.y
+        y: chainStrip.y + chainStrip.height + 8
         width: screen.width - x - 16
         height: screen.height - y - 40
         radius: 4
@@ -601,6 +727,7 @@ Item {
         width: rollFrame.width
         text: (screen.selected.label ? "Track " + (Sequencer.track + 1) + " plays " + screen.selected.label + ".  "
                                      : "Track " + (Sequencer.track + 1) + " plays nothing yet: choose an instrument.  ")
+              + (Sequencer.chainMode ? "CHAIN plays the chain (wheel over a step: repeats; right-click: remove).  " : "")
               + "Click to add a note · drag it to move · drag its right edge to resize · right-click or double-click to delete · wheel or the lane below: velocity"
               + (screen.drums ? " (100 and up plays accented)" : "")
         color: Theme.ink

@@ -49,6 +49,11 @@ class SequencerController : public QObject
     // For a drum track (K909): its voices, top to bottom: {name, note}.
     Q_PROPERTY(QVariantList drumLanes READ drumLanes CONSTANT)
     Q_PROPERTY(bool hasClipboard READ hasClipboard NOTIFY changed)
+    // CHAIN mode and the chain: {pattern (0-based), repeats} per step.
+    Q_PROPERTY(bool chainMode READ chainMode WRITE setChainMode NOTIFY changed)
+    Q_PROPERTY(QVariantList chain READ chain NOTIFY changed)
+    Q_PROPERTY(int chainStep READ chainStep NOTIFY positionChanged) // playing (-1: not chaining)
+    Q_PROPERTY(int chainPass READ chainPass NOTIFY positionChanged)
     // Where the player is.
     Q_PROPERTY(bool playing READ playing NOTIFY positionChanged)
     Q_PROPERTY(int playingPattern READ playingPattern NOTIFY positionChanged)
@@ -86,6 +91,11 @@ public:
     QVariantList patternsUsed() const;
     QVariantList drumLanes() const;
     bool hasClipboard() const { return m_clipboard.has_value(); }
+    bool chainMode() const { return m_state.chainMode; }
+    void setChainMode(bool on);
+    QVariantList chain() const;
+    int chainStep() const { return m_chainStep; }
+    int chainPass() const { return m_chainPass; }
     bool playing() const { return m_playing; }
     int playingPattern() const { return m_playingPattern; }
     int tick() const { return m_tick; }
@@ -103,6 +113,14 @@ public:
     Q_INVOKABLE void clearPattern();
     Q_INVOKABLE void copyPattern();
     Q_INVOKABLE void pastePattern();
+    // The chain: add a pattern at the end (or after step `after`), remove a
+    // step, set its repeats (1..16), empty it.
+    Q_INVOKABLE void addToChain(int pattern, int after = -1);
+    Q_INVOKABLE void removeChainStep(int step);
+    Q_INVOKABLE void setChainRepeats(int step, int repeats);
+    Q_INVOKABLE void clearChain();
+    // Controller buttons (learnable rack actions): the next / previous pattern.
+    Q_INVOKABLE void stepPattern(int delta);
 
     // Bars from a song (the Song screen): each chunk replaces track `track`'s
     // notes in a pattern, from `firstPattern` on, and sets that pattern's
@@ -140,6 +158,8 @@ private:
     bool m_playing = false;
     int m_playingPattern = 0;
     int m_tick = 0;
+    int m_chainStep = -1;
+    int m_chainPass = 0;
     bool m_dirty = false;
     bool m_readOnly = false;
     QTimer m_saveTimer;

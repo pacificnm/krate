@@ -27,9 +27,14 @@ QJsonObject sequencerToJson(const SequencerState &state)
                                     {QStringLiteral("grid"), p.grid},
                                     {QStringLiteral("tracks"), notes}});
     }
+    QJsonArray chain;
+    for (int i = 0; i < state.bank->chainLength; ++i)
+        chain.append(QJsonArray{state.bank->chain[std::size_t(i)].pattern, state.bank->chain[std::size_t(i)].repeats});
     return {{QStringLiteral("version"), 1},
             {QStringLiteral("pattern"), state.pattern},
             {QStringLiteral("running"), state.running},
+            {QStringLiteral("chainMode"), state.chainMode},
+            {QStringLiteral("chain"), chain},
             {QStringLiteral("tracks"), tracks},
             {QStringLiteral("patterns"), patterns}};
 }
@@ -39,6 +44,16 @@ SequencerState sequencerFromJson(const QJsonObject &json)
     SequencerState state;
     state.pattern = std::clamp(json.value(u"pattern").toInt(0), 0, kPatterns - 1);
     state.running = json.value(u"running").toBool(true);
+    state.chainMode = json.value(u"chainMode").toBool(false);
+    for (const QJsonValue &v : json.value(u"chain").toArray()) {
+        const QJsonArray a = v.toArray();
+        if (state.bank->chainLength >= kMaxChain || a.size() < 2)
+            continue;
+        const int pattern = a[0].toInt(-1), repeats = a[1].toInt(0);
+        if (pattern < 0 || pattern >= kPatterns || repeats < 1)
+            continue;
+        state.bank->chain[state.bank->chainLength++] = {std::uint8_t(pattern), std::uint8_t(std::min(repeats, kMaxRepeats))};
+    }
     const QJsonArray tracks = json.value(u"tracks").toArray();
     for (int t = 0; t < kTracks && t < tracks.size(); ++t) {
         const QJsonObject o = tracks[t].toObject();

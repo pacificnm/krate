@@ -12,6 +12,8 @@ inline constexpr int kPatterns = 16;
 inline constexpr int kTicksPerBeat = 96;
 inline constexpr int kMaxTicks = 16 * kTicksPerBeat; // 4 bars of 4/4
 inline constexpr int kMaxNotes = 512;                 // per track, per pattern
+inline constexpr int kMaxChain = 64;                  // chain steps
+inline constexpr int kMaxRepeats = 16;
 
 // Grid steps: 1/16, 1/32, 1/16T, 1/8T (ticks per step).
 inline constexpr std::array<int, 4> kGridTicks{24, 12, 16, 32};
@@ -56,9 +58,20 @@ struct Pattern
     }
 };
 
+// A chain step: a pattern played `repeats` times.
+struct ChainStep
+{
+    std::uint8_t pattern = 0;
+    std::uint8_t repeats = 1; // 1..kMaxRepeats
+    bool operator==(const ChainStep &) const = default;
+};
+
 struct Bank
 {
     std::array<Pattern, kPatterns> patterns{};
+    // The chain: patterns in order, played through and around again in CHAIN mode.
+    std::array<ChainStep, kMaxChain> chain{};
+    std::uint8_t chainLength = 0;
 };
 
 } // namespace krate::seq

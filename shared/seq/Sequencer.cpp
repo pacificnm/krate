@@ -138,7 +138,7 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
         if (m_playing)
             flushAll(0);
         m_playing = false;
-        m_pattern = cued;
+        m_pattern = startPattern(cued);
         m_isPlaying.store(false, std::memory_order_relaxed);
         m_playingPattern.store(m_pattern, std::memory_order_relaxed);
         m_tick.store(0, std::memory_order_relaxed);
@@ -154,8 +154,15 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
         if (m_playing)
             flushAll(0);
         m_playing = true;
-        m_pattern = cued;
+        m_pattern = startPattern(cued);
         m_loopStart = std::floor(b0 / kBeatsPerBar + 1e-9) * kBeatsPerBar;
+    }
+    // CHAIN switched on or off while playing: from the next pass.
+    const bool chain = m_chainMode.load(std::memory_order_relaxed) && m_bank->chainLength > 0;
+    if (chain != m_chaining) {
+        m_chaining = chain;
+        m_step = 0;
+        m_pass = -1; // the next pass starts the chain
     }
 
     double from = b0;
@@ -165,7 +172,7 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
         const double loopEnd = m_loopStart + double(std::max<int>(p.length, 1)) / kTicksPerBeat;
         if (loopEnd <= from) { // a whole pass behind (a shorter pattern arrived): next pass
             m_loopStart = loopEnd;
-            m_pattern = cued;
+            m_pattern = next(cued);
             continue;
         }
         if (!tickSet) {
@@ -189,11 +196,13 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
         }
         if (to >= loopEnd) {
             m_loopStart = loopEnd;
-            m_pattern = cued;
+            m_pattern = next(cued);
         }
         from = to;
     }
     m_isPlaying.store(true, std::memory_order_relaxed);
+    m_chainStep.store(m_chaining && m_pass >= 0 ? m_step : -1, std::memory_order_relaxed);
+    m_chainPass.store(std::max(m_pass, 0), std::memory_order_relaxed);
 
     endNotes(b0, b1, framesPerBeat);
 
@@ -208,6 +217,36 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
                 break;
         }
     return m_outCount;
+}
+
+int Sequencer::startPattern(int cued) noexcept
+{
+    m_chaining = m_bank && m_chainMode.load(std::memory_order_relaxed) && m_bank->chainLength > 0;
+    m_step = 0;
+    m_pass = 0;
+    if (!m_chaining) {
+        m_chainStep.store(-1, std::memory_order_relaxed);
+        return cued;
+    }
+    m_chainStep.store(0, std::memory_order_relaxed);
+    m_chainPass.store(0, std::memory_order_relaxed);
+    return std::min<int>(m_bank->chain[0].pattern, kPatterns - 1);
+}
+
+int Sequencer::next(int cued) noexcept
+{
+    if (!m_chaining || !m_bank || m_bank->chainLength == 0)
+        return cued;
+    if (m_pass < 0) { // the chain starts now
+        m_step = 0;
+        m_pass = 0;
+    } else if (++m_pass >= std::max<int>(m_bank->chain[std::size_t(m_step)].repeats, 1)) {
+        m_pass = 0;
+        m_step = (m_step + 1) % m_bank->chainLength;
+    }
+    if (m_step >= m_bank->chainLength) // a shorter chain arrived
+        m_step = 0;
+    return std::min<int>(m_bank->chain[std::size_t(m_step)].pattern, kPatterns - 1);
 }
 
 void Sequencer::play(int track, const Note &note, double onBeat, double b0, double framesPerBeat) noexcept

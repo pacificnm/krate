@@ -52,6 +52,14 @@ public:
     // The pattern to play: at once while stopped, at the end of the current one while playing.
     void cue(int pattern) noexcept;
     int cued() const noexcept { return m_cued.load(std::memory_order_relaxed); }
+    // CHAIN mode: the bank's chain plays (from its first step when play starts
+    // or the mode is switched on) instead of the cued pattern. An empty chain
+    // plays the cued pattern.
+    void setChainMode(bool on) noexcept { m_chainMode.store(on, std::memory_order_relaxed); }
+    bool chainMode() const noexcept { return m_chainMode.load(std::memory_order_relaxed); }
+    // The chain step playing (-1: not chaining) and the pass of it (0-based).
+    int chainStep() const noexcept { return m_chainStep.load(std::memory_order_relaxed); }
+    int chainPass() const noexcept { return m_chainPass.load(std::memory_order_relaxed); }
 
     // For the screen: the pattern playing (or that will play), whether it is
     // playing, and the tick inside it at the start of the last block.
@@ -78,6 +86,8 @@ private:
         int count = 0;
     };
 
+    int next(int cued) noexcept; // the pattern after a pass: the chain's next, or the cued one
+    int startPattern(int cued) noexcept;
     void play(int track, const Note &note, double onBeat, double b0, double framesPerBeat) noexcept;
     void endNotes(double b0, double b1, double framesPerBeat) noexcept; // offs due in [b0, b1)
     void flush(int track, std::uint32_t frame) noexcept;
@@ -93,6 +103,9 @@ private:
     std::atomic<int> m_playingPattern{0};
     std::atomic<bool> m_isPlaying{false};
     std::atomic<int> m_tick{0};
+    std::atomic<bool> m_chainMode{false};
+    std::atomic<int> m_chainStep{-1};
+    std::atomic<int> m_chainPass{0};
 
     SpscQueue<Bank *, 16> m_banks;   // GUI -> audio
     SpscQueue<Bank *, 64> m_retired; // audio -> GUI, for deletion
@@ -104,6 +117,8 @@ private:
     std::array<TrackState, kTracks> m_tracks{};
     bool m_playing = false;
     int m_pattern = 0;
+    bool m_chaining = false; // playing the chain (audio side)
+    int m_step = 0, m_pass = 0;
     double m_loopStart = 0.0; // the transport beat the current pattern pass began on
     std::uint32_t m_frames = 0;
     DeviceEvent *m_out = nullptr;

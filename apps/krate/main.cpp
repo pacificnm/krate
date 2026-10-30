@@ -110,8 +110,9 @@ int main(int argc, char *argv[])
     for (qsizetype i = 0; i < entries.size(); ++i)
         learnDevices.push_back({entries[i].id, instances[std::size_t(i)]->instrument().parameters(), entries[i].actions,
                                 instances[std::size_t(i)].get()});
+    SequencerController *sequencerActions = nullptr; // set below, once the sequencer exists
     RackMidiLearn midiLearn(rack, std::move(learnDevices),
-                            [&rackController](const QString &action) {
+                            [&rackController, &sequencerActions](const QString &action) {
                                 if (action == u"playstop")
                                     rackController.setPlaying(!rackController.playing());
                                 else if (action == u"mixer")
@@ -120,6 +121,18 @@ int main(int argc, char *argv[])
                                     rackController.setSongShown(!rackController.songShown());
                                 else if (action == u"seq")
                                     rackController.setSeqShown(!rackController.seqShown());
+                                else if (SequencerController *s = sequencerActions; s && action.startsWith(u"seq")) {
+                                    if (action == u"seqrun")
+                                        s->setRunning(!s->running());
+                                    else if (action == u"seqchain")
+                                        s->setChainMode(!s->chainMode());
+                                    else if (action == u"seqnext")
+                                        s->stepPattern(1);
+                                    else if (action == u"seqprevious")
+                                        s->stepPattern(-1);
+                                    else if (action.startsWith(u"seqpattern"))
+                                        s->setPattern(action.mid(10).toInt() - 1);
+                                }
                             },
                             nullptr);
     QObject::connect(&rackController, &RackController::focusChanged, &midiLearn, &RackMidiLearn::focusChanged);
@@ -138,6 +151,7 @@ int main(int argc, char *argv[])
         sequencer, noteTargets(entries),
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/sequencer.json"), nullptr);
     sequencerController.load();
+    sequencerActions = &sequencerController;
 
     // The Song screen and the song library (~/.local/share/krate/library: the
     // songs' files, library.db with each song's set-up and sounds).

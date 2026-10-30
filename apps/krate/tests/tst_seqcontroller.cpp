@@ -132,6 +132,37 @@ private slots:
         QCOMPARE(c.pattern(), 14);
         QCOMPARE(c.track(), 0);
     }
+
+    // The chain: add (at the end or after a step), repeats clamped, remove; the
+    // pattern buttons wrap.
+    void chainEdits()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        c.addToChain(2);
+        c.addToChain(5);
+        c.addToChain(9, 0); // after the first
+        c.setChainRepeats(1, 99);
+        const auto steps = c.chain();
+        QCOMPARE(steps.size(), 3);
+        QCOMPARE(steps[0].toMap().value(u"pattern"_s).toInt(), 2);
+        QCOMPARE(steps[1].toMap().value(u"pattern"_s).toInt(), 9);
+        QCOMPARE(steps[1].toMap().value(u"repeats"_s).toInt(), kMaxRepeats);
+        QCOMPARE(steps[2].toMap().value(u"pattern"_s).toInt(), 5);
+        c.removeChainStep(0);
+        QCOMPARE(c.chain().size(), 2);
+        c.setChainMode(true);
+        QVERIFY(seq.chainMode());
+        c.setPattern(0);
+        c.stepPattern(-1);
+        QCOMPARE(c.pattern(), kPatterns - 1);
+        c.stepPattern(1);
+        QCOMPARE(c.pattern(), 0);
+        c.clearChain();
+        QCOMPARE(c.chain().size(), 0);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestSeqController)

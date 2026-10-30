@@ -24,6 +24,10 @@ private slots:
         p.grid = 2;
         p.tracks[3].add({0, 16, 60, 90});
         p.tracks[3].add({1520, 64, 127, 1});
+        state.chainMode = true;
+        state.bank->chain[0] = {5, 2};
+        state.bank->chain[1] = {0, 16};
+        state.bank->chainLength = 2;
 
         const SequencerState back = sequencerFromJson(sequencerToJson(state));
         QCOMPARE(back.pattern, 5);
@@ -39,6 +43,10 @@ private slots:
         QVERIFY(q.tracks[3].notes[0] == p.tracks[3].notes[0]);
         QVERIFY(q.tracks[3].notes[1] == p.tracks[3].notes[1]);
         QVERIFY(back.bank->patterns[0].empty());
+        QVERIFY(back.chainMode);
+        QCOMPARE(back.bank->chainLength, std::uint8_t(2));
+        QVERIFY(back.bank->chain[0] == state.bank->chain[0]);
+        QVERIFY(back.bank->chain[1] == state.bank->chain[1]);
         QCOMPARE(back.bank->patterns[0].length, std::uint16_t(4 * kTicksPerBeat));
     }
 

@@ -71,6 +71,7 @@ void SequencerController::load()
     for (int t = 0; t < kTracks; ++t)
         m_sequencer.setMute(t, m_state.mutes[std::size_t(t)]);
     m_sequencer.setRunning(m_state.running);
+    m_sequencer.setChainMode(m_state.chainMode);
     m_sequencer.cue(m_state.pattern);
     m_sequencer.setBank(std::make_unique<Bank>(*m_state.bank));
     ++m_revision;
@@ -366,6 +367,75 @@ QList<int> SequencerController::patternsWithNotes(int firstPattern, int count, i
     return list;
 }
 
+void SequencerController::setChainMode(bool on)
+{
+    if (on == m_state.chainMode)
+        return;
+    m_state.chainMode = on;
+    m_sequencer.setChainMode(on);
+    m_dirty = true;
+    m_saveTimer.start();
+    ++m_revision;
+    emit changed();
+}
+
+QVariantList SequencerController::chain() const
+{
+    QVariantList list;
+    for (int i = 0; i < m_state.bank->chainLength; ++i)
+        list << QVariantMap{{QStringLiteral("pattern"), int(m_state.bank->chain[std::size_t(i)].pattern)},
+                            {QStringLiteral("repeats"), int(m_state.bank->chain[std::size_t(i)].repeats)}};
+    return list;
+}
+
+void SequencerController::addToChain(int pattern, int after)
+{
+    Bank &bank = *m_state.bank;
+    if (pattern < 0 || pattern >= kPatterns || bank.chainLength >= kMaxChain)
+        return;
+    const int at = after < 0 || after >= bank.chainLength ? bank.chainLength : after + 1;
+    std::copy_backward(bank.chain.begin() + at, bank.chain.begin() + bank.chainLength,
+                       bank.chain.begin() + bank.chainLength + 1);
+    bank.chain[std::size_t(at)] = {std::uint8_t(pattern), 1};
+    ++bank.chainLength;
+    edited();
+}
+
+void SequencerController::removeChainStep(int step)
+{
+    Bank &bank = *m_state.bank;
+    if (step < 0 || step >= bank.chainLength)
+        return;
+    std::copy(bank.chain.begin() + step + 1, bank.chain.begin() + bank.chainLength, bank.chain.begin() + step);
+    --bank.chainLength;
+    edited();
+}
+
+void SequencerController::setChainRepeats(int step, int repeats)
+{
+    Bank &bank = *m_state.bank;
+    if (step < 0 || step >= bank.chainLength)
+        return;
+    const auto r = std::uint8_t(std::clamp(repeats, 1, kMaxRepeats));
+    if (r == bank.chain[std::size_t(step)].repeats)
+        return;
+    bank.chain[std::size_t(step)].repeats = r;
+    edited();
+}
+
+void SequencerController::clearChain()
+{
+    if (m_state.bank->chainLength == 0)
+        return;
+    m_state.bank->chainLength = 0;
+    edited();
+}
+
+void SequencerController::stepPattern(int delta)
+{
+    setPattern((m_state.pattern + delta + kPatterns) % kPatterns);
+}
+
 // --- Internals ------------------------------------------------------------------------
 
 void SequencerController::applyTargets()
@@ -404,10 +474,13 @@ void SequencerController::poll()
     const bool playing = m_sequencer.playing();
     const int pattern = m_sequencer.playingPattern();
     const int tick = m_sequencer.tick();
-    if (playing == m_playing && pattern == m_playingPattern && tick == m_tick)
+    const int step = m_sequencer.chainStep(), pass = m_sequencer.chainPass();
+    if (playing == m_playing && pattern == m_playingPattern && tick == m_tick && step == m_chainStep && pass == m_chainPass)
         return;
     m_playing = playing;
     m_playingPattern = pattern;
     m_tick = tick;
+    m_chainStep = step;
+    m_chainPass = pass;
     emit positionChanged();
 }

@@ -248,6 +248,64 @@ private slots:
         QCOMPARE(run.offs().size(), std::size_t(2)); // the third ends half a beat after it starts, past the run
     }
 
+    // CHAIN: the chain's patterns in order, each its number of times, then
+    // around again; switched on while playing, it starts at the next pass.
+    void chain()
+    {
+        // Patterns 0, 1, 2 are one beat long, each with one note: 60, 62, 64.
+        const auto makeBank = [] {
+            auto bank = std::make_unique<Bank>();
+            for (int p = 0; p < 3; ++p) {
+                bank->patterns[std::size_t(p)].length = 96;
+                bank->patterns[std::size_t(p)].tracks[0].add({0, 24, std::uint8_t(60 + 2 * p), 100});
+            }
+            bank->chain[0] = {2, 2};
+            bank->chain[1] = {0, 1};
+            bank->chainLength = 2;
+            return bank;
+        };
+        const auto keys = [](const Run &run) {
+            std::vector<int> k;
+            for (const Hit &h : run.ons())
+                k.push_back(h.key);
+            return k;
+        };
+        {
+            Sequencer seq;
+            seq.setTarget(0, {0, 0});
+            seq.setChainMode(true);
+            seq.setBank(makeBank());
+            Run run{seq};
+            run.blocks(24000 * 6 + 100);
+            QCOMPARE(keys(run), (std::vector<int>{64, 64, 60, 64, 64, 60, 64}));
+            QCOMPARE(seq.chainStep(), 0);
+        }
+        { // switched on mid-play: the chain starts at the next pass
+            Sequencer seq;
+            seq.setTarget(0, {0, 0});
+            seq.cue(1);
+            seq.setBank(makeBank());
+            Run run{seq};
+            run.blocks(12000);
+            QCOMPARE(seq.chainStep(), -1);
+            seq.setChainMode(true);
+            run.blocks(24000 * 3);
+            QCOMPARE(keys(run), (std::vector<int>{62, 64, 64, 60}));
+        }
+        { // an empty chain plays the cued pattern
+            Sequencer seq;
+            seq.setTarget(0, {0, 0});
+            seq.setChainMode(true);
+            auto bank = makeBank();
+            bank->chainLength = 0;
+            seq.setBank(std::move(bank));
+            seq.cue(1);
+            Run run{seq};
+            run.blocks(24000 * 2 + 100);
+            QCOMPARE(keys(run), (std::vector<int>{62, 62, 62}));
+        }
+    }
+
     // The merger: both sources' events, by frame, earlier source first on ties.
     void mergeByFrame()
     {
