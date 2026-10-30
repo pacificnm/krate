@@ -7,7 +7,7 @@ namespace k909 {
 
 namespace {
 
-// One string of 16 steps per track: '.' off, 'x' on, 'X' accent.
+// One string of 16 steps per track: '.' off, 'x' on, 'X' accent, 'f' flam.
 struct TrackSteps
 {
     DrumId drum;
@@ -22,6 +22,7 @@ Pattern makePattern(const TrackSteps (&tracks)[N], int length = 16)
         for (std::size_t i = 0; i < 16 && i < t.steps.size(); ++i)
             p.tracks[std::size_t(t.drum)][i] = t.steps[i] == 'X'   ? StepState::Accent
                                                : t.steps[i] == 'x' ? StepState::On
+                                               : t.steps[i] == 'f' ? StepState::Flam
                                                                    : StepState::Off;
     p.length = std::uint8_t(length);
     return p;
@@ -228,6 +229,18 @@ void Sequencer::setStep(int slot, int track, int step, StepState state) noexcept
         p->tracks[std::size_t(track)][std::size_t(step)] = state;
 }
 
+void Sequencer::setStepDetail(int slot, int track, int step, std::uint8_t velocity, std::uint8_t tune,
+                              std::uint8_t decay) noexcept
+{
+    Pattern *p = target(slot);
+    if (!p || track < 0 || track >= DrumCount || step < 0 || step >= 16)
+        return;
+    const auto t = std::size_t(track), s = std::size_t(step);
+    p->velocity[t][s] = std::min<std::uint8_t>(velocity, 127);
+    p->tune[t][s] = tune;
+    p->decay[t][s] = decay;
+}
+
 void Sequencer::setLength(int slot, int length) noexcept
 {
     if (Pattern *p = target(slot)) {
@@ -288,11 +301,18 @@ Hits Sequencer::hitsFor(int step) const noexcept
     if (step < 0 || step >= 16)
         return h;
     for (int t = 0; t < DrumCount; ++t) {
-        const StepState s = m_pattern.tracks[std::size_t(t)][std::size_t(step)];
-        if (s != StepState::Off)
-            h.on |= std::uint16_t(1u << t);
+        const auto track = std::size_t(t), at = std::size_t(step);
+        const StepState s = m_pattern.tracks[track][at];
+        if (s == StepState::Off)
+            continue;
+        h.on |= std::uint16_t(1u << t);
         if (s == StepState::Accent)
             h.accent |= std::uint16_t(1u << t);
+        if (s == StepState::Flam)
+            h.flam |= std::uint16_t(1u << t);
+        h.velocity[track] = m_pattern.velocity[track][at];
+        h.tune[track] = m_pattern.tune[track][at];
+        h.decay[track] = m_pattern.decay[track][at];
     }
     // A closed hat on the same step wins: the open hat would only be choked.
     constexpr auto ch = std::uint16_t(1u << int(DrumId::Ch));
@@ -300,6 +320,7 @@ Hits Sequencer::hitsFor(int step) const noexcept
     if (h.on & ch) {
         h.on &= std::uint16_t(~oh);
         h.accent &= std::uint16_t(~oh);
+        h.flam &= std::uint16_t(~oh);
     }
     return h;
 }
@@ -324,8 +345,8 @@ Hits Sequencer::tick(double beat) noexcept
             m_pendingStep = m_clock.step();
             return late;
         }
-        const Hits now = hitsFor(m_clock.step());
-        return {std::uint16_t(late.on | now.on), std::uint16_t(late.accent | now.accent)};
+        late.merge(hitsFor(m_clock.step()));
+        return late;
     }
     if (t.gatePoint && m_pendingStep >= 0) {
         const Hits h = hitsFor(m_pendingStep);

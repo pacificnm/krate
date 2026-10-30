@@ -95,11 +95,25 @@ public:
     // Play one voice now (0 = bass drum .. 10 = ride, track order), unaccented.
     Q_INVOKABLE void audition(int track);
 
-    // The current pattern's steps: 0 = off, 1 = on, 2 = accent.
+    // The current pattern's steps: 0 = off, 1 = on, 2 = accent, 3 = flam.
     Q_INVOKABLE int stepState(int track, int step) const;
     Q_INVOKABLE void setStepState(int track, int step, int state);
-    // Step button: off -> on -> accent -> off, on the selected track.
+    // Step button: off -> on -> accent -> flam -> off, on the selected track.
     Q_INVOKABLE void cycleStep(int step);
+
+    // A step's details (docs/SEQUENCER.md#step-details). Velocity 1..127, or 0:
+    // the pattern's (0.8, accented 1.0). Tune and decay locks 0..1, or -1: the knob.
+    Q_INVOKABLE int stepVelocity(int track, int step) const;
+    Q_INVOKABLE void setStepVelocity(int track, int step, int velocity);
+    Q_INVOKABLE qreal stepTune(int track, int step) const;
+    Q_INVOKABLE void setStepTune(int track, int step, qreal value);
+    Q_INVOKABLE qreal stepDecay(int track, int step) const;
+    Q_INVOKABLE void setStepDecay(int track, int step, qreal value);
+    Q_INVOKABLE bool stepHasDetails(int track, int step) const;
+    Q_INVOKABLE void clearStepDetails(int track, int step);
+    // The parameter keys a track's TUNE and DECAY locks stand for ("" if the voice has none).
+    Q_INVOKABLE QString tuneKey(int track) const;
+    Q_INVOKABLE QString decayKey(int track) const;
     Q_INVOKABLE void clearTrack(int track);
     Q_INVOKABLE void clearPattern();
 
@@ -117,6 +131,7 @@ private:
     k909::Pattern &current() { return m_bank.patterns[std::size_t(m_bank.current)]; }
     const k909::Pattern &current() const { return m_bank.patterns[std::size_t(m_bank.current)]; }
     void post(k909::Command &command); // to the engine, for the current pattern
+    void postDetail(int track, int step); // the step's details, to the engine
     void edited();                    // bump the revision and schedule a save
     void syncTempo();                 // the Tempo knob drives the transport, if we have one
     void poll();

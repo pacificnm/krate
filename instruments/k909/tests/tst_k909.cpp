@@ -178,6 +178,10 @@ private slots:
     void patternJsonRoundTrip()
     {
         persistence::PatternBank bank = persistence::defaultBank();
+        bank.patterns[1].tracks[std::size_t(DrumId::Sd)][5] = StepState::Flam;
+        bank.patterns[1].velocity[std::size_t(DrumId::Sd)][5] = 64;
+        bank.patterns[1].tune[std::size_t(DrumId::Me)][2] = lockOf(0.25);
+        bank.patterns[1].decay[std::size_t(DrumId::Bm)][0] = lockOf(1.0);
         bank.current = 5;
         Pattern &p = bank.patterns[5];
         p.length = 12;

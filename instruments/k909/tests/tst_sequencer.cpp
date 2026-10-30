@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include "core/Transport.h"
@@ -315,6 +317,78 @@ private slots:
         const krate::TransportState state = transport.advance(64, kRate);
         krate::processStereo(engine, l.data(), r.data(), 64, nullptr, 0, &state);
         QCOMPARE(engine.currentStep(), -1);
+    }
+
+    // ---- Step details: flam, velocity, locks (docs/SEQUENCER.md#step-details)
+
+    // The engine playing `pattern` for `frames` samples at 120 BPM: the left channel.
+    static std::vector<float> play(const Pattern &pattern, int frames, std::vector<std::pair<ParamId, float>> params = {})
+    {
+        Engine engine;
+        engine.prepare(kRate, 64);
+        for (const auto &[id, v] : params)
+            engine.setParam(int(id), v);
+        engine.setPattern(pattern);
+        krate::TransportState t;
+        t.playing = true;
+        t.restarted = true;
+        t.bpm = kBpm;
+        std::vector<float> out, l(64), r(64);
+        for (int f = 0; f < frames; f += 64) {
+            krate::processStereo(engine, l.data(), r.data(), 64, nullptr, 0, &t);
+            t.restarted = false;
+            t.beatAtBlockStart += 64 * kBpm / 60.0 / kRate;
+            out.insert(out.end(), l.begin(), l.end());
+        }
+        return out;
+    }
+
+    static float peak(const std::vector<float> &x, int from, int to)
+    {
+        float p = 0.0f;
+        for (int i = from; i < to && i < int(x.size()); ++i)
+            p = std::max(p, std::fabs(x[std::size_t(i)]));
+        return p;
+    }
+
+    // A flam: a soft grace hit on the step, the main hit kFlamSeconds later.
+    void flamPlaysGraceThenMain()
+    {
+        Pattern p;
+        p.tracks[std::size_t(DrumId::Rs)][0] = StepState::Flam;
+        const auto out = play(p, 4800);
+        const int delay = int(Engine::kFlamSeconds * kRate);
+        const float grace = peak(out, 0, delay - 10), main = peak(out, delay, delay + 400);
+        QVERIFY2(grace > 0.0f && main > 1.3f * grace, qPrintable(QStringLiteral("%1 %2").arg(grace).arg(main)));
+        // Nothing right before the main hit's start but the grace's tail.
+        QVERIFY(peak(out, delay - 10, delay) < grace);
+    }
+
+    // A step's velocity scales it; its tune lock retunes just that step.
+    void velocityAndLocks()
+    {
+        Pattern p;
+        p.tracks[std::size_t(DrumId::Rs)][0] = StepState::On;
+        const float normal = peak(play(p, 2400), 0, 2400);
+        p.velocity[std::size_t(DrumId::Rs)][0] = 40;
+        const float soft = peak(play(p, 2400), 0, 2400);
+        QVERIFY2(soft < 0.5f * normal, qPrintable(QStringLiteral("%1 %2").arg(normal).arg(soft)));
+
+        Pattern tuned;
+        tuned.tracks[std::size_t(DrumId::Bm)][0] = StepState::On;
+        tuned.tracks[std::size_t(DrumId::Bm)][8] = StepState::On;
+        tuned.tune[std::size_t(DrumId::Bm)][8] = lockOf(1.0); // step 9 an octave-plus up
+        const auto out = play(tuned, 16 * kFramesPerStep, {{ParamId::BmDecay, 0.0f}});
+        const auto zeroCrossings = [&](int from, int to) {
+            int n = 0;
+            for (int i = from + 1; i < to; ++i)
+                n += out[std::size_t(i - 1)] < 0.0f && out[std::size_t(i)] >= 0.0f ? 1 : 0;
+            return n;
+        };
+        const int first = zeroCrossings(4800, 12000), locked = zeroCrossings(8 * kFramesPerStep + 4800, 8 * kFramesPerStep + 12000);
+        QVERIFY2(locked > first + first / 2, qPrintable(QStringLiteral("%1 %2").arg(first).arg(locked)));
+        QCOMPARE(lockValue(lockOf(0.0)), 0.0f);
+        QCOMPARE(lockValue(lockOf(1.0)), 1.0f);
     }
 };
 

@@ -596,6 +596,8 @@ Item {
             readonly property int state: Drums.patternRevision >= 0
                                          ? Drums.stepState(Drums.selectedTrack, index) : 0
             readonly property bool inPattern: index < Drums.length
+            readonly property bool details: Drums.patternRevision >= 0
+                                            && Drums.stepHasDetails(Drums.selectedTrack, index)
 
             PanelLabel {
                 centerX: stepSlot.cx
@@ -628,7 +630,8 @@ Item {
 
                 Accessible.role: Accessible.Button
                 Accessible.name: "Step " + (stepSlot.index + 1)
-                    + [": off", ": on", ": accent"][stepSlot.state]
+                    + [": off", ": on", ": accent", ": flam"][stepSlot.state]
+                    + (stepSlot.details ? ", with details" : "")
 
                 Rectangle {
                     anchors.centerIn: parent
@@ -636,16 +639,145 @@ Item {
                     height: parent.height * 0.42
                     radius: 3
                     border.color: "#2A2B2D"
-                    color: stepSlot.state === 2 ? Theme.ledOn
+                    color: stepSlot.state === 3 ? "#3F7FD0"
+                         : stepSlot.state === 2 ? Theme.ledOn
                          : stepSlot.state === 1 ? Theme.labelOrange : "#55575B"
+                }
+                Rectangle { // the step has a velocity or locks
+                    visible: stepSlot.details
+                    x: parent.width - 14
+                    y: 6
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: "#2A2B2D"
                 }
 
                 MouseArea {
                     id: stepMouse
                     anchors.fill: parent
-                    onClicked: Drums.cycleStep(stepSlot.index)
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: mouse => {
+                        if (mouse.button === Qt.RightButton)
+                            stepEditor.edit(stepSlot.index, stepSlot.cx)
+                        else
+                            Drums.cycleStep(stepSlot.index)
+                    }
                 }
             }
+        }
+    }
+
+    // Step editor (docs/SEQUENCER.md#step-details): right-click a step for its
+    // velocity and its TUNE and DECAY locks. A knob shows the voice's own value
+    // until it is moved; double-click puts it back to that.
+    Rectangle {
+        id: stepEditor
+        property int step: -1
+        readonly property int track: Drums.selectedTrack
+        readonly property string tuneKey: Drums.tuneKey(track)
+        readonly property string decayKey: Drums.decayKey(track)
+        readonly property int rev: Drums.patternRevision + Drums.revision
+        function edit(index, cx) {
+            step = index
+            x = Math.max(panel.margin, Math.min(panel.width - panel.margin - width, cx - width / 2))
+        }
+        visible: step >= 0
+        y: 620
+        z: 10
+        width: 330
+        height: 170
+        radius: 6
+        color: panel.chassisLight
+        border.color: panel.headerBar
+        border.width: 2
+
+        MouseArea { anchors.fill: parent } // keep clicks from the controls underneath
+
+        PanelLabel {
+            x: 14
+            y: 10
+            text: panel.tracks[stepEditor.track].name + "  ·  STEP " + (stepEditor.step + 1)
+            orange: true
+        }
+        Repeater {
+            model: [
+                { label: "VELOCITY", kind: 0, cx: 60 }, { label: "TUNE", kind: 1, cx: 150 }, { label: "DECAY", kind: 2, cx: 240 }
+            ]
+
+            Item {
+                id: detail
+                required property var modelData
+                readonly property string key: modelData.kind === 1 ? stepEditor.tuneKey : stepEditor.decayKey
+                readonly property bool usable: modelData.kind === 0 || key !== ""
+                // The step's own value, or < 0 when it has none (the voice's then shows).
+                readonly property real own: stepEditor.rev >= 0 && stepEditor.step >= 0
+                    ? (modelData.kind === 0 ? Drums.stepVelocity(stepEditor.track, stepEditor.step) / 127
+                       : modelData.kind === 1 ? Drums.stepTune(stepEditor.track, stepEditor.step)
+                       : Drums.stepDecay(stepEditor.track, stepEditor.step)) : -1
+                readonly property bool hasOwn: modelData.kind === 0 ? own > 0 : own >= 0
+                readonly property real fallback: modelData.kind === 0
+                    ? (stepEditor.step >= 0 && Drums.stepState(stepEditor.track, stepEditor.step) === 2 ? 1.0 : 0.8)
+                    : (usable && stepEditor.rev >= 0 ? Drums.value(key) : 0.5)
+                opacity: usable ? 1.0 : 0.35
+
+                PanelLabel { centerX: detail.modelData.cx; y: 40; text: detail.modelData.label; font.pixelSize: 12 }
+                Knob {
+                    id: detailKnob
+                    x: detail.modelData.cx - width / 2
+                    y: 60
+                    width: 56
+                    height: 56
+                    enabled: detail.usable
+                    name: "Step " + detail.modelData.label.toLowerCase()
+                    value: detail.hasOwn ? detail.own : detail.fallback
+                    defaultValue: detail.fallback
+                    displayText: detail.text
+                    capColor: "#3A3B3E"
+                    capShadeColor: "#111213"
+                    capBorderColor: "#08080A"
+                    pointerColor: detail.hasOwn ? "#3F7FD0" : Theme.labelOrange
+                    // Back on the voice's value (a double-click does that): the step's own is cleared.
+                    onMoved: v => {
+                        const clear = Math.abs(v - detail.fallback) < 1e-6
+                        if (detail.modelData.kind === 0)
+                            Drums.setStepVelocity(stepEditor.track, stepEditor.step, clear ? 0 : Math.max(1, Math.round(v * 127)))
+                        else if (detail.modelData.kind === 1)
+                            Drums.setStepTune(stepEditor.track, stepEditor.step, clear ? -1 : v)
+                        else
+                            Drums.setStepDecay(stepEditor.track, stepEditor.step, clear ? -1 : v)
+                    }
+                }
+                readonly property string text: !usable ? "—"
+                    : !hasOwn ? "Voice's"
+                    : modelData.kind === 0 ? String(Math.round(own * 127))
+                    : Drums.displayText(key, own)
+                PanelLabel {
+                    centerX: detail.modelData.cx
+                    y: 120
+                    text: detail.text
+                    font.pixelSize: 11
+                    font.bold: false
+                }
+            }
+        }
+        PanelButton {
+            x: 14
+            y: 136
+            width: 80
+            height: 26
+            faceText: "CLEAR"
+            text: "Clear this step's velocity and locks"
+            onClicked: Drums.clearStepDetails(stepEditor.track, stepEditor.step)
+        }
+        PanelButton {
+            x: stepEditor.width - 94
+            y: 136
+            width: 80
+            height: 26
+            faceText: "CLOSE"
+            text: "Close the step editor"
+            onClicked: stepEditor.step = -1
         }
     }
 
@@ -707,9 +839,10 @@ Item {
             event.accepted = true
             return
         }
-        if (event.key === Qt.Key_Escape && (MidiLearn.active || Kits.writing)) {
+        if (event.key === Qt.Key_Escape && (MidiLearn.active || Kits.writing || stepEditor.visible)) {
             MidiLearn.active = false
             Kits.cancel()
+            stepEditor.step = -1
             event.accepted = true
             return
         }

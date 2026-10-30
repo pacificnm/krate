@@ -16,7 +16,7 @@ Related docs: [DSP.md](DSP.md) (the voices), [SEQUENCER.md](SEQUENCER.md), [UI.m
 - **MIDI**: notes play the voices (General MIDI drum note numbers); MIDI Learn for every knob, pattern button and start/stop; in the rack, default channel 10.
 - **Storage**: `~/.config/k909/panel.json` and `midimap.json`, `~/.local/share/k909/patterns.json`. Shared with the rack, as k303's are.
 
-Kits: [KITS.md](KITS.md). Not in v1 (see [ROADMAP.md](ROADMAP.md#later)): flam, per-step parameter locks, per-voice outputs, song mode.
+Kits: [KITS.md](KITS.md). Flam, step velocity and tune / decay locks: [SEQUENCER.md](SEQUENCER.md#step-details). Not yet (see [ROADMAP.md](ROADMAP.md#later)): per-voice outputs, song mode.
 
 ## Parameters
 

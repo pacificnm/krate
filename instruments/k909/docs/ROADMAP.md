@@ -15,13 +15,13 @@ Each milestone ends with something you can run and check, and is committed and p
 | D7 ✅ | **Engine** | Kick SWEEP / BEND / TONE, snare DECAY / CRACK, rim and clap TUNE / DECAY, clap SPREAD, hat TUNE; a MIX page (per-voice PAN, DRIVE, REVERB and DELAY sends); the gated reverb, delay, bus compressor and crusher; 92 parameters (`ParamValues` past 64). Result: every new control defaults to the original kit (all reference renders byte-identical); `k909_tst_character` |
 | D8 ✅ | **Industrial voices and kits** | METAL, CLANK, NOISE, BOOM; 16 kits with six factory kits (Classic, Industrial, EBM, Gated 80s, Crushed, Machine Shop), KIT display and WRITE; patterns I–P with eight industrial factory patterns. Result: 123 parameters; every factory kit on every factory pattern measured (all peaks under 0 dBFS); the compressor's makeup raised to ¾ of the reduction; bench 1.9 % (15 voices), 3.4 % with everything on ([KITS.md](KITS.md)) |
 
+| D9 ✅ | **Step details** | Flam (a fourth step state), per-step velocity, tune and decay locks; the step editor (right-click a step); stored in `patterns.json`. Result: as planned; flam's main hit 18 ms after a 60 % grace hit; patterns without details render byte-identically; tests in `k909_tst_sequencer` and `tst_k909` |
+
 ## Later
 
 | Feature | Notes |
 | --- | --- |
 | Sound tuning by ear | Per-voice adjustments from listening (kick body and click, snare snap, hat brightness, clap spread); DSP.md follows |
-| Flam | Per-step flam, a fourth step state |
-| Parameter locks | Per-step tune/decay values |
 | Per-voice outputs | `outputChannels()` > 2; the rack gives each a port pair |
 | Pattern chaining / song mode | Shared with k303 if it happens |
 | Step record | Play the pads while running to write steps |

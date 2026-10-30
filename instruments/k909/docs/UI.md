@@ -49,7 +49,7 @@ The reference layout's timing-scale strip above the step buttons (note symbols) 
 | UNMAP, AUDIO, LEARN, ABOUT | As k303: clear all mappings, audio status (click to reconnect), MIDI Learn mode, about box |
 | START / STOP | Run and stop the transport (standalone; hidden in the rack). Learnable as `startstop`. Space also toggles |
 | CLEAR | Clear the selected track; Shift+click clears the whole pattern |
-| Step buttons 1–16 | Toggle the selected track's step: off → on → accent. Lit steps show on, bright steps show accent |
+| Step buttons 1–16 | Toggle the selected track's step: off → on → accent → flam. Orange = on, red = accent, blue = flam; a dot = the step has details. **Right-click**: the step editor (VELOCITY, TUNE, DECAY, CLEAR, CLOSE; Esc closes) |
 | Track strip | Click a voice name to select its track (it lights orange). Right-click a name to audition its voice |
 
 Keyboard (standalone window): Space run/stop; A–H select a pattern; ↑ ↓ change the selected track; L toggles learn; Esc leaves learn. In the rack, Space, L and Esc belong to the rack window, so only ↑ ↓ and A–H apply.

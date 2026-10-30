@@ -218,7 +218,7 @@ int DrumsController::stepState(int track, int step) const
 
 void DrumsController::setStepState(int track, int step, int state)
 {
-    if (track < 0 || track >= k909::DrumCount || step < 0 || step >= 16 || state < 0 || state > 2)
+    if (track < 0 || track >= k909::DrumCount || step < 0 || step >= 16 || state < 0 || state > 3)
         return;
     auto &slot = current().tracks[std::size_t(track)][std::size_t(step)];
     if (int(slot) == state)
@@ -235,7 +235,101 @@ void DrumsController::setStepState(int track, int step, int state)
 
 void DrumsController::cycleStep(int step)
 {
-    setStepState(m_selectedTrack, step, (stepState(m_selectedTrack, step) + 1) % 3);
+    setStepState(m_selectedTrack, step, (stepState(m_selectedTrack, step) + 1) % 4);
+}
+
+namespace {
+bool validStep(int track, int step) { return track >= 0 && track < k909::DrumCount && step >= 0 && step < 16; }
+// Each track's TUNE and DECAY parameter keys (DrumId order); "" = none.
+constexpr std::array<const char *, k909::DrumCount> kTuneKeys{
+    "bd_tune", "sd_tune", "lt_tune", "mt_tune", "ht_tune", "rs_tune", "cp_tune", "hh_tune",
+    "hh_tune", "cr_tune", "rd_tune", "me_tune", "ck_tune", "nz_tone", "bm_tune"};
+constexpr std::array<const char *, k909::DrumCount> kDecayKeys{
+    "bd_decay", "sd_decay", "lt_decay", "mt_decay", "ht_decay", "rs_decay", "cp_decay", "ch_decay",
+    "oh_decay", "", "", "me_decay", "ck_decay", "nz_decay", "bm_decay"};
+} // namespace
+
+QString DrumsController::tuneKey(int track) const
+{
+    return track >= 0 && track < k909::DrumCount ? QString::fromLatin1(kTuneKeys[std::size_t(track)]) : QString();
+}
+
+QString DrumsController::decayKey(int track) const
+{
+    return track >= 0 && track < k909::DrumCount ? QString::fromLatin1(kDecayKeys[std::size_t(track)]) : QString();
+}
+
+int DrumsController::stepVelocity(int track, int step) const
+{
+    return validStep(track, step) ? current().velocity[std::size_t(track)][std::size_t(step)] : 0;
+}
+
+qreal DrumsController::stepTune(int track, int step) const
+{
+    if (!validStep(track, step))
+        return -1.0;
+    const std::uint8_t lock = current().tune[std::size_t(track)][std::size_t(step)];
+    return lock > 0 ? qreal(k909::lockValue(lock)) : -1.0;
+}
+
+qreal DrumsController::stepDecay(int track, int step) const
+{
+    if (!validStep(track, step))
+        return -1.0;
+    const std::uint8_t lock = current().decay[std::size_t(track)][std::size_t(step)];
+    return lock > 0 ? qreal(k909::lockValue(lock)) : -1.0;
+}
+
+bool DrumsController::stepHasDetails(int track, int step) const
+{
+    return stepVelocity(track, step) > 0 || stepTune(track, step) >= 0.0 || stepDecay(track, step) >= 0.0;
+}
+
+void DrumsController::setStepVelocity(int track, int step, int velocity)
+{
+    if (!validStep(track, step))
+        return;
+    current().velocity[std::size_t(track)][std::size_t(step)] = std::uint8_t(std::clamp(velocity, 0, 127));
+    postDetail(track, step);
+}
+
+void DrumsController::setStepTune(int track, int step, qreal value)
+{
+    if (!validStep(track, step))
+        return;
+    current().tune[std::size_t(track)][std::size_t(step)] = value < 0.0 ? 0 : k909::lockOf(value);
+    postDetail(track, step);
+}
+
+void DrumsController::setStepDecay(int track, int step, qreal value)
+{
+    if (!validStep(track, step))
+        return;
+    current().decay[std::size_t(track)][std::size_t(step)] = value < 0.0 ? 0 : k909::lockOf(value);
+    postDetail(track, step);
+}
+
+void DrumsController::clearStepDetails(int track, int step)
+{
+    if (!validStep(track, step))
+        return;
+    const auto t = std::size_t(track), s = std::size_t(step);
+    current().velocity[t][s] = current().tune[t][s] = current().decay[t][s] = 0;
+    postDetail(track, step);
+}
+
+void DrumsController::postDetail(int track, int step)
+{
+    const auto t = std::size_t(track), s = std::size_t(step);
+    k909::Command command;
+    command.kind = k909::Command::Kind::SetStepDetail;
+    command.drum = std::uint8_t(track);
+    command.step = std::uint8_t(step);
+    command.value = current().velocity[t][s];
+    command.tune = current().tune[t][s];
+    command.decay = current().decay[t][s];
+    post(command);
+    edited();
 }
 
 void DrumsController::clearTrack(int track)
@@ -243,14 +337,20 @@ void DrumsController::clearTrack(int track)
     if (track < 0 || track >= k909::DrumCount)
         return;
     current().tracks[std::size_t(track)].fill(k909::StepState::Off);
+    current().velocity[std::size_t(track)].fill(0);
+    current().tune[std::size_t(track)].fill(0);
+    current().decay[std::size_t(track)].fill(0);
     m_engine.postReplace(current(), m_bank.current);
     edited();
 }
 
 void DrumsController::clearPattern()
 {
-    for (auto &track : current().tracks)
-        track.fill(k909::StepState::Off);
+    const std::uint8_t length = current().length, scale = current().stepsPerBeat, order = current().order;
+    current() = k909::Pattern{};
+    current().length = length;
+    current().stepsPerBeat = scale;
+    current().order = order;
     m_engine.postReplace(current(), m_bank.current);
     edited();
 }

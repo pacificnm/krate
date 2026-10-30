@@ -24,6 +24,7 @@ struct Command
         SetLength,       // pattern `slot`: `value` steps
         SetStepsPerBeat, // pattern `slot`: `value`
         SetOrder,        // pattern `slot`: `value` (krate::StepClock::Order)
+        SetStepDetail,   // pattern `slot`: drum's `step` velocity `value`, `tune`, `decay` (Pattern's encoding)
     };
     Kind kind = Kind::Trigger;
     std::uint8_t slot = 0;     // pattern bank slot 0..7 (A..H)
@@ -33,6 +34,7 @@ struct Command
     std::uint8_t step = 0;
     StepState state = StepState::Off;
     std::uint8_t value = 0;
+    std::uint8_t tune = 0, decay = 0;
 };
 
 // K909's realtime core (docs/DSP.md, docs/SEQUENCER.md): the voices played by
@@ -58,8 +60,12 @@ public:
     float param(ParamId id) const noexcept { return m_params.get(int(id)); }
 
     // Audio thread (or offline, between blocks): play a voice now, with the
-    // current knob settings. velocity 0..1; accent adds Total Accent.
-    void trigger(DrumId drum, float velocity, bool accent) noexcept;
+    // current knob settings. velocity 0..1; accent adds Total Accent; a
+    // tune or decay lock (0..1, < 0 = none) replaces that knob for this hit.
+    void trigger(DrumId drum, float velocity, bool accent, float tuneLock = -1.0f, float decayLock = -1.0f) noexcept;
+
+    static constexpr double kFlamSeconds = 0.018; // the main hit after a flam's grace hit
+    static constexpr float kFlamGrace = 0.6f;     // the grace hit's velocity, of the main one's
     bool sounding(DrumId drum) const noexcept { return m_voices.sounding(drum); }
 
     // Any thread: the playing step 0..15, or -1 when stopped (step LEDs); the
@@ -130,6 +136,16 @@ private:
     double m_compSmoothing = 0.0;
     double m_crushPhase = 1.0;
     float m_crushL = 0.0f, m_crushR = 0.0f;
+
+    // Flams waiting for their main hit.
+    struct PendingFlam
+    {
+        int frames = 0; // to go; 0 = none
+        float velocity = 0.0f, tune = -1.0f, decay = -1.0f;
+        bool accent = false;
+    };
+    std::array<PendingFlam, DrumCount> m_flams{};
+    int m_flamsPending = 0;
 
     double m_volume = -1.0;          // smoothed output gain; < 0 = not yet primed
     double m_volumeSmoothing = 0.0;  // per-sample one-pole coefficient

@@ -6,9 +6,29 @@
 
 namespace k909::persistence {
 
+QString trackKey(int track);
+
 namespace {
 constexpr std::array<const char *, DrumCount> kTrackKeys{"bd", "sd", "lt", "mt", "ht", "rs", "cp", "ch",
                                                           "oh", "cr", "rd", "me", "ck", "nz", "bm"};
+
+// A track's step details as a JSON array, or nothing when they are all 0.
+QJsonArray detailArray(const std::array<std::uint8_t, 16> &bytes)
+{
+    if (std::all_of(bytes.begin(), bytes.end(), [](std::uint8_t b) { return b == 0; }))
+        return {};
+    QJsonArray array;
+    for (std::uint8_t b : bytes)
+        array.append(int(b));
+    return array;
+}
+
+void readDetails(const QJsonObject &details, int track, int maximum, std::array<std::uint8_t, 16> *bytes)
+{
+    const QJsonArray array = details.value(trackKey(track)).toArray();
+    for (int s = 0; s < 16 && s < array.size(); ++s)
+        (*bytes)[std::size_t(s)] = std::uint8_t(std::clamp(array.at(s).toInt(0), 0, maximum));
+}
 
 int clampStepsPerBeat(int steps)
 {
@@ -35,8 +55,15 @@ QJsonObject toJson(const PatternBank &bank)
 {
     QJsonArray patterns;
     for (const Pattern &p : bank.patterns) {
-        QJsonObject tracks;
+        QJsonObject tracks, velocity, tune, decay;
         for (int t = 0; t < DrumCount; ++t) {
+            const auto add = [&](QJsonObject &into, const StepBytes &bytes) {
+                if (const QJsonArray a = detailArray(bytes[std::size_t(t)]); !a.isEmpty())
+                    into.insert(trackKey(t), a);
+            };
+            add(velocity, p.velocity);
+            add(tune, p.tune);
+            add(decay, p.decay);
             const auto &steps = p.tracks[std::size_t(t)];
             if (std::all_of(steps.begin(), steps.end(), [](StepState s) { return s == StepState::Off; }))
                 continue; // empty tracks are left out
@@ -45,12 +72,20 @@ QJsonObject toJson(const PatternBank &bank)
                 text[i] = QChar(u'0' + int(steps[std::size_t(i)]));
             tracks.insert(trackKey(t), text);
         }
-        patterns.append(QJsonObject{
+        QJsonObject po{
             {QStringLiteral("length"), p.length},
             {QStringLiteral("scale"), p.stepsPerBeat},
             {QStringLiteral("order"), p.order},
             {QStringLiteral("tracks"), tracks},
-        });
+        };
+        // Step details only where there are any (docs/SEQUENCER.md#step-details).
+        if (!velocity.isEmpty())
+            po.insert(QStringLiteral("velocity"), velocity);
+        if (!tune.isEmpty())
+            po.insert(QStringLiteral("tune"), tune);
+        if (!decay.isEmpty())
+            po.insert(QStringLiteral("decay"), decay);
+        patterns.append(po);
     }
     return {
         {QStringLiteral("version"), kPatternFileVersion},
@@ -76,10 +111,14 @@ PatternBank fromJson(const QJsonObject &json)
             const QString text = tracks.value(trackKey(t)).toString();
             for (int s = 0; s < 16 && s < text.size(); ++s) {
                 const int v = text.at(s).unicode() - u'0';
-                p.tracks[std::size_t(t)][std::size_t(s)] = v == 2 ? StepState::Accent
+                p.tracks[std::size_t(t)][std::size_t(s)] = v == 3   ? StepState::Flam
+                                                         : v == 2 ? StepState::Accent
                                                          : v == 1 ? StepState::On
                                                                   : StepState::Off;
             }
+            readDetails(po.value(u"velocity").toObject(), t, 127, &p.velocity[std::size_t(t)]);
+            readDetails(po.value(u"tune").toObject(), t, 255, &p.tune[std::size_t(t)]);
+            readDetails(po.value(u"decay").toObject(), t, 255, &p.decay[std::size_t(t)]);
         }
     }
     return bank;

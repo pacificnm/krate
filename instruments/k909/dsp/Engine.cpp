@@ -64,6 +64,8 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
     m_compSmoothing = 1.0 - std::exp(-1.0 / (0.005 * sampleRate));
     m_crushPhase = 1.0;
     m_crushL = m_crushR = 0.0f;
+    m_flams.fill({});
+    m_flamsPending = 0;
     m_volumeSmoothing = 1.0 - std::exp(-1.0 / (kVolumeSmoothingSeconds * sampleRate));
     m_volume = -1.0;
 }
@@ -97,7 +99,7 @@ DrumId Engine::drumForNote(int note) noexcept
     }
 }
 
-void Engine::trigger(DrumId drum, float velocity, bool accent) noexcept
+void Engine::trigger(DrumId drum, float velocity, bool accent, float tuneLock, float decayLock) noexcept
 {
     if (drum == DrumId::Count)
         return;
@@ -107,8 +109,8 @@ void Engine::trigger(DrumId drum, float velocity, bool accent) noexcept
     hit.accent = accent;
     const double accentGain = accent ? 1.0 + double(m_params.get(int(ParamId::Accent))) : 1.0; // up to +6 dB
     hit.gain = units::gain(knob(knobs.level)) * std::clamp(double(velocity), 0.0, 1.0) * accentGain;
-    hit.tune = knob(knobs.tune);
-    hit.decay = knob(knobs.decay);
+    hit.tune = tuneLock >= 0.0f ? tuneLock : knob(knobs.tune);
+    hit.decay = decayLock >= 0.0f ? decayLock : knob(knobs.decay);
     for (std::size_t i = 0; i < hit.extra.size(); ++i)
         hit.extra[i] = knob(knobs.extra[i]);
     m_voices.trigger(drum, hit);
@@ -253,6 +255,9 @@ void Engine::apply(const Command &command) noexcept
     case Command::Kind::SetOrder:
         m_sequencer.setOrder(command.slot, command.value);
         break;
+    case Command::Kind::SetStepDetail:
+        m_sequencer.setStepDetail(command.slot, command.drum, command.step, command.value, command.tune, command.decay);
+        break;
     }
 }
 
@@ -261,8 +266,22 @@ void Engine::play(const Hits &hits) noexcept
     for (int d = 0; d < DrumCount; ++d) {
         if (!(hits.on & (1u << d)))
             continue;
+        const auto i = std::size_t(d);
         const bool accent = (hits.accent & (1u << d)) != 0;
-        trigger(DrumId(d), accent ? kAccentVelocity : kStepVelocity, accent);
+        const float velocity = hits.velocity[i] > 0 ? float(hits.velocity[i]) / 127.0f
+                                                    : accent ? kAccentVelocity : kStepVelocity;
+        const float tune = hits.tune[i] > 0 ? lockValue(hits.tune[i]) : -1.0f;
+        const float decay = hits.decay[i] > 0 ? lockValue(hits.decay[i]) : -1.0f;
+        if (hits.flam & (1u << d)) {
+            // The grace hit now, the main one kFlamSeconds later.
+            trigger(DrumId(d), kFlamGrace * velocity, false, tune, decay);
+            PendingFlam &flam = m_flams[i];
+            if (flam.frames == 0)
+                ++m_flamsPending;
+            flam = {std::max(1, int(kFlamSeconds * m_sampleRate)), velocity, tune, decay, accent};
+            continue;
+        }
+        trigger(DrumId(d), velocity, accent, tune, decay);
     }
 }
 
@@ -337,6 +356,15 @@ void Engine::process(const krate::AudioBlock &block) noexcept
             renderTo(i);
             handleMidi(block.midi[nextEvent++]);
         }
+        if (m_flamsPending > 0)
+            for (int d = 0; d < DrumCount; ++d) {
+                PendingFlam &flam = m_flams[std::size_t(d)];
+                if (flam.frames > 0 && --flam.frames == 0) {
+                    renderTo(i);
+                    trigger(DrumId(d), flam.velocity, flam.accent, flam.tune, flam.decay);
+                    --m_flamsPending;
+                }
+            }
         if (sequence) {
             const Hits hits = m_sequencer.tick(transport.beatAtBlockStart + double(i) * beatsPerSample);
             if (hits.on) {
