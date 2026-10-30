@@ -118,6 +118,8 @@ The left of the function deck. **Play mode** chooses what your keys do:
 | **TIE** | While loading: the note before goes on through this step. |
 | **LEGATO** | While loading: the step just loaded runs straight into the next note, with no gap (press again to undo). With TRIGGER on Gate the envelope goes on, and with portamento on Auto the pitch glides: the classic sliding bass line. |
 | **CLEAR** | Empties the current pattern (16 rests). |
+| **GEN** | In SEQ mode: writes a new random pattern into the current one, at its length. The notes come from the keys you hold (hold a few, then press GEN), else from the pattern's own notes, else a C minor pentatonic bass scale; RANGE spreads them over 1–3 octaves. Some notes tie on and some slide legato into the next. Each press makes a different one: keep pressing until one grabs you, then edit it step by step. |
+| **DENSITY** | For GEN: how many steps play, 0–100 % (the first step always does); the rest are rests. Low makes sparse, funky lines; high, busy ones. |
 
 **Loading a pattern**: choose **SEQ** with the transport stopped. The BANK and PATCH buttons become the sequencer's 64 steps, in four rows of 16. Click a step (it blinks), then play notes one at a time: each goes into the step and the next blinks. Press a key while still holding the one before, and the one before becomes legato (a small dot on its step). **Shift-click** a step to make it the last one. **▲ ▼** next to the display choose the pattern (**P1**–**P8**). Click the blinking step to stop loading. Patterns belong to the instrument, not to a patch: change the sound while the pattern plays.
 
@@ -135,7 +137,7 @@ How far the pitch bend wheel and the mod wheel move things.
 
 ## Patches
 
-64 patches: 8 banks × 8, shown as **11**–**88** with the patch's name under the display. A patch keeps everything on the panel except VOLUME, TEMPO, OCTAVE and HOLD.
+64 patches: 8 banks × 8, shown as **11**–**88** with the patch's name under the display. A patch keeps everything on the panel except VOLUME, TEMPO, OCTAVE, HOLD and DENSITY.
 
 | Control | What it does |
 | --- | --- |
@@ -190,7 +192,7 @@ The **mod wheel** adds LFO vibrato (see LEVER). The **sustain pedal** holds the 
 | **HELP** | Opens this manual, with a search. |
 
 - **Channel**: standalone, Kobalt plays on every channel; in the Krate rack, on channel 7 by default.
-- **Learnable buttons**: NOTE, ARP, SEQ, HOLD, START, REST, TIE, LEGATO, WRITE, the BANK and PATCH buttons and OCTAVE ◂ ▸, so a controller can switch patches, arpeggios and patterns while you play.
+- **Learnable buttons**: NOTE, ARP, SEQ, HOLD, START, GEN, REST, TIE, LEGATO, WRITE, the BANK and PATCH buttons and OCTAVE ◂ ▸, so a controller can switch patches, arpeggios and patterns while you play.
 - **Program Change** loads a patch (0 = 11, 1 = 12, … 8 = 21, …). **Pitch bend**, **CC 1** (mod wheel) and **CC 64** (sustain) are understood; CC 120 and 123 stop the note.
 
 ## Sound design recipes

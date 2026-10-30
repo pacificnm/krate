@@ -11,6 +11,7 @@ add_library(kobalt_dsp STATIC
     dsp/Params.h
     dsp/Params.cpp
     dsp/Sequence.h
+    dsp/Sequence.cpp
     dsp/Voice.h
     dsp/Voice.cpp
 )

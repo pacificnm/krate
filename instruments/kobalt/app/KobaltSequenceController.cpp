@@ -1,6 +1,7 @@
 #include "kobalt/app/KobaltSequenceController.h"
 
 #include <algorithm>
+#include <vector>
 
 #include <QJSEngine>
 #include <QLoggingCategory>
@@ -210,6 +211,26 @@ void KobaltSequenceController::legato()
 void KobaltSequenceController::clear()
 {
     current() = kobalt::SeqPattern{};
+    m_cursor = -1;
+    m_lastLoaded = -1;
+    edited();
+}
+
+void KobaltSequenceController::generate()
+{
+    std::vector<int> pool;
+    for (int n = 0; n < 128; ++n)
+        if (m_engine.noteHeld(n))
+            pool.push_back(n);
+    if (pool.empty())
+        for (int s = 0; s < current().length; ++s)
+            if (current().steps[std::size_t(s)].kind == Kind::Note)
+                pool.push_back(current().steps[std::size_t(s)].note);
+    const int octaves = 1 + kobalt::units::index(float(m_panel.value(QStringLiteral("arp_range"))),
+                                                 kobalt::positions::kArpRange);
+    m_seed = m_seed * 1664525u + 1013904223u; // a new pattern every press
+    current() = kobalt::generatePattern(pool, octaves, m_panel.value(QStringLiteral("gen_density")), current().length,
+                                        m_seed);
     m_cursor = -1;
     m_lastLoaded = -1;
     edited();

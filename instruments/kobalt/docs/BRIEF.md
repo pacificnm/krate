@@ -62,6 +62,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | | `arp_range` | Arp Range | 1–3 octaves (3) |
 | | `arp_rate` | Rate | 1/8, 1/16, 1/8T, 1/16T (4), for the arpeggiator and the sequencer |
 | | `arp_hold` | Hold | Off, On (2) *panel* |
+| | `gen_density` | Density | 0–100 %: how many steps the pattern generator fills *panel* |
 | Effects | `delay_level` | Delay Level | 0–100 % wet |
 | | `delay_time` | Delay Time | 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2 (7), synced to the tempo |
 | | `delay_fb` | Delay Feedback | 0–90 % |
@@ -71,7 +72,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | Master | `volume` | Volume | output level *panel* |
 | | `tempo` | Tempo | 40–240 BPM; drives the standalone transport, unused in the rack *panel* |
 
-42 parameters, within `ParamValues`' limit of 64.
+43 parameters, within `ParamValues`' limit of 64.
 
 ## Sound engine
 
@@ -92,6 +93,7 @@ Play Mode SEQ: 8 patterns of up to 64 steps, each step a **note**, a **rest** or
 
 - **Playing**: with the transport running (and Kobalt's RUN on, in the rack), the pattern plays; joining a running transport starts on the next bar. The keys transpose it by their distance from middle C, and don't sound themselves. Stopped, the keys play as usual.
 - **Loading**: click a step on the grid (it blinks), then play notes one at a time: each goes into that step and the next is picked, wrapping at the pattern's length. A key going down while the one before is still held makes the step before legato. **REST** and **TIE** fill the step; **LEGATO** turns legato on or off for the step just loaded; **CLEAR** empties the pattern (16 rests). Shift-click a step to make it the last. Click the blinking step again to stop loading.
+- **Generating**: **GEN** writes a new random pattern into the current one, at its length: notes from the held keys, else the pattern's own notes, else C minor pentatonic from C2, spread over Arp Range's octaves, moving mostly by small steps with the odd leap; **DENSITY** is the share of steps that play (the first always does). About one playing step in eight that follows a note is a tie, and a quarter of the notes that follow a note have the one before slide into them (legato). Every press makes a different one.
 - **Patterns**: the arrows next to the display pick P1–P8.
 - **Storage**: `~/.local/share/kobalt/sequences.json`, saved 2 s after an edit: each pattern's length and steps, a step `null` (rest), `{"note": n}` or `{"tie": true}`, with `"legato": true` when it runs on.
 
@@ -114,7 +116,7 @@ Play Mode SEQ: 8 patterns of up to 64 steps, each step a **note**, a **rest** or
 | id / name | `kobalt` / `Kobalt` |
 | default MIDI channel | 6 (channel 7) |
 | QML module / panel | `Kobalt` / `Panel` |
-| actions | `bank1` … `bank8`, `patch1` … `patch8`, `note`, `arp`, `seq`, `hold`, `write`, `start`, `rest`, `tie`, `legato`, `octave_down`, `octave_up` |
+| actions | `bank1` … `bank8`, `patch1` … `patch8`, `note`, `arp`, `seq`, `hold`, `write`, `start`, `rest`, `tie`, `legato`, `generate`, `octave_down`, `octave_up` |
 
 ## Outputs
 

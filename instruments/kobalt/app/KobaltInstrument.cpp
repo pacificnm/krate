@@ -43,6 +43,8 @@ void Instance::triggerAction(const QString &action)
         sequencer.tie();
     else if (action == u"legato")
         sequencer.legato();
+    else if (action == u"generate")
+        sequencer.generate();
     else if (action == u"octave_down" || action == u"octave_up") {
         const int shift = units::octaveShift(float(controller.value(QStringLiteral("octave"))));
         const int next = std::clamp(shift + (action == u"octave_up" ? 1 : -1), -3, 3);
@@ -64,7 +66,7 @@ krate::InstrumentEntry registryEntry()
         entry.actions.append(QStringLiteral("patch%1").arg(i));
     entry.actions << QStringLiteral("note") << QStringLiteral("arp") << QStringLiteral("seq") << QStringLiteral("hold")
                   << QStringLiteral("write") << QStringLiteral("start") << QStringLiteral("rest") << QStringLiteral("tie")
-                  << QStringLiteral("legato") << QStringLiteral("octave_down") << QStringLiteral("octave_up");
+                  << QStringLiteral("legato") << QStringLiteral("generate") << QStringLiteral("octave_down") << QStringLiteral("octave_up");
     entry.create = [](const krate::InstrumentContext &context) -> std::unique_ptr<krate::InstrumentInstance> {
         return std::make_unique<Instance>(context);
     };

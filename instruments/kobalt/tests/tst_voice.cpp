@@ -102,7 +102,7 @@ private slots:
     void parameterTable()
     {
         QCOMPARE(int(kParams.size()), ParamCount);
-        QCOMPARE(ParamCount, 42);
+        QCOMPARE(ParamCount, 43);
         QCOMPARE(paramDescriptor(ParamId::LfoRate).key, std::string_view("lfo_rate"));
         QCOMPARE(paramDescriptor(ParamId::SubType).key, std::string_view("sub_type"));
         QCOMPARE(paramDescriptor(ParamId::EnvTrig).key, std::string_view("env_trig"));

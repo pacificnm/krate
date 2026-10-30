@@ -64,6 +64,10 @@ public:
     Q_INVOKABLE void tie();
     Q_INVOKABLE void legato(); // the step just loaded (before the cursor) runs into the next, or no longer
     Q_INVOKABLE void clear();
+    // A new random pattern into the current one, at its length: from the held
+    // keys, else the pattern's notes, else C minor pentatonic; over Arp Range's
+    // octaves, Density the share of steps that play. Each press a different one.
+    Q_INVOKABLE void generate();
 
     // Load `note` into the cursor's step and move on (what playing a key does).
     // `slur`: the key before is still held, so the step before runs into this one.
@@ -92,6 +96,7 @@ private:
     int m_revision = 0;
     QList<int> m_held;    // keys down at the last poll
     int m_lastLoaded = -1; // the key that loaded the step before the cursor
+    std::uint32_t m_seed = 0x5EED1234u;
     QTimer m_pollTimer;
     QTimer m_saveTimer;
 };

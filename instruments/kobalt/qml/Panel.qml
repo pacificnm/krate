@@ -489,9 +489,24 @@ Item {
         ledOn: Kobalt.playing
         onClicked: Kobalt.playing = !Kobalt.playing
     }
-    DeckKnob { key: "arp_mode"; label: "MODE"; cx: 70 }
-    DeckKnob { key: "arp_range"; label: "RANGE"; cx: 130 }
-    DeckKnob { key: "arp_rate"; label: "RATE"; cx: 190 }
+    DeckKnob { key: "arp_mode"; label: "MODE"; cx: 60 }
+    DeckKnob { key: "arp_range"; label: "RANGE"; cx: 108 }
+    DeckKnob { key: "arp_rate"; label: "RATE"; cx: 156 }
+    DeckKnob { key: "gen_density"; label: "DENSITY"; cx: 204 }
+
+    // The pattern generator: a new random pattern into the current one
+    DeckLabel { x: 400; y: 596; width: 56; text: "GEN" }
+    ActionButton {
+        action: "generate"
+        x: 400
+        y: 614
+        height: 40
+        text: "Generate a random pattern"
+        tint: "#F2B632"
+        enabled: panel.seqMode
+        opacity: enabled ? 1.0 : 0.35
+        onClicked: Sequencer.generate()
+    }
 
     // Loading the sequencer: REST, TIE, LEGATO (the step just loaded runs into the next), CLEAR
     Repeater {

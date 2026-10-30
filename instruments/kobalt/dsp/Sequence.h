@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <span>
 
 namespace kobalt {
 
@@ -31,5 +32,15 @@ struct SeqPattern
 
     bool operator==(const SeqPattern &) const = default;
 };
+
+// The pattern generator (docs/BRIEF.md#step-sequencer): a new pattern of
+// `length` steps from the notes in `pool` (spread over `octaves`), `density`
+// 0..1 the chance a step plays; some notes tie on, some slide legato into the
+// next. Deterministic for a given seed.
+SeqPattern generatePattern(std::span<const int> pool, int octaves, double density, int length,
+                           std::uint32_t seed) noexcept;
+
+// The generator's notes when nothing is held and the pattern is empty: C minor pentatonic from C2.
+inline constexpr std::array<int, 5> kDefaultScale{36, 39, 41, 43, 46};
 
 } // namespace kobalt

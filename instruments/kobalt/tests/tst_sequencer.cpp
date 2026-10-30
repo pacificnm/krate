@@ -4,6 +4,9 @@
 #include <QJsonArray>
 #include <QTemporaryDir>
 
+#include <algorithm>
+#include <array>
+#include <utility>
 #include <vector>
 
 #include "core/Transport.h"
@@ -238,6 +241,68 @@ private slots:
         QCOMPARE(k.sequencer.stepText(1), QStringLiteral("D4 legato"));
         QCOMPARE(k.sequencer.stepText(2), QStringLiteral("E4"));
         QCOMPARE(k.sequencer.cursor(), 3);
+    }
+
+    // The generator: deterministic per seed, the length kept, notes from the
+    // pool over the octaves, Density the share of steps that play.
+    void generator()
+    {
+        const std::array<int, 3> pool{48, 51, 55};
+        const SeqPattern a = generatePattern(pool, 2, 0.6, 32, 7);
+        QVERIFY(a == generatePattern(pool, 2, 0.6, 32, 7));
+        QVERIFY(!(a == generatePattern(pool, 2, 0.6, 32, 8)));
+        QCOMPARE(int(a.length), 32);
+        QVERIFY(a.steps[0].kind == Kind::Note); // it starts on a note
+        int notes = 0, ties = 0, legato = 0;
+        for (int s = 0; s < kSeqMaxSteps; ++s) {
+            const SeqStep &step = a.steps[std::size_t(s)];
+            if (s >= 32) {
+                QVERIFY(step == SeqStep{}); // past the length: rests
+                continue;
+            }
+            if (step.kind == Kind::Note) {
+                ++notes;
+                QVERIFY2(step.note % 12 == 0 || step.note % 12 == 3 || step.note % 12 == 7, qPrintable(QString::number(step.note)));
+                QVERIFY(step.note >= 48 && step.note <= 67);
+            }
+            ties += step.kind == Kind::Tie ? 1 : 0;
+            legato += step.legato ? 1 : 0;
+            if (step.legato) // a legato step runs into a note or a tie
+                QVERIFY(s + 1 < 32 && a.steps[std::size_t(s + 1)].kind != Kind::Rest);
+        }
+        QVERIFY(notes > 8);
+
+        // Density: 0 plays just the first step, 1 every step; nothing to go on: the default scale.
+        const SeqPattern sparse = generatePattern({}, 1, 0.0, 16, 3);
+        QVERIFY(sparse.steps[0].kind == Kind::Note);
+        for (int s = 1; s < 16; ++s)
+            QVERIFY(sparse.steps[std::size_t(s)].kind == Kind::Rest);
+        QVERIFY(std::find(kDefaultScale.begin(), kDefaultScale.end(), sparse.steps[0].note) != kDefaultScale.end());
+        const SeqPattern full = generatePattern(pool, 1, 1.0, 16, 3);
+        for (int s = 0; s < 16; ++s)
+            QVERIFY(full.steps[std::size_t(s)].kind != Kind::Rest);
+    }
+
+    // GEN on the panel: a new pattern every press, at the pattern's length, from its own notes.
+    void generateButton()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        k.sequencer.pressStep(11, true); // 12 steps
+        k.sequencer.pressStep(0, false);
+        k.sequencer.loadNote(40, false);
+        k.sequencer.loadNote(47, false);
+        instance->triggerAction(QStringLiteral("generate"));
+        const SeqPattern first = std::as_const(k.sequencer).current();
+        QCOMPARE(int(first.length), 12);
+        QCOMPARE(k.sequencer.cursor(), -1);
+        for (const SeqStep &step : first.steps)
+            if (step.kind == Kind::Note)
+                QVERIFY(step.note == 40 || step.note == 47);
+        k.sequencer.generate();
+        QVERIFY(!(std::as_const(k.sequencer).current() == first));
     }
 
     void fileRoundTripAndRepair()

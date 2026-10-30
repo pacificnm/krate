@@ -19,7 +19,7 @@ enum class ParamId : int {
     PortaTime, PortaMode,
     BendVco, BendVcf, LeverMod,
     Analog, Velocity,
-    PlayMode, ArpMode, ArpRange, ArpRate, ArpHold,
+    PlayMode, ArpMode, ArpRange, ArpRate, ArpHold, GenDensity,
     DelayLevel, DelayTime, DelayFb, ReverbLevel, ReverbSize,
     Octave,
     Volume,
@@ -118,6 +118,7 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"arp_range",   "Arp Range",         0.0f,                         p::kArpRange,  &format::arpRange},
     {"arp_rate",    "Rate",              position(1, p::kArpRate),     p::kArpRate,   &format::arpRate},
     {"arp_hold",    "Hold",              0.0f,                         p::kSwitch,    &format::onOff},
+    {"gen_density", "Density",           0.6f,                         0,             &format::percent},
     {"delay_level", "Delay Level",       0.0f,                         0,             &format::percent},
     {"delay_time",  "Delay Time",        position(2, p::kDelayTime),   p::kDelayTime, &format::delayTime},
     {"delay_fb",    "Delay Feedback",    0.3f,                         0,             &format::delayFb},
@@ -130,11 +131,12 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
 
 inline constexpr const krate::ParamDescriptor &paramDescriptor(ParamId id) { return kParams[std::size_t(id)]; }
 
-// True for the parameters a patch stores (all but Volume, Tempo, Hold and
-// the keys' Octave).
+// True for the parameters a patch stores (all but Volume, Tempo, Hold, the
+// generator's Density and the keys' Octave).
 constexpr bool inPatch(ParamId id)
 {
-    return id != ParamId::Volume && id != ParamId::Tempo && id != ParamId::ArpHold && id != ParamId::Octave;
+    return id != ParamId::Volume && id != ParamId::Tempo && id != ParamId::ArpHold && id != ParamId::GenDensity
+           && id != ParamId::Octave;
 }
 
 namespace units {
