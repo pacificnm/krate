@@ -183,6 +183,12 @@ QML singletons: k303 uses singletons (`Synth`, `Pattern`, `MidiLearn`). That wor
 
 JACK ports in the rack: `<device>:out_L` / `<device>:out_R` for every device (pre-mixer, post-device), plus `master_L` / `master_R` (post-mixer, post-limiter). Auto-connect sends only the master pair to the speakers (the device chosen under **AUDIO**, or the first hardware outputs); the per-device pairs are there for recording or mixing in a DAW.
 
+### Master stage
+
+`krate::MasterStage` (`shared/core/MasterStage.h`) is the last stage before the outputs, in the rack and in every standalone host and render tool: a soft clip plus the master meter. The instruments don't limit; this stage makes sure nothing ever leaves as a hard over. The curve is linear up to the knee at 0.5 (−6 dBFS), untouched, then `0.5 + 0.5·tanh((|x| − 0.5) / 0.5)` above it: the same slope where they meet (no corner), approaching 1.0.
+
+It was a plain `tanh` until it was measured on a live take: `tanh` bends everything, and a song whose mix peaked at 0.85 (a sustained low bass line with drums) picked up about 6 % distortion (23 dB below the music) through whole sections, heard as clipping on the bass. With the knee, the same take measures 46 dB or more below the music; mixes that stay under −6 dBFS pass bit-exact.
+
 ### Audio inputs
 
 The rack has two audio inputs, `in_1` and `in_2`: an audio interface's two inputs, for a guitar. Each is fed by one capture port chosen under **AUDIO** in the transport bar (saved in `rack.json` as `"audioInputs"`, reconnected whenever that device appears). Every device with `inputChannels() > 0` gets both, re-based per chunk like its MIDI; inputs it asks for beyond the rack's are silent, and hosts without inputs (`krate-render`, tests) give it none (`inputs == nullptr`). The same popup picks the playback device the master goes to (`"outputDevice"`; by default the first hardware outputs), sets the buffer size asked of the server (`"bufferSize"` in `rack.json`; `jack_set_buffer_size`, which PipeWire honours while Krate runs) and shows the delay from input to speakers, the capture plus playback latency the server reports.
@@ -266,7 +272,7 @@ Each step keeps every test green and k303 behaving the same; commit after each.
 | R2 ✅ | **`IInstrument` and `AudioBlock`.** `Engine` implements it; `k303-render` and tests drive it through the interface | Renderer output identical before and after (sample compare) |
 | R3 ✅ | **Transport.** Add `TransportState` and a `Transport`; Tempo and run/stop move out of the instrument into the transport; extract `StepClock` from `Sequencer` and drive it from beat position | Existing timing tests pass against the transport; the Tempo knob still works (it drives the standalone transport). Result: renders byte-identical; Tempo stays in k303's parameter table so the knob, `panel.json` and MIDI Learn keep working, but the engine ignores it and the standalone app forwards it to its transport |
 | R4 ✅ | **Generic MIDI.** Extract `MidiEvent` decoding and `MidiLearnMap` into shared core; make `MidiLearnController` and `LearnOverlay` work from descriptor keys | `tst_midi` passes unchanged plus tests for the shared pieces |
-| R5 ✅ | **Host decoupling.** `JackHost` takes an `IInstrument&` and a transport, and owns the master stage; no k303 types in the host | Host compiles without any k303 header. Result: `krate::JackHost` + `krate::MasterStage` (tanh soft clip + meter; the engine no longer clips); `krate_core` and `krate_host` libraries; verified by compiling `core/` + `host/` alone; renders byte-identical |
+| R5 ✅ | **Host decoupling.** `JackHost` takes an `IInstrument&` and a transport, and owns the master stage; no k303 types in the host | Host compiles without any k303 header. Result: `krate::JackHost` + `krate::MasterStage` (soft clip + meter, [Master stage](#master-stage); the engine no longer clips); `krate_core` and `krate_host` libraries; verified by compiling `core/` + `host/` alone; renders byte-identical |
 | R6 ✅ | **Repo layout.** Move to `shared/`, `instruments/k303/`, `apps/k303/`; shared QML components become their own module | Clean build from scratch; the k303 app and all tests run as before |
 
 **The refactor is complete.** Starting K909 means adding `instruments/k909/` and `apps/k909/` and nothing in `shared/` should need to change except genuinely new shared pieces.

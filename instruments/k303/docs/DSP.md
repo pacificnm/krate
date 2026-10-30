@@ -100,7 +100,7 @@ The voice is scaled by −4 dB (`kOutputGain` 0.63): the fuller bass and the sat
 2. **Delay** (`krate::Delay`, the shared tempo-synced ping-pong; runs only while Delay is up) and **reverb** (`krate::Reverb`, the shared FDN, fed the bass and its echoes; runs only while Reverb is up). Their wet signal is mixed in M/S: **Width** scales its side (0 mono, 0.5 as the effects make it, 1 twice as wide); the dry bass stays mono in the centre, solid on any system. With both off, the two outputs are identical (tested).
 3. **Volume**, smoothed.
 
-The engine does not limit: the host's master stage (`krate::MasterStage`, a `tanh` soft clip, in the JACK host and in `k303-render`) prevents hard overs and feeds the level meter. In the Krate rack the mixer's master stage takes that role.
+The engine does not limit: the host's master stage (`krate::MasterStage`, a soft clip, linear to −6 dBFS ([Master stage](../../../docs/SHARED_FOUNDATIONS.MD#master-stage)), in the JACK host and in `k303-render`) prevents hard overs and feeds the level meter. In the Krate rack the mixer's master stage takes that role.
 
 ## Performance budget
 

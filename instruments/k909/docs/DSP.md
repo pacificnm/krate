@@ -37,7 +37,7 @@ The voice set is deterministic for a given sample rate and trigger sequence, so 
 
 `MetalBank` squares alias at 48 kHz: PolyBLEP keeps that low at these pitches. `tst_voices` checks that under 2% of each metallic voice's energy is above 20 kHz (measured: hats 0.6%, cymbals under 0.1%). If it is ever audible, the bank can run at 2× through k303's half-band decimator (moved to `shared/` then).
 
-**Levels.** Each voice has a fixed output trim (`kTrim` in `dsp/Voices.cpp`: BD 0.9, SD 0.75, toms 0.8, rim 0.35, clap 0.9, hats 1.4, crash 1.9, ride 1.75; metal 1.0, clank 0.85, noise 1.0, boom 1.15, sample 1.4) so default-level hits sit in a sensible balance; `k909-render` prints every voice's peak, normal and accented. The engine then applies Volume and a fixed −3 dB output trim (`kOutputTrim`), so the demo beat at the default Volume peaks around −3.5 dBFS, under the host's tanh soft clip. Velocity maps 1..127 to 0.5..1.0 of the voice's gain.
+**Levels.** Each voice has a fixed output trim (`kTrim` in `dsp/Voices.cpp`: BD 0.9, SD 0.75, toms 0.8, rim 0.35, clap 0.9, hats 1.4, crash 1.9, ride 1.75; metal 1.0, clank 0.85, noise 1.0, boom 1.15, sample 1.4) so default-level hits sit in a sensible balance; `k909-render` prints every voice's peak, normal and accented. The engine then applies Volume and a fixed −3 dB output trim (`kOutputTrim`), so the demo beat at the default Volume peaks around −3.5 dBFS, under the host's soft clip. Velocity maps 1..127 to 0.5..1.0 of the voice's gain.
 
 ## Sample
 

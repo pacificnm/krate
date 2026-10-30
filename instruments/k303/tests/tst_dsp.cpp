@@ -185,7 +185,8 @@ private slots:
         master.process(buffers, 2, std::uint32_t(l.size()));
         for (float s : l)
             QVERIFY(std::abs(s) <= 1.0f);     // never a hard over
-        QVERIFY(std::abs(l[1] - 0.1f) < 0.001f); // quiet signals barely touched
+        QCOMPARE(l[1], 0.1f);                     // below the knee: untouched
+        QCOMPARE(l[2], -0.5f);
         QCOMPARE(l[0], 0.0f);
         const float peak = master.takePeak();
         QVERIFY(peak > 0.99f && peak <= 1.0f);
@@ -194,7 +195,30 @@ private slots:
         std::vector<float> quietL(4, 0.0f), loudR(4, 0.5f);
         float *const both[2] = {quietL.data(), loudR.data()};
         master.process(both, 2, 4);
-        QVERIFY(std::abs(master.takePeak() - std::tanh(0.5f)) < 1e-6f); // every channel is metered
+        QCOMPARE(master.takePeak(), 0.5f); // every channel is metered
+    }
+
+    // The curve: linear to the knee, then smooth (no corner: the same slope on
+    // both sides), monotonic, under 1.0. A mix peaking at 0.85 (a
+    // measured live take) loses under 0.6 dB at its peak, where tanh took 1.6 dB.
+    void masterStageCurve()
+    {
+        using krate::MasterStage;
+        const float k = MasterStage::kKnee, h = 1e-3f;
+        QCOMPARE(MasterStage::shape(k), k);
+        const float below = (MasterStage::shape(k) - MasterStage::shape(k - h)) / h;
+        const float above = (MasterStage::shape(k + h) - MasterStage::shape(k)) / h;
+        QVERIFY2(std::abs(below - 1.0f) < 1e-2f && std::abs(above - 1.0f) < 1e-2f,
+                 qPrintable(QStringLiteral("%1 %2").arg(below).arg(above)));
+        float last = 0.0f;
+        for (float x = 0.0f; x < 20.0f; x += 0.01f) {
+            const float y = MasterStage::shape(x);
+            QVERIFY(y >= last && y < 1.0f + 1e-6f);
+            QCOMPARE(MasterStage::shape(-x), -y);
+            last = y;
+        }
+        const float lossDb = 20.0f * std::log10(0.85f / MasterStage::shape(0.85f));
+        QVERIFY2(lossDb < 0.6f, qPrintable(QString::number(lossDb)));
     }
 
     // --- Diode ladder ---------------------------------------------------------

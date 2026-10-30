@@ -408,32 +408,32 @@ private slots:
         const auto settled = [&rack] { run(rack, 64); return run(rack, 64); }; // gains ramp over a block
 
         auto out = settled();
-        QVERIFY(std::abs(out.left.back() - std::tanh(0.3f)) < 1e-6f); // sum, then master soft clip
+        QVERIFY(std::abs(out.left.back() - krate::MasterStage::shape(0.3f)) < 1e-6f); // sum, then master soft clip
 
         rack.setLevel(1, 0.5f);
         out = settled();
-        QVERIFY(std::abs(out.left.back() - std::tanh(0.2f)) < 1e-6f);
+        QVERIFY(std::abs(out.left.back() - krate::MasterStage::shape(0.2f)) < 1e-6f);
 
         rack.setPan(0, 1.0f); // a hard right: its left side drops out
         out = settled();
-        QVERIFY(std::abs(out.left.back() - std::tanh(0.1f)) < 1e-6f);
-        QVERIFY(std::abs(out.right.back() - std::tanh(0.2f)) < 1e-6f);
+        QVERIFY(std::abs(out.left.back() - krate::MasterStage::shape(0.1f)) < 1e-6f);
+        QVERIFY(std::abs(out.right.back() - krate::MasterStage::shape(0.2f)) < 1e-6f);
 
         rack.setPan(0, 0.0f);
         rack.setMute(1, true);
         out = settled();
-        QVERIFY(std::abs(out.left.back() - std::tanh(0.1f)) < 1e-6f);
+        QVERIFY(std::abs(out.left.back() - krate::MasterStage::shape(0.1f)) < 1e-6f);
 
         rack.setMute(1, false);
         rack.setSolo(1, true); // solo wins: only b
         out = settled();
-        QVERIFY(std::abs(out.left.back() - std::tanh(0.1f)) < 1e-6f); // b at level 0.5
+        QVERIFY(std::abs(out.left.back() - krate::MasterStage::shape(0.1f)) < 1e-6f); // b at level 0.5
 
         rack.setSolo(1, false);
         rack.setLevel(1, 1.0f);
         rack.setMasterLevel(0.5f);
         out = settled();
-        QVERIFY(std::abs(out.left.back() - std::tanh(0.15f)) < 1e-6f);
+        QVERIFY(std::abs(out.left.back() - krate::MasterStage::shape(0.15f)) < 1e-6f);
     }
 
     void faderMovesAreRamped()
@@ -461,8 +461,8 @@ private slots:
         rack.setMute(0, true);
         rack.setMasterLevel(0.5f);
         const auto out = run(rack, 64);
-        QVERIFY(std::abs(out.left.front() - std::tanh(0.125f)) < 1e-6f);
-        QVERIFY(std::abs(out.left.back() - std::tanh(0.125f)) < 1e-6f);
+        QVERIFY(std::abs(out.left.front() - krate::MasterStage::shape(0.125f)) < 1e-6f);
+        QVERIFY(std::abs(out.left.back() - krate::MasterStage::shape(0.125f)) < 1e-6f);
     }
 
     void deviceOutputsAreBeforeTheMixer()
@@ -492,7 +492,7 @@ private slots:
         run(rack, 64);
         QVERIFY(std::abs(rack.takeDevicePeak(0) - 0.5f) < 1e-6f);  // post-fader
         QVERIFY(std::abs(rack.takeDevicePeak(1) - 0.25f) < 1e-6f);
-        QVERIFY(std::abs(rack.takeMasterPeak() - std::tanh(0.75f)) < 1e-6f);
+        QVERIFY(std::abs(rack.takeMasterPeak() - krate::MasterStage::shape(0.75f)) < 1e-6f);
         QCOMPARE(rack.takeDevicePeak(0), 0.0f); // reset after reading
     }
 
@@ -538,7 +538,7 @@ private slots:
         QVERIFY(!a.transports[1].restarted);
         QVERIFY(std::abs(a.transports[1].beatAtBlockStart - 4096.0 / 24000.0) < 1e-12);
         QVERIFY(std::abs(a.transports[2].beatAtBlockStart - 8192.0 / 24000.0) < 1e-12);
-        QVERIFY(std::abs(out.left.back() - std::tanh(0.1f)) < 1e-6f); // all of it was rendered
+        QVERIFY(std::abs(out.left.back() - krate::MasterStage::shape(0.1f)) < 1e-6f); // all of it was rendered
     }
 
     // --- Audio inputs --------------------------------------------------------------
