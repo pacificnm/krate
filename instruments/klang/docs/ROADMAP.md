@@ -1,0 +1,10 @@
+# Klang: roadmap
+
+Each milestone ends with something you can run and check, and is committed and pushed when done. The other instruments' tests and the rack's stay green throughout.
+
+| # | Milestone | Done when |
+| --- | --- | --- |
+| L1 ✅ | **The pads** | `klang_dsp`: the parameter table (36) with formats; samples handed over and freed safely; 16 pad voices with the three modes, SYNC, REVERSE, START / END, envelope, choke; the filter, drive, bitcrusher, ring modulator; the trance gate; delay and reverb sends; notes 36–51 and Chromatic keys. `klang-render` (generated test sounds) and `klang_tst_pads` (pitch and sync, reverse, loop seams without clicks, choke, crush, gate timing, no allocation on swap). Result: as planned; each pad has two voices (a new hit fades the last out over 3 ms while it starts); `klang-render` plays a kick, a clank, a noise burst and a gated drone it makes itself (peak −3.2 dBFS); `--bench` 4.2 % of a core with all 16 pads looping through every effect; `klang_tst_pads` (23 tests) |
+| L2 | **Patterns** | 16 patterns of up to 64 steps: accent, repeat, reverse, pitch per step, swing, the gate pattern per pattern; pattern change at the end of the pass; Program Change; `klang_tst_patterns` |
+| L3 | **Samples, panel, the rack** | The sample library (WAV and MP3, file dialog and drag and drop), `pads.json` and `patterns.json`, slicing (equal and at the hits); the `Klang` QML module: pads, the edited pad's controls, the step grid with its pages and step editing, the gate pattern; the `klang` standalone app; Klang in the Krate rack on channel 11 |
+| L4 | **Starter kit, manual, docs** | A starter kit Klang generates on first run (industrial hits, a break, a drone, a voice-like texture: no third-party samples); `docs/MANUAL.md` (HELP); README and the suite docs; `krate-render --klang` |
