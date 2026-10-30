@@ -341,6 +341,39 @@ Rectangle {
                     onClicked: ControllerKeyboard.restoreDefaults()
                 }
             }
+            Row { // the keyboard plays the focused instrument
+                spacing: 8
+                Text {
+                    width: 120
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Keys play focus on"
+                    color: Theme.ink
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                }
+                ComboBox {
+                    id: keysChannel
+                    width: 170
+                    // 0: any channel (16), 1..16: that channel (0..15), 17: off (-1)
+                    model: ["Any channel"].concat(Array.from({ length: 16 }, (_, i) => "Channel " + (i + 1)))
+                                          .concat(["Off: mixer channels"])
+                    currentIndex: Rack.keysChannel === 16 ? 0 : Rack.keysChannel < 0 ? 17 : Rack.keysChannel + 1
+                    onActivated: index => Rack.keysChannel = index === 0 ? 16 : index === 17 ? -1 : index - 1
+                    Accessible.name: "Channel your keyboard plays the focused instrument on"
+                }
+            }
+            Text {
+                width: parent.width
+                text: Rack.keysChannel === 16
+                      ? "Every note you play goes to the instrument in focus (its tab, Tab, or a learned focus button), whatever channels the mixer gives the instruments."
+                      : Rack.keysChannel >= 0
+                        ? "Notes on channel " + (Rack.keysChannel + 1) + " go to the instrument in focus; other channels follow the mixer's CH settings (pads, other gear)."
+                        : "Off: notes go to the instrument holding their channel (the mixer's CH), else to the one in focus."
+                color: "#55575B"
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+            }
             Text {
                 width: parent.width
                 text: "SET FROM KEY: set your keyboard to octave 0, press it, then your lowest key (with Krimson or Kalliope in view)."

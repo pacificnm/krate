@@ -37,6 +37,10 @@ class RackController : public QObject
     Q_PROPERTY(QStringList panelModules READ panelModules CONSTANT)
     Q_PROPERTY(QStringList panelComponents READ panelComponents CONSTANT)
     Q_PROPERTY(int focus READ focus WRITE setFocus NOTIFY focusChanged)
+    // Your keyboard plays the focused instrument: notes on this channel (0..15),
+    // or any channel (16), go to the focused instrument whatever the mixer's
+    // channels say; -1 = off (the mixer's channels only).
+    Q_PROPERTY(int keysChannel READ keysChannel WRITE setKeysChannel NOTIFY keysChannelChanged)
     // The mixer, the song screen or the sequencer instead of the focused instrument's panel
     // (one at a time); a focus change shows the instrument.
     Q_PROPERTY(bool mixerShown READ mixerShown WRITE setMixerShown NOTIFY mixerShownChanged)
@@ -68,6 +72,9 @@ public:
 
     int focus() const { return m_focus; }
     void setFocus(int device);
+    static constexpr int kKeysAnyChannel = 16;
+    int keysChannel() const;
+    void setKeysChannel(int channel);
     bool mixerShown() const { return m_mixerShown; }
     void setMixerShown(bool shown);
     bool songShown() const { return m_songShown; }
@@ -143,6 +150,7 @@ public:
 
 signals:
     void focusChanged();
+    void keysChannelChanged();
     void mixerShownChanged();
     void songShownChanged();
     void seqShownChanged();

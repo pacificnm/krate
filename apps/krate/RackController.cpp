@@ -1,5 +1,7 @@
 #include "RackController.h"
 
+#include <algorithm>
+
 #include "RackRunControl.h"
 
 #include <cmath>
@@ -32,6 +34,7 @@ RackController::RackController(krate::Rack &rack, krate::Transport &transport,
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
+    m_rack.setKeysChannel(kKeysAnyChannel); // your keyboard plays whatever is in focus
     for (const auto &e : entries) {
         m_names << e.name;
         m_modules << e.qmlModule;
@@ -85,6 +88,20 @@ void RackController::setFocus(int device)
     setMixerShown(false);
     setSongShown(false);
     setSeqShown(false);
+}
+
+int RackController::keysChannel() const
+{
+    return m_rack.keysChannel();
+}
+
+void RackController::setKeysChannel(int channel)
+{
+    channel = std::clamp(channel, -1, kKeysAnyChannel);
+    if (channel == m_rack.keysChannel())
+        return;
+    m_rack.setKeysChannel(channel);
+    emit keysChannelChanged();
 }
 
 void RackController::setMixerShown(bool shown)

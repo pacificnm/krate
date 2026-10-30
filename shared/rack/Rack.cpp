@@ -16,6 +16,8 @@ Rack::Rack(std::uint32_t maxFrames)
         bus.assign(m_maxFrames, 0.0f);
     m_dry.assign(2 * std::size_t(m_maxFrames), 0.0f);
     m_quietFrames.fill(~std::uint64_t(0) / 2);
+    for (auto &keys : m_noteDevice)
+        keys.fill(-1);
     for (auto &c : m_channelDevice)
         c.store(-1, std::memory_order_relaxed);
     clearMappings();
@@ -268,7 +270,9 @@ void Rack::route(MidiEvent event) noexcept
     const int channel = m.channel;
     const int focused = m_focus.load(std::memory_order_relaxed);
     const int assigned = m_channelDevice[std::size_t(channel)].load(std::memory_order_relaxed);
-    const int target = assigned >= 0 ? assigned : focused;
+    const int keys = m_keysChannel.load(std::memory_order_relaxed);
+    const bool followsFocus = keys == kAnyChannel || keys == channel; // the keyboard: always the focused device
+    const int target = assigned >= 0 && !followsFocus ? assigned : focused;
 
     switch (m.type) {
     case MidiMessage::Type::ControlChange: {
@@ -342,7 +346,15 @@ void Rack::route(MidiEvent event) noexcept
             }
             break; // the note is the button: don't play it
         }
-        forward(target, event);
+        // A note ends where it started (focus or routing may have changed since).
+        std::int8_t &owner = m_noteDevice[std::size_t(channel)][m.data1 & 0x7F];
+        if (m.type == MidiMessage::Type::NoteOn) {
+            owner = std::int8_t(target);
+            forward(target, event);
+        } else {
+            forward(owner >= 0 ? owner : target, event);
+            owner = -1;
+        }
         break;
     }
     case MidiMessage::Type::ProgramChange:

@@ -169,6 +169,46 @@ private slots:
         QCOMPARE(int(a.received[0].data[1]), 60);
     }
 
+    // The keyboard follows focus: on its channel (or any), focus wins over a
+    // device holding the channel; other channels keep their routing; off, as before.
+    void keysFollowFocus()
+    {
+        for (int keys : {Rack::kAnyChannel, 1, -1}) {
+            FakeDevice a(kParamsA, 0.0f), b(kParamsB, 0.0f), c(kParamsB, 0.0f);
+            Rack rack;
+            rack.addDevice(a);
+            rack.addDevice(b, /*midiChannel*/ 1); // holds channel 2: the keyboard's
+            rack.addDevice(c, /*midiChannel*/ 9); // pads on channel 10
+            rack.setKeysChannel(keys);
+            QCOMPARE(rack.keysChannel(), keys);
+            rack.setFocus(0);
+            run(rack, 64, {noteOn(1, 60), noteOn(9, 36)});
+            const bool keysToFocus = keys != -1;
+            QCOMPARE(a.received.size(), std::size_t(keysToFocus ? (keys == Rack::kAnyChannel ? 2 : 1) : 0));
+            QCOMPARE(b.received.size(), std::size_t(keysToFocus ? 0 : 1));
+            QCOMPARE(c.received.size(), std::size_t(keys == Rack::kAnyChannel ? 0 : 1)); // pads keep channel 10 unless any
+        }
+    }
+
+    // Switching focus with a key down: its note-off still reaches the device that got the note-on.
+    void noteEndsWhereItStarted()
+    {
+        FakeDevice a(kParamsA, 0.0f), b(kParamsB, 0.0f);
+        Rack rack;
+        rack.addDevice(a);
+        rack.addDevice(b);
+        rack.setKeysChannel(Rack::kAnyChannel);
+        run(rack, 64, {noteOn(0, 60)});
+        rack.setFocus(1);
+        run(rack, 64, {noteOff(0, 60), noteOn(0, 64)});
+        QCOMPARE(a.received.size(), std::size_t(2)); // on and off
+        QCOMPARE(int(a.received[1].data[0] & 0xF0), 0x80);
+        QCOMPARE(b.received.size(), std::size_t(1)); // only the new note
+        QCOMPARE(int(b.received[0].data[1]), 64);
+        run(rack, 64, {msg(0x90, 64, 0)}); // a velocity-0 note-on ends it too
+        QCOMPARE(b.received.size(), std::size_t(2));
+    }
+
     void eventsKeepTheirFrame()
     {
         FakeDevice a(kParamsA, 0.0f);

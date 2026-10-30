@@ -136,6 +136,12 @@ public:
     bool focusable(int device) const noexcept { return m_devices[std::size_t(device)].focusable.load(std::memory_order_relaxed); }
 
     void setChannelDevice(int channel, int device) noexcept; // device -1 = none (use focus)
+    // The keyboard follows focus: MIDI on this channel (0..15), or on any
+    // channel (kAnyChannel), goes to the focused device whatever device holds
+    // the channel; -1 = off (channel routing only). Notes end on the device
+    // they started on, so switching focus with a key down leaves nothing hanging.
+    void setKeysChannel(int channel) noexcept { m_keysChannel.store(channel, std::memory_order_relaxed); }
+    int keysChannel() const noexcept { return m_keysChannel.load(std::memory_order_relaxed); }
     int channelDevice(int channel) const noexcept;
     void setProgramChangeFocus(bool on) noexcept { m_programFocus.store(on, std::memory_order_relaxed); }
 
@@ -225,6 +231,9 @@ private:
     std::atomic<int> m_focus{0};
     std::array<std::atomic<std::int8_t>, kChannels> m_channelDevice;
     std::atomic<bool> m_programFocus{true};
+    std::atomic<int> m_keysChannel{-1};
+    // Audio thread: the device each sounding note (channel, key) went to; -1 none.
+    std::array<std::array<std::int8_t, 128>, kChannels> m_noteDevice;
     std::atomic<float> m_masterLevel{1.0f};
     float m_masterGain = 1.0f; // ramped, audio thread only
     bool m_primed = false;     // first block starts at the fader settings instead of ramping to them

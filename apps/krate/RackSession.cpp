@@ -53,6 +53,8 @@ void RackSession::load()
         for (const auto &port : json.value(u"audioInputs").toArray())
             m_audioInputs << port.toString();
         m_bufferSize = json.value(u"bufferSize").toInt(0);
+        // Older sessions: the keyboard follows focus on any channel.
+        m_controller.setKeysChannel(json.value(u"keysChannel").toInt(RackController::kKeysAnyChannel));
         m_outputDevice = json.value(u"outputDevice").toString();
         if (const double bpm = json.value(u"tempo").toDouble(0); bpm > 0)
             m_controller.setBpm(bpm);
@@ -101,6 +103,7 @@ void RackSession::load()
 
     // From here on, any change is saved.
     connect(&m_controller, &RackController::focusChanged, this, &RackSession::changed);
+    connect(&m_controller, &RackController::keysChannelChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::mixerShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::songShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::seqShownChanged, this, &RackSession::changed);
@@ -163,6 +166,7 @@ void RackSession::save()
         {QStringLiteral("midiInput"), m_midiInput},
         {QStringLiteral("audioInputs"), QJsonArray::fromStringList(m_audioInputs)},
         {QStringLiteral("bufferSize"), m_bufferSize},
+        {QStringLiteral("keysChannel"), m_controller.keysChannel()},
         {QStringLiteral("outputDevice"), m_outputDevice},
         {QStringLiteral("master"), m_controller.fader(-1)},
         {QStringLiteral("effects"), m_controller.effectsJson()},
