@@ -19,10 +19,11 @@ Q_IMPORT_QML_PLUGIN(K303Plugin)
 // the Krate rack builds it, but with its own transport and JACK host.
 int main(int argc, char *argv[])
 {
-    // Every control is re-skinned, so start from the plainest style.
-    QQuickStyle::setStyle(QStringLiteral("Basic"));
-
     QGuiApplication app(argc, argv);
+    // Every control is re-skinned, so start from the plainest style. Set after
+    // the app exists: the desktop's platform theme (KDE: Breeze) sets its own
+    // style while the app is constructed.
+    QQuickStyle::setStyle(QStringLiteral("Basic"));
     QGuiApplication::setApplicationName(QStringLiteral("k303"));
     QGuiApplication::setApplicationVersion(QStringLiteral(PROJECT_VERSION_STRING));
 

@@ -45,9 +45,11 @@ Q_IMPORT_QML_PLUGIN(KlickPlugin)
 
 int main(int argc, char *argv[])
 {
-    QQuickStyle::setStyle(QStringLiteral("Basic"));
-
     QGuiApplication app(argc, argv);
+    // Every control is re-skinned, so start from the plainest style. Set after
+    // the app exists: the desktop's platform theme (KDE: Breeze) sets its own
+    // style while the app is constructed.
+    QQuickStyle::setStyle(QStringLiteral("Basic"));
     QGuiApplication::setApplicationName(QStringLiteral("krate"));
     QGuiApplication::setApplicationVersion(QStringLiteral(PROJECT_VERSION_STRING));
 
