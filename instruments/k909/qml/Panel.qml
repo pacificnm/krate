@@ -3,14 +3,15 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Krate
 
-// K909's panel at design size 1600 x 940 (docs/UI.md): knob sections, the
+// K909's panel at design size 1800 x 1000 (docs/UI.md): the knob sections
+// (SOUND: each voice's own knobs; MIX: each voice's pan, drive and sends), the
 // sequencer's step buttons and track strip, START/STOP/CLEAR, patterns A-H
-// and the LCD block, UNMAP/AUDIO/LEARN with the status line and meter.
+// and the LCD block, the effects, UNMAP/AUDIO/LEARN with the status line and meter.
 Item {
     id: panel
 
-    width: 1600
-    height: 940
+    width: 1800
+    height: 1000
 
     // Panel-specific colors; shared ones come from Theme.
     readonly property color chassisLight: "#E6E4DC"
@@ -20,43 +21,65 @@ Item {
     readonly property color stripBar: "#4A4E52"
 
     // Knob sections, left to right. Width in columns; each knob sits at a
-    // (column, row) inside its section.
+    // (column, row) inside its section. Two pages: SOUND (the voices' own
+    // knobs) and MIX (each voice's pan, drive and effect sends).
     readonly property real margin: 24
-    readonly property real columns: 17.5
+    property bool mixPage: false
+    readonly property var shownSections: mixPage ? mixSections : sections
+    readonly property real columns: shownSections.reduce((sum, s) => sum + s.columns, 0)
     readonly property real column: (width - 2 * margin) / columns
     readonly property real sectionTop: 286
-    readonly property real sectionBottom: 540
-    readonly property var rowLabelY: [330, 436]
+    readonly property real sectionBottom: 594
+    readonly property var rowLabelY: [326, 416, 506]
+    readonly property real knobSize: 56
 
     readonly property var sections: [
-        { title: "TOTAL ACCENT", columns: 1.5, knobs: [
-            { key: "accent", label: "", col: 0.25, row: 0 } ] },
-        { title: "BASS DRUM", columns: 2, knobs: [
+        { title: "ACCENT", columns: 1, knobs: [
+            { key: "accent", label: "TOTAL", col: 0, row: 0 } ] },
+        { title: "BASS DRUM", columns: 3, knobs: [
             { key: "bd_tune", label: "TUNE", col: 0, row: 0 }, { key: "bd_level", label: "LEVEL", col: 1, row: 0 },
-            { key: "bd_attack", label: "ATTACK", col: 0, row: 1 }, { key: "bd_decay", label: "DECAY", col: 1, row: 1 } ] },
+            { key: "bd_decay", label: "DECAY", col: 2, row: 0 },
+            { key: "bd_attack", label: "ATTACK", col: 0, row: 1 }, { key: "bd_sweep", label: "SWEEP", col: 1, row: 1 },
+            { key: "bd_bend", label: "BEND", col: 2, row: 1 },
+            { key: "bd_tone", label: "TONE", col: 0, row: 2 } ] },
         { title: "SNARE DRUM", columns: 2, knobs: [
             { key: "sd_tune", label: "TUNE", col: 0, row: 0 }, { key: "sd_level", label: "LEVEL", col: 1, row: 0 },
-            { key: "sd_tone", label: "TONE", col: 0, row: 1 }, { key: "sd_snappy", label: "SNAPPY", col: 1, row: 1 } ] },
-        { title: "LOW TOM", columns: 2, knobs: [
-            { key: "lt_tune", label: "TUNE", col: 0, row: 0 }, { key: "lt_level", label: "LEVEL", col: 1, row: 0 },
-            { key: "lt_decay", label: "DECAY", col: 0, row: 1 } ] },
-        { title: "MID TOM", columns: 2, knobs: [
-            { key: "mt_tune", label: "TUNE", col: 0, row: 0 }, { key: "mt_level", label: "LEVEL", col: 1, row: 0 },
-            { key: "mt_decay", label: "DECAY", col: 0, row: 1 } ] },
-        { title: "HI TOM", columns: 2, knobs: [
-            { key: "ht_tune", label: "TUNE", col: 0, row: 0 }, { key: "ht_level", label: "LEVEL", col: 1, row: 0 },
-            { key: "ht_decay", label: "DECAY", col: 0, row: 1 } ] },
+            { key: "sd_tone", label: "TONE", col: 0, row: 1 }, { key: "sd_snappy", label: "SNAPPY", col: 1, row: 1 },
+            { key: "sd_decay", label: "DECAY", col: 0, row: 2 }, { key: "sd_crack", label: "CRACK", col: 1, row: 2 } ] },
+        { title: "LOW TOM", columns: 1, knobs: [
+            { key: "lt_tune", label: "TUNE", col: 0, row: 0 }, { key: "lt_level", label: "LEVEL", col: 0, row: 1 },
+            { key: "lt_decay", label: "DECAY", col: 0, row: 2 } ] },
+        { title: "MID TOM", columns: 1, knobs: [
+            { key: "mt_tune", label: "TUNE", col: 0, row: 0 }, { key: "mt_level", label: "LEVEL", col: 0, row: 1 },
+            { key: "mt_decay", label: "DECAY", col: 0, row: 2 } ] },
+        { title: "HI TOM", columns: 1, knobs: [
+            { key: "ht_tune", label: "TUNE", col: 0, row: 0 }, { key: "ht_level", label: "LEVEL", col: 0, row: 1 },
+            { key: "ht_decay", label: "DECAY", col: 0, row: 2 } ] },
         { title: "RIM", columns: 1, knobs: [
-            { key: "rs_level", label: "LEVEL", col: 0, row: 0 } ] },
-        { title: "CLAP", columns: 1, knobs: [
-            { key: "cp_level", label: "LEVEL", col: 0, row: 0 } ] },
+            { key: "rs_tune", label: "TUNE", col: 0, row: 0 }, { key: "rs_level", label: "LEVEL", col: 0, row: 1 },
+            { key: "rs_decay", label: "DECAY", col: 0, row: 2 } ] },
+        { title: "CLAP", columns: 2, knobs: [
+            { key: "cp_tune", label: "TUNE", col: 0, row: 0 }, { key: "cp_level", label: "LEVEL", col: 1, row: 0 },
+            { key: "cp_decay", label: "DECAY", col: 0, row: 1 }, { key: "cp_spread", label: "SPREAD", col: 1, row: 1 } ] },
         { title: "HI HAT", columns: 2, knobs: [
             { key: "ch_level", label: "CH LEVEL", col: 0, row: 0 }, { key: "oh_level", label: "OH LEVEL", col: 1, row: 0 },
-            { key: "ch_decay", label: "CH DECAY", col: 0, row: 1 }, { key: "oh_decay", label: "OH DECAY", col: 1, row: 1 } ] },
+            { key: "ch_decay", label: "CH DECAY", col: 0, row: 1 }, { key: "oh_decay", label: "OH DECAY", col: 1, row: 1 },
+            { key: "hh_tune", label: "TUNE", col: 0.5, row: 2 } ] },
         { title: "CYMBAL", columns: 2, knobs: [
             { key: "cr_level", label: "CRASH LVL", col: 0, row: 0 }, { key: "rd_level", label: "RIDE LVL", col: 1, row: 0 },
             { key: "cr_tune", label: "CRASH TUNE", col: 0, row: 1 }, { key: "rd_tune", label: "RIDE TUNE", col: 1, row: 1 } ] }
     ]
+
+    // MIX page: a strip per voice, in track order.
+    readonly property var voices: [
+        { prefix: "bd", title: "BASS DRUM" }, { prefix: "sd", title: "SNARE" }, { prefix: "lt", title: "LOW TOM" },
+        { prefix: "mt", title: "MID TOM" }, { prefix: "ht", title: "HI TOM" }, { prefix: "rs", title: "RIM" },
+        { prefix: "cp", title: "CLAP" }, { prefix: "ch", title: "CLOSED HAT" }, { prefix: "oh", title: "OPEN HAT" },
+        { prefix: "cr", title: "CRASH" }, { prefix: "rd", title: "RIDE" }
+    ]
+    readonly property var mixSections: voices.map(v => ({ title: v.title, columns: 2, knobs: [
+        { key: v.prefix + "_pan", label: "PAN", col: 0, row: 0 }, { key: v.prefix + "_drive", label: "DRIVE", col: 1, row: 0 },
+        { key: v.prefix + "_rev", label: "REVERB", col: 0, row: 1 }, { key: v.prefix + "_dly", label: "DELAY", col: 1, row: 1 } ] }))
 
     // Sequencer tracks under the step buttons, each spanning its steps (1-based).
     readonly property real stepLeft: 220
@@ -74,8 +97,8 @@ Item {
     component DrumKnob: Knob {
         id: drumKnob
         required property string key
-        width: 62
-        height: 62
+        width: panel.knobSize
+        height: panel.knobSize
         name: Drums.label(key)
         Accessible.description: displayText
         value: Drums.revision >= 0 ? Drums.value(key) : 0
@@ -128,7 +151,7 @@ Item {
     Text {
         anchors.right: parent.right
         anchors.rightMargin: 64
-        y: 214
+        y: 160
         text: "DRUM MACHINE"
         color: panel.headerBar
         font.family: Theme.labelFont
@@ -136,9 +159,28 @@ Item {
         font.letterSpacing: 6
     }
 
+    // SOUND / MIX: which knobs the sections show
+    Repeater {
+        model: [{ label: "SOUND", mix: false, x: 1560 }, { label: "MIX", mix: true, x: 1660 }]
+
+        PanelButton {
+            required property var modelData
+            x: modelData.x
+            y: 236
+            width: 90
+            height: 36
+            faceText: modelData.label
+            text: modelData.mix ? "Mix page: each voice's pan, drive and effect sends" : "Sound page: each voice's own knobs"
+            dark: panel.mixPage === modelData.mix
+            hasLed: true
+            ledOn: panel.mixPage === modelData.mix
+            onClicked: panel.mixPage = modelData.mix
+        }
+    }
+
     // Knob sections
     Repeater {
-        model: panel.sections
+        model: panel.shownSections
 
         Item {
             id: section
@@ -148,7 +190,7 @@ Item {
             readonly property real firstColumn: {
                 let c = 0
                 for (let i = 0; i < index; ++i)
-                    c += panel.sections[i].columns
+                    c += panel.shownSections[i].columns
                 return c
             }
 
@@ -172,7 +214,7 @@ Item {
 
             // Divider to the next section
             Rectangle {
-                visible: section.index < panel.sections.length - 1
+                visible: section.index < panel.shownSections.length - 1
                 x: parent.width - 1
                 y: 32
                 width: 2
@@ -194,12 +236,12 @@ Item {
                         centerX: knobSlot.cx
                         y: knobSlot.labelY
                         text: knobSlot.modelData.label
-                        font.pixelSize: 13
+                        font.pixelSize: 12
                     }
                     DrumKnob {
                         key: knobSlot.modelData.key
                         x: knobSlot.cx - width / 2
-                        y: knobSlot.labelY + 24
+                        y: knobSlot.labelY + 20
                     }
                 }
             }
@@ -219,7 +261,7 @@ Item {
         onRunningChanged: panel.blink = false
     }
 
-    PanelLabel { x: 64; y: 568; text: "PATTERN"; orange: true }
+    PanelLabel { x: 64; y: 614; text: "PATTERN"; orange: true }
     Repeater {
         model: 8
 
@@ -227,7 +269,7 @@ Item {
             id: patternButton
             required property int index
             x: 64 + (index % 4) * 78
-            y: index < 4 ? 596 : 656
+            y: index < 4 ? 642 : 702
             width: 64
             height: 50
             faceText: panel.letters[index]
@@ -248,8 +290,8 @@ Item {
     // LCD block: the shown pattern, its length, step size and play order.
     Rectangle {
         x: 400
-        y: 566
-        width: 520
+        y: 612
+        width: 440
         height: 150
         radius: 4
         color: "transparent"
@@ -265,16 +307,16 @@ Item {
         PanelLabel {
             required property var modelData
             x: 418
-            y: 580 + modelData.row * 34
+            y: 626 + modelData.row * 34
             text: modelData.label
             font.pixelSize: 13
         }
     }
     LcdField {
         name: "Pattern"
-        x: 520
-        y: 574
-        width: 384
+        x: 510
+        y: 620
+        width: 316
         height: 30
         text: "Pattern " + panel.letters[Drums.patternIndex]
               + (Drums.queuedPattern === Drums.patternIndex ? "  (next)"
@@ -285,9 +327,9 @@ Item {
     }
     LcdField {
         name: "Length"
-        x: 520
-        y: 608
-        width: 384
+        x: 510
+        y: 654
+        width: 316
         height: 30
         text: Drums.length + (Drums.length === 1 ? " step" : " steps")
         onUp: Drums.length = Drums.length + 1
@@ -295,9 +337,9 @@ Item {
     }
     LcdField {
         name: "Scale"
-        x: 520
-        y: 642
-        width: 384
+        x: 510
+        y: 688
+        width: 316
         height: 30
         text: Drums.scaleNames[Drums.scaleIndex]
         onUp: Drums.scaleIndex = Math.min(Drums.scaleNames.length - 1, Drums.scaleIndex + 1)
@@ -305,37 +347,65 @@ Item {
     }
     LcdField {
         name: "Play order"
-        x: 520
-        y: 676
-        width: 384
+        x: 510
+        y: 722
+        width: 316
         height: 30
         text: Drums.orderNames[Drums.orderIndex]
         onUp: Drums.orderIndex = Math.min(Drums.orderNames.length - 1, Drums.orderIndex + 1)
         onDown: Drums.orderIndex = Math.max(0, Drums.orderIndex - 1)
     }
-    PanelLabel { centerX: 1060; y: 572; text: "TEMPO"; visible: Drums.ownsTransport }
-    PanelLabel { centerX: 1190; y: 572; text: "VOLUME" }
-    PanelLabel { centerX: 1320; y: 572; text: "SHUFFLE" }
+    // Effects: the reverb (and its gate) and delay the voices send to, the bus compressor and crusher
+    PanelLabel { x: 862; y: 614; text: "EFFECTS"; orange: true }
+    Repeater {
+        model: [{ key: "rev_size", label: "REV SIZE", cx: 890, detents: 0 }, { key: "rev_gate", label: "GATE", cx: 960, detents: 2 },
+                { key: "dly_time", label: "DLY TIME", cx: 1030, detents: 7 }, { key: "dly_fb", label: "FEEDBACK", cx: 1100, detents: 0 },
+                { key: "comp", label: "COMP", cx: 1170, detents: 0 }, { key: "crush", label: "CRUSH", cx: 1240, detents: 0 }]
+
+        Item {
+            id: fxSlot
+            required property var modelData
+            PanelLabel { centerX: fxSlot.modelData.cx; y: 644; text: fxSlot.modelData.label; font.pixelSize: 12 }
+            DrumKnob {
+                id: fxKnob
+                key: fxSlot.modelData.key
+                detents: fxSlot.modelData.detents
+                x: fxSlot.modelData.cx - width / 2
+                y: 664
+            }
+            PanelLabel {
+                centerX: fxSlot.modelData.cx
+                y: 724
+                text: fxKnob.displayText
+                font.pixelSize: 11
+                font.bold: false
+            }
+        }
+    }
+
+    PanelLabel { centerX: 1330; y: 614; text: "TEMPO"; visible: Drums.ownsTransport }
+    PanelLabel { centerX: 1440; y: 614; text: "VOLUME" }
+    PanelLabel { centerX: 1550; y: 614; text: "SHUFFLE" }
     DrumKnob {
         key: "tempo"
         visible: Drums.ownsTransport
-        x: 1060 - width / 2
-        y: 600
+        x: 1330 - width / 2
+        y: 642
         width: 84
         height: 84
     }
     DrumKnob {
         key: "volume"
-        x: 1190 - width / 2
-        y: 596
+        x: 1440 - width / 2
+        y: 638
         width: 100
         height: 100
     }
     DrumKnob {
         key: "shuffle"
         detents: 6
-        x: 1320 - width / 2
-        y: 604
+        x: 1550 - width / 2
+        y: 646
         width: 70
         height: 70
     }
@@ -343,7 +413,7 @@ Item {
     // Utilities: clear all MIDI mappings, audio status (click to reconnect),
     // MIDI Learn; the status line and output meter below.
     Repeater {
-        model: [{ name: "UNMAP", cx: 1418 }, { name: "AUDIO", cx: 1484 }, { name: "LEARN", cx: 1550 }]
+        model: [{ name: "UNMAP", cx: 1626 }, { name: "AUDIO", cx: 1688 }, { name: "LEARN", cx: 1750 }]
 
         Item {
             id: utility
@@ -352,13 +422,13 @@ Item {
 
             PanelLabel {
                 centerX: utility.modelData.cx
-                y: 572
+                y: 614
                 text: utility.name
                 font.pixelSize: 12
             }
             PanelButton {
                 x: utility.modelData.cx - width / 2
-                y: 592
+                y: 634
                 width: 52
                 height: 30
                 text: utility.name === "AUDIO" ? "Audio: reconnect"
@@ -377,9 +447,9 @@ Item {
         }
     }
     PanelLabel { // audio status: rate, buffer, xruns, MIDI, or AUDIO OFFLINE
-        x: 1392
-        y: 640
-        width: 184
+        x: 1600
+        y: 682
+        width: 176
         horizontalAlignment: Text.AlignLeft
         elide: Text.ElideRight
         text: Host.audioStatus
@@ -387,9 +457,9 @@ Item {
         font.pixelSize: 11
     }
     Rectangle { // output level meter
-        x: 1392
-        y: 668
-        width: 184
+        x: 1600
+        y: 710
+        width: 176
         height: 10
         radius: 2
         color: Theme.ledOff
@@ -405,7 +475,7 @@ Item {
     // Lower deck: transport buttons, step buttons and the track strip
     Rectangle {
         x: panel.margin
-        y: 730
+        y: 790
         width: panel.width - 2 * panel.margin
         height: panel.height - y - panel.margin
         radius: 6
@@ -416,7 +486,7 @@ Item {
     PanelButton {
         visible: Drums.canRun
         x: 60
-        y: 752
+        y: 812
         width: 120
         height: 54
         faceText: "START"
@@ -434,7 +504,7 @@ Item {
     PanelButton {
         visible: Drums.canRun
         x: 60
-        y: 816
+        y: 876
         width: 120
         height: 44
         faceText: "STOP"
@@ -443,7 +513,7 @@ Item {
     }
     PanelButton {
         x: 60
-        y: 872
+        y: 932
         width: 120
         height: 36
         dark: true
@@ -466,14 +536,14 @@ Item {
 
             PanelLabel {
                 centerX: stepSlot.cx
-                y: 746
+                y: 806
                 text: stepSlot.index + 1
                 font.pixelSize: 15
                 opacity: stepSlot.inPattern ? 1.0 : 0.35
             }
             Led {
                 x: stepSlot.cx - width / 2
-                y: 772
+                y: 832
                 on: Drums.currentStep === stepSlot.index
             }
             Rectangle { // the step button: cream face, lit inset
@@ -482,7 +552,7 @@ Item {
                 Keys.onReturnPressed: Drums.cycleStep(stepSlot.index)
                 Keys.onEnterPressed: Drums.cycleStep(stepSlot.index)
                 x: stepSlot.cx - width / 2
-                y: stepMouse.pressed ? 794 : 792
+                y: stepMouse.pressed ? 854 : 852
                 width: panel.stepWidth - 18
                 height: 64
                 radius: 5
@@ -526,7 +596,7 @@ Item {
             required property int index
             readonly property bool selected: Drums.selectedTrack === index
             x: panel.stepLeft + (modelData.first - 1) * panel.stepWidth + 4
-            y: 876
+            y: 936
             width: modelData.steps * panel.stepWidth - 8
             height: 30
             radius: 4

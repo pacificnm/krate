@@ -18,30 +18,48 @@ constexpr float kAccentVelocity = 1.0f; // an accented step, plus Total Accent
 
 // Each voice's knobs: tune, level, decay, then the extras (docs/BRIEF.md#parameters).
 // ParamId::Count = the voice has no such knob.
+constexpr ParamId kNone = ParamId::Count;
 struct VoiceKnobs
 {
-    ParamId tune, level, decay, extra1, extra2;
+    ParamId tune, level, decay;
+    std::array<ParamId, 4> extra{kNone, kNone, kNone, kNone};
 };
-constexpr ParamId kNone = ParamId::Count;
 constexpr std::array<VoiceKnobs, DrumCount> kVoiceKnobs{{
-    {ParamId::BdTune, ParamId::BdLevel, ParamId::BdDecay, ParamId::BdAttack, kNone},
-    {ParamId::SdTune, ParamId::SdLevel, kNone, ParamId::SdTone, ParamId::SdSnappy},
-    {ParamId::LtTune, ParamId::LtLevel, ParamId::LtDecay, kNone, kNone},
-    {ParamId::MtTune, ParamId::MtLevel, ParamId::MtDecay, kNone, kNone},
-    {ParamId::HtTune, ParamId::HtLevel, ParamId::HtDecay, kNone, kNone},
-    {kNone, ParamId::RsLevel, kNone, kNone, kNone},
-    {kNone, ParamId::CpLevel, kNone, kNone, kNone},
-    {kNone, ParamId::ChLevel, ParamId::ChDecay, kNone, kNone},
-    {kNone, ParamId::OhLevel, ParamId::OhDecay, kNone, kNone},
-    {ParamId::CrTune, ParamId::CrLevel, kNone, kNone, kNone},
-    {ParamId::RdTune, ParamId::RdLevel, kNone, kNone, kNone},
+    {ParamId::BdTune, ParamId::BdLevel, ParamId::BdDecay, {ParamId::BdAttack, ParamId::BdSweep, ParamId::BdBend, ParamId::BdTone}},
+    {ParamId::SdTune, ParamId::SdLevel, ParamId::SdDecay, {ParamId::SdTone, ParamId::SdSnappy, ParamId::SdCrack, kNone}},
+    {ParamId::LtTune, ParamId::LtLevel, ParamId::LtDecay},
+    {ParamId::MtTune, ParamId::MtLevel, ParamId::MtDecay},
+    {ParamId::HtTune, ParamId::HtLevel, ParamId::HtDecay},
+    {ParamId::RsTune, ParamId::RsLevel, ParamId::RsDecay},
+    {ParamId::CpTune, ParamId::CpLevel, ParamId::CpDecay, {ParamId::CpSpread, kNone, kNone, kNone}},
+    {ParamId::HhTune, ParamId::ChLevel, ParamId::ChDecay},
+    {ParamId::HhTune, ParamId::OhLevel, ParamId::OhDecay},
+    {ParamId::CrTune, ParamId::CrLevel, kNone},
+    {ParamId::RdTune, ParamId::RdLevel, kNone},
 }};
+// The mixer's parameters are in DrumId order, one block per kind.
+constexpr ParamId mixParam(ParamId first, int drum) { return ParamId(int(first) + drum); }
+
+constexpr double kGateThreshold = 0.003;   // the reverb gate opens on a send above -50 dBFS
+constexpr double kGatedDecay = 0.75;       // the reverb's Size while gated (~3.8 s: dense, then cut)
 } // namespace
 
 void Engine::prepare(double sampleRate, std::uint32_t) noexcept
 {
     m_sampleRate = sampleRate;
     m_voices.prepare(sampleRate);
+    m_reverb.prepare(sampleRate);
+    m_delay.prepare(sampleRate);
+    m_reverbOn = m_delayOn = false;
+    m_gateGain = 0.0;
+    m_gateHold = 0;
+    m_gateAttack = 1.0 - std::exp(-1.0 / (0.001 * sampleRate));
+    m_gateRelease = 1.0 - std::exp(-1.0 / (0.015 * sampleRate));
+    m_compEnvelope = 0.0;
+    m_compGain = 1.0;
+    m_compSmoothing = 1.0 - std::exp(-1.0 / (0.005 * sampleRate));
+    m_crushPhase = 1.0;
+    m_crushL = m_crushR = 0.0f;
     m_volumeSmoothing = 1.0 - std::exp(-1.0 / (kVolumeSmoothingSeconds * sampleRate));
     m_volume = -1.0;
 }
@@ -83,9 +101,130 @@ void Engine::trigger(DrumId drum, float velocity, bool accent) noexcept
     hit.gain = units::gain(knob(knobs.level)) * std::clamp(double(velocity), 0.0, 1.0) * accentGain;
     hit.tune = knob(knobs.tune);
     hit.decay = knob(knobs.decay);
-    hit.extra1 = knob(knobs.extra1);
-    hit.extra2 = knob(knobs.extra2);
+    for (std::size_t i = 0; i < hit.extra.size(); ++i)
+        hit.extra[i] = knob(knobs.extra[i]);
     m_voices.trigger(drum, hit);
+}
+
+void Engine::updateMix() noexcept
+{
+    for (int d = 0; d < DrumCount; ++d) {
+        Mix mix;
+        mix.pan = units::pan(m_params.get(int(mixParam(ParamId::BdPan, d))));
+        mix.drive = m_params.get(int(mixParam(ParamId::BdDrive, d)));
+        mix.reverb = m_params.get(int(mixParam(ParamId::BdRev, d)));
+        mix.delay = m_params.get(int(mixParam(ParamId::BdDly, d)));
+        m_voices.setMix(DrumId(d), mix);
+    }
+}
+
+void Engine::renderVoices(float *left, float *right, std::uint32_t frames) noexcept
+{
+    bool reverbSends = false, delaySends = false;
+    for (int d = 0; d < DrumCount; ++d) {
+        reverbSends = reverbSends || m_params.get(int(mixParam(ParamId::BdRev, d))) > 0.0f;
+        delaySends = delaySends || m_params.get(int(mixParam(ParamId::BdDly, d))) > 0.0f;
+    }
+    // An effect runs while any voice sends to it; switched on again it starts empty.
+    if (reverbSends && !m_reverbOn)
+        m_reverb.clear();
+    if (delaySends && !m_delayOn)
+        m_delay.clear();
+    m_reverbOn = reverbSends;
+    m_delayOn = delaySends;
+    const bool gated = units::index(m_params.get(int(ParamId::RevGate)), 2) == 1;
+    const double size = m_params.get(int(ParamId::RevSize));
+    // Gated: the reverb rings long and dense, and the gate holds it open 80 .. 500 ms after each hit.
+    const auto holdSamples = int(0.08 * std::pow(6.25, size) * m_sampleRate);
+    const double feedback = std::min(0.9, 0.9 * double(m_params.get(int(ParamId::DlyFb))));
+
+    while (frames > 0) {
+        const std::uint32_t n = std::min(frames, kChunk);
+        std::fill_n(m_revL.begin(), n, 0.0f);
+        std::fill_n(m_revR.begin(), n, 0.0f);
+        std::fill_n(m_dlyL.begin(), n, 0.0f);
+        std::fill_n(m_dlyR.begin(), n, 0.0f);
+        m_voices.render(left, right, Sends{m_revL.data(), m_revR.data(), m_dlyL.data(), m_dlyR.data()}, n);
+        if (m_reverbOn) {
+            std::copy_n(m_revL.begin(), n, m_dryL.begin());
+            std::copy_n(m_revR.begin(), n, m_dryR.begin());
+            m_reverb.process(m_revL.data(), m_revR.data(), n, gated ? kGatedDecay : size, 1.0);
+            for (std::uint32_t i = 0; i < n; ++i) {
+                double gate = 1.0;
+                if (gated) {
+                    if (std::max(std::fabs(m_dryL[i]), std::fabs(m_dryR[i])) > kGateThreshold)
+                        m_gateHold = holdSamples;
+                    const double target = m_gateHold > 0 ? 1.0 : 0.0;
+                    if (m_gateHold > 0)
+                        --m_gateHold;
+                    m_gateGain += (target - m_gateGain) * (target > m_gateGain ? m_gateAttack : m_gateRelease);
+                    gate = m_gateGain;
+                }
+                left[i] = float(double(left[i]) + gate * (double(m_revL[i]) - m_dryL[i]));
+                right[i] = float(double(right[i]) + gate * (double(m_revR[i]) - m_dryR[i]));
+            }
+        }
+        if (m_delayOn) {
+            std::copy_n(m_dlyL.begin(), n, m_dryL.begin());
+            std::copy_n(m_dlyR.begin(), n, m_dryR.begin());
+            m_delay.process(m_dlyL.data(), m_dlyR.data(), n, m_delaySeconds, 1.0, feedback);
+            for (std::uint32_t i = 0; i < n; ++i) {
+                left[i] += m_dlyL[i] - m_dryL[i];
+                right[i] += m_dlyR[i] - m_dryR[i];
+            }
+        }
+        left += n;
+        right += n;
+        frames -= n;
+    }
+}
+
+void Engine::processBus(float *left, float *right, std::uint32_t frames) noexcept
+{
+    const double comp = m_params.get(int(ParamId::Comp));
+    if (comp > 0.0) {
+        // Feed-forward, stereo-linked: a peak detector (instant attack; release
+        // 150 ms, gentle glue, down to 40 ms at full, pumping with the beat), the
+        // gain computed in dB (threshold -6 .. -30 dB, ratio 1.5 .. 10), half the
+        // reduction made up. Reduction applies at once (no overshoot on the
+        // hits), recovery is smoothed.
+        const double threshold = -6.0 - 24.0 * comp;
+        const double slope = 1.0 - 1.0 / (1.5 + 8.5 * comp);
+        const double makeup = 0.5 * -threshold * slope;
+        const double release = 1.0 - std::exp(-1.0 / ((0.15 - 0.11 * comp) * m_sampleRate));
+        for (std::uint32_t i = 0; i < frames; ++i) {
+            const double peak = std::max(std::fabs(left[i]), std::fabs(right[i]));
+            m_compEnvelope = peak > m_compEnvelope ? peak : m_compEnvelope + (peak - m_compEnvelope) * release;
+            const double over = 20.0 * std::log10(std::max(m_compEnvelope, 1e-6)) - threshold;
+            const double gainDb = makeup - (over > 0.0 ? over * slope : 0.0);
+            const double target = std::pow(10.0, gainDb / 20.0);
+            m_compGain = target < m_compGain ? target : m_compGain + (target - m_compGain) * m_compSmoothing;
+            left[i] = float(left[i] * m_compGain);
+            right[i] = float(right[i] * m_compGain);
+        }
+    } else {
+        m_compEnvelope = 0.0;
+        m_compGain = 1.0;
+    }
+
+    const double crush = m_params.get(int(ParamId::Crush));
+    if (crush > 0.0) {
+        // Bits 16 .. 4 and the rate down to 1/16 (a sample held for 1 .. 16 frames).
+        const double steps = std::pow(2.0, 15.0 - 12.0 * crush);
+        const double advance = 1.0 / (1.0 + 15.0 * crush * crush);
+        for (std::uint32_t i = 0; i < frames; ++i) {
+            m_crushPhase += advance;
+            if (m_crushPhase >= 1.0) {
+                m_crushPhase -= 1.0;
+                m_crushL = float(std::round(double(left[i]) * steps) / steps);
+                m_crushR = float(std::round(double(right[i]) * steps) / steps);
+            }
+            left[i] = m_crushL;
+            right[i] = m_crushR;
+        }
+    } else {
+        m_crushPhase = 1.0;
+    }
 }
 
 void Engine::apply(const Command &command) noexcept
@@ -157,6 +296,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         apply(*command);
 
     m_sequencer.setShuffle(units::shuffleAmount(m_params.get(int(ParamId::Shuffle))));
+    updateMix();
 
     static constexpr krate::TransportState kStopped{};
     const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
@@ -171,13 +311,15 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     else if (!sequence && m_sequencer.running())
         m_sequencer.stop(); // voices ring out
     const double beatsPerSample = transport.bpm / 60.0 / m_sampleRate;
+    const double bpm = block.transport ? transport.bpm : units::tempoBpm(m_params.get(int(ParamId::Tempo)));
+    m_delaySeconds = units::delayBeats(m_params.get(int(ParamId::DlyTime))) * 60.0 / std::max(bpm, 1.0);
 
     // Voices render in runs between the frames where something triggers:
     // MIDI notes and sequencer steps land on their exact sample.
     std::uint32_t done = 0;
     const auto renderTo = [&](std::uint32_t frame) {
         if (frame > done) {
-            m_voices.render(left + done, right + done, frame - done);
+            renderVoices(left + done, right + done, frame - done);
             done = frame;
         }
     };
@@ -201,6 +343,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     m_currentStep.store(m_sequencer.currentStep(), std::memory_order_relaxed);
     m_playingSlot.store(m_sequencer.slot(), std::memory_order_relaxed);
     m_queuedSlot.store(m_sequencer.queuedSlot(), std::memory_order_relaxed);
+    processBus(left, right, block.frames);
 
     const double target = kOutputTrim * units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)

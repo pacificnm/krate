@@ -5,10 +5,10 @@ import Krate
 Window {
     id: root
 
-    width: 1200
-    height: 705
-    minimumWidth: 800
-    minimumHeight: 470
+    width: 1260
+    height: 700
+    minimumWidth: 840
+    minimumHeight: 467
     visible: true
     title: "K909"
     color: Theme.desk

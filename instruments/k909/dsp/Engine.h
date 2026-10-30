@@ -7,6 +7,8 @@
 #include "core/Midi.h"
 #include "core/ParamValues.h"
 #include "core/SpscQueue.h"
+#include "dsp/Effects.h"
+#include "dsp/Reverb.h"
 #include "k909/dsp/Params.h"
 #include "k909/dsp/Sequencer.h"
 #include "k909/dsp/Voices.h"
@@ -33,9 +35,12 @@ struct Command
     std::uint8_t value = 0;
 };
 
-// K909's realtime core (docs/DSP.md, docs/SEQUENCER.md): eleven voices played
-// by the sequencer (following the transport) and by MIDI notes (General MIDI
+// K909's realtime core (docs/DSP.md, docs/SEQUENCER.md): the voices played by
+// the sequencer (following the transport) and by MIDI notes (General MIDI
 // drum numbers, docs/BRIEF.md#midi-notes), plus MIDI Learn for the knobs.
+// Each voice has a pan, a drive and two sends (docs/DSP.md#mixer-and-effects):
+// the reverb (with a gate) and the delay; then the bus compressor and crusher,
+// then Volume. The effects' buffers are allocated at construction.
 class Engine final : public krate::IInstrument
 {
 public:
@@ -86,6 +91,9 @@ private:
     void handleMidi(const krate::MidiEvent &event) noexcept;
     void apply(const Command &command) noexcept;
     void play(const Hits &hits) noexcept;
+    void updateMix() noexcept;  // the voices' pan, drive and sends, once per block
+    void renderVoices(float *left, float *right, std::uint32_t frames) noexcept; // and the send effects
+    void processBus(float *left, float *right, std::uint32_t frames) noexcept;   // compressor, crusher
 
     krate::ParamValues<ParamCount> m_params{kParams};
     krate::MidiLearnMap m_learn{kParams}; // parameters are ParamId values
@@ -105,6 +113,24 @@ private:
     std::atomic<int> m_playingSlot{0};
     std::atomic<int> m_queuedSlot{-1};
     double m_sampleRate = 48000.0;
+
+    // Send effects (docs/DSP.md#mixer-and-effects); buses rendered kChunk frames at a time.
+    static constexpr std::uint32_t kChunk = 256;
+    std::array<float, kChunk> m_revL{}, m_revR{}, m_dlyL{}, m_dlyR{}, m_dryL{}, m_dryR{};
+    krate::Reverb m_reverb{192000.0};
+    krate::Delay m_delay;
+    bool m_reverbOn = false, m_delayOn = false;
+    double m_delaySeconds = 0.5;
+    double m_gateGain = 0.0;        // the reverb gate, 0..1
+    int m_gateHold = 0;             // samples left open
+    double m_gateAttack = 0.0, m_gateRelease = 0.0;
+    // Bus compressor and crusher.
+    double m_compEnvelope = 0.0;    // detected peak, linear
+    double m_compGain = 1.0;        // applied gain, linear
+    double m_compSmoothing = 0.0;
+    double m_crushPhase = 1.0;
+    float m_crushL = 0.0f, m_crushR = 0.0f;
+
     double m_volume = -1.0;          // smoothed output gain; < 0 = not yet primed
     double m_volumeSmoothing = 0.0;  // per-sample one-pole coefficient
 };

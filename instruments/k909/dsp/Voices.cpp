@@ -15,9 +15,17 @@ constexpr double kSilent = 1e-5;              // -100 dB: a voice below this sto
 
 // Exponential knob mapping: v = 0 -> lo, v = 1 -> hi.
 double expMap(float v, double lo, double hi) { return lo * std::pow(hi / lo, double(v)); }
+// A scale around a centre: v = 0.5 -> exactly 1, v = 0 -> 1/range, v = 1 -> range.
+double around(float v, double range) { return std::pow(range, 2.0 * double(v) - 1.0); }
 
-// Fixed pan per voice, -1 (left) .. 1 (right) (docs/BRIEF.md#outputs).
-constexpr std::array<double, DrumCount> kPan{0.0, 0.0, -0.35, 0.0, 0.35, 0.15, -0.1, 0.25, 0.25, -0.2, -0.3};
+constexpr double kMaxDrive = 24.0; // Drive 100 %: +28 dB into the tanh (peak kept)
+constexpr double kLn2 = 0.6931471805599453;
+// The antiderivative of tanh: ln cosh(u), without overflow.
+double logCosh(double u)
+{
+    const double a = std::fabs(u);
+    return a + std::log1p(std::exp(-2.0 * a)) - kLn2;
+}
 
 // Output trim per voice so default-level hits peak in a similar range.
 constexpr std::array<double, DrumCount> kTrim{0.9, 0.75, 0.8, 0.8, 0.8, 0.35, 0.9, 1.4, 1.4, 1.9, 1.75};
@@ -109,11 +117,37 @@ float MetalBank::next() noexcept
 
 Voices::Voices() noexcept
 {
-    for (std::size_t i = 0; i < std::size_t(DrumCount); ++i) {
-        m_panL[i] = float(std::min(1.0, 1.0 - kPan[i]));
-        m_panR[i] = float(std::min(1.0, 1.0 + kPan[i]));
-    }
+    for (int d = 0; d < DrumCount; ++d)
+        setMix(DrumId(d), Mix{});
     prepare(48000.0);
+}
+
+void Voices::setMix(DrumId drum, const Mix &mix) noexcept
+{
+    const auto d = std::size_t(drum);
+    m_panL[d] = float(std::min(1.0, 1.0 - mix.pan));
+    m_panR[d] = float(std::min(1.0, 1.0 + mix.pan));
+    m_reverbSend[d] = mix.reverb;
+    m_delaySend[d] = mix.delay;
+    const double gain = kMaxDrive * mix.drive * mix.drive;
+    if (gain != m_driveGain[d]) {
+        m_driveGain[d] = gain;
+        m_driveNorm[d] = gain > 0.0 ? 1.0 / std::tanh(gain) : 1.0;
+    }
+}
+
+double Voices::drive(std::size_t d, double x) noexcept
+{
+    // First-order antiderivative anti-aliasing: the average of tanh between
+    // this sample and the last, (F(u) - F(u')) / (u - u'), F = ln cosh. Much
+    // less aliasing than tanh(u) itself, no oversampling, no latency.
+    const double u = m_driveGain[d] * x;
+    const double integral = logCosh(u);
+    const double du = u - m_drivePrev[d];
+    const double y = std::fabs(du) > 1e-6 ? (integral - m_driveIntegral[d]) / du : std::tanh(0.5 * (u + m_drivePrev[d]));
+    m_drivePrev[d] = u;
+    m_driveIntegral[d] = integral;
+    return y * m_driveNorm[d];
 }
 
 void Voices::prepare(double sampleRate) noexcept
@@ -126,6 +160,7 @@ void Voices::prepare(double sampleRate) noexcept
 
     m_bdClickFilter.set(3000.0, 0.8, sampleRate);
     m_sdHp.set(800.0, 0.707, sampleRate);
+    m_sdCrackHp.set(4500.0, 0.707, sampleRate);
     for (Tom &tom : m_toms)
         tom.noiseLp.set(3000.0, 0.707, sampleRate);
     m_rsLow.set(480.0, 12.0, sampleRate);
@@ -160,28 +195,37 @@ void Voices::trigger(DrumId drum, const Hit &hit) noexcept
     const double rate = m_rate;
 
     switch (drum) {
-    case DrumId::Bd:
+    case DrumId::Bd: {
         m_bdBase = 40.0 + 30.0 * hit.tune;
-        m_bdAttack = hit.extra1;
+        m_bdAttack = hit.extra[0];
+        m_bdSweep = 3.0 * hit.extra[1];               // starts (1 + sweep) x the pitch: 1 .. 4x
+        m_bdShape = 1.5 * around(hit.extra[3], 4.0);  // the body's tanh: round sine .. near square
+        m_bdShapeNorm = std::tanh(m_bdShape);
         m_bdOsc.reset();
         m_bdAmp.start(1.0, expMap(hit.decay, 0.08, 0.9), rate);
-        m_bdPitch.start(1.0, hit.accent ? 0.15 : 0.2, rate); // ~22 / 30 ms time constant
+        // Bend time ~22 / 30 ms time constant at the default, 1/4 .. 4x.
+        const double bend = around(hit.extra[2], 4.0);
+        m_bdPitch.start(1.0, hit.accent ? 0.15 * bend : 0.2 * bend, rate);
         m_bdClick.start(1.0, 0.02, rate);
         m_bdClickFilter.reset();
         m_bdPulse = int(0.001 * rate);
         break;
+    }
     case DrumId::Sd:
         m_sdBase = 150.0 + 110.0 * hit.tune;
-        m_sdBodyMix = 1.0 - 0.5 * hit.extra1;
-        m_sdNoiseMix = 0.2 + 0.8 * hit.extra2 + (hit.accent ? 0.15 : 0.0);
+        m_sdBodyMix = 1.0 - 0.5 * hit.extra[0];
+        m_sdNoiseMix = 0.2 + 0.8 * hit.extra[1] + (hit.accent ? 0.15 : 0.0);
+        m_sdCrack = hit.extra[2];
         m_sdOsc1.reset();
         m_sdOsc2.reset();
-        m_sdBody.start(1.0, 0.18, rate);
+        m_sdBody.start(1.0, 0.18 * around(hit.decay, 4.0), rate);
         m_sdPitch.start(1.0, 0.07, rate);
-        m_sdNoiseEnv.start(1.0, 0.12 + 0.18 * hit.extra2, rate);
-        m_sdLp.set(expMap(hit.extra1, 3000.0, 12000.0), 0.707, rate);
+        m_sdNoiseEnv.start(1.0, 0.12 + 0.18 * hit.extra[1], rate);
+        m_sdCrackEnv.start(1.0, 0.025, rate);
+        m_sdLp.set(expMap(hit.extra[0], 3000.0, 12000.0), 0.707, rate);
         m_sdHp.reset();
         m_sdLp.reset();
+        m_sdCrackHp.reset();
         break;
     case DrumId::Lt:
     case DrumId::Mt:
@@ -196,20 +240,31 @@ void Voices::trigger(DrumId drum, const Hit &hit) noexcept
         tom.noiseLp.reset();
         break;
     }
-    case DrumId::Rs:
+    case DrumId::Rs: {
+        const double tune = around(hit.tune, 2.0); // an octave either way
+        m_rsLow.set(480.0 * tune, 12.0, rate);
+        m_rsHigh.set(1700.0 * tune, 10.0, rate);
         m_rsLow.reset();
         m_rsHigh.reset();
         m_rsHp.reset();
-        m_rsAmp.start(1.0, 0.09, rate);
+        m_rsAmp.start(1.0, 0.09 * around(hit.decay, 4.0), rate);
         m_rsImpulse = 1;
         break;
+    }
     case DrumId::Cp:
+        m_cpBand.set(1200.0 * around(hit.tune, 2.0), 2.0, rate);
         m_cpBand.reset();
+        m_cpBurstLength = int(0.011 * around(hit.extra[0], 2.5) * rate); // 4.4 .. 27.5 ms apart
+        m_cpTailSeconds = 0.2 * around(hit.decay, 4.0);
         m_cpBurst.start(1.0, 0.02, rate);
-        m_cpTail.start(0.0, 0.2, rate);
+        m_cpTail.start(0.0, m_cpTailSeconds, rate);
         m_cpTime = 0;
         break;
-    case DrumId::Ch:
+    case DrumId::Ch: {
+        const double tune = around(hit.tune, 1.5);
+        m_chBank.set(kHatBaseHz * tune, kHatRatios, rate);
+        m_chBand.set(10000.0 * tune, 1.2, rate); // the filters follow, so the metal moves as a whole
+        m_chHp.set(7000.0 * tune, 0.707, rate);
         m_chBank.reset();
         m_chBand.reset();
         m_chHp.reset();
@@ -218,12 +273,18 @@ void Voices::trigger(DrumId drum, const Hit &hit) noexcept
         if (m_active[std::size_t(DrumId::Oh)])
             m_ohAmp.setTime(0.005, rate);
         break;
-    case DrumId::Oh:
+    }
+    case DrumId::Oh: {
+        const double tune = around(hit.tune, 1.5);
+        m_ohBank.set(kHatBaseHz * tune, kHatRatios, rate);
+        m_ohBand.set(10000.0 * tune, 1.2, rate);
+        m_ohHp.set(7000.0 * tune, 0.707, rate);
         m_ohBank.reset();
         m_ohBand.reset();
         m_ohHp.reset();
         m_ohAmp.start(1.0, expMap(hit.decay, 0.1, 1.0), rate);
         break;
+    }
     case DrumId::Cr:
         m_crBank.set(kCrashBaseHz * expMap(hit.tune, 0.75, 1.33), kCrashRatios, rate);
         m_crBank.reset();
@@ -254,8 +315,8 @@ float Voices::tick(DrumId drum) noexcept
     switch (drum) {
     case DrumId::Bd: {
         const float pitch = m_bdPitch.next();
-        const double hz = m_bdBase * (1.0 + 1.5 * double(pitch));
-        const double body = std::tanh(1.5 * double(m_bdOsc.next(hz, rate))) / std::tanh(1.5);
+        const double hz = m_bdBase * (1.0 + m_bdSweep * double(pitch));
+        const double body = std::tanh(m_bdShape * double(m_bdOsc.next(hz, rate))) / m_bdShapeNorm;
         const float click = m_bdClickFilter.process(m_bdNoise.next()).bp * m_bdClick.next();
         double pulse = 0.0;
         if (m_bdPulse > 0) {
@@ -275,7 +336,10 @@ float Voices::tick(DrumId drum) noexcept
         const double noiseEnv = m_sdNoiseEnv.next();
         if (bodyEnv < kSilent && noiseEnv < kSilent)
             m_active[std::size_t(drum)] = false;
-        return float(0.6 * m_sdBodyMix * bodyEnv * body + 1.2 * m_sdNoiseMix * noiseEnv * noise);
+        double out = 0.6 * m_sdBodyMix * bodyEnv * body + 1.2 * m_sdNoiseMix * noiseEnv * noise;
+        if (m_sdCrack > 0.0)
+            out += 1.6 * m_sdCrack * m_sdCrackEnv.next() * m_sdCrackHp.process(m_sdCrackNoise.next()).hp;
+        return float(out);
     }
     case DrumId::Lt:
     case DrumId::Mt:
@@ -299,12 +363,12 @@ float Voices::tick(DrumId drum) noexcept
         return float(8.0 * amp * m_rsHp.process(ring).hp);
     }
     case DrumId::Cp: {
-        // Three 10 ms bursts 11 ms apart, then the tail.
-        const int burstLength = int(0.011 * rate);
+        // Three bursts (11 ms apart at the default Spread), then the tail.
+        const int burstLength = m_cpBurstLength;
         if (m_cpTime == burstLength || m_cpTime == 2 * burstLength)
             m_cpBurst.start(1.0, 0.02, rate);
         else if (m_cpTime == 3 * burstLength)
-            m_cpTail.start(0.7, 0.2, rate);
+            m_cpTail.start(0.7, m_cpTailSeconds, rate);
         ++m_cpTime;
         const double env = m_cpTime <= 3 * burstLength ? m_cpBurst.next() : m_cpTail.next();
         if (m_cpTime > 3 * burstLength && env < kSilent)
@@ -345,7 +409,7 @@ float Voices::tick(DrumId drum) noexcept
     return 0.0f;
 }
 
-void Voices::render(float *left, float *right, std::uint32_t frames) noexcept
+void Voices::render(float *left, float *right, const Sends &sends, std::uint32_t frames) noexcept
 {
     for (int v = 0; v < DrumCount; ++v) {
         const auto d = std::size_t(v);
@@ -354,16 +418,30 @@ void Voices::render(float *left, float *right, std::uint32_t frames) noexcept
         const double gain = m_gain[d];
         const float panL = m_panL[d];
         const float panR = m_panR[d];
+        const bool driven = m_driveGain[d] > 0.0;
+        const auto reverb = float(m_reverbSend[d]), delay = float(m_delaySend[d]);
         for (std::uint32_t i = 0; i < frames; ++i) {
             double s = m_residual[d];
             m_residual[d] *= m_declick;
             if (m_active[d]) {
-                const double voice = gain * double(tick(DrumId(v)));
+                double raw = double(tick(DrumId(v)));
+                if (driven)
+                    raw = drive(d, raw);
+                const double voice = gain * raw;
                 m_last[d] = float(voice);
                 s += voice;
             }
-            left[i] += float(s) * panL;
-            right[i] += float(s) * panR;
+            const float l = float(s) * panL, r = float(s) * panR;
+            left[i] += l;
+            right[i] += r;
+            if (reverb > 0.0f) {
+                sends.reverbL[i] += reverb * l;
+                sends.reverbR[i] += reverb * r;
+            }
+            if (delay > 0.0f) {
+                sends.delayL[i] += delay * l;
+                sends.delayR[i] += delay * r;
+            }
         }
         if (!m_active[d])
             m_last[d] = 0.0f;

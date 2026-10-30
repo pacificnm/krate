@@ -100,8 +100,23 @@ struct Hit
     bool accent = false;
     float tune = 0.5f;     // the voice's knobs, normalized, read at trigger time
     float decay = 0.5f;
-    float extra1 = 0.5f;   // BD attack, SD tone
-    float extra2 = 0.5f;   // SD snappy
+    // BD: attack, sweep, bend time, tone. SD: tone, snappy, crack. CP: spread.
+    std::array<float, 4> extra{0.5f, 0.5f, 0.5f, 0.5f};
+};
+
+// A voice's place in the mix (docs/DSP.md#mixer-and-effects), set every block.
+struct Mix
+{
+    double pan = 0.0;    // -1 .. 1
+    double drive = 0.0;  // 0..1
+    double reverb = 0.0; // send, 0..1
+    double delay = 0.0;  // send, 0..1
+};
+
+// The effect sends' buses for one render (frames samples each); written by add.
+struct Sends
+{
+    float *reverbL, *reverbR, *delayL, *delayR;
 };
 
 class Voices
@@ -111,13 +126,16 @@ public:
 
     void prepare(double sampleRate) noexcept;
     void trigger(DrumId drum, const Hit &hit) noexcept;
-    // Add `frames` samples of every sounding voice to left/right (not cleared).
-    void render(float *left, float *right, std::uint32_t frames) noexcept;
+    void setMix(DrumId drum, const Mix &mix) noexcept;
+    // Add `frames` samples of every sounding voice to left/right and its sends
+    // to `sends` (none of them cleared).
+    void render(float *left, float *right, const Sends &sends, std::uint32_t frames) noexcept;
     bool sounding(DrumId drum) const noexcept { return m_active[std::size_t(drum)]; }
     bool anySounding() const noexcept;
 
 private:
     float tick(DrumId drum) noexcept;
+    double drive(std::size_t d, double x) noexcept; // anti-aliased tanh drive, peak kept
 
     double m_rate = 48000.0;
     double m_declick = 0.0;  // per-sample residual decay (1 ms)
@@ -126,13 +144,18 @@ private:
     std::array<double, DrumCount> m_residual{};
     std::array<double, DrumCount> m_gain{};
     std::array<float, DrumCount> m_panL{}, m_panR{};
+    std::array<double, DrumCount> m_reverbSend{}, m_delaySend{};
+    std::array<double, DrumCount> m_driveGain{};   // 0 = clean
+    std::array<double, DrumCount> m_driveNorm{};   // 1 / tanh(gain)
+    std::array<double, DrumCount> m_drivePrev{};   // last input, scaled by the gain
+    std::array<double, DrumCount> m_driveIntegral{}; // its antiderivative
 
     // Bass drum
     Sine m_bdOsc;
     Env m_bdAmp, m_bdPitch, m_bdClick;
     Svf m_bdClickFilter;
     Noise m_bdNoise{0x1A2B3C4Du};
-    double m_bdBase = 55.0, m_bdAttack = 0.5;
+    double m_bdBase = 55.0, m_bdAttack = 0.5, m_bdSweep = 1.5, m_bdShape = 1.5, m_bdShapeNorm = 1.0; // tanh(m_bdShape)
     int m_bdPulse = 0;
 
     // Snare
@@ -141,6 +164,10 @@ private:
     Svf m_sdHp, m_sdLp;
     Noise m_sdNoise{0x2B3C4D5Eu};
     double m_sdBase = 200.0, m_sdBodyMix = 1.0, m_sdNoiseMix = 0.5;
+    Env m_sdCrackEnv;  // the crack: a short, bright noise snap
+    Svf m_sdCrackHp;
+    Noise m_sdCrackNoise{0x92A3B4C5u};
+    double m_sdCrack = 0.0;
 
     // Toms: low, mid, hi
     struct Tom
@@ -165,6 +192,8 @@ private:
     Env m_cpBurst, m_cpTail;
     Noise m_cpNoise{0x6F708192u};
     int m_cpTime = 0;
+    int m_cpBurstLength = 528; // samples between the bursts (spread)
+    double m_cpTailSeconds = 0.2;
 
     // Hats
     MetalBank m_chBank, m_ohBank;

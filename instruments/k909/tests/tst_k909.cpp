@@ -27,7 +27,7 @@ private slots:
     void parameterTable()
     {
         QCOMPARE(int(kParams.size()), ParamCount);
-        QCOMPARE(ParamCount, 31);
+        QCOMPARE(ParamCount, 92);
         QCOMPARE(paramDescriptor(ParamId::Accent).key, std::string_view("accent"));
         QCOMPARE(paramDescriptor(ParamId::BdDecay).key, std::string_view("bd_decay"));
         QCOMPARE(paramDescriptor(ParamId::RdTune).key, std::string_view("rd_tune"));
@@ -35,6 +35,12 @@ private slots:
         std::set<std::string_view> keys;
         for (const auto &info : kParams)
             QVERIFY(keys.insert(info.key).second);
+        // The mixer's blocks run in voice order (the engine indexes them so).
+        static constexpr const char *kPrefix[] = {"bd", "sd", "lt", "mt", "ht", "rs", "cp", "ch", "oh", "cr", "rd"};
+        for (int d = 0; d < DrumCount; ++d)
+            for (const auto &[first, suffix] : {std::pair{ParamId::BdPan, "_pan"}, std::pair{ParamId::BdDrive, "_drive"},
+                                                std::pair{ParamId::BdRev, "_rev"}, std::pair{ParamId::BdDly, "_dly"}})
+                QCOMPARE(paramDescriptor(ParamId(int(first) + d)).key, std::string_view(std::string(kPrefix[d]) + suffix));
         QCOMPARE(units::shuffleAmount(0.0f), 0);
         QCOMPARE(units::shuffleAmount(1.0f), 5);
         QVERIFY(std::abs(units::tempoBpm(paramDescriptor(ParamId::Tempo).defaultValue) - 120.0) < 1e-3);
@@ -191,6 +197,20 @@ private slots:
         QVERIFY(*std::max_element(left.begin(), left.end()) > 0.0f);
         QCOMPARE(engine.param(ParamId::BdDecay), 1.0f);
         QCOMPARE(engine.takeParamsChangedByAudio(), std::uint64_t(1) << int(ParamId::BdDecay));
+    }
+
+    // Past the 64th parameter: learnable, and the panel is still told (bit 63 stands for them).
+    void highParametersLearnAndNotify()
+    {
+        Engine engine;
+        engine.prepare(48000.0, 256);
+        QVERIFY(int(ParamId::Crush) > 63);
+        engine.midiLearnMap()->setMapping(21, int(ParamId::Crush));
+        std::array<float, 256> left, right;
+        const krate::MidiEvent cc{0, 3, {0xB0, 21, 127}};
+        krate::processStereo(engine, left.data(), right.data(), 256, &cc, 1);
+        QCOMPARE(engine.param(ParamId::Crush), 1.0f);
+        QCOMPARE(engine.takeParamsChangedByAudio(), std::uint64_t(1) << 63);
     }
 };
 

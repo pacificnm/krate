@@ -25,22 +25,27 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; the ta
 | Key | Label | Meaning |
 | --- | --- | --- |
 | `accent` | Total Accent | How much louder (up to +6 dB) and punchier accented steps are |
-| `bd_tune`, `bd_level`, `bd_attack`, `bd_decay` | Bass Drum | Pitch, level, click amount, body decay |
-| `sd_tune`, `sd_level`, `sd_tone`, `sd_snappy` | Snare Drum | Pitch, level, noise brightness, noise (snare wire) amount |
+| `bd_tune`, `bd_level`, `bd_attack`, `bd_decay`, `bd_sweep`, `bd_bend`, `bd_tone` | Bass Drum | Pitch, level, click amount, body decay, pitch-sweep depth and time, body shape |
+| `sd_tune`, `sd_level`, `sd_tone`, `sd_snappy`, `sd_decay`, `sd_crack` | Snare Drum | Pitch, level, noise brightness, noise (snare wire) amount, body decay, a bright snap |
 | `lt_tune`, `lt_level`, `lt_decay` | Low Tom | Pitch, level, decay |
 | `mt_tune`, `mt_level`, `mt_decay` | Mid Tom | Pitch, level, decay |
 | `ht_tune`, `ht_level`, `ht_decay` | Hi Tom | Pitch, level, decay |
-| `rs_level` | Rim | Level |
-| `cp_level` | Clap | Level |
+| `rs_tune`, `rs_level`, `rs_decay` | Rim | Pitch, level, decay |
+| `cp_tune`, `cp_level`, `cp_decay`, `cp_spread` | Clap | Pitch, level, tail, the bursts' spacing |
 | `ch_level`, `ch_decay` | Closed Hat | Level, decay |
 | `oh_level`, `oh_decay` | Open Hat | Level, decay |
+| `hh_tune` | Hi Hat | Both hats' pitch |
 | `cr_level`, `cr_tune` | Crash | Level, pitch |
 | `rd_level`, `rd_tune` | Ride | Level, pitch |
+| `<voice>_pan`, `<voice>_drive`, `<voice>_rev`, `<voice>_dly` | Mixer | Per voice (`bd`, `sd`, … `rd`): pan, drive, reverb send, delay send |
+| `rev_size`, `rev_gate` | Reverb | Decay (gate hold when gated); gate Off/On |
+| `dly_time`, `dly_fb` | Delay | 1/16 … 1/2, synced; feedback |
+| `comp`, `crush` | Bus | Compressor amount; bit and rate reduction |
 | `volume` | Volume | Output level |
 | `shuffle` | Shuffle | Delays every second step (0 = straight, 6 positions) |
 | `tempo` | Tempo | 40–240 BPM; drives the transport standalone, stored but unused in the rack (as k303) |
 
-31 parameters in all; level knobs use gain = v², as Klick and k303 do.
+92 parameters in all (more than 64: `krate::ParamValues` folds the changed-by-audio flags of parameters 63 and up into bit 63; hosts only ask whether anything changed). Level knobs use gain = v², as Klick and k303 do. Every new parameter's default plays the original sound exactly.
 
 ## MIDI notes
 
@@ -71,4 +76,4 @@ Velocity 100 and above plays the hit accented. Played notes do not record into t
 
 ## Outputs
 
-Stereo. Each voice has a fixed pan position (toms spread left to right, hats slightly right, ride slightly left), not exposed as a parameter in v1. Per-voice outputs are possible later through `outputChannels()`.
+Stereo. Each voice has a Pan knob (MIX page), defaulting to the original positions (toms spread left to right, hats slightly right, ride slightly left). Per-voice outputs are possible later through `outputChannels()`.

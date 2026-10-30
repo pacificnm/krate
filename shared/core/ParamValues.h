@@ -12,11 +12,12 @@ namespace krate {
 
 // Lock-free normalized parameter values for an instrument with N parameters,
 // initialised from its descriptor table, plus "changed by audio" bits for the
-// GUI. Relaxed atomics: each value is independent and readers smooth.
+// GUI. Relaxed atomics: each value is independent and readers smooth. The mask
+// has a bit per parameter up to 62; bit 63 stands for 63 and everything above
+// it (hosts only ask whether anything changed, then refresh the panel).
 template<std::size_t N>
 class ParamValues
 {
-    static_assert(N <= 64, "changed-bits mask is 64 bits");
     static_assert(std::atomic<float>::is_always_lock_free);
 
 public:
@@ -43,7 +44,7 @@ public:
         if (!valid(index))
             return;
         set(index, value);
-        m_changed.fetch_or(std::uint64_t(1) << index, std::memory_order_relaxed);
+        m_changed.fetch_or(std::uint64_t(1) << std::min(index, 63), std::memory_order_relaxed);
     }
 
     std::uint64_t takeChanged() noexcept { return m_changed.exchange(0, std::memory_order_relaxed); }

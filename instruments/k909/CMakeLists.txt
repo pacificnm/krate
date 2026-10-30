@@ -47,7 +47,7 @@ target_link_libraries(k909-render PRIVATE k909_dsp)
 target_compile_options(k909-render PRIVATE ${K909_WARNINGS})
 
 # --- Tests
-foreach(test tst_voices tst_sequencer)
+foreach(test tst_voices tst_sequencer tst_character)
     add_executable(k909_${test} tests/${test}.cpp)
     set_target_properties(k909_${test} PROPERTIES OUTPUT_NAME k909_${test})
     target_compile_options(k909_${test} PRIVATE -Wall -Wextra -Wpedantic)

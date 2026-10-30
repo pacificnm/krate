@@ -1,6 +1,6 @@
 # K909: panel
 
-A fixed-size hardware-style panel drawn at **1600 × 940** design pixels and scaled uniformly to the window (the same `Scale` approach as k303's `Main.qml`). Light warm-grey chassis, dark grey section headers with orange labels, black knobs with an orange pointer, cream step buttons with a dark inset, orange pattern buttons. Built from the shared `Krate` QML module (`Knob`, `PanelButton`, `Led`, `LcdField`, `PanelLabel`, `LearnOverlay`, `Theme`).
+A fixed-size hardware-style panel drawn at **1800 × 1000** design pixels and scaled uniformly to the window (the same `Scale` approach as k303's `Main.qml`). Light warm-grey chassis, dark grey section headers with orange labels, black knobs with an orange pointer, cream step buttons with a dark inset, orange pattern buttons. Built from the shared `Krate` QML module (`Knob`, `PanelButton`, `Led`, `LcdField`, `PanelLabel`, `LearnOverlay`, `Theme`).
 
 Branding: "Krate" wordmark top left, **K909** large, **Drum Machine** on the right. No third-party names, logos or artwork.
 
@@ -30,6 +30,8 @@ Branding: "Krate" wordmark top left, **K909** large, **Drum Machine** on the rig
 │ CLEAR  │ BASS DRUM │SNARE DRUM│ LOW TOM │ MID TOM │ HI TOM │ RIM  CLAP │ CLOSED OPEN │CRASH RIDE │
 └────────┴────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+The knob sections have three rows and two pages: **SOUND** (each voice's own knobs, as drawn above with the newer ones in a third row) and **MIX** (a strip per voice: PAN, DRIVE, REVERB, DELAY); the SOUND / MIX buttons sit under DRUM MACHINE. Between the LCD block and TEMPO, **EFFECTS**: REV SIZE, GATE, DLY TIME, FEEDBACK, COMP, CRUSH, each with its value under it.
 
 The reference layout's timing-scale strip above the step buttons (note symbols) is replaced by the LED row, which shows both the playhead and the selected track's steps.
 
