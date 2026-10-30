@@ -43,6 +43,8 @@ qt_add_qml_module(k303_ui
         qml/PianoKeys.qml
         qml/StepRow.qml
         qml/WaveSwitch.qml
+    RESOURCES
+        docs/MANUAL.md
 )
 # Generated type registration includes headers by bare name.
 target_include_directories(k303_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE app)
@@ -55,7 +57,7 @@ target_link_libraries(k303-render PRIVATE k303_dsp)
 target_compile_options(k303-render PRIVATE ${K303_WARNINGS})
 
 # --- Tests
-foreach(test tst_params tst_dsp tst_sequencer)
+foreach(test tst_params tst_dsp tst_sequencer tst_character)
     add_executable(${test} tests/${test}.cpp)
     target_compile_options(${test} PRIVATE -Wall -Wextra -Wpedantic)
     target_link_libraries(${test} PRIVATE k303_dsp krate_testing Qt6::Test)

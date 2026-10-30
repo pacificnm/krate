@@ -1,6 +1,6 @@
 # UI
 
-A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and scaled uniformly to the window: brushed-silver upper deck, grey lower deck with a key bed. All branding is our own: the panel reads "k303", "Acid Bass" and "K-303 Acid Bass Synthesizer". No third-party names, logos or artwork are used.
+A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and scaled uniformly to the window: brushed-silver upper deck, grey lower deck with a key bed. All branding is our own: the panel reads "k303" and "Acid Bass Synthesizer". No third-party names, logos or artwork are used.
 
 ## Scaling
 
@@ -11,10 +11,10 @@ A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and sca
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐ 0
 │   /|/| ⊓⊔     TUNING  CUT OFF  RESONANCE  ENV MOD  DECAY  ACCENT                         │
-│  [=WAVE=]       (◯)     (◯)       (◯)       (◯)     (◯)    (◯)        Acid Bass          │
+│  [=WAVE=]       (◯)     (◯)       (◯)       (◯)     (◯)    (◯)    (◯) │ (◯)    (◯)       │
 │ ■ k303                                                                                   │ 140
-│ UNMAP AUDIO ABOUT   TEMPO   SCALE  PLAY MODE   PATTERN [Pattern 1   ]▲▼  ┌K-303──────┐ VOLUME│
-│ [▬][1][2][3][4]     ( ◯ )   (◯)     (◯) ▸FWD    LENGTH  [16 steps    ]▲▼  │Acid Bass…│ ( ◯ ) │
+│ UNMAP AUDIO HELP    TEMPO   SCALE  PLAY MODE   PATTERN [Pattern 1   ]▲▼  DLY TIME FB   VOLUME│
+│ [▬][1][2][3][4]     ( ◯ )   (◯)     (◯) ▸FWD    LENGTH  [16 steps    ]▲▼  REV SIZE WIDTH( ◯ ) │
 │    [5][6][7][8]                                ▬▬▬▬ level ▬▬▬▬           └──────────┘       │ 342
 ├──────┬─────────────┬───────────────────────────────────────────┬──────────────────┬───────┤
 │ MIDI │ ┌KEYBOARD─┐ │ ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ●  step LEDs│                  │RANDOM-│
@@ -30,14 +30,15 @@ A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and sca
 | --- | --- | --- |
 | Waveform switch | Saw / square | M2 |
 | Tuning, Cut Off Freq, Resonance, Env Mod, Decay, Accent | Sound knobs | M2 |
-| Unmap / Audio / About | Clear all MIDI mappings / audio status LED, click to reconnect / about box (M7) | M6, M1, M7 |
+| Unmap / Audio / Help | Clear all MIDI mappings / audio status LED, click to reconnect / the manual (`docs/MANUAL.md`, in the shared `ManualView`) | M6, M1, M8 |
 | 1–8 buttons + red block | Pattern select 1–8 (MIDI-learnable); the red block is a beat LED | M5, M4 |
 | Tempo knob | Sequencer tempo | M4 |
 | Scale selector (1/16, 1/32, 1/16T) | Step length (SEQUENCER.md) | Done |
 | Play Mode selector (Forward, Reverse, Fwd+Rev, Invert, Random) | Step order / pitch inversion (SEQUENCER.md) | Done |
 | Pattern / Length displays | Current pattern and its length, ▲▼ to change | M5 |
 | Red bar under displays | Output level meter | M1 |
-| Model plate | "K-303 / Acid Bass Synthesizer" | — |
+| SWEEP, DRIVE, TONE | Top row, after ACCENT (a rule between SWEEP and DRIVE): the accent's filter sweep; the overdrive and its tone | `sweep`, `drive`, `tone` |
+| Effects | Where the model plate was: DELAY, TIME, FEEDBACK over REVERB, SIZE, WIDTH, each value under its knob | `delay_level`, `delay_time`, `delay_fb`, `reverb_level`, `reverb_size`, `width` |
 | Volume knob | Output volume | M2 |
 | MIDI Learn | Learn toggle + LED | M6 |
 | Run/Stop | Start / stop the sequencer (MIDI-learnable) | M4 |

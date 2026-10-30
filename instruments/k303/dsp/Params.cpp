@@ -1,5 +1,7 @@
 #include "dsp/Params.h"
 
+#include "dsp/Reverb.h"
+
 #include <algorithm>
 #include <format>
 
@@ -71,6 +73,16 @@ std::string playMode(float v)
     constexpr const char *names[] = {"Forward", "Reverse", "Fwd+Rev", "Invert", "Random"};
     return names[units::detent(v, paramDescriptor(ParamId::PlayMode).detents)];
 }
+
+std::string delayTime(float v)
+{
+    static constexpr const char *kNames[kDelayTimes] = {"1/16", "1/8T", "1/8", "1/8.", "1/4", "1/4.", "1/2"};
+    return kNames[units::detent(v, kDelayTimes)];
+}
+
+std::string delayFeedback(float v) { return std::format("{}%", std::lround(units::delayFeedback(v) * 100.0)); }
+
+std::string reverbSize(float v) { return std::format("{:.1f} s", krate::Reverb::decaySeconds(double(v))); }
 
 } // namespace format
 

@@ -24,6 +24,15 @@ enum class ParamId : int {
     Tempo,
     Scale,      // step length: 1/16, 1/32, 1/16T
     PlayMode,   // Forward, Reverse, Fwd+Rev, Invert, Random
+    Sweep,      // accent sweep depth
+    Drive,      // overdrive after the VCA
+    Tone,       // the overdrive's tone
+    DelayLevel,
+    DelayTime,  // 1/16 .. 1/2, tempo-synced
+    DelayFeedback,
+    ReverbLevel,
+    ReverbSize,
+    Width,      // of the effects (the dry bass stays centred)
     Count
 };
 
@@ -43,7 +52,12 @@ std::string volume(float v);
 std::string tempo(float v);
 std::string scale(float v);
 std::string playMode(float v);
+std::string delayTime(float v);
+std::string delayFeedback(float v);
+std::string reverbSize(float v);
 } // namespace format
+
+inline constexpr int kDelayTimes = 7; // 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2
 
 // Indexed by ParamId: kParams[int(id)] describes id.
 inline constexpr std::array<ParamDescriptor, ParamCount> kParams{{
@@ -58,6 +72,15 @@ inline constexpr std::array<ParamDescriptor, ParamCount> kParams{{
     {"tempo",     "Tempo",        0.4f, 0, &format::tempo},    // 120 BPM in 40..240
     {"scale",     "Scale",        0.0f, 3, &format::scale},    // 1/16
     {"playmode",  "Play Mode",    0.0f, 5, &format::playMode}, // Forward
+    {"sweep",     "Accent Sweep", 0.5f, 0, &format::percent},
+    {"drive",     "Drive",        0.0f, 0, &format::percent},
+    {"tone",      "Tone",         0.6f, 0, &format::percent},
+    {"delay_level", "Delay Level", 0.0f, 0, &format::percent},
+    {"delay_time", "Delay Time",  0.5f, kDelayTimes, &format::delayTime}, // 1/8.
+    {"delay_fb",  "Delay Feedback", 0.35f, 0, &format::delayFeedback},
+    {"reverb_level", "Reverb Level", 0.0f, 0, &format::percent},
+    {"reverb_size", "Reverb Size", 0.4f, 0, &format::reverbSize},
+    {"width",     "Width",        0.5f, 0, &format::percent},
 }};
 
 constexpr const ParamDescriptor &paramDescriptor(ParamId id)
@@ -97,6 +120,14 @@ inline int scaleStepsPerBeat(float v)
     return steps[detent(v, paramDescriptor(ParamId::Scale).detents)];
 }
 inline int playMode(float v) { return detent(v, paramDescriptor(ParamId::PlayMode).detents); } // as Sequencer::PlayMode
+
+inline double sweepOctaves(float v) { return 4.0 * v; }       // accent sweep at full Accent: 0..4 (default 2)
+inline double delayBeats(float v)
+{
+    constexpr double beats[kDelayTimes] = {0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0};
+    return beats[detent(v, kDelayTimes)];
+}
+inline double delayFeedback(float v) { return 0.9 * v; }      // 0..90 %
 
 } // namespace units
 

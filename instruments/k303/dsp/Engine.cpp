@@ -8,6 +8,16 @@ namespace k303 {
 namespace {
 constexpr double kVolumeSmoothingSeconds = 0.010; // docs/DSP.md#parameters
 constexpr int kAccentVelocity = 100;              // MIDI notes at or above play accented
+constexpr double kMaxDrive = 24.0;                // Drive 100 %: up to +28 dB into the tanh
+constexpr double kDriveReference = 0.5;           // a typical voice peak: kept where it is by the drive
+constexpr double kDriveTrim = 0.14;               // the rest of the loudness gained, taken back at full drive
+constexpr double kLn2 = 0.6931471805599453;
+
+double logCosh(double u) // tanh's antiderivative, without overflow
+{
+    const double a = std::fabs(u);
+    return a + std::log1p(std::exp(-2.0 * a)) - kLn2;
+}
 } // namespace
 
 Engine::Engine()
@@ -37,7 +47,86 @@ void Engine::prepare(double sampleRate, std::uint32_t /*maxFrames: k303 renders 
 {
     m_sampleRate = sampleRate;
     m_voice.setSampleRate(sampleRate);
+    m_delay.prepare(sampleRate);
+    m_reverb.prepare(sampleRate);
+    m_delayOn = m_reverbOn = false;
+    m_drivePrev = m_driveIntegral = m_tone = 0.0;
     m_volumeCoeff = static_cast<float>(1.0 - std::exp(-1.0 / (kVolumeSmoothingSeconds * sampleRate)));
+}
+
+double Engine::drive(double x) noexcept
+{
+    // First-order antiderivative anti-aliasing: the average of tanh over the
+    // step from the last sample, (F(u) - F(u')) / (u - u'), F = ln cosh.
+    const double u = m_driveGain * x;
+    const double integral = logCosh(u);
+    const double du = u - m_drivePrev;
+    const double y = std::fabs(du) > 1e-6 ? (integral - m_driveIntegral) / du : std::tanh(0.5 * (u + m_drivePrev));
+    m_drivePrev = u;
+    m_driveIntegral = integral;
+    return y * m_driveNorm;
+}
+
+void Engine::effects(float *left, float *right, std::uint32_t frames, double bpm) noexcept
+{
+    const ParamStore &p = m_params;
+    const double delayLevel = p.get(ParamId::DelayLevel);
+    const double reverbLevel = p.get(ParamId::ReverbLevel);
+    // Each runs only while it is up, and starts empty when it comes back.
+    if (delayLevel > 0.0 && !m_delayOn)
+        m_delay.clear();
+    if (reverbLevel > 0.0 && !m_reverbOn)
+        m_reverb.clear();
+    m_delayOn = delayLevel > 0.0;
+    m_reverbOn = reverbLevel > 0.0;
+    if (!m_delayOn && !m_reverbOn)
+        return;
+    const double seconds = units::delayBeats(p.get(ParamId::DelayTime)) * 60.0 / std::max(bpm, 1.0);
+    const double feedback = units::delayFeedback(p.get(ParamId::DelayFeedback));
+    const double size = p.get(ParamId::ReverbSize);
+    const double side = 2.0 * p.get(ParamId::Width); // 0 = the effects in mono, 1 = as they are, 2 = wider
+
+    while (frames > 0) {
+        const std::uint32_t n = std::min(frames, kChunk);
+        std::copy_n(left, n, m_dryChunk.begin()); // the dry bass, mono (left = right)
+        std::copy_n(left, n, m_delayL.begin());
+        std::copy_n(left, n, m_delayR.begin());
+        if (m_delayOn) {
+            m_delay.process(m_delayL.data(), m_delayR.data(), n, seconds, 1.0, feedback);
+            for (std::uint32_t i = 0; i < n; ++i) { // the echoes alone, at the Delay level
+                m_delayL[i] = float(delayLevel * (m_delayL[i] - m_dryChunk[i]));
+                m_delayR[i] = float(delayLevel * (m_delayR[i] - m_dryChunk[i]));
+            }
+        } else {
+            std::fill_n(m_delayL.begin(), n, 0.0f);
+            std::fill_n(m_delayR.begin(), n, 0.0f);
+        }
+        if (m_reverbOn) {
+            // The reverb hears the bass and its echoes.
+            for (std::uint32_t i = 0; i < n; ++i) {
+                m_reverbL[i] = m_dryChunk[i] + m_delayL[i];
+                m_reverbR[i] = m_dryChunk[i] + m_delayR[i];
+            }
+            m_reverb.process(m_reverbL.data(), m_reverbR.data(), n, size, reverbLevel);
+            for (std::uint32_t i = 0; i < n; ++i) { // its wet part only
+                m_reverbL[i] -= m_dryChunk[i] + m_delayL[i];
+                m_reverbR[i] -= m_dryChunk[i] + m_delayR[i];
+            }
+        }
+        for (std::uint32_t i = 0; i < n; ++i) {
+            double wetL = m_delayL[i], wetR = m_delayR[i];
+            if (m_reverbOn) {
+                wetL += m_reverbL[i];
+                wetR += m_reverbR[i];
+            }
+            const double mid = 0.5 * (wetL + wetR), s = 0.5 * (wetL - wetR) * side;
+            left[i] = float(m_dryChunk[i] + mid + s);
+            right[i] = float(m_dryChunk[i] + mid - s);
+        }
+        left += n;
+        right += n;
+        frames -= n;
+    }
 }
 
 void Engine::handle(const SequencerEvent &event) noexcept
@@ -168,6 +257,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     vp.envModOctaves = units::envModOctaves(p.get(ParamId::EnvMod));
     vp.decaySeconds = units::decaySeconds(p.get(ParamId::Decay));
     vp.accent = p.get(ParamId::Accent);
+    vp.sweepOctaves = units::sweepOctaves(p.get(ParamId::Sweep));
     vp.square = units::waveformIsSquare(p.get(ParamId::Waveform));
     vp.tuningSemitones = units::tuningSemitones(p.get(ParamId::Tuning));
     m_voice.setParams(vp);
@@ -175,6 +265,16 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     m_sequencer.setStepsPerBeat(units::scaleStepsPerBeat(p.get(ParamId::Scale)));
     m_sequencer.setPlayMode(Sequencer::PlayMode(units::playMode(p.get(ParamId::PlayMode))));
     const float volumeTarget = static_cast<float>(units::volumeGain(p.get(ParamId::Volume)));
+    const double driveAmount = p.get(ParamId::Drive);
+    const bool driven = driveAmount > 0.0;
+    if (driven) {
+        m_driveGain = 1.0 + kMaxDrive * driveAmount * driveAmount;
+        // Peaks stay about where they were; the body squares off (louder), partly trimmed back.
+        m_driveNorm = kDriveReference / std::tanh(kDriveReference * m_driveGain) * (1.0 - kDriveTrim * driveAmount);
+        // Tone: a low-pass after the drive, 800 Hz (dark) .. 16 kHz (open).
+        const double toneHz = 800.0 * std::pow(20.0, double(p.get(ParamId::Tone)));
+        m_toneCoeff = 1.0 - std::exp(-2.0 * 3.141592653589793 * toneHz / m_sampleRate);
+    }
 
     static constexpr krate::TransportState kStopped{};
     const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
@@ -200,11 +300,24 @@ void Engine::process(const krate::AudioBlock &block) noexcept
             handleMidi(events[nextEvent++]);
         if (sequence)
             handle(m_sequencer.tick(transport.beatAtBlockStart + double(i) * beatsPerSample));
+        double s = m_voice.next();
+        if (driven) {
+            s = drive(s);
+            m_tone += (s - m_tone) * m_toneCoeff;
+            s = m_tone;
+        } else {
+            m_drivePrev = m_driveIntegral = 0.0;
+            m_tone = s;
+        }
+        outL[i] = float(s);
+        outR[i] = float(s);
+    }
+    effects(outL, outR, frames, block.transport ? transport.bpm : units::tempoBpm(p.get(ParamId::Tempo)));
+    for (std::uint32_t i = 0; i < frames; ++i) {
         m_volume += (volumeTarget - m_volume) * m_volumeCoeff;
-        const float s = m_voice.next() * m_volume; // the host's master stage soft-clips
-        outL[i] = s;
-        outR[i] = s;
-        peak = std::max(peak, std::fabs(s));
+        outL[i] *= m_volume; // the host's master stage soft-clips
+        outR[i] *= m_volume;
+        peak = std::max({peak, std::fabs(outL[i]), std::fabs(outR[i])});
     }
 
     m_currentStep.store(m_sequencer.currentStep(), std::memory_order_relaxed);

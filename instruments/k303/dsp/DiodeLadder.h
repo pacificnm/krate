@@ -13,6 +13,7 @@ namespace k303 {
 class DiodeLadder
 {
 public:
+    static constexpr double kInputCeiling = 1.2; // the ladder input's soft ceiling (docs/DSP.md#filter-diode-ladder)
     // Feedback at which this structure self-oscillates.
     static constexpr double kSelfOscillation = 17.0;
 

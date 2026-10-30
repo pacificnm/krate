@@ -35,6 +35,7 @@ SynthController::SynthController(const QString &panelFilePath, krate::Transport 
     m_saveTimer.setInterval(2000);
     connect(&m_saveTimer, &QTimer::timeout, this, &SynthController::savePanel);
     connect(this, &SynthController::paramsChanged, &m_saveTimer, qOverload<>(&QTimer::start));
+    connect(this, &SynthController::paramsChanged, this, [this] { ++m_revision; });
 
     m_pollTimer.setInterval(kPollIntervalMs);
     connect(&m_pollTimer, &QTimer::timeout, this, &SynthController::poll);
@@ -98,6 +99,12 @@ void SynthController::setParamByKey(const QString &key, qreal value)
         setParam(*id, value);
     else
         qCWarning(lcSynth) << "unknown parameter" << key;
+}
+
+qreal SynthController::paramByKey(const QString &key) const
+{
+    const auto id = k303::paramFromKey(key.toStdString());
+    return id ? m_engine.params().get(*id) : 0.0;
 }
 
 qreal SynthController::defaultValue(const QString &key) const

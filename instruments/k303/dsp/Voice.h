@@ -15,6 +15,7 @@ struct VoiceParams
     double envModOctaves = 2.0;
     double decaySeconds = 0.6;
     double accent = 0.5;          // 0..1
+    double sweepOctaves = 2.0;    // accent sweep depth at full Accent (before the resonance scaling)
     bool square = false;
     double tuningSemitones = 0.0;
 };

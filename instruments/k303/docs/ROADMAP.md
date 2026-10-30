@@ -13,6 +13,8 @@ Each milestone ends with something you can run and check. Do them in order; each
 | M6 | **MIDI in and Learn** | Done: `midi_in` auto-connects by name, also on hot-plug; keys play the voice when stopped (legato, velocity ≥ 100 = accent); learn mode binds knobs and the waveform switch; bindings saved to `midimap.json`; `tst_midi` passes; verified end to end via Midi Through. Open: confirm on the LX49 hardware |
 | M7 | **v1 polish** | Sound tuned by ear against reference recordings (update starting values in DSP.md); qmllint clean; accessibility names set; README quick start verified on a clean machine |
 
+| M8 ✅ | **A fuller sound** | More of the bass kept under resonance (makeup (1 + k)^0.8); saturation where the ladder's feedback meets the signal; a bent saw and a square shaped from it; SWEEP (accent sweep depth) and accents driving the filter harder; DRIVE and TONE; DELAY, REVERB, WIDTH (the dry bass stays centred). Result: at the default resonance a held low note's fundamental is 1.9 dB under no resonance (was 8.3); output trimmed −4 dB so the demo is 1.8 dB louder than before; bench 1.4 % (1.7 % with drive and both effects); `tst_character`; [MANUAL.md](MANUAL.md) and HELP |
+
 ## Later (post v1)
 
 | Feature | Notes |
@@ -20,7 +22,6 @@ Each milestone ends with something you can run and check. Do them in order; each
 | External MIDI clock | 24 PPQN, start/stop/continue; `ClockSource` seam from M4 |
 | Step record | Uses the `NoteOn` event already pushed to the GUI in M6 |
 | Live transpose | From the keyboard while the pattern plays |
-| Square-wave shaper | Saw → transistor-style shaper, closer to the hardware square |
 | Soft takeover, MIDI channel filter | MIDI Learn refinements |
 | LV2 plugin | Wraps `k303_dsp` (no Qt/JACK in it by design); LV2 UI can reuse the QML panel |
 | Pattern chaining / song mode | Not in the brief; only if wanted |

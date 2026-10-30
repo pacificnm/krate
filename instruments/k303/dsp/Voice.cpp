@@ -21,11 +21,16 @@ constexpr double kAccentGainMax = 2.0;           // +6 dB at full Accent
 constexpr double kAccentGainSeconds = 0.002;
 constexpr double kSweepChargeTau = 0.030;
 constexpr double kSweepDischargeTau = 0.150;
-constexpr double kSweepOctaves = 2.0;            // at full accent, scaled up by resonance
 constexpr double kMaxFeedback = 15.0;            // below DiodeLadder::kSelfOscillation
 constexpr double kDrive = 1.5;                   // tanh saturation into the ladder
+constexpr double kAccentDrive = 0.5;             // an accented note drives the ladder up to 1.5x harder
+// The ladder's passband falls as 1 / (1 + k); make up (1 + k)^kMakeup of it.
+// 0.5 (half, in dB) left the default resonance 8 dB light in the bass.
+constexpr double kMakeup = 0.8;
 constexpr double kDcBlockHz = 10.0;
-constexpr double kOutputGain = 1.0;
+// -4 dB: the fuller bass and the saturating ladder came out 5.6 dB louder on
+// the demo pattern; this keeps k303 about 1.5 dB above its old level in a mix.
+constexpr double kOutputGain = 0.63;
 // The ladder's resonant peak sits at ~0.67 x its coefficient frequency; scale
 // so the Cutoff knob names the frequency where the resonance sings.
 constexpr double kLadderTuning = 1.5;
@@ -151,14 +156,17 @@ float Voice::next() noexcept
     const double gainTarget = m_noteAccent ? 1.0 + m_accentAmount * (kAccentGainMax - 1.0) : 1.0;
     m_accentGain += (gainTarget - m_accentGain) * m_accentGainCoeff;
 
-    const double octaves = m_cutoffLog2 + m_envMod * m_meg + m_sweep * kSweepOctaves * (0.5 + m_resonance);
+    const double octaves = m_cutoffLog2 + m_envMod * m_meg + m_sweep * m_target.sweepOctaves * (0.5 + m_resonance);
     const double maxCutoff = std::min(kMaxCutoffHz, 0.45 * m_sampleRate);
     const double cutoff = std::clamp(kLadderTuning * std::exp2(octaves), kMinCutoffHz, maxCutoff);
     const double k = kMaxFeedback * m_resonance;
     m_ladder.setCoefficients(cutoff, m_sampleRate * kOversample, k);
-    // Passband gain falls as 1 / (1 + k); restore half of that (in dB) so high
-    // resonance still thins the bass, as intended, without collapsing the level.
-    const double makeup = std::sqrt(1.0 + k);
+    // Passband gain falls as 1 / (1 + k); restore most of it (kMakeup, in dB) so
+    // high resonance still thins the bass a little but the line keeps its weight.
+    const double makeup = std::pow(1.0 + k, kMakeup);
+    // Accented notes hit the ladder harder (the accent's extra level is in the
+    // VCA too): the filter grinds on accents.
+    const double drive = kDrive * (1.0 + kAccentDrive * (m_accentGain - 1.0));
 
     // --- Audio rate (oversampled) -----------------------------------------------
     float os[kOversample];
@@ -166,7 +174,7 @@ float Voice::next() noexcept
         const double x = m_osc.next();
         m_hpfOut = m_hpfCoeff * (m_hpfOut + x - m_hpfIn);
         m_hpfIn = x;
-        os[i] = static_cast<float>(m_ladder.process(std::tanh(kDrive * m_hpfOut)));
+        os[i] = static_cast<float>(m_ladder.process(std::tanh(drive * m_hpfOut)));
     }
     const float y = m_decimate2to1.process(m_decimate4to2.process(os[0], os[1]),
                                            m_decimate4to2.process(os[2], os[3]));

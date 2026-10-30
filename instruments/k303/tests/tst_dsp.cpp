@@ -199,15 +199,17 @@ private slots:
 
     // --- Diode ladder ---------------------------------------------------------
 
-    static double runSine(DiodeLadder &f, double hz, double rate, int frames)
+    // The peak response to a sine, relative to its amplitude. The ladder is
+    // linear for small signals (amplitude 0.05 by default); loud ones saturate.
+    static double runSine(DiodeLadder &f, double hz, double rate, int frames, double amplitude = 0.05)
     {
         double peak = 0.0;
         for (int i = 0; i < frames; ++i) {
-            const double y = f.process(std::sin(2.0 * M_PI * hz * i / rate));
+            const double y = f.process(amplitude * std::sin(2.0 * M_PI * hz * i / rate));
             if (i > frames / 2)
                 peak = std::max(peak, std::abs(y));
         }
-        return peak;
+        return peak / amplitude;
     }
 
     void ladderIsLowpass()
@@ -237,7 +239,7 @@ private slots:
         QVERIFY2(resonant > 4.0 * flat, qPrintable(QString("%1 vs %2").arg(resonant).arg(flat)));
     }
 
-    // Passband (DC) gain is 1 / (1 + k): Voice's makeup gain relies on this.
+    // Passband (DC) gain is 1 / (1 + k) for small signals: Voice's makeup gain relies on this.
     void ladderPassbandGain()
     {
         for (double k : {0.0, 5.0, 15.0}) {
@@ -245,9 +247,22 @@ private slots:
             f.setCoefficients(1000.0, 192000.0, k);
             double y = 0.0;
             for (int i = 0; i < 192000; ++i)
-                y = f.process(1.0);
+                y = f.process(0.01) / 0.01;
             QVERIFY2(std::abs(y * (1.0 + k) - 1.0) < 0.02, qPrintable(QString("k=%1 dc=%2").arg(k).arg(y)));
         }
+    }
+
+    // The ladder's input saturates: at high resonance a loud signal at the
+    // peak gets much less of its boost than a quiet one (it compresses and growls).
+    void ladderResonanceCompresses()
+    {
+        constexpr double rate = 192000.0;
+        DiodeLadder f;
+        f.setCoefficients(1000.0, rate, 15.0);
+        const double quiet = runSine(f, 670.0, rate, 96000, 0.02);
+        f.reset();
+        const double loud = runSine(f, 670.0, rate, 96000, 1.0);
+        QVERIFY2(loud < 0.5 * quiet, qPrintable(QString("%1 vs %2").arg(loud).arg(quiet)));
     }
 
     void ladderStable_data()

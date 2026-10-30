@@ -2,7 +2,12 @@
 
 namespace k303 {
 
-// Band-limited saw / square using PolyBLEP correction at the discontinuities.
+// Band-limited saw / square (docs/DSP.md#oscillator). The saw is a PolyBLEP
+// ramp with a slight curve, as a capacitor charging through the hardware's
+// current source bends it; the square is made from that saw by a
+// transistor-style shaper (a steep tanh comparator with a small offset), so
+// its rising edge is a fast slope, its falling edge the saw's reset, and its
+// pulse a little uneven, as on the hardware.
 class Oscillator
 {
 public:

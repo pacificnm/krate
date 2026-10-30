@@ -2,9 +2,18 @@
 
 #include <algorithm>
 
+#include <cmath>
+
 #include "dsp/PolyBlep.h"
 
 namespace k303 {
+
+namespace {
+constexpr double kSawCurve = 0.12;       // the ramp's bend: v + c (v^2 - 1/3), no DC, no extra jump
+constexpr double kShaperGain = 14.0;     // the comparator's steepness (the rising edge's slope)
+constexpr double kShaperOffset = 0.06;   // its threshold, above the saw's middle: the pulse a little under 50 %
+const double kShaperNorm = 1.0 / std::tanh(kShaperGain);
+} // namespace
 
 void Oscillator::setSampleRate(double sampleRate) noexcept
 {
@@ -30,17 +39,15 @@ float Oscillator::next() noexcept
     const double dt = m_increment;
     double v;
 
-    if (m_shape == Shape::Saw) {
-        v = 2.0 * t - 1.0;
-        v -= krate::polyBlep(t, dt);
-    } else {
-        v = t < 0.5 ? 1.0 : -1.0;
-        v += krate::polyBlep(t, dt);
-        double t2 = t + 0.5;
-        if (t2 >= 1.0)
-            t2 -= 1.0;
-        v -= krate::polyBlep(t2, dt);
-    }
+    // The ramp, band-limited at its reset, then bent: the bend is continuous
+    // across the reset (v^2 is 1 at both ends), so the step stays the BLEP's.
+    const double ramp = 2.0 * t - 1.0;
+    double saw = ramp - krate::polyBlep(t, dt);
+    saw += kSawCurve * (ramp * ramp - 1.0 / 3.0);
+    if (m_shape == Shape::Saw)
+        v = saw;
+    else
+        v = std::tanh(kShaperGain * (saw - kShaperOffset)) * kShaperNorm;
 
     m_phase += dt;
     if (m_phase >= 1.0)

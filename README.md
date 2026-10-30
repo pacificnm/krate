@@ -4,7 +4,7 @@ A suite of software instruments for Linux, and a rack that plays them together f
 
 | | Status |
 | --- | --- |
-| [**k303**](instruments/k303/README.md): acid bass synth with a 16-step sequencer, diode-ladder filter, MIDI Learn | Playable |
+| [**k303**](instruments/k303/README.md): acid bass synth with a 16-step sequencer, saturating diode-ladder filter, overdrive, delay and reverb, MIDI Learn | Playable |
 | [**Klick**](instruments/klick/README.md): metronome, clicks on the shared transport | Works in the rack core and `krate-render` |
 | [**K909**](instruments/k909/README.md): drum machine, 15 synthesized voices (four industrial), per-voice mixer with drive, gated reverb, delay, compressor and crusher, 16 kits, tracks × steps sequencer with accent and shuffle, patterns A–P | Playable, standalone and in the rack (MIDI channel 10) |
 | [**Kalliope**](instruments/kalliope/README.md): 16-voice polysynth, two oscillators with sync and cross mod, analog drift, a driven 12/24 dB ladder, chorus, delay and reverb, 64 patches, arpeggiator | Playable, standalone and in the rack (MIDI channel 2) |

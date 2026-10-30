@@ -8,7 +8,9 @@
 #include "core/Instrument.h"
 #include "core/Midi.h"
 #include "core/SpscQueue.h"
+#include "dsp/Effects.h"
 #include "dsp/ParamStore.h"
+#include "dsp/Reverb.h"
 #include "dsp/Sequencer.h"
 #include "dsp/Voice.h"
 
@@ -103,6 +105,18 @@ private:
     Sequencer m_sequencer;
     Voice m_voice;
     double m_sampleRate = 48000.0;
+
+    // Output stage (docs/DSP.md#output): drive and tone, then the delay and
+    // reverb (their wet signal widened, the dry bass kept centred), then Volume.
+    double drive(double x) noexcept;  // anti-aliased tanh, normalized
+    void effects(float *left, float *right, std::uint32_t frames, double bpm) noexcept;
+    double m_drivePrev = 0.0, m_driveIntegral = 0.0, m_driveGain = 1.0, m_driveNorm = 1.0;
+    double m_tone = 0.0, m_toneCoeff = 1.0;
+    static constexpr std::uint32_t kChunk = 256;
+    std::array<float, kChunk> m_dryChunk{}, m_delayL{}, m_delayR{}, m_reverbL{}, m_reverbR{};
+    krate::Delay m_delay;
+    krate::Reverb m_reverb{192000.0};
+    bool m_delayOn = false, m_reverbOn = false;
 
     float m_volume = 0.0f;      // smoothed (realtime thread only)
     float m_volumeCoeff = 0.0f;

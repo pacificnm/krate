@@ -72,8 +72,10 @@ double DiodeLadder::process(double x) noexcept
     const double sigma = m_sg1 * m_stage[0].feedbackOutput() + m_sg2 * m_stage[1].feedbackOutput()
                        + m_sg3 * m_stage[2].feedbackOutput() + m_stage[3].feedbackOutput();
 
-    // Zero-delay feedback: solve the loop for the ladder input instantaneously.
-    const double u = (x - m_k * sigma) / (1.0 + m_k * m_gamma);
+    // Zero-delay feedback: solve the loop for the ladder input instantaneously,
+    // then saturate it, as the diodes and transistors at the ladder's input do:
+    // a loud resonant peak compresses and growls instead of growing.
+    const double u = kInputCeiling * std::tanh((x - m_k * sigma) / (1.0 + m_k * m_gamma) / kInputCeiling);
 
     double y = m_stage[0].process(u);
     y = m_stage[1].process(y);

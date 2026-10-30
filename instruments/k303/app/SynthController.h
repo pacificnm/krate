@@ -47,6 +47,9 @@ class SynthController : public QObject
     Q_PROPERTY(qreal playMode READ playMode WRITE setPlayMode NOTIFY paramsChanged)
     // True while the playing step starts a beat (beat LED). Display only.
     Q_PROPERTY(bool beat READ beat NOTIFY currentStepChanged)
+    // Bumped whenever any parameter changes; QML binds key-based values like
+    //     Synth.revision >= 0 ? Synth.paramByKey("drive") : 0
+    Q_PROPERTY(int revision READ revision NOTIFY paramsChanged)
 
 public:
     // Deliberately not default-constructible: Qt prefers a default constructor
@@ -96,6 +99,8 @@ public:
 
     // Key-based access for generic controls (keys are the ids in docs/DSP.md).
     Q_INVOKABLE void setParamByKey(const QString &key, qreal value);
+    Q_INVOKABLE qreal paramByKey(const QString &key) const;
+    int revision() const { return m_revision; }
     Q_INVOKABLE qreal defaultValue(const QString &key) const;
     // Human-readable value, e.g. "1.2 kHz"; pass the value so bindings update with it.
     Q_INVOKABLE QString displayText(const QString &key, qreal value) const;
@@ -123,6 +128,7 @@ private:
 
     QTimer m_pollTimer;
     int m_currentStep = -1;
+    int m_revision = 0;
     bool m_beat = false;
     QString m_panelFilePath;
     QTimer m_saveTimer;

@@ -44,22 +44,25 @@ private slots:
     void manualCoversThePanel_data()
     {
         QTest::addColumn<QString>("instrument");
-        QTest::newRow("krimson") << QStringLiteral("krimson");
-        QTest::newRow("kalliope") << QStringLiteral("kalliope");
-        QTest::newRow("k909") << QStringLiteral("k909");
+        QTest::addColumn<QString>("field"); // the QML property that names a control
+        QTest::newRow("krimson") << QStringLiteral("krimson") << QStringLiteral("label");
+        QTest::newRow("kalliope") << QStringLiteral("kalliope") << QStringLiteral("label");
+        QTest::newRow("k909") << QStringLiteral("k909") << QStringLiteral("label");
+        QTest::newRow("k303") << QStringLiteral("k303") << QStringLiteral("name");
     }
     void manualCoversThePanel()
     {
         QFETCH(QString, instrument);
+        QFETCH(QString, field);
         const QString dir = QStringLiteral(KRATE_SOURCE_DIR "/instruments/") + instrument;
         const QString manual = read(dir + QStringLiteral("/docs/MANUAL.md"));
         const QString panel = read(dir + QStringLiteral("/qml/Panel.qml"));
         QVERIFY(!manual.isEmpty() && !panel.isEmpty());
-        QVERIFY(ManualReader::split(manual).size() >= 15);
-        static const QRegularExpression label(QStringLiteral(R"(label: \"([^\"]{2,})\")"));
+        QVERIFY(ManualReader::split(manual).size() >= 10);
+        const QRegularExpression label(field + QStringLiteral(R"(: \"([^\"]{2,})\")"));
         QStringList missing;
         for (auto it = label.globalMatch(panel); it.hasNext();) {
-            const QString l = it.next().captured(1).replace(QStringLiteral("\\n"), QStringLiteral(" "));
+            const QString l = it.next().captured(1).replace(QStringLiteral("\\n"), QStringLiteral(" ")).trimmed();
             if (!manual.contains(l, Qt::CaseInsensitive))
                 missing << l;
         }

@@ -118,7 +118,10 @@ Item {
             { name: "RESONANCE", key: "resonance", cx: 742 },
             { name: "ENV MOD", key: "envmod", cx: 864 },
             { name: "DECAY", key: "decay", cx: 982 },
-            { name: "ACCENT", key: "accent", cx: 1104 }
+            { name: "ACCENT", key: "accent", cx: 1104 },
+            { name: "SWEEP", key: "sweep", cx: 1222 },
+            { name: "DRIVE", key: "drive", cx: 1366 },
+            { name: "TONE", key: "tone", cx: 1484 }
         ]
 
         Item {
@@ -138,7 +141,7 @@ Item {
                 width: 72
                 height: 72
                 name: soundKnob.modelData.name
-                value: Synth[soundKnob.modelData.key]
+                value: Synth.revision >= 0 ? Synth.paramByKey(soundKnob.modelData.key) : 0
                 defaultValue: Synth.defaultValue(soundKnob.modelData.key)
                 displayText: Synth.displayText(soundKnob.modelData.key, value)
                 onMoved: v => Synth.setParamByKey(soundKnob.modelData.key, v)
@@ -151,20 +154,26 @@ Item {
         }
     }
 
-    Text { // wordmark
-        x: 1196
-        y: 58
-        text: "Acid Bass"
+    Rectangle { // between the accent's knobs and the output's drive
+        x: 1294
+        y: 10
+        width: 1
+        height: 112
+        color: Theme.deckLine
+    }
+
+    Text { // what it is, under the maker mark
+        x: 30
+        y: 118
+        text: "Acid Bass Synthesizer"
         color: Theme.ink
         font.family: Theme.labelFont
-        font.pixelSize: 58
-        font.weight: Font.Black
-        font.letterSpacing: 1
+        font.pixelSize: 15
     }
 
     // Utility buttons, beat LED, pattern select
     Repeater {
-        model: [{ name: "UNMAP", cx: 52 }, { name: "AUDIO", cx: 112 }, { name: "ABOUT", cx: 172 }]
+        model: [{ name: "UNMAP", cx: 52 }, { name: "AUDIO", cx: 112 }, { name: "HELP", cx: 172 }]
 
         Item {
             id: utility
@@ -184,7 +193,9 @@ Item {
                 y: 170
                 width: 48
                 height: 24
-                text: isAudio ? "Audio: reconnect" : utility.modelData.name
+                text: isAudio ? "Audio: reconnect"
+                    : utility.modelData.name === "HELP" ? "k303's manual: what every control does and how to use it"
+                    : utility.modelData.name
                 hasLed: isAudio
                 ledOn: isAudio && Host.audioConnected
                 onClicked: {
@@ -192,9 +203,16 @@ Item {
                         Host.connectAudio()
                     else if (utility.modelData.name === "UNMAP")
                         MidiLearn.clearAll()
+                    else
+                        manual.open()
                 }
             }
         }
+    }
+    ManualView {
+        id: manual
+        title: "k303"
+        source: "qrc:/qt/qml/K303/docs/MANUAL.md"
     }
 
     PanelLabel { // audio status: rate, buffer, xruns, or AUDIO OFFLINE
@@ -383,41 +401,50 @@ Item {
         }
     }
 
-    // Model plate
-    Rectangle {
-        x: 1132
-        y: 186
-        width: 270
-        height: 108
-        color: "transparent"
-        border.color: Theme.ink
-        border.width: 2
+    // Effects: the delay and reverb (Width spreads them; the bass stays centred)
+    Repeater {
+        model: [
+            { name: "DELAY", key: "delay_level", cx: 1170, row: 0 }, { name: "TIME", key: "delay_time", cx: 1270, row: 0 },
+            { name: "FEEDBACK", key: "delay_fb", cx: 1370, row: 0 },
+            { name: "REVERB", key: "reverb_level", cx: 1170, row: 1 }, { name: "SIZE", key: "reverb_size", cx: 1270, row: 1 },
+            { name: "WIDTH", key: "width", cx: 1370, row: 1 }
+        ]
 
-        Rectangle {
-            y: 58
-            width: parent.width
-            height: 2
-            color: Theme.ink
-        }
+        Item {
+            id: fxKnob
+            required property var modelData
+            readonly property real rowY: 150 + modelData.row * 96
 
-        Text {
-            anchors.right: parent.right
-            anchors.rightMargin: 14
-            y: 6
-            text: "K-303"
-            color: Theme.ink
-            font.family: Theme.labelFont
-            font.pixelSize: 42
-        }
+            PanelLabel {
+                centerX: fxKnob.modelData.cx
+                y: fxKnob.rowY
+                text: fxKnob.modelData.name
+                font.pixelSize: 12
+            }
+            Knob {
+                id: fxControl
+                x: fxKnob.modelData.cx - width / 2
+                y: fxKnob.rowY + 18
+                width: 46
+                height: 46
+                detents: fxKnob.modelData.key === "delay_time" ? 7 : 0
+                name: Synth.revision >= 0 ? fxKnob.modelData.name : ""
+                value: Synth.revision >= 0 ? Synth.paramByKey(fxKnob.modelData.key) : 0
+                defaultValue: Synth.defaultValue(fxKnob.modelData.key)
+                displayText: Synth.displayText(fxKnob.modelData.key, value)
+                onMoved: v => Synth.setParamByKey(fxKnob.modelData.key, v)
 
-        Text {
-            anchors.right: parent.right
-            anchors.rightMargin: 14
-            y: 66
-            text: "Acid Bass Synthesizer"
-            color: Theme.ink
-            font.family: Theme.labelFont
-            font.pixelSize: 24
+                LearnOverlay {
+                    anchors.fill: parent
+                    paramKey: fxKnob.modelData.key
+                }
+            }
+            PanelLabel {
+                centerX: fxKnob.modelData.cx
+                y: fxKnob.rowY + 66
+                text: fxControl.displayText
+                font.pixelSize: 11
+            }
         }
     }
 

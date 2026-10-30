@@ -2,10 +2,11 @@
 //
 //   k303-render [--out file.wav] [--bars N] [--rate HZ]
 //               [--tempo BPM] [--<param> 0..1 ...] [--square]
-//   k303-render --bench [--rate HZ]
+//   k303-render --bench [--rate HZ] [--<param> 0..1 ...]
 //
 // <param> is any key from docs/DSP.md#parameters (cutoff, resonance, envmod,
-// decay, accent, tuning, volume). Plays the sequencer's current pattern.
+// decay, accent, sweep, drive, tone, delay_level, reverb_level, ...). Plays the
+// sequencer's current pattern; --bench with parameters measures that setting.
 
 #include <chrono>
 #include <cstdint>
@@ -27,9 +28,9 @@ void usage()
 {
     std::fprintf(stderr,
                  "usage: k303-render [--out file.wav] [--bars N] [--rate HZ] [--tempo BPM]\n"
-                 "                   [--cutoff|--resonance|--envmod|--decay|--accent|--tuning|--volume 0..1]\n"
+                 "                   [--<param> 0..1 ...]  (any key: cutoff, resonance, drive, delay_level, ...)\n"
                  "                   [--square]\n"
-                 "       k303-render --bench [--rate HZ]\n");
+                 "       k303-render --bench [--rate HZ] [--<param> 0..1 ...]\n");
 }
 
 } // namespace
