@@ -67,6 +67,7 @@ std::string choice(float v, int which)
     case ParamId::KbdTrack: set({"0", "1/3", "2/3", "1"}); break;
     case ParamId::VoiceMode: set({"Poly", "Mono", "Legato", "Unison"}); break;
     case ParamId::WheelDest: set({"Morph", "Vibrato"}); break;
+    case ParamId::PressureDest: set({"Off", "Filter", "Vibrato", "Filter + vib"}); break;
     case ParamId::ArpMode: set({"Up", "Down", "Up & Down", "Random"}); break;
     case ParamId::ArpRate: set({"1/8", "1/16", "1/8T", "1/16T"}); break;
     case ParamId::Chorus: set({"Off", "Chorus", "Ensemble"}); break;
@@ -95,6 +96,12 @@ std::string octave(float v)
     return s == 0 ? std::string("0") : std::format("{:+}", s);
 }
 std::string onOff(float v) { return v > 0.5f ? std::string("On") : std::string("Off"); }
+
+std::string unisonVoices(float v)
+{
+    static constexpr const char *kNames[] = {"3 voices", "5 voices", "7 voices"};
+    return kNames[units::index(v, positions::kUnisonVoices)];
+}
 
 } // namespace format
 

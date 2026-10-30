@@ -56,6 +56,7 @@ struct SlotSettings
 
     double slotGain = 0.64;    // the slot's level
     double slotPan = 0.0;      // -1..1
+    double analog = 0.0;       // 0..1: drift and spread between notes and oscillators (docs/DSP.md#analog)
 };
 
 // Morph (docs/DSP.md#morph): a slot's sound between its panel settings (t = 0)
@@ -81,8 +82,11 @@ public:
     double level() const noexcept { return m_aenv.level(); }
     double velocity() const noexcept { return m_velocity; } // 0..1 (morph by velocity)
 
-    // Unison: detune (semitones) and stereo position (-1..1) of this voice.
-    void setSpread(double detuneSemis, double pan) noexcept;
+    // Unison: detune (semitones), stereo position (-1..1) and level of this voice.
+    void setSpread(double detuneSemis, double pan, double gain = 1.0) noexcept;
+    // Its own random sequence (analog drift): a different seed per voice, so
+    // renders are the same every time.
+    void setSeed(std::uint32_t seed) noexcept { m_random = seed ? seed : 1u; }
 
     // Adds 2 * frames samples to outL2x / outR2x. lfo2 and vibrato: one value per host frame.
     void render(float *outL2x, float *outR2x, std::uint32_t frames, const float *lfo2, const float *vibrato,
@@ -90,6 +94,7 @@ public:
 
 private:
     void start(int note, float velocity, double glideFrom) noexcept; // a fresh note on a silent voice
+    double random() noexcept; // -1..1
 
     double m_rate = 96000.0;
     Oscillator m_osc1, m_osc2;
@@ -104,6 +109,16 @@ private:
     double m_pitch = 60.0;  // the sounding pitch (glides toward m_note)
     double m_detune = 0.0;
     double m_pan = 0.0;     // unison position; the slot's pan adds to it
+    double m_spreadGain = 1.0; // unison: each voice's share
+    // Analog: drawn per note (-1..1, scaled by the slot's Analog when it plays).
+    std::uint32_t m_random = 1;
+    bool m_freshNote = false;  // its oscillators take their random start on the next frame
+    double m_startPhase1 = 0.0, m_startPhase2 = 0.0;
+    double m_offset1 = 0.0, m_offset2 = 0.0; // fixed detune of each oscillator for this note
+    double m_cutoffOffset = 0.0;
+    double m_drift1 = 0.0, m_drift2 = 0.0;   // slow wander, now
+    double m_driftTarget1 = 0.0, m_driftTarget2 = 0.0;
+    int m_driftCountdown = 0;                // frames until new wander targets
     bool m_stealing = false;
     double m_fade = 1.0, m_fadeStep = 0.0;
     int m_nextNote = 60;

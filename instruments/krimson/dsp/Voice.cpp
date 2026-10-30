@@ -16,6 +16,14 @@ constexpr double kMaxNarrowing = 0.45;    // pulse width 50 % .. 5 %
 constexpr double kMixGain = 0.5;
 constexpr double kSmoothingSeconds = 0.003;
 constexpr double kStealFadeSeconds = 0.002;
+// Analog at 100 % (docs/DSP.md#analog): each oscillator wanders up to +-12
+// cents (new targets every 0.2 .. 0.6 s, reached over ~0.4 s), sits up to
+// +-5 cents off for the whole note, starts anywhere in its cycle; the cutoff
+// sits up to +-1/4 octave off per note.
+constexpr double kDriftSemis = 0.12;
+constexpr double kNoteOffsetSemis = 0.05;
+constexpr double kCutoffOffsetOctaves = 0.25;
+constexpr double kDriftSeconds = 0.4;
 
 double noteHz(double note) { return 440.0 * std::exp2((note - 69.0) / 12.0); }
 } // namespace
@@ -55,6 +63,7 @@ SlotSettings blend(const SlotSettings &a, const SlotSettings &b, double t) noexc
     s.glideSeconds = lin(a.glideSeconds, b.glideSeconds);
     s.slotGain = lin(a.slotGain, b.slotGain);
     s.slotPan = lin(a.slotPan, b.slotPan);
+    s.analog = lin(a.analog, b.analog);
     return s;
 }
 
@@ -68,10 +77,19 @@ void Voice::prepare(double sampleRate2x) noexcept
     kill();
 }
 
-void Voice::setSpread(double detuneSemis, double pan) noexcept
+void Voice::setSpread(double detuneSemis, double pan, double gain) noexcept
 {
     m_detune = detuneSemis;
     m_pan = std::clamp(pan, -1.0, 1.0);
+    m_spreadGain = gain;
+}
+
+double Voice::random() noexcept
+{
+    m_random ^= m_random << 13; // xorshift32
+    m_random ^= m_random >> 17;
+    m_random ^= m_random << 5;
+    return double(m_random) / 2147483648.0 - 1.0;
 }
 
 void Voice::kill() noexcept
@@ -88,6 +106,13 @@ void Voice::kill() noexcept
 
 void Voice::start(int note, float velocity, double glideFrom) noexcept
 {
+    // Analog: where this note's oscillators start, and how far off it sits.
+    m_freshNote = true;
+    m_startPhase1 = 0.5 + 0.5 * random();
+    m_startPhase2 = 0.5 + 0.5 * random();
+    m_offset1 = random();
+    m_offset2 = random();
+    m_cutoffOffset = random();
     m_note = note;
     m_pitch = glideFrom >= 0.0 ? glideFrom : double(note);
     m_velocity = std::clamp(double(velocity), 0.0, 1.0);
@@ -177,7 +202,22 @@ void Voice::render(float *outL2x, float *outR2x, std::uint32_t frames, const flo
     const double panL = std::min(1.0, 1.0 - pan) * s.slotGain;
     const double panR = std::min(1.0, 1.0 + pan) * s.slotGain;
 
+    const double driftSmoothing = 1.0 - std::exp(-1.0 / (kDriftSeconds * hostRate));
     for (std::uint32_t i = 0; i < frames; ++i) {
+        if (m_freshNote) { // a new note's oscillators start anywhere in their cycle (by Analog)
+            m_freshNote = false;
+            m_osc1.reset(m_startPhase1 * s.analog);
+            m_osc2.reset(m_startPhase2 * s.analog);
+        }
+        if (--m_driftCountdown <= 0) { // new wander targets now and then
+            m_driftTarget1 = random();
+            m_driftTarget2 = random();
+            m_driftCountdown = int(hostRate * (0.4 + 0.2 * random()));
+        }
+        m_drift1 += (m_driftTarget1 - m_drift1) * driftSmoothing;
+        m_drift2 += (m_driftTarget2 - m_drift2) * driftSmoothing;
+        const double analog1 = s.analog * (kDriftSemis * m_drift1 + kNoteOffsetSemis * m_offset1);
+        const double analog2 = s.analog * (kDriftSemis * m_drift2 + kNoteOffsetSemis * m_offset2);
         // Control rate: once per host frame (a stolen voice may start its note mid-block).
         const double velocityGain = 1.0 - s.ampVelocity * (1.0 - m_velocity);
         const double envScale = 1.0 - s.fenvVelocity * (1.0 - m_velocity);
@@ -186,11 +226,11 @@ void Voice::render(float *outL2x, float *outR2x, std::uint32_t frames, const flo
         const double menvNow = m_menv.level() * s.menvAmount;
 
         m_pitch += (m_note - m_pitch) * glide;
-        double pitch1 = m_pitch + m_detune + s.bendSemis + s.vibratoSemis * double(vibrato[i]);
+        double pitch1 = m_pitch + m_detune + s.bendSemis + s.vibratoSemis * double(vibrato[i]) + analog1;
         const double lfoPitch = l1 * std::abs(s.lfo1Amount) * kLfoPitchSemis; // amount squared
         if (s.lfo1Dest == 0)
             pitch1 += lfoPitch;
-        double pitch2 = (s.osc2Kbd ? pitch1 : 60.0 + (s.lfo1Dest == 0 ? lfoPitch : 0.0)) + s.osc2Semis;
+        double pitch2 = (s.osc2Kbd ? pitch1 - analog1 : 60.0 + (s.lfo1Dest == 0 ? lfoPitch : 0.0)) + s.osc2Semis + analog2;
         if (s.lfo1Dest == 1)
             pitch2 += lfoPitch;
         if (s.menvDest == 0)
@@ -207,7 +247,7 @@ void Voice::render(float *outL2x, float *outR2x, std::uint32_t frames, const flo
         const double inc2 = noteHz(pitch2) / m_rate;
 
         double cutoff = s.cutoffOctaves + s.kbdTrack * (m_note - 60) / 12.0
-                        + s.fenvOctaves * envScale * m_fenv.level();
+                        + s.fenvOctaves * envScale * m_fenv.level() + s.analog * kCutoffOffsetOctaves * m_cutoffOffset;
         if (s.lfo1Dest == 2)
             cutoff += kLfoFilterOctaves * l1;
         if (s.lfo2Dest == 1)
@@ -237,7 +277,7 @@ void Voice::render(float *outL2x, float *outR2x, std::uint32_t frames, const flo
                 m_fade -= m_fadeStep;
                 fade = std::max(m_fade, 0.0);
             }
-            const double out = double(filtered) * amp * s.gain * velocityGain * tremolo * fade;
+            const double out = double(filtered) * amp * s.gain * velocityGain * tremolo * fade * m_spreadGain;
             outL2x[2 * i + std::uint32_t(k)] += float(out * panL);
             outR2x[2 * i + std::uint32_t(k)] += float(out * panR);
         }

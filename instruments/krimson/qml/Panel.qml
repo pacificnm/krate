@@ -619,7 +619,8 @@ Item {
         Choices { key: "voice_mode"; label: "VOICE MODE"; x: 12; y: 142 }
         KKnob { key: "glide"; label: "GLIDE"; size: 38; x: 6; y: 228 }
         KKnob { key: "unison_detune"; label: "DETUNE"; size: 38; x: 78; y: 228 }
-        KKnob { key: "bend_range"; label: "BEND"; size: 34; x: 40; y: 310 }
+        KKnob { key: "bend_range"; label: "BEND"; size: 34; x: 6; y: 310 }
+        KKnob { key: "unison_voices"; label: "VOICES"; size: 34; x: 78; y: 310 }
     }
 
     Section {
@@ -707,6 +708,7 @@ Item {
         KKnob { key: "delay_time"; label: "TIME"; size: 30; x: 27; y: 168 }
         KKnob { key: "reverb_level"; label: "REVERB"; size: 30; x: 0; y: 240 }
         KKnob { key: "reverb_size"; label: "SIZE"; size: 30; x: 54; y: 240 }
+        KKnob { key: "fx_drive"; label: "DRIVE"; size: 30; x: 27; y: 310 }
     }
 
     Section {
@@ -716,16 +718,8 @@ Item {
 
         KKnob { key: "slot_level"; label: "LEVEL"; size: 44; x: 15; y: 30 }
         KKnob { key: "slot_pan"; label: "PAN"; size: 44; x: 15; y: 116; bipolar: true }
-        Text {
-            x: 8
-            y: 210
-            width: 82
-            wrapMode: Text.WordWrap
-            text: "Slot " + "ABCD"[Krimson.editedSlot] + "'s level and pan"
-            color: panel.dim
-            font.family: Theme.labelFont
-            font.pixelSize: 10
-        }
+        KKnob { key: "analog"; label: "ANALOG"; size: 40; x: 17; y: 214 }
+        Choices { key: "pressure_dest"; label: "PRESSURE"; x: 6; y: 296; width: 82 }
     }
 
     // ---- Wheels and keyboard

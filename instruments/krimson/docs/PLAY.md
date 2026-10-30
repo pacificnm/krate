@@ -15,6 +15,13 @@ Routing: a message on a channel that belongs to an on slot goes to that slot; an
 
 **Storage**: `~/.config/krimson/slots.json` keeps all four slots' sounds (every slot parameter by key) and setup (channel, on, zone, lit), the split key and the edited slot; saved 2 s after any change and on quit. (`panel.json` holds only the edited slot.)
 
+## Analog, pressure, drive (per slot)
+
+- **ANALOG** (OUTPUT): how alive the slot is: at 0 every note is pitch-perfect and starts its waveform in the same place; turned up, each note's oscillators start anywhere, sit a few cents apart, wander slowly, and its filter sits a little off: chords and pads breathe, unison spreads. 30 % by default.
+- **PRESSURE** (OUTPUT): what aftertouch does, if your keyboard sends it: Off, Filter (pressing harder opens it), Vibrato, or both.
+- **DRIVE** (FX): grit on the slot's sound, before its chorus, delay and reverb; 0 is off.
+- **VOICES** (ARP · VOICE): in Unison, 3, 5 or 7 voices stacked; DETUNE spreads them.
+
 ## Voice modes (per slot)
 
 Poly; Mono (last note, retrigger); Legato (last note, no retrigger, glide only between held notes); Unison (mono with a detuned stack). Glide time per slot.

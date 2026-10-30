@@ -200,7 +200,7 @@ private slots:
         rig.engine.setParam(ParamId::UnisonDetune, 1.0f);
         rig.on(48);
         rig.run(0.5);
-        QCOMPARE(rig.engine.activeVoices(), Engine::kUnisonVoices);
+        QCOMPARE(rig.engine.activeVoices(), 3); // the default: three voices
         QCOMPARE(rig.notes(), std::vector<int>(3, 48));
         // Detuned and spread: the two sides differ.
         double difference = 0.0;

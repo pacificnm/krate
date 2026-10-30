@@ -12,16 +12,16 @@ namespace krimson {
 // the slot being edited. The last three are the instrument's own (Volume,
 // Tempo, Octave). Keys are stable: panel, MIDI map, programs, rack sessions.
 enum class ParamId : int {
-    Osc1Wave, Osc2Wave, Osc2Semi, Osc2Fine, Osc2Kbd, Pw, OscMix, Fm, Sync, Ring,
+    Osc1Wave, Osc2Wave, Osc2Semi, Osc2Fine, Osc2Kbd, Pw, OscMix, Fm, Sync, Ring, Analog,
     MenvA, MenvD, MenvAmt, MenvDest,
     Lfo1Rate, Lfo1Wave, Lfo1Amt, Lfo1Dest,
     Lfo2Rate, Lfo2Amt, Lfo2Dest,
     FilterType, Cutoff, Res, Drive, FenvAmt, FenvVel, KbdTrack,
     FenvA, FenvD, FenvS, FenvR,
     AenvA, AenvD, AenvS, AenvR, AmpVel, Gain,
-    VoiceMode, UnisonDetune, Glide, BendRange, WheelDest,
+    VoiceMode, UnisonDetune, UnisonVoices, Glide, BendRange, WheelDest, PressureDest,
     ArpOn, ArpMode, ArpRange, ArpRate, ArpHold,
-    Chorus, DelayLevel, DelayTime, DelayFb, ReverbLevel, ReverbSize,
+    FxDrive, Chorus, DelayLevel, DelayTime, DelayFb, ReverbLevel, ReverbSize,
     SlotLevel, SlotPan,
     // The instrument's own (not per slot):
     Volume, Tempo, Octave,
@@ -47,6 +47,8 @@ inline constexpr int kKbdTrack = 4;   // 0, 1/3, 2/3, 1
 inline constexpr int kVoiceMode = 4;  // Poly, Mono, Legato, Unison
 inline constexpr int kBendRange = 12;
 inline constexpr int kWheelDest = 2;  // Morph, Vibrato
+inline constexpr int kUnisonVoices = 3; // 3, 5, 7
+inline constexpr int kPressureDest = 4; // Off, Filter, Vibrato, Filter + vibrato (aftertouch)
 inline constexpr int kArpMode = 4;
 inline constexpr int kArpRange = 4;
 inline constexpr int kArpRate = 4;
@@ -74,6 +76,7 @@ std::string arpRange(float v);
 std::string tempo(float v);
 std::string octave(float v);
 std::string onOff(float v);
+std::string unisonVoices(float v); // "3 voices"
 // One formatter per list parameter (ParamDescriptor takes a plain function).
 template<ParamId Id> std::string list(float v) { return choice(v, int(Id)); }
 } // namespace format
@@ -91,6 +94,7 @@ inline constexpr std::array<PD, ParamCount> kParams{{
     {"fm",            "FM",                0.0f,                        0,             &format::percent},
     {"sync",          "Sync",              0.0f,                        p::kSwitch,    &format::onOff},
     {"ring",          "Ring Mod",          0.0f,                        p::kSwitch,    &format::onOff},
+    {"analog",        "Analog",            0.3f,                        0,             &format::percent},
     {"menv_a",        "Mod Env Attack",    0.0f,                        0,             &format::seconds},
     {"menv_d",        "Mod Env Decay",     0.4f,                        0,             &format::seconds},
     {"menv_amt",      "Mod Env Amount",    0.5f,                        0,             &format::bipolar},
@@ -121,14 +125,17 @@ inline constexpr std::array<PD, ParamCount> kParams{{
     {"gain",          "Gain",              0.8f,                        0,             &format::level},
     {"voice_mode",    "Voice Mode",        0.0f,                        p::kVoiceMode, &format::list<ParamId::VoiceMode>},
     {"unison_detune", "Unison Detune",     0.3f,                        0,             &format::percent},
+    {"unison_voices", "Unison Voices",     0.0f,                        p::kUnisonVoices, &format::unisonVoices},
     {"glide",         "Glide",             0.0f,                        0,             &format::glide},
     {"bend_range",    "Bend Range",        position(1, p::kBendRange),  p::kBendRange, &format::bendRange},
     {"wheel_dest",    "Wheel",             0.0f,                        p::kWheelDest, &format::list<ParamId::WheelDest>},
+    {"pressure_dest", "Pressure",          0.0f,                        p::kPressureDest, &format::list<ParamId::PressureDest>},
     {"arp_on",        "Arpeggiator",       0.0f,                        p::kSwitch,    &format::onOff},
     {"arp_mode",      "Arp Mode",          0.0f,                        p::kArpMode,   &format::list<ParamId::ArpMode>},
     {"arp_range",     "Arp Range",         0.0f,                        p::kArpRange,  &format::arpRange},
     {"arp_rate",      "Arp Rate",          position(1, p::kArpRate),    p::kArpRate,   &format::list<ParamId::ArpRate>},
     {"arp_hold",      "Arp Hold",          0.0f,                        p::kSwitch,    &format::onOff},
+    {"fx_drive",      "FX Drive",          0.0f,                        0,             &format::percent},
     {"chorus",        "Chorus",            0.0f,                        p::kChorus,    &format::list<ParamId::Chorus>},
     {"delay_level",   "Delay Level",       0.0f,                        0,             &format::percent},
     {"delay_time",    "Delay Time",        position(2, p::kDelayTime),  p::kDelayTime, &format::list<ParamId::DelayTime>},

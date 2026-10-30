@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 #include "core/Denormals.h"
 
@@ -20,6 +21,8 @@ constexpr int kCcAllSoundOff = 120;
 constexpr int kCcAllNotesOff = 123;
 constexpr double kMaxUnisonDetuneSemis = 0.35; // Unison Detune at 100 %: the outer voices +/- 35 cents
 constexpr double kUnisonSpread = 0.7;          // stereo position of the outer unison voices
+constexpr double kPressureOctaves = 2.5;       // aftertouch to Filter, at full: the cutoff up 2.5 octaves
+constexpr double kPressureVibratoSemis = 0.7;  // aftertouch to Vibrato, at full
 constexpr int kDefaultFirstChannel = 2;        // slots A..D on MIDI channels 3..6
 // Delay Time positions in beats: 1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2.
 constexpr double kDelayBeats[] = {0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0};
@@ -45,8 +48,10 @@ Engine::Engine()
 void Engine::prepare(double sampleRate, std::uint32_t) noexcept
 {
     m_sampleRate = sampleRate;
-    for (Voice &voice : m_voices)
-        voice.prepare(2.0 * sampleRate);
+    for (std::size_t v = 0; v < m_voices.size(); ++v) {
+        m_voices[v].prepare(2.0 * sampleRate);
+        m_voices[v].setSeed(std::uint32_t(0x9E3779B9u * (v + 1))); // each its own (repeatable) drift
+    }
     for (SlotBus &bus : m_bus) {
         bus.decimateL.reset();
         bus.decimateR.reset();
@@ -168,6 +173,13 @@ SlotSettings Engine::settings(int slot, bool atMorph) const noexcept
     s.bendSemis = state.bend * units::bendSemitones(v(ParamId::BendRange));
     // The wheel: vibrato when Wheel is set to Vibrato (morph arrives in C5).
     s.vibratoSemis = pick(ParamId::WheelDest, q::kWheelDest) == 1 ? kMaxVibratoSemis * state.wheel : 0.0;
+    // Aftertouch (Pressure): the cutoff up, vibrato, or both.
+    const int pressureDest = pick(ParamId::PressureDest, q::kPressureDest);
+    if (pressureDest == 1 || pressureDest == 3)
+        s.cutoffOctaves += kPressureOctaves * state.pressure;
+    if (pressureDest == 2 || pressureDest == 3)
+        s.vibratoSemis += kPressureVibratoSemis * state.pressure;
+    s.analog = v(ParamId::Analog);
     s.slotGain = units::gain(v(ParamId::SlotLevel));
     s.slotPan = units::pan(v(ParamId::SlotPan));
     return s;
@@ -256,8 +268,14 @@ void Engine::playMonoNote(int slot, int note, bool retrigger) noexcept
     SlotState &state = m_state[std::size_t(slot)];
     const double glideFrom = state.lastNote >= 0 ? double(state.lastNote) : -1.0;
     const bool unison = state.mode == VoiceMode::Unison;
-    const int count = unison ? kUnisonVoices : 1;
+    static constexpr int kUnisonCounts[] = {3, 5, 7};
+    const int count = unison ? kUnisonCounts[units::index(m_slots[std::size_t(slot)].get(int(ParamId::UnisonVoices)),
+                                                           positions::kUnisonVoices)]
+                             : 1;
     const double detune = kMaxUnisonDetuneSemis * m_slots[std::size_t(slot)].get(int(ParamId::UnisonDetune));
+    // More voices, each a little quieter, so 5 or 7 play about as loud as 3:
+    // between adding as one (close detune, in step) and by power (wide detune).
+    const double share = unison ? std::pow(3.0 / count, 0.85) : 1.0;
     for (int i = 0; i < count; ++i) {
         int &v = state.monoVoices[std::size_t(i)];
         // Keep this slot's voice if it still has it; else take one.
@@ -267,8 +285,8 @@ void Engine::playMonoNote(int slot, int note, bool retrigger) noexcept
             m_voiceSlot[std::size_t(v)] = slot;
         }
         Voice &voice = m_voices[std::size_t(v)];
-        const double position = count > 1 ? 2.0 * i / (count - 1) - 1.0 : 0.0; // -1, 0, +1
-        voice.setSpread(detune * position, unison ? kUnisonSpread * position : 0.0);
+        const double position = count > 1 ? 2.0 * i / (count - 1) - 1.0 : 0.0; // -1 .. +1, evenly
+        voice.setSpread(detune * position, unison ? kUnisonSpread * position : 0.0, share);
         m_started[std::size_t(v)] = ++m_counter;
         m_sustained[std::size_t(v)] = false;
         if (!kept && voice.active())
@@ -553,6 +571,7 @@ void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
     case krate::MidiMessage::Type::NoteOn:
         forSlots(m.data1, [&](int slot) { noteOn(slot, m.data1, m.data2); });
         break;
+
     case krate::MidiMessage::Type::NoteOff:
         // To every slot holding that key: the lit slots or the split may have
         // changed since the note-on, and a stuck note is worse than a stray release.
@@ -574,6 +593,10 @@ void Engine::handleMidi(const krate::MidiEvent &event, bool keyboard) noexcept
             const double bend = std::clamp((value - 8192) / 8191.0, -1.0, 1.0);
             forSlots(-1, [&](int slot) { m_state[std::size_t(slot)].bend = bend; });
             m_bendShown.store(float(bend), std::memory_order_relaxed);
+        } else if (event.size >= 2 && (event.data[0] & 0xF0) == 0xD0) { // aftertouch (channel pressure)
+            forSlots(-1, [&](int slot) { m_state[std::size_t(slot)].pressure = event.data[1] / 127.0; });
+        } else if (event.size == 3 && (event.data[0] & 0xF0) == 0xA0) { // a key's pressure, for the slot
+            forSlots(event.data[1], [&](int slot) { m_state[std::size_t(slot)].pressure = event.data[2] / 127.0; });
         }
         break;
     }
@@ -633,13 +656,27 @@ void Engine::render(float *left, float *right, std::uint32_t frames, double bpm)
         for (int slot = 0; slot < SlotCount; ++slot) {
             SlotBus &bus = m_bus[std::size_t(slot)];
             const Store &p = m_slots[std::size_t(slot)];
+            // FX drive, at 2x (the decimator takes what it adds above the band):
+            // a soft, slightly asymmetric clip, its level kept, the top softened.
+            if (const double drive = p.get(int(ParamId::FxDrive)); drive > 0.0) {
+                const double g = 1.0 + 24.0 * drive * drive;
+                const double norm = 0.3 / std::tanh(g * 0.3);
+                const double toneCoefficient = std::exp(-2.0 * std::numbers::pi * (12000.0 - 6000.0 * drive) / (2.0 * m_sampleRate));
+                for (int side = 0; side < 2; ++side) {
+                    float *x = side == 0 ? bus.left2x.data() : bus.right2x.data();
+                    double &tone = bus.driveTone[std::size_t(side)];
+                    for (std::uint32_t i = 0; i < 2 * n; ++i) {
+                        const double clipped = (std::tanh(g * x[i] + 0.1) - std::tanh(0.1)) * norm;
+                        tone = clipped + toneCoefficient * (tone - clipped);
+                        x[i] = float(tone);
+                    }
+                }
+            }
             for (std::uint32_t i = 0; i < n; ++i) {
                 bus.left[i] = bus.decimateL.process(bus.left2x[2 * i], bus.left2x[2 * i + 1]);
                 bus.right[i] = bus.decimateR.process(bus.right2x[2 * i], bus.right2x[2 * i + 1]);
             }
-            static constexpr int kChorusModes[] = {krate::Chorus::Off, krate::Chorus::I, krate::Chorus::Ensemble};
-            bus.chorus.processStereo(bus.left.data(), bus.right.data(), n,
-                                     kChorusModes[units::index(p.get(int(ParamId::Chorus)), positions::kChorus)]);
+            bus.chorus.process(bus.left.data(), bus.right.data(), n, units::index(p.get(int(ParamId::Chorus)), positions::kChorus));
             const double delayLevel = p.get(int(ParamId::DelayLevel));
             if (delayLevel > 0.0) {
                 if (!bus.delayOn) // turned up: no stale echoes from before

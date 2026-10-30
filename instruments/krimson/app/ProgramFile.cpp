@@ -155,7 +155,7 @@ Program factoryProgram(int index)
                                         {"osc2_semi", semi(5)}, {"menv_amt", 0.6}, {"menv_d", 0.4}, {"drive", 0.8},
                                         {"cutoff", 0.6}, {"res", 0.4}, {"voice_mode", kLegato}, {"glide", 0.12}},
                          {{"menv_amt", 0.95}, {"cutoff", 0.85}});
-    case 19: return make("Clang Hit", {{"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc2_semi", semi(13)}, {"osc_mix", 0},
+    case 19: return make("Clang Hit", {{"analog", 0}, {"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc2_semi", semi(13)}, {"osc_mix", 0},
                                        {"fm", 0.6}, {"menv_dest", kMenvFm}, {"menv_amt", 0.9}, {"menv_d", 0.35},
                                        {"cutoff", 0.85}, {"fenv_amt", 0}, {"aenv_d", 0.4}, {"aenv_s", 0}, {"aenv_r", 0.4},
                                        {"reverb_level", 0.35}});
@@ -172,7 +172,7 @@ Program factoryProgram(int index)
                                        {"filter_type", kLp24}, {"cutoff", 0.3}, {"res", 0.2}, {"drive", 0.3},
                                        {"fenv_amt", 0.3}, {"fenv_d", 0.35}, {"fenv_s", 0.2}, {"voice_mode", kMono},
                                        {"glide", 0.05}, {"aenv_r", 0.12}});
-    case 23: return make("Factory Hit", {{"osc1_wave", kSaw1}, {"osc2_wave", kNoise2}, {"osc_mix", 0.5}, {"filter_type", kNotch},
+    case 23: return make("Factory Hit", {{"analog", 0}, {"osc1_wave", kSaw1}, {"osc2_wave", kNoise2}, {"osc_mix", 0.5}, {"filter_type", kNotch},
                                          {"cutoff", 0.5}, {"res", 0.5}, {"drive", 0.7}, {"fenv_amt", 0.35}, {"fenv_d", 0.3},
                                          {"aenv_d", 0.45}, {"aenv_s", 0}, {"aenv_r", 0.4}, {"reverb_level", 0.45},
                                          {"reverb_size", 0.7}});
@@ -191,7 +191,7 @@ Program factoryProgram(int index)
     case 27: return make("Motor Bass", {{"osc1_wave", kSaw1}, {"osc2_wave", kPulse2}, {"osc2_semi", semi(-12)},
                                         {"filter_type", kLp24}, {"cutoff", 0.38}, {"res", 0.2}, {"fenv_amt", 0.3},
                                         {"fenv_d", 0.4}, {"fenv_s", 0.3}, {"voice_mode", kMono}, {"glide", 0.05}});
-    case 28: return make("Minimal Blip", {{"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc2_semi", semi(12)}, {"fm", 0.15},
+    case 28: return make("Minimal Blip", {{"analog", 0}, {"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc2_semi", semi(12)}, {"fm", 0.15},
                                           {"cutoff", 0.8}, {"fenv_amt", 0}, {"aenv_d", 0.25}, {"aenv_s", 0}, {"aenv_r", 0.2},
                                           {"delay_level", 0.35}, {"delay_fb", 0.4}});
     case 29: return make("Warehouse Sub", {{"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc_mix", 0.2}, {"cutoff", 0.5},
@@ -225,7 +225,7 @@ Program factoryProgram(int index)
                                         {"lfo1_rate", 0.55}, {"voice_mode", kLegato}, {"cutoff", 0.7}, {"delay_level", 0.3},
                                         {"delay_fb", 0.4}},
                          {{"lfo1_rate", 0.75}});
-    case 38: return make("Bleep", {{"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc2_semi", semi(24)}, {"osc_mix", 0.3},
+    case 38: return make("Bleep", {{"analog", 0}, {"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc2_semi", semi(24)}, {"osc_mix", 0.3},
                                    {"cutoff", 0.9}, {"fenv_amt", 0}, {"aenv_d", 0.2}, {"aenv_s", 0}, {"aenv_r", 0.15},
                                    {"delay_level", 0.4}, {"delay_fb", 0.45}});
     case 39: return make("Gated Chord", {{"osc1_wave", kSaw1}, {"osc2_wave", kPulse2}, {"osc2_semi", semi(7)}, {"cutoff", 0.6},
@@ -308,7 +308,7 @@ Program factoryProgram(int index)
                                       {"cutoff", 0.1}, {"fenv_amt", 0.7}, {"fenv_a", 0.8}, {"fenv_d", 0.8}, {"fenv_s", 0.4},
                                       {"lfo1_dest", kLfoFilter}, {"lfo1_amt", 0.3}, {"lfo1_rate", 0.2}, {"aenv_a", 0.4},
                                       {"aenv_r", 0.6}, {"reverb_level", 0.5}});
-    case 60: return make("Laser Zap", {{"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc_mix", 1}, {"menv_amt", 1.0},
+    case 60: return make("Laser Zap", {{"analog", 0}, {"osc1_wave", kSine1}, {"osc2_wave", kTri2}, {"osc_mix", 1}, {"menv_amt", 1.0},
                                        {"menv_d", 0.3}, {"cutoff", 0.85}, {"fenv_amt", 0}, {"aenv_d", 0.35}, {"aenv_s", 0},
                                        {"aenv_r", 0.3}, {"delay_level", 0.3}, {"delay_fb", 0.35}});
     case 61: return make("Riser", {{"osc1_wave", kSaw1}, {"osc2_wave", kNoise2}, {"osc_mix", 0.6}, {"filter_type", kHp},

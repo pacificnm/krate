@@ -11,6 +11,7 @@
 #include "core/SpscQueue.h"
 #include "core/StepClock.h"
 #include "dsp/Effects.h"
+#include "krimson/dsp/Ensemble.h"
 #include "dsp/HalfbandDecimator.h"
 #include "dsp/Reverb.h"
 #include "krimson/dsp/Params.h"
@@ -114,7 +115,7 @@ public:
     }
 
     static constexpr int kVoices = 16;
-    static constexpr int kUnisonVoices = 3; // voices stacked per note in Unison
+    static constexpr int kMaxUnisonVoices = 7; // voices stacked per note in Unison (3, 5 or 7)
     enum class VoiceMode { Poly, Mono, Legato, Unison };
 
     // Inspection (tests).
@@ -142,10 +143,11 @@ private:
         bool sustain = false;
         double bend = 0.0;  // -1..1
         double wheel = 0.0; // 0..1
+        double pressure = 0.0; // 0..1 (aftertouch: channel pressure, or the strongest key's)
         int lastNote = -1;  // for glide
         float velocity = 1.0f;
         VoiceMode mode = VoiceMode::Poly;
-        std::array<int, kUnisonVoices> monoVoices{-1, -1, -1}; // Mono / Legato / Unison: the voices it plays
+        std::array<int, kMaxUnisonVoices> monoVoices{-1, -1, -1, -1, -1, -1, -1}; // Mono / Legato / Unison: the voices it plays
 
         // The slot's arpeggiator (docs/PLAY.md#arpeggiator-per-slot).
         krate::StepClock arpClock;
@@ -210,7 +212,8 @@ private:
         std::array<float, 2 * kChunk> left2x{}, right2x{};
         std::array<float, kChunk> left{}, right{};
         krate::HalfbandDecimator<31> decimateL, decimateR;
-        krate::Chorus chorus;
+        Ensemble chorus;
+        std::array<double, 2> driveTone{};  // FX drive's tone (at 2x), per side
         krate::Delay delay{2.0, 192000.0};
         krate::Reverb reverb{192000.0};
         bool delayOn = false, reverbOn = false; // were they running (to clear stale tails)
