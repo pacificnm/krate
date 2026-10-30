@@ -205,6 +205,34 @@ private slots:
         QVERIFY(c.running());
         QVERIFY(transport.playing());
     }
+
+    // A track's notes copied onto another track, in another pattern; the
+    // destination keeps its instrument; the source is untouched.
+    void copyAndPasteTrack()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        c.setTarget(5, 1); // k303
+        c.setTrack(2);
+        c.addNote(0, 40, 24, 100);
+        c.addNote(48, 43, 48, 90);
+        QVERIFY(c.trackClipboard().isEmpty());
+        c.copyTrack();
+        QCOMPARE(c.trackClipboard(), QStringLiteral("pattern 1, track 3"));
+        c.setPattern(3);
+        c.setTrack(5);
+        c.addNote(96, 50, 24, 100); // replaced by the paste
+        c.pasteTrack();
+        QCOMPARE(c.notes().size(), 2);
+        QCOMPARE(c.notes()[1].toMap().value(u"pitch"_s).toInt(), 43);
+        QCOMPARE(c.notes()[1].toMap().value(u"length"_s).toInt(), 48);
+        QCOMPARE(c.tracks()[5].toMap().value(u"choice"_s).toInt(), 1);
+        c.setPattern(0);
+        c.setTrack(2);
+        QCOMPARE(c.notes().size(), 2);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestSeqController)

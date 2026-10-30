@@ -50,6 +50,8 @@ class SequencerController : public QObject
     // For a drum track (K909): its voices, top to bottom: {name, note}.
     Q_PROPERTY(QVariantList drumLanes READ drumLanes CONSTANT)
     Q_PROPERTY(bool hasClipboard READ hasClipboard NOTIFY changed)
+    // A copied track's notes, and where they came from ("Pattern 2, track 3"; "" = none).
+    Q_PROPERTY(QString trackClipboard READ trackClipboard NOTIFY changed)
     // CHAIN mode and the chain: {pattern (0-based), repeats} per step.
     Q_PROPERTY(bool chainMode READ chainMode WRITE setChainMode NOTIFY changed)
     // What plays: 0 the chosen pattern (looped), 1 the range FROM..TO in order, 2 the chain.
@@ -96,6 +98,7 @@ public:
     QVariantList patternsUsed() const;
     QVariantList drumLanes() const;
     bool hasClipboard() const { return m_clipboard.has_value(); }
+    QString trackClipboard() const { return m_trackClipboardFrom; }
     bool chainMode() const { return m_state.chainMode; }
     void setChainMode(bool on);
     int playMode() const { return m_state.chainMode ? 2 : (m_state.rangeMode ? 1 : 0); }
@@ -130,6 +133,10 @@ public:
     Q_INVOKABLE void clearPattern();
     Q_INVOKABLE void copyPattern();
     Q_INVOKABLE void pastePattern();
+    // The selected track's notes in this pattern, copied; pasted over the
+    // selected track's (in whichever pattern is shown). Its instrument and mute stay.
+    Q_INVOKABLE void copyTrack();
+    Q_INVOKABLE void pasteTrack();
     // The chain: add a pattern at the end (or after step `after`), remove a
     // step, set its repeats (1..16), empty it.
     Q_INVOKABLE void addToChain(int pattern, int after = -1);
@@ -171,6 +178,8 @@ private:
     QString m_path;
     SequencerState m_state;
     std::optional<krate::seq::Pattern> m_clipboard;
+    std::optional<krate::seq::TrackNotes> m_trackClipboard;
+    QString m_trackClipboardFrom;
     int m_track = 0;
     int m_revision = 0;
     bool m_playing = false;

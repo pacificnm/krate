@@ -22,7 +22,7 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
 ## The Seq screen
 
 - **RUN** plays or stops the sequencer (see above); its light is on while it plays, dim while it waits for the rack's PLAY. **PATTERN 1–16**: click to choose; shaded ones have notes, a red dot marks the one playing. **COPY / PASTE** copies a whole pattern to another; **CLEAR** empties this one. **LENGTH −/+** in bars (by steps below a bar), up to 4 bars; **GRID** sets the step.
-- **Tracks**: each row has its instrument (None, k303, K909, Kalliope, Krimson A–D), the number of notes it has in this pattern and **M** (mute). Click a row to edit it; **CLEAR TRACK** empties it in this pattern.
+- **Tracks**: each row has its instrument (None, k303, K909, Kalliope, Krimson A–D), the number of notes it has in this pattern and **M** (mute). Click a row to edit it. Under the tracks, **COPY / PASTE / CLEAR** work on the selected track in the pattern shown: COPY takes its notes, then choose another track (in this pattern or another) and PASTE puts them there, replacing its notes (its instrument and mute stay); the line below says what's copied. CLEAR empties the selected track.
 - **Piano roll** for the selected track: keys down the left (C labelled), steps across (bars and beats marked). A K909 track shows its 16 voices by name instead.
   - Click an empty place: a note of one step (velocity 100).
   - Drag a note to move it (it snaps to the grid); drag its right edge to make it longer or shorter.

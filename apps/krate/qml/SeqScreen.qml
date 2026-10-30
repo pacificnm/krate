@@ -306,12 +306,40 @@ Item {
             }
         }
 
-        PanelButton {
-            width: 140
-            height: 32
-            faceText: "CLEAR TRACK"
-            text: "Clear the selected track in this pattern"
-            onClicked: Sequencer.clearTrack()
+        Row {
+            spacing: 6
+            PanelButton {
+                width: 96
+                height: 32
+                faceText: "COPY"
+                text: "Copy the selected track's notes in this pattern"
+                onClicked: Sequencer.copyTrack()
+            }
+            PanelButton {
+                width: 96
+                height: 32
+                enabled: Sequencer.trackClipboard !== ""
+                opacity: enabled ? 1 : 0.5
+                faceText: "PASTE"
+                text: "Paste the copied notes over the selected track"
+                onClicked: Sequencer.pasteTrack()
+            }
+            PanelButton {
+                width: 96
+                height: 32
+                faceText: "CLEAR"
+                text: "Clear the selected track in this pattern"
+                onClicked: Sequencer.clearTrack()
+            }
+        }
+        Text {
+            width: trackColumn.width
+            text: Sequencer.trackClipboard !== "" ? "TRACK: copied from " + Sequencer.trackClipboard
+                                                  : "TRACK: copy, paste or clear the selected one"
+            color: "#55575B"
+            font.family: Theme.labelFont
+            font.pixelSize: 11
+            elide: Text.ElideRight
         }
     }
 

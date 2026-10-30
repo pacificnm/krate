@@ -493,6 +493,22 @@ void SequencerController::stepPattern(int delta)
     setPattern((m_state.pattern + delta + kPatterns) % kPatterns);
 }
 
+void SequencerController::copyTrack()
+{
+    m_trackClipboard = currentNotes();
+    m_trackClipboardFrom = QStringLiteral("pattern %1, track %2").arg(m_state.pattern + 1).arg(m_track + 1);
+    ++m_revision;
+    emit changed();
+}
+
+void SequencerController::pasteTrack()
+{
+    if (!m_trackClipboard)
+        return;
+    currentNotes() = *m_trackClipboard;
+    edited();
+}
+
 // --- Internals ------------------------------------------------------------------------
 
 void SequencerController::applyTargets()
