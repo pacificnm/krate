@@ -26,6 +26,7 @@
 #include "kalliope/app/KalliopeInstrument.h"
 #include "krimson/app/KrimsonInstrument.h"
 #include "kobalt/app/KobaltInstrument.h"
+#include "klang/app/KlangInstrument.h"
 #include "krunch/app/KrunchInstrument.h"
 #include "app/KlickInstrument.h"
 #include "app/ScreenshotHook.h"
@@ -46,6 +47,7 @@ Q_IMPORT_QML_PLUGIN(K909Plugin)
 Q_IMPORT_QML_PLUGIN(KalliopePlugin)
 Q_IMPORT_QML_PLUGIN(KrimsonPlugin)
 Q_IMPORT_QML_PLUGIN(KobaltPlugin)
+Q_IMPORT_QML_PLUGIN(KlangPlugin)
 Q_IMPORT_QML_PLUGIN(KrunchPlugin)
 Q_IMPORT_QML_PLUGIN(KlickPlugin)
 
@@ -67,6 +69,7 @@ int main(int argc, char *argv[])
         kalliope::registryEntry(),
         krimson::registryEntry(),
         kobalt::registryEntry(),
+        klang::registryEntry(),
         krunch::registryEntry(),
         klick::registryEntry(),
     };

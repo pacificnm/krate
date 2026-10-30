@@ -228,7 +228,7 @@ Decided: **per-channel routing plus a focus**, so one controller can play one in
 | Message | Goes to |
 | --- | --- |
 | Notes on the keyboard's channel (**KEYS → Keys play focus on**: any channel by default, or one channel; saved as `"keysChannel"` in `rack.json`, 16 = any, -1 = off) | The focused device, whatever device holds the channel: pick an instrument (its tab, Tab, a learned focus button) and the keys play it |
-| Notes on a channel assigned to a device | That device (defaults: ch 10 → K909, ch 2 → Kalliope, ch 3–6 → Krimson's slots A–D, ch 7 → Kobalt; k303 and Klick have none) |
+| Notes on a channel assigned to a device | That device (defaults: ch 10 → K909, ch 2 → Kalliope, ch 3–6 → Krimson's slots A–D, ch 7 → Kobalt, ch 11 → Klang; k303 and Klick have none) |
 | Notes on an unassigned channel | The focused device |
 | A note-off | The device its note-on went to, so switching focus (or channels) with a key down leaves nothing hanging |
 | CC with a **fixed** mapping | The mapped device and parameter, whatever has focus |
