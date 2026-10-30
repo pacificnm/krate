@@ -233,6 +233,45 @@ private slots:
         c.setTrack(2);
         QCOMPARE(c.notes().size(), 2);
     }
+
+    // RANGE (and CHAIN): the pattern shown follows the one playing; PATTERN: it stays yours.
+    void shownPatternFollowsPlay()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        for (int p = 0; p < 3; ++p) { // one beat each
+            c.setPattern(p);
+            c.setGrid(0);
+            c.setLength(96);
+        }
+        c.setPattern(0);
+        c.setRangeFrom(0);
+        c.setRangeTo(2);
+        c.setPlayMode(1);
+        std::array<DeviceEvent, 64> out{};
+        const auto play = [&](std::uint64_t from, std::uint64_t to) {
+            for (std::uint64_t at = from; at < to; at += 64) {
+                TransportState t;
+                t.playing = true;
+                t.restarted = at == 0;
+                t.beatAtBlockStart = double(at) / 24000.0;
+                seq.render(t, 64, 48000.0, out.data(), std::uint32_t(out.size()));
+            }
+            c.poll(); // the screen's timer
+        };
+        play(0, 24000 + 640); // into the second pattern
+        QCOMPARE(seq.playingPattern(), 1);
+        QCOMPARE(c.pattern(), 1);
+        play(24000 + 640, 48000 + 640);
+        QCOMPARE(c.pattern(), 2);
+
+        c.setPlayMode(0); // PATTERN: choosing is yours again
+        c.setPattern(0);
+        play(48000 + 640, 72000 + 640);
+        QCOMPARE(c.pattern(), 0);
+    }
 };
 
 QTEST_GUILESS_MAIN(TestSeqController)

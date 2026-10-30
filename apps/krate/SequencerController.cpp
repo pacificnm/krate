@@ -706,10 +706,14 @@ void SequencerController::poll()
     const int step = m_sequencer.chainStep(), pass = m_sequencer.chainPass();
     if (playing == m_playing && pattern == m_playingPattern && tick == m_tick && step == m_chainStep && pass == m_chainPass)
         return;
+    const bool patternMoved = playing && pattern != m_playingPattern;
     m_playing = playing;
     m_playingPattern = pattern;
     m_tick = tick;
     m_chainStep = step;
     m_chainPass = pass;
+    // RANGE and CHAIN: the pattern shown follows the one playing.
+    if (patternMoved && playMode() != 0)
+        setPattern(pattern);
     emit positionChanged();
 }

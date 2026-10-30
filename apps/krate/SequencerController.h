@@ -181,6 +181,9 @@ public:
     // Of the `count` patterns from `firstPattern`, those whose track `track` has notes (0-based).
     QList<int> patternsWithNotes(int firstPattern, int count, int track) const;
 
+    // The screen timer's tick: where the player is (public for tests).
+    void poll();
+
     // The GUI's copy (tests, the Song screen's import).
     const SequencerState &state() const { return m_state; }
 
@@ -198,7 +201,6 @@ private:
     void applyTargets();
     void edited(); // hand the player the bank, tell the screen, save soon
     void save();
-    void poll();
 
     static SequencerController *s_instance;
     krate::seq::Sequencer &m_sequencer;
