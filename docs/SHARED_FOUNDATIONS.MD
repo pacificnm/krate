@@ -232,6 +232,10 @@ Standalone apps keep working unchanged. The rack is one more app over the same l
 
 Decided: in the rack, tempo and play/stop live on the **transport bar**; instrument panels hide their own Tempo and RUN/STOP controls there. Standalone apps keep the Tempo knob and RUN/STOP, which drive their standalone transport.
 
+## Manuals
+
+An instrument's manual is a Markdown file in its QML module (`RESOURCES docs/MANUAL.md` in `qt_add_qml_module`), opened on its panel with the shared `ManualView` (contents on the left from its `##` headings, the section on the right, a search; sized to the window). `ManualReader` (QML `Manual`) splits and searches it. `tst_manual` checks that every `label:` on Krimson's panel appears in its manual, so a new control can't go undocumented.
+
 ## Adding instruments
 
 The suite will grow beyond three, so the rack must not hard-code its devices.

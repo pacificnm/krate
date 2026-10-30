@@ -115,6 +115,8 @@ qt_add_qml_module(krate_qml
         app/InstrumentMidiLearn.cpp
         app/KeyboardSettings.h
         app/KeyboardSettings.cpp
+        app/ManualReader.h
+        app/ManualReader.cpp
         app/MidiLearnController.h
         app/MidiLearnController.cpp
         app/ParamController.h
@@ -124,6 +126,7 @@ qt_add_qml_module(krate_qml
         qml/LcdField.qml
         qml/LearnOverlay.qml
         qml/Led.qml
+        qml/ManualView.qml
         qml/PanelButton.qml
         qml/PanelLabel.qml
         qml/PanelSlider.qml
@@ -180,6 +183,13 @@ add_executable(tst_songplayer tests/tst_songplayer.cpp)
 target_compile_options(tst_songplayer PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_songplayer PRIVATE krate_song krate_rack Qt6::Test)
 add_test(NAME tst_songplayer COMMAND tst_songplayer)
+
+add_executable(tst_manual tests/tst_manual.cpp app/ManualReader.h app/ManualReader.cpp)
+target_compile_options(tst_manual PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(tst_manual PRIVATE KRATE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_include_directories(tst_manual PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(tst_manual PRIVATE Qt6::Qml Qt6::Test)
+add_test(NAME tst_manual COMMAND tst_manual)
 
 add_executable(tst_backingtrack tests/tst_backingtrack.cpp)
 target_compile_options(tst_backingtrack PRIVATE -Wall -Wextra -Wpedantic)

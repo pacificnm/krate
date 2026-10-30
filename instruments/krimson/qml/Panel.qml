@@ -315,7 +315,24 @@ Item {
         font.bold: true
         font.italic: true
     }
+    PanelButton { // the manual
+        anchors.right: krimsonTitle.left
+        anchors.rightMargin: 18
+        y: 14
+        width: 72
+        height: 30
+        dark: true
+        faceText: "HELP"
+        text: "Krimson's manual: what every control does and how to use it"
+        onClicked: manual.open()
+    }
+    ManualView {
+        id: manual
+        title: "Krimson"
+        source: "qrc:/qt/qml/Krimson/docs/MANUAL.md"
+    }
     Text {
+        id: krimsonTitle
         anchors.right: subtitle.left
         anchors.rightMargin: 16
         y: 10

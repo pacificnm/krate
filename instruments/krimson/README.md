@@ -11,3 +11,5 @@ Status: C8 (16 voices shared by four slots A–D: own channels 3–6, layering, 
 | [PLAY.md](docs/PLAY.md) | Slots, voice modes, morph, arpeggiator, programs and performances |
 | [UI.md](docs/UI.md) | Panel layout and controls |
 | [ROADMAP.md](docs/ROADMAP.md) | Milestones C0–C9 |
+
+**Manual**: [docs/MANUAL.md](docs/MANUAL.md): every control, what it does and how to use it, with recipes and troubleshooting. In the app, **HELP** on the panel opens it (with a search).
