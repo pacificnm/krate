@@ -92,6 +92,15 @@ bool Sequencer::mute(int track) const noexcept
     return track >= 0 && track < kTracks && m_mute[std::size_t(track)].load(std::memory_order_relaxed);
 }
 
+void Sequencer::setRange(int from, int to) noexcept
+{
+    from = std::clamp(from, 0, kPatterns - 1);
+    to = std::clamp(to, 0, kPatterns - 1);
+    if (from > to)
+        std::swap(from, to);
+    m_range.store(from << 8 | to, std::memory_order_relaxed);
+}
+
 void Sequencer::cue(int pattern) noexcept
 {
     m_cued.store(std::clamp(pattern, 0, kPatterns - 1), std::memory_order_relaxed);
@@ -226,6 +235,8 @@ int Sequencer::startPattern(int cued) noexcept
     m_pass = 0;
     if (!m_chaining) {
         m_chainStep.store(-1, std::memory_order_relaxed);
+        if (m_rangeMode.load(std::memory_order_relaxed))
+            return m_range.load(std::memory_order_relaxed) >> 8;
         return cued;
     }
     m_chainStep.store(0, std::memory_order_relaxed);
@@ -235,8 +246,13 @@ int Sequencer::startPattern(int cued) noexcept
 
 int Sequencer::next(int cued) noexcept
 {
-    if (!m_chaining || !m_bank || m_bank->chainLength == 0)
-        return cued;
+    if (!m_chaining || !m_bank || m_bank->chainLength == 0) {
+        if (!m_rangeMode.load(std::memory_order_relaxed))
+            return cued;
+        const int range = m_range.load(std::memory_order_relaxed), from = range >> 8, to = range & 0xFF;
+        const int following = m_pattern + 1;
+        return following < from || following > to ? from : following;
+    }
     if (m_pass < 0) { // the chain starts now
         m_step = 0;
         m_pass = 0;

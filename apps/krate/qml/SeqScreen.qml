@@ -103,6 +103,15 @@ Item {
                             font.pixelSize: 13
                             font.bold: patternButton.chosen
                         }
+                        Rectangle { // in the range (RANGE mode)
+                            visible: Sequencer.playMode === 1 && patternButton.index >= Sequencer.rangeFrom
+                                     && patternButton.index <= Sequencer.rangeTo
+                            x: 3
+                            y: parent.height - 6
+                            width: parent.width - 6
+                            height: 3
+                            color: Theme.accentUi
+                        }
                         Rectangle { // playing now
                             visible: patternButton.sounding
                             x: 3
@@ -315,24 +324,92 @@ Item {
         height: 40
         spacing: 6
 
-        PanelButton {
-            id: chainButton
-            width: 96
-            height: 34
+        Row { // what plays: one pattern, a range of them, or the chain
+            id: modeButtons
+            spacing: 4
             anchors.verticalCenter: parent.verticalCenter
-            faceText: "    CHAIN"
-            text: "Play the chain instead of one pattern"
-            onClicked: Sequencer.chainMode = !Sequencer.chainMode
-            Led {
-                x: 10
-                anchors.verticalCenter: parent.verticalCenter
-                on: Sequencer.chainMode
+            Repeater {
+                model: [{label: "PATTERN", key: "", tip: "Loop the pattern you choose"},
+                        {label: "RANGE", key: "rack:seqrange", tip: "Play patterns FROM to TO in order, around and around"},
+                        {label: "CHAIN", key: "rack:seqchain", tip: "Play the chain"}]
+                PanelButton {
+                    id: modeButton
+                    required property int index
+                    required property var modelData
+                    width: 106
+                    height: 34
+                    faceText: "     " + modelData.label
+                    text: modelData.tip
+                    onClicked: Sequencer.playMode = index
+                    Led {
+                        x: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        on: Sequencer.playMode === modeButton.index
+                    }
+                    Loader { // learnable (RANGE, CHAIN)
+                        anchors.fill: parent
+                        active: modeButton.modelData.key !== ""
+                        sourceComponent: LearnOverlay {
+                            paramKey: modeButton.modelData.key
+                            round: false
+                        }
+                    }
+                    Accessible.role: Accessible.RadioButton
+                    Accessible.checked: Sequencer.playMode === index
+                }
             }
-            LearnOverlay { anchors.fill: parent; paramKey: "rack:seqchain"; round: false }
+        }
+        Row { // RANGE: from, to
+            id: rangeControls
+            visible: Sequencer.playMode === 1
+            spacing: 6
+            anchors.verticalCenter: parent.verticalCenter
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "FROM"
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+                font.bold: true
+            }
+            SpinBox {
+                width: 110
+                height: 32
+                from: 1
+                to: 16
+                value: Sequencer.rangeFrom + 1
+                onValueModified: Sequencer.rangeFrom = value - 1
+                Accessible.name: "Range from pattern"
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "TO"
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+                font.bold: true
+            }
+            SpinBox {
+                width: 110
+                height: 32
+                from: 1
+                to: 16
+                value: Sequencer.rangeTo + 1
+                onValueModified: Sequencer.rangeTo = value - 1
+                Accessible.name: "Range to pattern"
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: (Sequencer.rangeTo - Sequencer.rangeFrom + 1) + " patterns, in order, then around again"
+                color: "#55575B"
+                font.family: Theme.labelFont
+                font.pixelSize: 12
+            }
         }
         Flickable { // the steps: click one to edit its pattern; wheel: repeats; right-click: remove
             id: chainSteps
-            width: chainStrip.width - chainButton.width - addButton.width - clearChainButton.width - 3 * chainStrip.spacing
+            visible: Sequencer.playMode !== 1
+            width: chainStrip.width - modeButtons.width - addButton.width - clearChainButton.width - 3 * chainStrip.spacing
             height: 34
             anchors.verticalCenter: parent.verticalCenter
             contentWidth: chainRow.implicitWidth
@@ -396,6 +473,7 @@ Item {
         }
         PanelButton {
             id: addButton
+            visible: Sequencer.playMode !== 1
             width: 74
             height: 34
             anchors.verticalCenter: parent.verticalCenter
@@ -405,6 +483,7 @@ Item {
         }
         PanelButton {
             id: clearChainButton
+            visible: Sequencer.playMode !== 1
             width: 74
             height: 34
             anchors.verticalCenter: parent.verticalCenter
@@ -728,7 +807,8 @@ Item {
         width: rollFrame.width
         text: (screen.selected.label ? "Track " + (Sequencer.track + 1) + " plays " + screen.selected.label + ".  "
                                      : "Track " + (Sequencer.track + 1) + " plays nothing yet: choose an instrument.  ")
-              + (Sequencer.chainMode ? "CHAIN plays the chain (wheel over a step: repeats; right-click: remove).  " : "")
+              + (Sequencer.playMode === 2 ? "CHAIN plays the chain (wheel over a step: repeats; right-click: remove).  "
+                 : Sequencer.playMode === 1 ? "RANGE plays patterns " + (Sequencer.rangeFrom + 1) + "–" + (Sequencer.rangeTo + 1) + " in order.  " : "")
               + "Click to add a note · drag it to move · drag its right edge to resize · right-click or double-click to delete · wheel or the lane below: velocity"
               + (screen.drums ? " (100 and up plays accented)" : "")
         color: Theme.ink

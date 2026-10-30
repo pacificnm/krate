@@ -52,6 +52,10 @@ class SequencerController : public QObject
     Q_PROPERTY(bool hasClipboard READ hasClipboard NOTIFY changed)
     // CHAIN mode and the chain: {pattern (0-based), repeats} per step.
     Q_PROPERTY(bool chainMode READ chainMode WRITE setChainMode NOTIFY changed)
+    // What plays: 0 the chosen pattern (looped), 1 the range FROM..TO in order, 2 the chain.
+    Q_PROPERTY(int playMode READ playMode WRITE setPlayMode NOTIFY changed)
+    Q_PROPERTY(int rangeFrom READ rangeFrom WRITE setRangeFrom NOTIFY changed) // 0-based
+    Q_PROPERTY(int rangeTo READ rangeTo WRITE setRangeTo NOTIFY changed)
     Q_PROPERTY(QVariantList chain READ chain NOTIFY changed)
     Q_PROPERTY(int chainStep READ chainStep NOTIFY positionChanged) // playing (-1: not chaining)
     Q_PROPERTY(int chainPass READ chainPass NOTIFY positionChanged)
@@ -94,6 +98,12 @@ public:
     bool hasClipboard() const { return m_clipboard.has_value(); }
     bool chainMode() const { return m_state.chainMode; }
     void setChainMode(bool on);
+    int playMode() const { return m_state.chainMode ? 2 : (m_state.rangeMode ? 1 : 0); }
+    void setPlayMode(int mode);
+    int rangeFrom() const { return m_state.rangeFrom; }
+    void setRangeFrom(int pattern);
+    int rangeTo() const { return m_state.rangeTo; }
+    void setRangeTo(int pattern);
     QVariantList chain() const;
     int chainStep() const { return m_chainStep; }
     int chainPass() const { return m_chainPass; }

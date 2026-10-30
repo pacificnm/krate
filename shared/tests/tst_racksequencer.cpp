@@ -306,6 +306,48 @@ private slots:
         }
     }
 
+    // RANGE: patterns from..to in order, then around again; switched on while
+    // playing, from the next pass (outside the range: from its first).
+    void range()
+    {
+        const auto makeBank = [] {
+            auto bank = std::make_unique<Bank>();
+            for (int p = 0; p < 6; ++p) {
+                bank->patterns[std::size_t(p)].length = 96;
+                bank->patterns[std::size_t(p)].tracks[0].add({0, 24, std::uint8_t(60 + p), 100});
+            }
+            return bank;
+        };
+        const auto keys = [](const Run &run) {
+            std::vector<int> k;
+            for (const Hit &h : run.ons())
+                k.push_back(h.key);
+            return k;
+        };
+        {
+            Sequencer seq;
+            seq.setTarget(0, {0, 0});
+            seq.setRangeMode(true);
+            seq.setRange(4, 1); // either order
+            seq.setBank(makeBank());
+            Run run{seq};
+            run.blocks(24000 * 5 + 100);
+            QCOMPARE(keys(run), (std::vector<int>{61, 62, 63, 64, 61, 62}));
+        }
+        { // on mid-play, from pattern 5 (outside 1..2): the range from its start at the next pass
+            Sequencer seq;
+            seq.setTarget(0, {0, 0});
+            seq.cue(5);
+            seq.setRange(1, 2);
+            seq.setBank(makeBank());
+            Run run{seq};
+            run.blocks(12000);
+            seq.setRangeMode(true);
+            run.blocks(24000 * 3);
+            QCOMPARE(keys(run), (std::vector<int>{65, 61, 62, 61}));
+        }
+    }
+
     // The merger: both sources' events, by frame, earlier source first on ties.
     void mergeByFrame()
     {

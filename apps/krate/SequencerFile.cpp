@@ -34,6 +34,9 @@ QJsonObject sequencerToJson(const SequencerState &state)
             {QStringLiteral("pattern"), state.pattern},
             {QStringLiteral("running"), state.running},
             {QStringLiteral("chainMode"), state.chainMode},
+            {QStringLiteral("rangeMode"), state.rangeMode},
+            {QStringLiteral("rangeFrom"), state.rangeFrom + 1},
+            {QStringLiteral("rangeTo"), state.rangeTo + 1},
             {QStringLiteral("chain"), chain},
             {QStringLiteral("tracks"), tracks},
             {QStringLiteral("patterns"), patterns}};
@@ -45,6 +48,11 @@ SequencerState sequencerFromJson(const QJsonObject &json)
     state.pattern = std::clamp(json.value(u"pattern").toInt(0), 0, kPatterns - 1);
     state.running = json.value(u"running").toBool(true);
     state.chainMode = json.value(u"chainMode").toBool(false);
+    state.rangeMode = json.value(u"rangeMode").toBool(false) && !state.chainMode;
+    state.rangeFrom = std::clamp(json.value(u"rangeFrom").toInt(1), 1, kPatterns) - 1;
+    state.rangeTo = std::clamp(json.value(u"rangeTo").toInt(4), 1, kPatterns) - 1;
+    if (state.rangeFrom > state.rangeTo)
+        std::swap(state.rangeFrom, state.rangeTo);
     for (const QJsonValue &v : json.value(u"chain").toArray()) {
         const QJsonArray a = v.toArray();
         if (state.bank->chainLength >= kMaxChain || a.size() < 2)

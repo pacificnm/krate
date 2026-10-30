@@ -158,6 +158,18 @@ private slots:
         QCOMPARE(c.chain().size(), 2);
         c.setChainMode(true);
         QVERIFY(seq.chainMode());
+        // One play mode at a time; the range stays in order.
+        c.setPlayMode(1);
+        QVERIFY(seq.rangeMode() && !seq.chainMode());
+        QVERIFY(!c.chainMode());
+        c.setRangeTo(5);
+        c.setRangeFrom(8); // past TO: TO follows
+        QCOMPARE(c.rangeFrom(), 8);
+        QCOMPARE(c.rangeTo(), 8);
+        c.setRangeTo(2);   // before FROM: FROM follows
+        QCOMPARE(c.rangeFrom(), 2);
+        c.setPlayMode(2);
+        QVERIFY(seq.chainMode() && !seq.rangeMode());
         c.setPattern(0);
         c.stepPattern(-1);
         QCOMPARE(c.pattern(), kPatterns - 1);

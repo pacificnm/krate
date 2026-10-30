@@ -10,7 +10,8 @@
 
 // The rack sequencer's file, ~/.local/share/krate/sequencer.json
 // (docs/SEQUENCER.md): the bank, each track's target (by key: "k303",
-// "krimson:B"; "" = none) and mute, RUN, CHAIN, the chosen pattern and the
+// "krimson:B"; "" = none) and mute, RUN, CHAIN, RANGE (from, to: 1-based in
+// the file), the chosen pattern and the
 // chain ([pattern, repeats], 0-based pattern). Notes are [start, length,
 // pitch, velocity] in ticks (96 per beat).
 struct SequencerState
@@ -20,6 +21,8 @@ struct SequencerState
     std::array<bool, krate::seq::kTracks> mutes{};
     bool running = true;
     bool chainMode = false;
+    bool rangeMode = false;
+    int rangeFrom = 0, rangeTo = 3; // 0-based, inclusive
     int pattern = 0;
 };
 

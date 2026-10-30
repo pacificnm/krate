@@ -73,6 +73,8 @@ void SequencerController::load()
         m_sequencer.setMute(t, m_state.mutes[std::size_t(t)]);
     m_sequencer.setRunning(m_state.running);
     m_sequencer.setChainMode(m_state.chainMode);
+    m_sequencer.setRangeMode(m_state.rangeMode);
+    m_sequencer.setRange(m_state.rangeFrom, m_state.rangeTo);
     m_sequencer.cue(m_state.pattern);
     m_sequencer.setBank(std::make_unique<Bank>(*m_state.bank));
     ++m_revision;
@@ -388,10 +390,46 @@ QList<int> SequencerController::patternsWithNotes(int firstPattern, int count, i
 
 void SequencerController::setChainMode(bool on)
 {
-    if (on == m_state.chainMode)
+    setPlayMode(on ? 2 : 0);
+}
+
+void SequencerController::setPlayMode(int mode)
+{
+    mode = std::clamp(mode, 0, 2);
+    if (mode == playMode())
         return;
-    m_state.chainMode = on;
-    m_sequencer.setChainMode(on);
+    m_state.chainMode = mode == 2;
+    m_state.rangeMode = mode == 1;
+    m_sequencer.setChainMode(m_state.chainMode);
+    m_sequencer.setRangeMode(m_state.rangeMode);
+    m_dirty = true;
+    m_saveTimer.start();
+    ++m_revision;
+    emit changed();
+}
+
+void SequencerController::setRangeFrom(int pattern)
+{
+    pattern = std::clamp(pattern, 0, kPatterns - 1);
+    if (pattern == m_state.rangeFrom)
+        return;
+    m_state.rangeFrom = pattern;
+    m_state.rangeTo = std::max(m_state.rangeTo, pattern);
+    m_sequencer.setRange(m_state.rangeFrom, m_state.rangeTo);
+    m_dirty = true;
+    m_saveTimer.start();
+    ++m_revision;
+    emit changed();
+}
+
+void SequencerController::setRangeTo(int pattern)
+{
+    pattern = std::clamp(pattern, 0, kPatterns - 1);
+    if (pattern == m_state.rangeTo)
+        return;
+    m_state.rangeTo = pattern;
+    m_state.rangeFrom = std::min(m_state.rangeFrom, pattern);
+    m_sequencer.setRange(m_state.rangeFrom, m_state.rangeTo);
     m_dirty = true;
     m_saveTimer.start();
     ++m_revision;

@@ -57,6 +57,12 @@ public:
     // plays the cued pattern.
     void setChainMode(bool on) noexcept { m_chainMode.store(on, std::memory_order_relaxed); }
     bool chainMode() const noexcept { return m_chainMode.load(std::memory_order_relaxed); }
+    // RANGE mode: patterns `from`..`to` (0-based) in order, then around again
+    // (from `from` when play starts; switched on while playing, from the next
+    // pass). CHAIN, when on with a chain, comes first.
+    void setRangeMode(bool on) noexcept { m_rangeMode.store(on, std::memory_order_relaxed); }
+    bool rangeMode() const noexcept { return m_rangeMode.load(std::memory_order_relaxed); }
+    void setRange(int from, int to) noexcept;
     // The chain step playing (-1: not chaining) and the pass of it (0-based).
     int chainStep() const noexcept { return m_chainStep.load(std::memory_order_relaxed); }
     int chainPass() const noexcept { return m_chainPass.load(std::memory_order_relaxed); }
@@ -86,7 +92,7 @@ private:
         int count = 0;
     };
 
-    int next(int cued) noexcept; // the pattern after a pass: the chain's next, or the cued one
+    int next(int cued) noexcept; // the pattern after a pass: the chain's next, the range's next, or the cued one
     int startPattern(int cued) noexcept;
     void play(int track, const Note &note, double onBeat, double b0, double framesPerBeat) noexcept;
     void endNotes(double b0, double b1, double framesPerBeat) noexcept; // offs due in [b0, b1)
@@ -104,6 +110,8 @@ private:
     std::atomic<bool> m_isPlaying{false};
     std::atomic<int> m_tick{0};
     std::atomic<bool> m_chainMode{false};
+    std::atomic<bool> m_rangeMode{false};
+    std::atomic<int> m_range{0x0F00}; // from << 8 | to
     std::atomic<int> m_chainStep{-1};
     std::atomic<int> m_chainPass{0};
 

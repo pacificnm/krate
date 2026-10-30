@@ -25,6 +25,8 @@ private slots:
         p.tracks[3].add({0, 16, 60, 90});
         p.tracks[3].add({1520, 64, 127, 1});
         state.chainMode = true;
+        state.rangeFrom = 2;
+        state.rangeTo = 9;
         state.bank->chain[0] = {5, 2};
         state.bank->chain[1] = {0, 16};
         state.bank->chainLength = 2;
@@ -44,6 +46,9 @@ private slots:
         QVERIFY(q.tracks[3].notes[1] == p.tracks[3].notes[1]);
         QVERIFY(back.bank->patterns[0].empty());
         QVERIFY(back.chainMode);
+        QVERIFY(!back.rangeMode);
+        QCOMPARE(back.rangeFrom, 2);
+        QCOMPARE(back.rangeTo, 9);
         QCOMPARE(back.bank->chainLength, std::uint8_t(2));
         QVERIFY(back.bank->chain[0] == state.bank->chain[0]);
         QVERIFY(back.bank->chain[1] == state.bank->chain[1]);

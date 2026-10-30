@@ -15,7 +15,8 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
   - **Length**: any whole number of grid steps up to 4 bars (odd lengths make polymeters against the instruments' own sequencers).
 - **Playing**: on the rack's transport (PLAY / STOP, tempo). The current pattern loops. Choosing another pattern while it plays switches at the end of the current one, in time; while stopped, at once. Notes go straight to their instrument (as the song player's do), whatever its MIDI channel or the keyboard's focus, and play as written (an instrument's OCTAVE is for the keys only).
 - **RUN** works like an instrument's RUN / STOP. Pressed while the rack is stopped, it starts the rack with the sequencer playing alone (the instruments' own sequencers stay off, so their patterns don't play over it). Pressed while it plays, it stops it, and the rack too when nothing else is running. Pressed while the rack plays without it, it joins. The rack's **PLAY** also plays it when RUN is on (and every instrument's own sequencer too).
-- **Chain**: up to 64 steps, each a pattern and how many times it plays (1–16); in CHAIN mode the chain plays instead of one pattern looping.
+- **What plays**: **PATTERN** loops the pattern you choose; **RANGE** plays patterns FROM to TO in order (1–4, 1–16, 5–8 …) and around again; **CHAIN** plays the chain.
+- **Chain**: up to 64 steps, each a pattern and how many times it plays (1–16).
 - **Saved** in `~/.local/share/krate/sequencer.json`, written a moment after each change.
 
 ## The Seq screen
@@ -31,10 +32,11 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
 
 ## Chains and playing live
 
-- **The chain** (the strip above the piano roll) is a list of patterns, each played a number of times: **+ ADD** puts the pattern you're on at its end; click a step to edit its pattern; mouse wheel over a step sets how many times it plays (1–16); right-click removes it; **CLEAR** empties the chain.
+- **PATTERN / RANGE / CHAIN** (above the piano roll) choose what plays. **RANGE** shows FROM and TO: the rack's PLAY (or RUN) plays pattern FROM, then each one up to TO, then FROM again; the patterns in the range have a blue bar under their number, and a red dot marks the one playing. Switched on while playing, it takes over at the end of the current pass (from FROM if the pattern playing isn't in the range). Empty patterns in the range play as silent bars of their length.
+- **The chain** (the strip above the piano roll, in PATTERN and CHAIN modes) is a list of patterns, each played a number of times: **+ ADD** puts the pattern you're on at its end; click a step to edit its pattern; mouse wheel over a step sets how many times it plays (1–16); right-click removes it; **CLEAR** empties the chain.
 - **CHAIN** on: the rack's PLAY plays the chain from its first step, through to the end and around again. The step playing has a red border (and which time through it is). Switched on while playing, the chain starts at the end of the current pass. With CHAIN off, the pattern you choose loops.
 - **Live**: with CHAIN off, choosing a pattern while it plays switches at the end of the current one, in time. **◂ ▸** step through the patterns.
-- **From a controller** (LEARN, then click the control, then press a button on the controller): RUN, CHAIN, ◂, ▸ and each of the 16 pattern buttons (rack actions `rack:seqrun`, `rack:seqchain`, `rack:seqprevious`, `rack:seqnext`, `rack:seqpattern1`–`16`).
+- **From a controller** (LEARN, then click the control, then press a button on the controller): RUN, RANGE, CHAIN, ◂, ▸ and each of the 16 pattern buttons (rack actions `rack:seqrun`, `rack:seqrange`, `rack:seqchain`, `rack:seqprevious`, `rack:seqnext`, `rack:seqpattern1`–`16`; RANGE and CHAIN switch between that mode and PATTERN).
 
 ## Copying bars from a song
 

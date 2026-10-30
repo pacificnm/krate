@@ -125,7 +125,9 @@ int main(int argc, char *argv[])
                                     if (action == u"seqrun")
                                         s->toggleRun();
                                     else if (action == u"seqchain")
-                                        s->setChainMode(!s->chainMode());
+                                        s->setPlayMode(s->playMode() == 2 ? 0 : 2);
+                                    else if (action == u"seqrange")
+                                        s->setPlayMode(s->playMode() == 1 ? 0 : 1);
                                     else if (action == u"seqnext")
                                         s->stepPattern(1);
                                     else if (action == u"seqprevious")
