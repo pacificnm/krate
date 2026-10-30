@@ -14,13 +14,13 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
   - **Grid**: the step size used for editing and for snapping imported notes: 1/16, 1/32, 1/16T or 1/8T. Changing it never moves notes.
   - **Length**: any whole number of grid steps up to 4 bars (odd lengths make polymeters against the instruments' own sequencers).
 - **Playing**: on the rack's transport (PLAY / STOP, tempo). The current pattern loops. Choosing another pattern while it plays switches at the end of the current one, in time; while stopped, at once. Notes go straight to their instrument (as the song player's do), whatever its MIDI channel or the keyboard's focus, and play as written (an instrument's OCTAVE is for the keys only).
-- **RUN**: the sequencer has its own on/off; when off it stays silent while the rack plays.
+- **RUN** works like an instrument's RUN / STOP. Pressed while the rack is stopped, it starts the rack with the sequencer playing alone (the instruments' own sequencers stay off, so their patterns don't play over it). Pressed while it plays, it stops it, and the rack too when nothing else is running. Pressed while the rack plays without it, it joins. The rack's **PLAY** also plays it when RUN is on (and every instrument's own sequencer too).
 - **Chain**: up to 64 steps, each a pattern and how many times it plays (1–16); in CHAIN mode the chain plays instead of one pattern looping.
 - **Saved** in `~/.local/share/krate/sequencer.json`, written a moment after each change.
 
 ## The Seq screen
 
-- **RUN** switches the sequencer on or off (the rack's PLAY / STOP runs it). **PATTERN 1–16**: click to choose; shaded ones have notes, a red dot marks the one playing. **COPY / PASTE** copies a whole pattern to another; **CLEAR** empties this one. **LENGTH −/+** in bars (by steps below a bar), up to 4 bars; **GRID** sets the step.
+- **RUN** plays or stops the sequencer (see above); its light is on while it plays, dim while it waits for the rack's PLAY. **PATTERN 1–16**: click to choose; shaded ones have notes, a red dot marks the one playing. **COPY / PASTE** copies a whole pattern to another; **CLEAR** empties this one. **LENGTH −/+** in bars (by steps below a bar), up to 4 bars; **GRID** sets the step.
 - **Tracks**: each row has its instrument (None, k303, K909, Kalliope, Krimson A–D), the number of notes it has in this pattern and **M** (mute). Click a row to edit it; **CLEAR TRACK** empties it in this pattern.
 - **Piano roll** for the selected track: keys down the left (C labelled), steps across (bars and beats marked). A K909 track shows its 16 voices by name instead.
   - Click an empty place: a note of one step (velocity 100).

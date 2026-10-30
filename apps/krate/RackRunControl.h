@@ -32,6 +32,13 @@ public:
 
     // The rack's PLAY: every sequencer on (the transport is the caller's).
     void playAll();
+    // The rack sequencer's RUN from silence: the instruments' own sequencers
+    // off, the transport on (the rack sequencer plays alone).
+    void playWithoutInstruments();
+    // Whether any instrument's own sequencer is running.
+    bool anyInstrumentRunning() const;
+    bool transportPlaying() const;
+    void stopTransport();
     // The transport started or stopped elsewhere: tell the panels.
     void transportChanged() { emit changed(); }
 

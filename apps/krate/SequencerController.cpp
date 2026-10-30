@@ -4,6 +4,7 @@
 
 #include <QJSEngine>
 
+#include "RackRunControl.h"
 #include "app/JsonFile.h"
 
 using namespace krate::seq;
@@ -119,6 +120,24 @@ void SequencerController::setRunning(bool on)
     m_saveTimer.start();
     ++m_revision;
     emit changed();
+}
+
+void SequencerController::toggleRun()
+{
+    if (!m_run) {
+        setRunning(!m_state.running);
+        return;
+    }
+    if (!m_run->transportPlaying()) { // from silence: play, the sequencer alone
+        setRunning(true);
+        m_run->playWithoutInstruments();
+    } else if (m_state.running) { // stop it; the rack too when nothing else runs
+        setRunning(false);
+        if (!m_run->anyInstrumentRunning())
+            m_run->stopTransport();
+    } else { // the rack is playing: join it
+        setRunning(true);
+    }
 }
 
 int SequencerController::length() const { return current().length; }

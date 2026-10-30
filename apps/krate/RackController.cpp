@@ -322,6 +322,7 @@ void RackController::poll()
         emit focusChanged();
         setMixerShown(false);
         setSongShown(false);
+        setSeqShown(false);
     }
     if (const bool playing = m_transport.playing(); playing != m_shownPlaying) { // an instrument's RUN, or a song's end
         m_shownPlaying = playing;

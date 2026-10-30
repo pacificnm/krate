@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
                                     rackController.setSeqShown(!rackController.seqShown());
                                 else if (SequencerController *s = sequencerActions; s && action.startsWith(u"seq")) {
                                     if (action == u"seqrun")
-                                        s->setRunning(!s->running());
+                                        s->toggleRun();
                                     else if (action == u"seqchain")
                                         s->setChainMode(!s->chainMode());
                                     else if (action == u"seqnext")
@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/sequencer.json"), nullptr);
     sequencerController.load();
     sequencerActions = &sequencerController;
+    sequencerController.setRunControl(&runControl);
 
     // The Song screen and the song library (~/.local/share/krate/library: the
     // songs' files, library.db with each song's set-up and sounds).

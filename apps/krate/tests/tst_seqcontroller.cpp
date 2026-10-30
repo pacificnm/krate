@@ -2,7 +2,10 @@
 
 #include <QTemporaryDir>
 
+#include "RackRunControl.h"
 #include "SequencerController.h"
+#include "core/Transport.h"
+#include "rack/Rack.h"
 
 using namespace krate;
 using namespace krate::seq;
@@ -162,6 +165,33 @@ private slots:
         QCOMPARE(c.pattern(), 0);
         c.clearChain();
         QCOMPARE(c.chain().size(), 0);
+    }
+
+    // RUN works like an instrument's RUN / STOP: from silence it starts the
+    // rack; pressed again it stops it; off while the rack plays, it joins.
+    void runStartsAndStops()
+    {
+        QTemporaryDir dir;
+        krate::Rack rack(64);
+        krate::Transport transport;
+        RackRunControl run(rack, transport, {});
+        Sequencer seq;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.setRunControl(&run);
+        c.load();
+
+        QVERIFY(!transport.playing());
+        c.toggleRun();
+        QVERIFY(transport.playing());
+        QVERIFY(c.running());
+        c.toggleRun();
+        QVERIFY(!c.running());
+        QVERIFY(!transport.playing()); // nothing else was running
+
+        transport.setPlaying(true); // the rack's PLAY, the sequencer off
+        c.toggleRun();
+        QVERIFY(c.running());
+        QVERIFY(transport.playing());
     }
 };
 

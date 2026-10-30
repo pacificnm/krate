@@ -50,12 +50,13 @@ Item {
             height: 40
             anchors.verticalCenter: parent.verticalCenter
             faceText: "    RUN"
-            text: "Sequencer on or off (the rack's PLAY runs it)"
-            onClicked: Sequencer.running = !Sequencer.running
-            Led {
+            text: "Play or stop the sequencer"
+            onClicked: Sequencer.toggleRun()
+            Led { // lit while it plays (or will, when the rack's PLAY starts)
                 x: 12
                 anchors.verticalCenter: parent.verticalCenter
                 on: Sequencer.running
+                opacity: Sequencer.playing || !Sequencer.running ? 1.0 : 0.5
             }
             LearnOverlay { anchors.fill: parent; paramKey: "rack:seqrun"; round: false }
         }

@@ -58,6 +58,34 @@ void RackRunControl::playAll()
     emit changed();
 }
 
+void RackRunControl::playWithoutInstruments()
+{
+    for (qsizetype j = 0; j < m_ids.size(); ++j) {
+        m_enabled[j] = false;
+        apply(int(j));
+    }
+    m_transport.setPlaying(true);
+    emit changed();
+}
+
+bool RackRunControl::anyInstrumentRunning() const
+{
+    if (!m_transport.playing())
+        return false;
+    for (qsizetype j = 0; j < m_ids.size(); ++j)
+        if (m_enabled[j] && m_runners.contains(m_ids[j]))
+            return true;
+    return false;
+}
+
+bool RackRunControl::transportPlaying() const { return m_transport.playing(); }
+
+void RackRunControl::stopTransport()
+{
+    m_transport.setPlaying(false);
+    emit changed();
+}
+
 void RackRunControl::apply(int device)
 {
     if (device >= 0 && device < m_rack.deviceCount())

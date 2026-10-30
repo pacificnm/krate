@@ -16,6 +16,7 @@
 #include "seq/Sequencer.h"
 
 class QQmlEngine;
+class RackRunControl;
 class QJSEngine;
 
 // QML singleton "Sequencer": the SEQ screen's view of the rack sequencer
@@ -100,6 +101,12 @@ public:
     int playingPattern() const { return m_playingPattern; }
     int tick() const { return m_tick; }
 
+    // RUN, like an instrument's RUN / STOP: from silence it starts the rack
+    // with the sequencer playing alone; while it plays, stops it (and the
+    // rack, when nothing else is running); off while the rack plays, it joins.
+    Q_INVOKABLE void toggleRun();
+    void setRunControl(RackRunControl *run) { m_run = run; }
+
     Q_INVOKABLE void setTarget(int track, int choice); // 0 = none
     Q_INVOKABLE void setMute(int track, bool mute);
     Q_INVOKABLE void setLength(int ticks);             // rounded to the grid, 1 step .. 4 bars
@@ -149,6 +156,7 @@ private:
 
     static SequencerController *s_instance;
     krate::seq::Sequencer &m_sequencer;
+    RackRunControl *m_run = nullptr;
     std::vector<NoteTarget> m_targets;
     QString m_path;
     SequencerState m_state;
