@@ -640,7 +640,7 @@ QString SongController::copyToSequencer(int track, int from, int to, int pattern
     const NoteTarget *target = choice > 0 && choice <= int(m_choices.size()) ? &m_choices[std::size_t(choice - 1)] : nullptr;
     songimport::Options options;
     options.drumMap = target && target->drumMap;
-    options.mono = target && target->key == u"k303";
+    options.mono = target && (target->key == u"k303" || target->key == u"kobalt"); // the monosynths
     const auto spans = songimport::barSpans(*m_song, score(), from, to);
     const songimport::Result r = songimport::convert(*m_song, track, spans, options);
     if (r.chunks.empty())
@@ -666,9 +666,10 @@ QString SongController::copyToSequencer(int track, int from, int to, int pattern
     if (r.report.snapped)
         fitted << QStringLiteral("%1 moved to the grid").arg(r.report.snapped);
     if (r.report.reduced)
-        fitted << (options.mono ? QStringLiteral("%1 chord notes left out (k303 plays one at a time)")
-                                : QStringLiteral("%1 doubled notes merged"))
-                      .arg(r.report.reduced);
+        fitted << (options.mono ? QStringLiteral("%1 chord notes left out (%2 plays one at a time)")
+                                      .arg(r.report.reduced)
+                                      .arg(target->label)
+                                : QStringLiteral("%1 doubled notes merged").arg(r.report.reduced));
     if (r.report.dropped)
         fitted << QStringLiteral("%1 drum notes K909 has no voice for").arg(r.report.dropped);
     if (r.report.overflow)

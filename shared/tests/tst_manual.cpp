@@ -47,6 +47,7 @@ private slots:
         QTest::addColumn<QString>("field"); // the QML property that names a control
         QTest::newRow("krimson") << QStringLiteral("krimson") << QStringLiteral("label");
         QTest::newRow("kalliope") << QStringLiteral("kalliope") << QStringLiteral("label");
+        QTest::newRow("kobalt") << QStringLiteral("kobalt") << QStringLiteral("label");
         QTest::newRow("k909") << QStringLiteral("k909") << QStringLiteral("label");
         QTest::newRow("k303") << QStringLiteral("k303") << QStringLiteral("name");
     }

@@ -2,13 +2,13 @@
 
 A multitrack pattern sequencer for the whole rack, in the spirit of the classic 8-track hardware sequencers: eight tracks, each playing one of the rack's instruments; patterns of up to four bars that hold a whole section (drums, bass, pads and lead together); patterns chained into a song. Bars of a loaded song can be copied into it from the Song screen.
 
-The instruments keep their own step sequencers (k303's, K909's, Kalliope's): those are part of their character. The rack sequencer plays them over MIDI like a keyboard would, so it works for every instrument, Krimson included, and isn't bound by their 16-step limit.
+The instruments keep their own step sequencers (k303's, K909's, Kalliope's, Kobalt's): those are part of their character. The rack sequencer plays them over MIDI like a keyboard would, so it works for every instrument, Krimson included, and isn't bound by their 16-step limit.
 
 Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI routing), [SONG_PLAYER.md](SONG_PLAYER.md) (the Song screen it imports from).
 
 ## What it does
 
-- **8 tracks.** Each plays one target: k303, K909, Kalliope or a Krimson slot (A–D), or nothing. A track can be muted. Targets and mutes are the sequencer's, not a pattern's.
+- **8 tracks.** Each plays one target: k303, K909, Kalliope, a Krimson slot (A–D) or Kobalt, or nothing. A track can be muted. Targets and mutes are the sequencer's, not a pattern's.
 - **16 patterns.** A pattern is up to **4 bars** (16 beats) long and holds every track's notes for that stretch.
   - **Notes** have a start, a length, a pitch and a velocity. A track can play chords (several notes at once). Notes are stored at 96 ticks per beat, so 16ths (24 ticks), 32nds (12), 16th triplets (16) and 8th triplets (32) all fall on whole ticks.
   - **Grid**: the step size used for editing and for snapping imported notes: 1/16, 1/32, 1/16T or 1/8T. Changing it never moves notes.
@@ -22,7 +22,7 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
 ## The Seq screen
 
 - **RUN** plays or stops the sequencer (see above); its light is on while it plays, dim while it waits for the rack's PLAY. **PATTERN 1–16**: click to choose; shaded ones have notes, a red dot marks the one playing. **COPY / PASTE** copies a whole pattern to another; **CLEAR** empties this one. **LENGTH −/+** in bars (by steps below a bar), up to 4 bars; **GRID** sets the step.
-- **Tracks**: each row has its instrument (None, k303, K909, Kalliope, Krimson A–D), the number of notes it has in this pattern and **M** (mute). Click a row to edit it. Under the tracks, **COPY / PASTE / CLEAR** work on the selected track in the pattern shown: COPY takes its notes, then choose another track (in this pattern or another) and PASTE puts them there, replacing its notes (its instrument and mute stay); the line below says what's copied. CLEAR empties the selected track.
+- **Tracks**: each row has its instrument (None, k303, K909, Kalliope, Krimson A–D, Kobalt), the number of notes it has in this pattern and **M** (mute). Click a row to edit it. Under the tracks, **COPY / PASTE / CLEAR** work on the selected track in the pattern shown: COPY takes its notes, then choose another track (in this pattern or another) and PASTE puts them there, replacing its notes (its instrument and mute stay); the line below says what's copied. CLEAR empties the selected track.
 - **Piano roll** for the selected track: keys down the left (C labelled), steps across (bars and beats marked). A K909 track shows its 16 voices by name instead.
   - Click an empty place: a note of one step (velocity 100).
   - Drag a note to move it (it snaps to the grid); drag its right edge to make it longer or shorter.
@@ -60,7 +60,7 @@ On the Song screen, with a song open:
 What's fitted, automatically:
 - **Timing**: each pattern gets the grid that moves the fewest notes (1/16, else 16th triplets, else 1/32), and notes are snapped to it; the count of moved notes is reported.
 - **Drums** going to K909 are mapped to its voices as the song player maps them; drum sounds it has no voice for are left out (counted).
-- **k303** plays one note at a time: a chord keeps its top note (counted).
+- **k303** and **Kobalt** play one note at a time: a chord keeps its top note (counted).
 - **Repeats**: bars are numbered as written in the tab; a bar that plays more than once is taken from its first time through.
 - Only that track of each pattern changes; the pattern takes the copied bars' length and grid. Patterns stop at 16.
 

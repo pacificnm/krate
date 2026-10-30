@@ -9,8 +9,9 @@ namespace kobalt {
 
 namespace {
 constexpr double kVolumeSmoothingSeconds = 0.01;
-// One voice: no headroom kept for chords (single notes peak around -10 .. -20 dBFS).
-constexpr double kOutputTrim = 1.0;
+// One voice, no headroom kept for chords: +6 dB puts a held note at the
+// default panel at -21.6 dB RMS, between Kalliope's (-23.7) and Krimson's (-19.7).
+constexpr double kOutputTrim = 2.0;
 constexpr double kMaxResonance = 4.4;   // filter feedback at Resonance 100%: self-oscillation
 constexpr double kVcfEnvOctaves = 8.0;
 constexpr double kVcfModOctaves = 4.0;

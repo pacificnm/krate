@@ -62,18 +62,18 @@ Patch factoryPatch(int index)
                                      {"env_s", 0.8}, {"env_r", 0.45}, {"delay_level", 0.4}, {"delay_time", at(3, p::kDelayTime)},
                                      {"delay_fb", 0.45}, {"reverb_level", 0.2}});
     case 3: return make("Squelch Bass", {{"vco_range", k16}, {"cutoff", 0.25}, {"res", 0.75}, {"vcf_env", 0.55},
-                                         {"env_d", 0.35}, {"env_s", 0.0}, {"env_r", 0.2}, {"porta_mode", kPortaAuto},
+                                         {"env_d", 0.6}, {"env_s", 0.0}, {"env_r", 0.2}, {"porta_mode", kPortaAuto},
                                          {"porta_time", 0.3}, {"env_trig", kGateOnly}});
     case 4: return make("Pluck", {{"pulse_level", 0.6}, {"saw_level", 0.4}, {"cutoff", 0.35}, {"vcf_env", 0.5},
-                                  {"env_d", 0.35}, {"env_s", 0.0}, {"env_r", 0.3}, {"reverb_level", 0.15}});
+                                  {"env_d", 0.55}, {"env_s", 0.0}, {"env_r", 0.3}, {"reverb_level", 0.15}});
     case 5: return make("LFO Gate", {{"saw_level", 0.6}, {"sub_level", 0.5}, {"cutoff", 0.3}, {"res", 0.5},
-                                     {"vcf_env", 0.5}, {"env_d", 0.3}, {"env_s", 0.0}, {"env_trig", kLfoTrig},
+                                     {"vcf_env", 0.5}, {"env_d", 0.45}, {"env_s", 0.0}, {"env_trig", kLfoTrig},
                                      {"lfo_wave", kSquareLfo}, {"lfo_rate", 0.55}});
     case 6: return make("Noise Hat", {{"saw_level", 0.0}, {"noise_level", 1.0}, {"cutoff", 0.85}, {"res", 0.2},
-                                      {"vcf_env", 0.0}, {"key_follow", 0.0}, {"env_d", 0.25}, {"env_s", 0.0},
+                                      {"vcf_env", 0.0}, {"key_follow", 0.0}, {"env_d", 0.4}, {"env_s", 0.0},
                                       {"env_r", 0.2}});
     case 7: return make("Zap Tom", {{"saw_level", 0.0}, {"noise_level", 0.05}, {"cutoff", 0.2}, {"res", 1.0},
-                                    {"vcf_env", 0.6}, {"key_follow", 1.0}, {"env_d", 0.4}, {"env_s", 0.0},
+                                    {"vcf_env", 0.6}, {"key_follow", 1.0}, {"env_d", 0.55}, {"env_s", 0.0},
                                     {"env_r", 0.35}});
     case 8: return make("Wobble Bass", {{"vco_range", k16}, {"saw_level", 0.8}, {"sub_level", 0.6}, {"cutoff", 0.3},
                                         {"res", 0.55}, {"vcf_env", 0.1}, {"vcf_mod", 0.4}, {"lfo_wave", kTriangleLfo},
@@ -83,12 +83,12 @@ Patch factoryPatch(int index)
     case 10: return make("Hollow Square", {{"saw_level", 0.0}, {"pulse_level", 0.9}, {"sub_level", 0.4},
                                            {"sub_type", kSub2}, {"cutoff", 0.55}, {"vcf_env", 0.15}, {"env_s", 0.8}});
     case 11: return make("Arp Blip", {{"saw_level", 0.0}, {"pulse_level", 0.7}, {"pw", 0.5}, {"cutoff", 0.4},
-                                      {"vcf_env", 0.45}, {"env_d", 0.3}, {"env_s", 0.0}, {"play_mode", at(1, p::kPlayMode)},
+                                      {"vcf_env", 0.45}, {"env_d", 0.45}, {"env_s", 0.0}, {"play_mode", at(1, p::kPlayMode)},
                                       {"arp_mode", at(1, p::kArpMode)}, {"arp_range", at(1, p::kArpRange)},
                                       {"delay_level", 0.3}, {"delay_fb", 0.4}});
     case 12: return make("Random Bleeps", {{"saw_level", 0.7}, {"lfo_wave", kRandomLfo}, {"lfo_rate", 0.6},
                                            {"vcf_mod", 0.5}, {"res", 0.6}, {"cutoff", 0.45}, {"vcf_env", 0.2},
-                                           {"env_trig", kLfoTrig}, {"env_d", 0.3}, {"env_s", 0.0},
+                                           {"env_trig", kLfoTrig}, {"env_d", 0.45}, {"env_s", 0.0},
                                            {"delay_level", 0.35}});
     case 13: return make("Gate Organ", {{"saw_level", 0.0}, {"pulse_level", 0.8}, {"sub_level", 0.6},
                                         {"sub_type", kSub2Pulse}, {"vco_range", k4}, {"vca_mode", kVcaGate},

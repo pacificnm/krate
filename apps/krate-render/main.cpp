@@ -1,16 +1,19 @@
 // krate-render: render the Krate rack offline to a WAV file. k303 and Klick
-// (K909 with --k909, Kalliope with --kalliope, Krimson with --krimson) play
+// (K909 with --k909, Kalliope with --kalliope, Krimson with --krimson, Kobalt
+// with --kobalt) play
 // together on one transport,
 // through the rack's mixer and master stage, exactly as the rack app runs them.
 // Without those flags the output is unchanged from before they existed (a
 // reference render). Kalliope holds a chord on MIDI channel 2 with its
 // arpeggiator on (Up & Down, 2 octaves, 1/16), so it plays in time; Krimson
 // holds one on channel 3 (slot A, Sync-Lead-like) with slot A's arpeggiator
-// on (Up, 1 octave, 1/8).
+// on (Up, 1 octave, 1/8); Kobalt plays a 16-step bass line from its own
+// sequencer on channel 7, some steps legato (they slide, with Portamento Auto).
 //
 //   krate-render [--out file.wav] [--bars N] [--tempo BPM] [--rate HZ]
 //                [--k303 LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]
 //                [--k909 LEVEL] [--k909-pattern N] [--kalliope LEVEL] [--krimson LEVEL]
+//                [--kobalt LEVEL]
 //
 // Song mode (docs/SONG_PLAYER.md) plays a .gp tab file or a .mid file through
 // all the instruments, each track on the instrument it's assigned to:
@@ -18,7 +21,7 @@
 //   krate-render --song FILE [--out file.wav] [--assign TRACK:INSTRUMENT[:SLOT]]...
 //                [--start-bar N] [--bars N] [--speed X] [--click] [--rate HZ]
 //
-// INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D) or none. Without
+// INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D), kobalt or none. Without
 // --assign, tracks are assigned by what they look like: drums to K909, the
 // first bass to k303, keys and others to Kalliope and Krimson's slots, guitars
 // left out (they're for you to play).
@@ -39,6 +42,7 @@
 #include "dsp/Klick.h"
 #include "k909/dsp/Engine.h"
 #include "kalliope/dsp/Engine.h"
+#include "kobalt/dsp/Engine.h"
 #include "krimson/dsp/Engine.h"
 #include "rack/Rack.h"
 #include "song/Arrange.h"
@@ -55,10 +59,10 @@ void usage()
                  "usage: krate-render [--out file.wav] [--bars N] [--tempo BPM] [--rate HZ]\n"
                  "                    [--k303 LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]\n"
                  "                    [--k909 LEVEL] [--k909-pattern 0..3] [--kalliope LEVEL]\n"
-                 "                    [--krimson LEVEL]\n"
+                 "                    [--krimson LEVEL] [--kobalt LEVEL]\n"
                  "       krate-render --song FILE.gp|FILE.mid [--out file.wav] [--assign TRACK:INSTRUMENT[:SLOT]]...\n"
                  "                    [--start-bar N] [--bars N] [--speed 0.25..2] [--click] [--rate HZ]\n"
-                 "  LEVEL is mixer gain, 1 = unity; INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D) or none\n");
+                 "  LEVEL is mixer gain, 1 = unity; INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D), kobalt or none\n");
 }
 
 // --- Song mode ------------------------------------------------------------------
@@ -109,15 +113,18 @@ int renderSong(const SongOptions &o)
     k909::Engine drums;
     kalliope::Engine poly;
     krimson::Engine lead;
+    kobalt::Engine mono;
     bass.setSequencerEnabled(false);
     drums.setPattern(k909::Pattern{});
+    mono.setSequencerEnabled(false);
     krate::Rack rack(kBlock);
-    enum Device { K303, Klick, K909, Kalliope, Krimson };
+    enum Device { K303, Klick, K909, Kalliope, Krimson, Kobalt };
     rack.addDevice(bass, 0);
     rack.addDevice(metronome);
     rack.addDevice(drums, 9);
     rack.addDevice(poly, 1);
     rack.addDevice(lead, 2);
+    rack.addDevice(mono, 6);
     rack.prepare(o.rate);
     rack.setMute(Klick, !o.click);
     rack.setLevel(K909, 0.8f);
@@ -135,6 +142,8 @@ int renderSong(const SongOptions &o)
             player.setAssignment(t, {Kalliope, 1});
         else if (instrument == "krimson")
             player.setAssignment(t, {Krimson, 2 + std::clamp(slot, 0, 3)});
+        else if (instrument == "kobalt")
+            player.setAssignment(t, {Kobalt, 6});
         else
             return false;
         names[std::size_t(t)] = instrument + (instrument == "krimson" ? std::string(" ") + char('A' + slot) : "");
@@ -258,6 +267,7 @@ int main(int argc, char **argv)
     int k909Pattern = 0;
     float kalliopeLevel = -1.0f; // < 0: Kalliope not in the rack
     float krimsonLevel = -1.0f;  // < 0: Krimson not in the rack
+    float kobaltLevel = -1.0f;   // < 0: Kobalt not in the rack
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -274,6 +284,7 @@ int main(int argc, char **argv)
         else if (arg == "--k909-pattern" && hasValue) k909Pattern = std::atoi(argv[++i]);
         else if (arg == "--kalliope" && hasValue) kalliopeLevel = float(std::atof(argv[++i]));
         else if (arg == "--krimson" && hasValue) krimsonLevel = float(std::atof(argv[++i]));
+        else if (arg == "--kobalt" && hasValue) kobaltLevel = float(std::atof(argv[++i]));
         else {
             usage();
             return 2;
@@ -291,6 +302,7 @@ int main(int argc, char **argv)
     k909::Engine drums;
     kalliope::Engine poly;
     krimson::Engine lead;
+    kobalt::Engine mono;
     krate::Rack rack(kBlock);
     const int bassIndex = rack.addDevice(bass, /*midiChannel*/ 0);
     const int klickIndex = rack.addDevice(metronome);
@@ -327,7 +339,38 @@ int main(int argc, char **argv)
         for (int channel : {3, 4, 5}) // slots B-D
             rack.setChannelDevice(channel, leadIndex);
     }
+    int monoIndex = -1;
+    if (kobaltLevel >= 0.0f) {
+        namespace kp = kobalt::positions;
+        using kobalt::ParamId;
+        mono.setParam(ParamId::PlayMode, kobalt::position(2, kp::kPlayMode)); // the sequencer
+        mono.setParam(ParamId::VcoRange, kobalt::position(0, kp::kVcoRange));
+        mono.setParam(ParamId::Cutoff, 0.25f);
+        mono.setParam(ParamId::Res, 0.7f);
+        mono.setParam(ParamId::VcfEnv, 0.5f);
+        mono.setParam(ParamId::EnvD, 0.6f); // 250 ms
+        mono.setParam(ParamId::EnvS, 0.0f);
+        mono.setParam(ParamId::EnvTrig, kobalt::position(1, kp::kEnvTrig));     // Gate: legato doesn't pluck
+        mono.setParam(ParamId::PortaMode, kobalt::position(1, kp::kPortaMode)); // Auto: legato slides
+        mono.setParam(ParamId::PortaTime, 0.3f);
+        // C minor: notes, ties (-1) and rests (0); + marks a legato step.
+        kobalt::SeqPattern line;
+        const int notes[16] = {36, 36, 48, 0, 36, 39, 41, -1, 36, 0, 48, 46, 43, -1, 41, 39};
+        const bool legato[16] = {false, true, false, false, false, true, false, false,
+                                 false, false, false, true, false, false, false, false};
+        for (int i = 0; i < 16; ++i) {
+            kobalt::SeqStep &step = line.steps[std::size_t(i)];
+            step.kind = notes[i] > 0 ? kobalt::SeqStep::Kind::Note
+                      : notes[i] < 0 ? kobalt::SeqStep::Kind::Tie : kobalt::SeqStep::Kind::Rest;
+            step.note = std::uint8_t(std::max(notes[i], 0));
+            step.legato = legato[i];
+        }
+        mono.setSequence(line);
+        monoIndex = rack.addDevice(mono, /*midiChannel*/ 6);
+    }
     rack.prepare(rate);
+    if (monoIndex >= 0)
+        rack.setLevel(monoIndex, kobaltLevel);
     if (leadIndex >= 0)
         rack.setLevel(leadIndex, krimsonLevel);
     if (drumsIndex >= 0)
@@ -381,8 +424,9 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "krate-render: could not write %s\n", out.c_str());
         return 1;
     }
-    std::printf("wrote %s: k303 + Klick%s%s%s through the rack, %d bars at %.0f BPM, %.1f s\n", out.c_str(),
+    std::printf("wrote %s: k303 + Klick%s%s%s%s through the rack, %d bars at %.0f BPM, %.1f s\n", out.c_str(),
                 k909Level >= 0.0f ? " + K909" : "", kalliopeLevel >= 0.0f ? " + Kalliope" : "",
-                krimsonLevel >= 0.0f ? " + Krimson" : "", bars, bpm, double(frames) / rate);
+                krimsonLevel >= 0.0f ? " + Krimson" : "", kobaltLevel >= 0.0f ? " + Kobalt" : "", bars, bpm,
+                double(frames) / rate);
     return 0;
 }

@@ -79,7 +79,7 @@ std::vector<Sound> sounds()
                       {ParamId::DelayFb, 0.45f}, {ParamId::ReverbLevel, 0.2f}},
          line({64, 67, 71, 74}, 0.8, 0.7)},
         {"lfo trigger", {{ParamId::SawLevel, 0.6f}, {ParamId::SubLevel, 0.5f}, {ParamId::Cutoff, 0.3f},
-                         {ParamId::Res, 0.5f}, {ParamId::VcfEnv, 0.5f}, {ParamId::EnvD, 0.3f}, {ParamId::EnvS, 0.0f},
+                         {ParamId::Res, 0.5f}, {ParamId::VcfEnv, 0.5f}, {ParamId::EnvD, 0.45f}, {ParamId::EnvS, 0.0f},
                          {ParamId::EnvTrig, pos(2, p::kEnvTrig)}, {ParamId::LfoWave, pos(1, p::kLfoWave)},
                          {ParamId::LfoRate, 0.55f}},
          line({48, 51}, 1.5, 1.4)},

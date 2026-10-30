@@ -45,7 +45,7 @@ pw-jack ./build/bin/kalliope                      # Kalliope on its own
 pw-jack ./build/bin/krimson                       # Krimson on its own
 pw-jack ./build/bin/kobalt                        # Kobalt on its own
 pw-jack ./build/bin/krate                         # the rack: k303 + K909 + Kalliope + Krimson + Kobalt + Krunch + Klick
-./build/bin/krate-render --bars 8 --out rack.wav  # the rack, rendered offline (add --k909 0.8 --kalliope 1 --krimson 0.8 for all five)
+./build/bin/krate-render --bars 8 --out rack.wav  # the rack, rendered offline (add --k909 0.8 --kalliope 1 --krimson 0.8 --kobalt 0.9 for all six)
 ```
 
 More (dependencies, testing, MIDI without hardware): [instruments/k303/docs/BUILD.md](instruments/k303/docs/BUILD.md).

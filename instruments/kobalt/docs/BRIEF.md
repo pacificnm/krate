@@ -6,7 +6,7 @@ Kobalt is a monophonic synthesizer for the [Krate](../../../README.md) suite: on
 
 It follows the classic early-80s one-oscillator monosynth layout: a slim panel of vertical sliders grouped under section headers, a source mixer, small switches for the waveforms and modes, a bender and modulation lever, and a sequencer you load from the keys. Every name, logo and graphic is our own: the panel reads "Kobalt" and "Monophonic Synthesizer", on a cobalt-blue case. Reference material stays out of the repository (`reference/` is git-ignored).
 
-Related docs: [ROADMAP.md](ROADMAP.md), [MANUAL.md](MANUAL.md) (from B4). Suite design: [SHARED_FOUNDATIONS.MD](../../../docs/SHARED_FOUNDATIONS.MD).
+Related docs: [MANUAL.md](MANUAL.md) (the player's manual), [ROADMAP.md](ROADMAP.md). Suite design: [SHARED_FOUNDATIONS.MD](../../../docs/SHARED_FOUNDATIONS.MD).
 
 ## Scope (v1)
 
