@@ -323,11 +323,12 @@ Item {
 
     // ---- Function deck: play mode, bender, patches, effects
 
+    readonly property bool seqMode: Kobalt.revision >= 0 && Kobalt.value("play_mode") > 0.75
     property bool blink: false
     Timer {
         interval: 250
         repeat: true
-        running: Patches.writing || Patches.pendingBank >= 0
+        running: Patches.writing || Patches.pendingBank >= 0 || Sequencer.cursor >= 0
         onTriggered: panel.blink = !panel.blink
         onRunningChanged: panel.blink = false
     }
@@ -360,7 +361,8 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                text: parent.modelData.title
+                // The step rows' header changes with the mode.
+                text: parent.modelData.x === 875 && panel.seqMode ? "SEQUENCER STEPS  1 – 64" : parent.modelData.title
                 color: panel.headerText
                 font.family: Theme.labelFont
                 font.pixelSize: 13
@@ -476,6 +478,47 @@ Item {
     DeckKnob { key: "arp_range"; label: "RANGE"; cx: 130 }
     DeckKnob { key: "arp_rate"; label: "RATE"; cx: 190 }
 
+    // Loading the sequencer: REST, TIE, LEGATO (the step just loaded runs into the next), CLEAR
+    Repeater {
+        model: [{ label: "REST", action: "rest", x: 236, tint: "#8E9AB4" },
+                { label: "TIE", action: "tie", x: 292, tint: "#8E9AB4" },
+                { label: "LEGATO", action: "legato", x: 348, tint: "#F2B632" },
+                { label: "CLEAR", action: "", x: 404, tint: "#3A4A6A" }]
+
+        PanelButton {
+            id: seqButton
+            required property var modelData
+            x: modelData.x
+            y: 686
+            width: 50
+            height: 36
+            text: modelData.label === "CLEAR" ? "Clear the sequencer pattern" : modelData.label
+            tint: modelData.tint
+            enabled: panel.seqMode
+            opacity: enabled ? 1.0 : 0.35
+            onClicked: {
+                if (modelData.action === "rest")
+                    Sequencer.rest()
+                else if (modelData.action === "tie")
+                    Sequencer.tie()
+                else if (modelData.action === "legato")
+                    Sequencer.legato()
+                else
+                    Sequencer.clear()
+            }
+
+            DeckLabel { x: seqButton.width / 2 - width / 2; y: -18; text: seqButton.modelData.label; font.pixelSize: 11 }
+            Loader { // CLEAR isn't learnable
+                active: seqButton.modelData.action !== ""
+                anchors.fill: parent
+                sourceComponent: LearnOverlay {
+                    paramKey: seqButton.modelData.action
+                    round: false
+                }
+            }
+        }
+    }
+
     // Bender: how far the bender moves the pitch and the cutoff, and the lever's vibrato
     DeckKnob { key: "bend_vco"; label: "VCO"; cx: 515; knobY: 620 }
     DeckKnob { key: "bend_vcf"; label: "VCF"; cx: 563; knobY: 620 }
@@ -492,8 +535,9 @@ Item {
         font.pixelSize: 10
     }
 
-    // Patches: display, arrows, WRITE, MANUAL
-    Rectangle { // two-digit display: bank and patch, with a dot while edited
+    // Patches: display, arrows, WRITE, MANUAL. In SEQ mode the display shows
+    // the sequencer pattern (P1..P8) and the arrows pick it.
+    Rectangle { // two-digit display: bank and patch, with a dot while edited; or the pattern
         x: 662
         y: 606
         width: 84
@@ -504,12 +548,14 @@ Item {
         border.width: 2
 
         Accessible.role: Accessible.StaticText
-        Accessible.name: "Patch " + patchDigits.text + ", " + Patches.name
+        Accessible.name: panel.seqMode ? "Sequencer pattern " + (Sequencer.patternIndex + 1)
+                                       : "Patch " + patchDigits.text + ", " + Patches.name
 
         Text {
             id: patchDigits
             anchors.centerIn: parent
-            text: Patches.manual ? "--"
+            text: panel.seqMode ? "P" + (Sequencer.patternIndex + 1)
+                : Patches.manual ? "--"
                 : (Patches.pendingBank >= 0 ? (panel.blink ? " " : String(Patches.pendingBank + 1)) : String(Patches.bank + 1))
                   + String(Patches.number + 1) + (Patches.edited ? "." : "")
             color: "#5FD0FF"
@@ -524,7 +570,10 @@ Item {
         width: 92
         elide: Text.ElideRight
         wrapMode: Text.NoWrap
-        text: Patches.name
+        text: !panel.seqMode ? Patches.name
+            : Sequencer.cursor >= 0 ? "Step " + (Sequencer.cursor + 1) + ": "
+                                      + (Sequencer.revision >= 0 ? Sequencer.stepText(Sequencer.cursor) : "")
+            : Sequencer.length + " steps"
         color: panel.silk
         font.pixelSize: 11
     }
@@ -536,19 +585,20 @@ Item {
             width: 24
             height: 29
             faceText: "▲"
-            text: "Next patch"
-            onClicked: Patches.step(1)
+            text: panel.seqMode ? "Next pattern" : "Next patch"
+            onClicked: panel.seqMode ? Sequencer.patternIndex = (Sequencer.patternIndex + 1) % 8 : Patches.step(1)
         }
         PanelButton {
             width: 24
             height: 29
             faceText: "▼"
-            text: "Previous patch"
-            onClicked: Patches.step(-1)
+            text: panel.seqMode ? "Previous pattern" : "Previous patch"
+            onClicked: panel.seqMode ? Sequencer.patternIndex = (Sequencer.patternIndex + 7) % 8 : Patches.step(-1)
         }
     }
     ActionButton {
         action: "write"
+        visible: !panel.seqMode
         x: 780
         y: 606
         width: 72
@@ -559,6 +609,7 @@ Item {
         onClicked: Patches.toggleWrite()
     }
     PanelButton {
+        visible: !panel.seqMode
         x: 780
         y: 648
         width: 72
@@ -569,7 +620,7 @@ Item {
         onClicked: Patches.pressManual()
     }
     Text { // WRITE armed
-        visible: Patches.writing
+        visible: Patches.writing && !panel.seqMode
         x: 662
         y: 692
         text: "WRITE: press a patch number"
@@ -579,14 +630,28 @@ Item {
         font.bold: true
     }
 
-    // Banks and patch numbers
-    DeckLabel { x: 882; y: 620; text: "BANK" }
-    DeckLabel { x: 882; y: 676; text: "PATCH" }
+    Text { // loading
+        visible: panel.seqMode && Sequencer.cursor >= 0
+        x: 780
+        y: 606
+        width: 88
+        wrapMode: Text.WordWrap
+        text: "LOAD: play notes one at a time, or REST / TIE. A key over the last: legato. Shift-click a step: last step"
+        color: "#FF6A55"
+        font.family: Theme.labelFont
+        font.pixelSize: 10
+        font.bold: true
+    }
+
+    // Banks and patch numbers, or (SEQ) the sequencer's 64 steps
+    DeckLabel { x: 882; y: 620; text: "BANK"; visible: !panel.seqMode }
+    DeckLabel { x: 882; y: 676; text: "PATCH"; visible: !panel.seqMode }
     Repeater {
         model: 8
 
         ActionButton {
             required property int index
+            visible: !panel.seqMode
             action: "bank" + (index + 1)
             x: 930 + index * 39
             y: 610
@@ -606,6 +671,7 @@ Item {
 
         ActionButton {
             required property int index
+            visible: !panel.seqMode
             action: "patch" + (index + 1)
             x: 930 + index * 39
             y: 666
@@ -616,6 +682,50 @@ Item {
             readonly property bool lit: !Patches.manual && Patches.number === index && Patches.pendingBank < 0
             tint: lit ? "#5FD0FF" : "#2C6E9A"
             onClicked: Patches.pressPatch(index)
+        }
+    }
+
+    Repeater { // the sequencer's steps: four rows of 16, grouped in fours
+        model: 64
+
+        Rectangle {
+            id: stepCell
+            required property int index
+            readonly property int column: index % 16
+            readonly property int state: Sequencer.revision >= 0 ? Sequencer.stepState(index) : 0
+            readonly property bool legato: Sequencer.revision >= 0 && Sequencer.stepLegato(index)
+            readonly property bool inPattern: index < Sequencer.length
+            readonly property bool playing: Sequencer.playingStep === index
+            readonly property bool loading: Sequencer.cursor === index
+            visible: panel.seqMode
+            x: 884 + column * 21 + Math.floor(column / 4) * 4
+            y: 602 + Math.floor(index / 16) * 38
+            width: 19
+            height: 34
+            radius: 3
+            border.color: "#06101F"
+            opacity: inPattern ? 1.0 : 0.3
+            color: loading ? (panel.blink ? "#FF6A55" : "#6A1A12")
+                 : playing ? "#FFFFFF"
+                 : state === 1 ? "#5FD0FF" : state === 2 ? "#2C8DBA" : "#2A3A5C"
+
+            Accessible.role: Accessible.Button
+            Accessible.name: "Step " + (index + 1) + ": " + (Sequencer.revision >= 0 ? Sequencer.stepText(index) : "")
+
+            Rectangle { // legato: runs into the next step
+                visible: stepCell.legato
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.rightMargin: -3
+                width: 6
+                height: 6
+                radius: 3
+                color: panel.accent
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: mouse => Sequencer.pressStep(stepCell.index, (mouse.modifiers & Qt.ShiftModifier) !== 0)
+            }
         }
     }
 

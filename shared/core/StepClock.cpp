@@ -25,7 +25,7 @@ void StepClock::setStepsPerBeat(int steps) noexcept
 
 void StepClock::setLength(int length) noexcept
 {
-    m_length = std::clamp(length, 1, 16);
+    m_length = std::clamp(length, 1, kMaxLength);
 }
 
 void StepClock::startAt(double beat) noexcept

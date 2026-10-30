@@ -82,6 +82,19 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 - **Portamento**: the pitch follows the played note through a one-pole glide in semitones, the time being how long it takes to get 99 % of the way.
 - **Output**: mono; the delay spreads it across the stereo field, then the reverb, then Volume.
 
+## Arpeggiator
+
+Play Mode ARP: the held keys (or, with Hold, the last chord) play one at a time, sorted low to high, Up, Up & Down (the top and bottom notes not repeated) or Down, across 1–3 octaves, at the Rate, each note for half a step, on the transport. Stopped, nothing sounds; leaving ARP, a key still held sounds again. Standalone, ARP starts the transport (and leaving it stops what it started); in the rack, the transport bar runs it.
+
+## Step sequencer
+
+Play Mode SEQ: 8 patterns of up to 64 steps, each step a **note**, a **rest** or a **tie** (the note before goes on), and any note or tie can be **legato**: it runs straight into the next step's note, with no gap, so the envelope goes on with Env Trigger Gate and Portamento Auto glides. Steps play at the Rate, a note for half a step unless the next step is a tie or it is legato.
+
+- **Playing**: with the transport running (and Kobalt's RUN on, in the rack), the pattern plays; joining a running transport starts on the next bar. The keys transpose it by their distance from middle C, and don't sound themselves. Stopped, the keys play as usual.
+- **Loading**: click a step on the grid (it blinks), then play notes one at a time: each goes into that step and the next is picked, wrapping at the pattern's length. A key going down while the one before is still held makes the step before legato. **REST** and **TIE** fill the step; **LEGATO** turns legato on or off for the step just loaded; **CLEAR** empties the pattern (16 rests). Shift-click a step to make it the last. Click the blinking step again to stop loading.
+- **Patterns**: the arrows next to the display pick P1–P8.
+- **Storage**: `~/.local/share/kobalt/sequences.json`, saved 2 s after an edit: each pattern's length and steps, a step `null` (rest), `{"note": n}` or `{"tie": true}`, with `"legato": true` when it runs on.
+
 ## MIDI
 
 | Message | Effect |
@@ -101,7 +114,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | id / name | `kobalt` / `Kobalt` |
 | default MIDI channel | 6 (channel 7) |
 | QML module / panel | `Kobalt` / `Panel` |
-| actions | `bank1` … `bank8`, `patch1` … `patch8`, `note`, `arp`, `seq`, `hold`, `write`, `start`, `rest`, `tie`, `octave_down`, `octave_up` |
+| actions | `bank1` … `bank8`, `patch1` … `patch8`, `note`, `arp`, `seq`, `hold`, `write`, `start`, `rest`, `tie`, `legato`, `octave_down`, `octave_up` |
 
 ## Outputs
 

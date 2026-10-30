@@ -40,8 +40,8 @@ private slots:
         QCOMPARE(entry.defaultMidiChannel, 6); // channel 7
         QVERIFY(entry.extraMidiChannels.isEmpty());
         QVERIFY(entry.playsNotes);
-        QCOMPARE(entry.actions.size(), 26);
-        for (const char *action : {"bank8", "patch1", "write", "arp", "seq", "rest", "tie", "octave_up"})
+        QCOMPARE(entry.actions.size(), 27);
+        for (const char *action : {"bank8", "patch1", "write", "arp", "seq", "rest", "tie", "legato", "octave_up"})
             QVERIFY2(entry.actions.contains(QString::fromLatin1(action)), action);
         QVERIFY(bool(entry.create));
     }

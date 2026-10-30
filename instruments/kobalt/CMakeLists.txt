@@ -10,6 +10,7 @@ add_library(kobalt_dsp STATIC
     dsp/Filter.cpp
     dsp/Params.h
     dsp/Params.cpp
+    dsp/Sequence.h
     dsp/Voice.h
     dsp/Voice.cpp
 )
@@ -34,6 +35,10 @@ set(KOBALT_APP_SOURCES
     app/KobaltPatchController.cpp
     app/PatchFile.h
     app/PatchFile.cpp
+    app/KobaltSequenceController.h
+    app/KobaltSequenceController.cpp
+    app/SequenceFile.h
+    app/SequenceFile.cpp
 )
 qt_add_library(kobalt_ui STATIC)
 qt_add_qml_module(kobalt_ui
@@ -51,7 +56,7 @@ target_link_libraries(kobalt_ui PUBLIC kobalt_dsp krate_host krate_app krate_qml
 target_compile_options(kobalt_ui PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests
-foreach(test tst_voice)
+foreach(test tst_voice tst_arp)
     add_executable(kobalt_${test} tests/${test}.cpp)
     target_compile_options(kobalt_${test} PRIVATE -Wall -Wextra -Wpedantic)
     target_link_libraries(kobalt_${test} PRIVATE kobalt_dsp krate_testing Qt6::Test)
@@ -60,7 +65,7 @@ endforeach()
 
 # The controllers, through the instrument's registry entry: compiled directly
 # (plain add_executable) rather than linking the QML module, so no QML plugin is involved.
-foreach(test tst_kobalt tst_patches)
+foreach(test tst_kobalt tst_patches tst_sequencer)
     add_executable(kobalt_${test}
         tests/${test}.cpp
         ${KOBALT_APP_SOURCES}

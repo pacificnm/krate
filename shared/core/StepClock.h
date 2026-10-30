@@ -22,7 +22,8 @@ public:
     // Changing steps-per-beat mid-step keeps the fraction of the current step done.
     void setStepsPerBeat(int steps) noexcept;
     void setOrder(Order order) noexcept { m_order = order; }
-    void setLength(int length) noexcept;          // 1..16 steps in the pattern
+    static constexpr int kMaxLength = 64;
+    void setLength(int length) noexcept;          // 1..kMaxLength steps in the pattern
     void setGateLength(double fraction) noexcept { m_gateLength = fraction; }
 
     void start() noexcept;  // the next tick starts the first step
