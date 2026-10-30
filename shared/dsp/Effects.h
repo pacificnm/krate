@@ -6,19 +6,20 @@
 
 namespace krate {
 
-// Stereo chorus (Kalliope's and Krimson's docs/DSP.md#effects): a modulated
-// delay line read at two taps (one per side, their LFOs a quarter cycle apart),
-// each mixed with the dry signal. Modes: 0 off (dry), 1 I, 2 II, 3 Ensemble
-// (three slower, deeper taps, two per side). Realtime-safe.
+// A plain stereo chorus (Kalliope and Krimson now have their own, darker
+// ones: their docs/DSP.md#effects): a modulated delay line read at two taps
+// (one per side, their LFOs a quarter cycle apart), each mixed with the dry
+// signal. Modes: 0 off (dry), 1 I, 2 II, 3 Ensemble (three slower, deeper
+// taps, two per side). Realtime-safe.
 class Chorus
 {
 public:
     enum Mode { Off = 0, I = 1, II = 2, Ensemble = 3 };
 
     void prepare(double sampleRate) noexcept;
-    // A mono input into two sides (Kalliope).
+    // A mono input into two sides.
     void process(const float *in, float *left, float *right, std::uint32_t frames, int mode) noexcept;
-    // A stereo signal in place: the delay line takes its mid, each side keeps its dry (Krimson).
+    // A stereo signal in place: the delay line takes its mid, each side keeps its dry.
     void processStereo(float *left, float *right, std::uint32_t frames, int mode) noexcept;
 
 private:

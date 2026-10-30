@@ -81,18 +81,22 @@ private slots:
         QCOMPARE(rig.notes(), (std::vector<int>{60}));
     }
 
-    // Nine notes on eight voices: the oldest held note gives way.
-    void ninthNoteStealsTheOldestHeld()
+    // Seventeen notes on sixteen voices: the oldest held note gives way.
+    void extraNoteStealsTheOldestHeld()
     {
         Rig rig;
-        for (int n = 60; n < 68; ++n) {
+        for (int n = 60; n < 60 + Engine::kVoices; ++n) {
             rig.on(n);
             rig.run(0.01);
         }
-        QCOMPARE(rig.engine.activeVoices(), 8);
-        rig.on(72);
+        QCOMPARE(rig.engine.activeVoices(), Engine::kVoices);
+        rig.on(84);
         rig.run(0.02); // the 2 ms fade, then the new note
-        QCOMPARE(rig.notes(), (std::vector<int>{61, 62, 63, 64, 65, 66, 67, 72}));
+        std::vector<int> expected;
+        for (int n = 61; n < 60 + Engine::kVoices; ++n)
+            expected.push_back(n);
+        expected.push_back(84);
+        QCOMPARE(rig.notes(), expected);
     }
 
     // With some notes released, a released voice is taken before a held one.
@@ -100,14 +104,19 @@ private slots:
     {
         Rig rig;
         rig.engine.setParam(ParamId::Env2R, 0.9f); // long releases: still sounding
-        for (int n = 60; n < 68; ++n)
+        for (int n = 60; n < 60 + Engine::kVoices; ++n)
             rig.on(n);
         rig.run();
         rig.off(65);
         rig.run();
-        rig.on(72);
+        rig.on(84);
         rig.run();
-        QCOMPARE(rig.notes(), (std::vector<int>{60, 61, 62, 63, 64, 66, 67, 72}));
+        std::vector<int> expected;
+        for (int n = 60; n < 60 + Engine::kVoices; ++n)
+            if (n != 65)
+                expected.push_back(n);
+        expected.push_back(84);
+        QCOMPARE(rig.notes(), expected);
     }
 
     // Stealing fades the old note out instead of cutting it.
@@ -115,14 +124,14 @@ private slots:
     {
         Rig rig;
         rig.engine.setParam(ParamId::Env2R, 1.0f);
-        for (int n = 48; n < 56; ++n)
+        for (int n = 48; n < 48 + Engine::kVoices; ++n)
             rig.on(n);
         rig.run(0.3);
         const std::size_t at = rig.out.size();
         float biggest = 0.0f;
         for (std::size_t i = at - 4800; i < at; ++i)
             biggest = std::max(biggest, std::fabs(rig.out[i] - rig.out[i - 1]));
-        rig.on(84); // steals a low note while all eight ring
+        rig.on(84); // steals a low note while all sixteen ring
         rig.run(0.05);
         for (std::size_t i = at; i < rig.out.size(); ++i)
             QVERIFY2(std::fabs(rig.out[i] - rig.out[i - 1]) < 2.0f * biggest + 1e-3f, qPrintable(QString::number(i)));
@@ -236,14 +245,14 @@ private slots:
         QVERIFY(peak[0] < 0.5f * peak[1]);
     }
 
-    // Eight notes at full resonance and level stay finite and bounded.
-    void eightVoicesStayBounded()
+    // Every voice at full resonance and level stays finite and bounded.
+    void allVoicesStayBounded()
     {
         Rig rig;
         rig.engine.setParam(ParamId::Res, 1.0f);
         rig.engine.setParam(ParamId::VcaLevel, 1.0f);
         rig.engine.setParam(ParamId::Volume, 1.0f);
-        for (int n : {36, 43, 48, 52, 55, 60, 64, 67})
+        for (int n : {36, 43, 48, 52, 55, 60, 64, 67, 72, 76, 79, 84, 88, 91, 96, 100})
             rig.on(n, 127);
         rig.run(1.0);
         float peak = 0.0f;

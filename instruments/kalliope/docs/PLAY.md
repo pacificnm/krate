@@ -4,8 +4,8 @@
 
 | Mode | Behavior |
 | --- | --- |
-| Poly | Up to 8 notes; the 9th takes the oldest released voice, else the oldest held one |
-| Unison | All 8 voices on the newest note, detuned; legato; releasing returns to the previous held note |
+| Poly | Up to 16 notes; the 17th takes the oldest released voice, else the oldest held one |
+| Unison | 8 voices on the newest note, detuned by DETUNE (±0–48 cents); legato; releasing returns to the previous held note |
 | Solo | One voice, last-note priority, legato (envelopes don't retrigger while a key is held) |
 
 ## Arpeggiator

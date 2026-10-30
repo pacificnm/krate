@@ -5,6 +5,8 @@
 #include <format>
 #include <string_view>
 
+#include "dsp/Reverb.h"
+
 namespace kalliope {
 
 namespace units {
@@ -16,6 +18,7 @@ double hpfHz(float v) { return v <= 0.0f ? 0.0 : 20.0 * std::pow(1000.0 / 20.0, 
 double cutoffHz(float v) { return 20.0 * std::pow(1000.0, double(v)); }
 double envSeconds(float v) { return 0.001 * std::pow(10000.0, double(v)); }
 double fineCents(float v) { return (double(v) - 0.5) * 100.0; }
+double unisonDetuneCents(float v) { return 48.0 * double(v); }
 int bendSemitones(float v) { return 1 + index(v, positions::kBendRange); }
 int octaveShift(float v) { return index(v, positions::kOctave) - 3; }
 double delayFeedback(float v) { return 0.9 * double(v); }
@@ -70,6 +73,9 @@ std::string slope(float v) { return choice<2>(v, {"-12 dB", "-24 dB"}); }
 std::string envSrc(float v) { return choice<2>(v, {"ENV-1", "ENV-2"}); }
 std::string envTime(float v) { return seconds(units::envSeconds(v)); }
 std::string keyMode(float v) { return choice<3>(v, {"Poly", "Unison", "Solo"}); }
+std::string detune(float v) { return std::format("±{:.0f} cents", units::unisonDetuneCents(v)); }
+std::string pressureDest(float v) { return choice<4>(v, {"Off", "Filter", "LFO", "Both"}); }
+std::string reverbSize(float v) { return std::format("{:.1f} s", krate::Reverb::decaySeconds(double(v))); }
 std::string bendRange(float v) { return std::format("{} st", units::bendSemitones(v)); }
 std::string playMode(float v) { return choice<3>(v, {"Note", "Arpeggio", "Sequencer"}); }
 std::string arpMode(float v) { return choice<4>(v, {"Up", "Down", "Up & Down", "Random"}); }

@@ -13,22 +13,24 @@
 #include "dsp/Effects.h"
 #include "dsp/HalfbandDecimator.h"
 #include "dsp/Lfo.h"
+#include "dsp/Reverb.h"
+#include "kalliope/dsp/Chorus.h"
 #include "kalliope/dsp/Params.h"
 #include "kalliope/dsp/Sequence.h"
 #include "kalliope/dsp/Voice.h"
 
 namespace kalliope {
 
-using krate::Chorus;
 using krate::Delay;
 using krate::Lfo;
 
-// Kalliope's realtime core (docs/DSP.md): eight voices at 2x, decimated once,
-// then the stereo chorus and the tempo-synced ping-pong delay; Poly, Unison and
-// Solo key modes (docs/PLAY.md#key-modes), the arpeggiator and the step
-// sequencer on the transport (docs/PLAY.md#arpeggiator, docs/SEQUENCER.md),
-// sustain pedal, pitch bend, mod wheel, MIDI Learn. The delay's buffer is
-// allocated here, at construction.
+// Kalliope's realtime core (docs/DSP.md): sixteen voices at 2x, decimated
+// once, then the stereo chorus, the tempo-synced ping-pong delay and the
+// reverb; Poly, Unison (eight voices stacked) and Solo key modes
+// (docs/PLAY.md#key-modes), the arpeggiator and the step sequencer on the
+// transport (docs/PLAY.md#arpeggiator, docs/SEQUENCER.md), sustain pedal,
+// pitch bend, mod wheel, aftertouch, MIDI Learn. The delay's and the reverb's
+// buffers are allocated here, at construction.
 //
 // Keys (what is held) and voice notes (what sounds) are separate. Play Mode
 // Note: keys play voices. Arpeggio: keys feed the arpeggiator, which plays the
@@ -56,7 +58,8 @@ public:
     // The panel's settings in DSP units (what the voices play with).
     VoiceSettings settings() const noexcept;
 
-    static constexpr int kVoices = 8;
+    static constexpr int kVoices = 16;
+    static constexpr int kUnisonVoices = 8; // the voices Unison stacks on one note
     enum class KeyMode { Poly, Unison, Solo };
 
     // GUI thread: play a note from the on-screen keyboard (applied at the next
@@ -112,6 +115,9 @@ private:
     void render(float *out, std::uint32_t frames, const VoiceSettings &s) noexcept;
     KeyMode keyMode() const noexcept;
     void applyKeyMode(KeyMode mode) noexcept;
+    VoiceSettings baseSettings() const noexcept;     // settings() but for the live controllers
+    void applyLive(VoiceSettings &s) const noexcept; // bend, wheel and pressure, as they are now
+    int monoVoices() const noexcept { return m_mode == KeyMode::Unison ? kUnisonVoices : 1; }
     int pickVoice(int note) noexcept; // Poly: which voice plays `note`
     void playMono(bool retrigger) noexcept; // Unison/Solo: the voices follow the top held key
     void releaseVoice(int v) noexcept;      // key up: release, or hold for the pedal
@@ -140,6 +146,9 @@ private:
     Lfo m_lfo;
     Chorus m_chorus;
     Delay m_delay;
+    krate::Reverb m_reverb{192000.0};
+    bool m_reverbOn = false;
+    float m_unisonDetune = -1.0f; // the Unison Detune the stack was spread with
     krate::HalfbandDecimator<31> m_decimator;
     std::array<float, 2 * kChunk> m_buffer2x{};
     std::array<float, kChunk> m_lfoValues{};
@@ -183,6 +192,7 @@ private:
     float m_lastVelocity = 1.0f;
     double m_bend = 0.0;  // -1..1
     double m_wheel = 0.0; // 0..1
+    double m_pressure = 0.0; // aftertouch, 0..1
     double m_volume = -1.0;
     double m_volumeSmoothing = 0.0;
 };

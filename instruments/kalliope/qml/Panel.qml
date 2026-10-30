@@ -50,7 +50,8 @@ Item {
             { key: "vco2_wave", label: "WAVE", kind: "knob", col: 0.5, row: 1 },
             { key: "sync", label: "SYNC", kind: "switch", col: 2, row: 1 } ] },
         { title: "MIX", columns: 1.5, controls: [
-            { key: "mix", label: "SOURCE\nMIX", kind: "knob", col: 0.25 } ] },
+            { key: "mix", label: "SOURCE\nMIX", kind: "knob", col: 0.25 },
+            { key: "drive", label: "DRIVE", kind: "knob", col: 0.25, row: 1 } ] },
         { title: "HPF", columns: 1, controls: [
             { key: "hpf", label: "FREQ", kind: "slider", col: 0 } ] },
         { title: "VCF", columns: 7, controls: [
@@ -590,8 +591,8 @@ Item {
             round: false
         }
     }
-    DeckKnob { key: "velocity"; label: "VELOCITY"; cx: 528 }
-    DeckKnob { key: "bend_range"; label: "BEND"; cx: 604 }
+    DeckKnob { key: "unison_detune"; label: "DETUNE"; cx: 528 }
+    DeckKnob { key: "analog"; label: "ANALOG"; cx: 604 }
 
     // Patches (docs/PLAY.md#patches): display, arrows, WRITE, MANUAL. In SEQ
     // mode the display shows the sequencer pattern (P1..P8) and the arrows pick it.
@@ -783,15 +784,15 @@ Item {
         }
     }
 
-    // Effects: chorus (Off / I / II) and the delay
-    DeckLabel { x: 1270; y: 604; width: 70; text: "CHORUS" }
+    // Effects: chorus (Off / I / II), the reverb, and the delay under them
+    DeckLabel { x: 1300 - width / 2; y: 598; text: "CHORUS" }
     PanelButton {
         id: chorusButton
         readonly property int position: Kalliope.revision >= 0 ? Math.round(Kalliope.value("chorus") * 2) : 0
-        x: 1276
-        y: 624
-        width: 58
-        height: 46
+        x: 1300 - width / 2
+        y: 614
+        width: 56
+        height: 34
         tint: "#E2701F"
         text: "Chorus"
         hasLed: true
@@ -804,31 +805,12 @@ Item {
             round: false
         }
     }
-    ValueText { x: 1270; y: 676; width: 70; text: Kalliope.displayText("chorus", chorusButton.position / 2) }
-    Repeater {
-        model: [{ key: "delay_level", label: "DELAY", cx: 1390 }, { key: "delay_time", label: "TIME", cx: 1458 },
-                { key: "delay_fb", label: "FEEDBACK", cx: 1526 }]
-
-        Item {
-            id: fxKnob
-            required property var modelData
-            DeckLabel { x: fxKnob.modelData.cx - width / 2; y: 604; text: fxKnob.modelData.label }
-            ParamKnob {
-                id: fxControl
-                key: fxKnob.modelData.key
-                x: fxKnob.modelData.cx - width / 2
-                y: 624
-                width: 46
-                height: 46
-            }
-            ValueText {
-                x: fxKnob.modelData.cx - width / 2
-                y: 676
-                width: 60
-                text: fxControl.displayText
-            }
-        }
-    }
+    ValueText { x: 1300 - width / 2; y: 652; width: 58; text: Kalliope.displayText("chorus", chorusButton.position / 2) }
+    DeckKnob { key: "reverb_level"; label: "REVERB"; cx: 1440; knobY: 614 }
+    DeckKnob { key: "reverb_size"; label: "SIZE"; cx: 1520; knobY: 614 }
+    DeckKnob { key: "delay_level"; label: "DELAY"; cx: 1360 }
+    DeckKnob { key: "delay_time"; label: "TIME"; cx: 1440 }
+    DeckKnob { key: "delay_fb"; label: "FEEDBACK"; cx: 1520 }
 
     // ---- Keyboard deck: volume, tempo, octave; the keyboard; utilities
 
@@ -951,6 +933,20 @@ Item {
         color: Host.audioConnected ? panel.dim : Theme.ledOn
         font.family: Theme.labelFont
         font.pixelSize: 11
+    }
+    // Playing: velocity, bend range, aftertouch
+    Repeater {
+        model: [{ key: "velocity", label: "VELOCITY", cx: 1360 }, { key: "bend_range", label: "BEND", cx: 1440 },
+                { key: "pressure_dest", label: "PRESSURE", cx: 1520 }]
+
+        DeckKnob {
+            required property var modelData
+            key: modelData.key
+            label: modelData.label
+            cx: modelData.cx
+            knobY: 950
+            size: 44
+        }
     }
     Rectangle { // output level meter
         x: 1312

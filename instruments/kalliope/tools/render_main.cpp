@@ -185,8 +185,8 @@ int main(int argc, char **argv)
 
     krate::MasterStage master;
     if (bench) {
-        // The heaviest case: all eight voices held with sync, cross mod and full
-        // resonance, chorus II and the delay, 60 s.
+        // The heaviest case: all sixteen voices held with sync, cross mod, full
+        // resonance and drive, Analog, chorus II, the delay and the reverb, 60 s.
         kalliope::Engine engine;
         engine.prepare(rate, kBlock);
         engine.setParam(ParamId::Sync, 1.0f);
@@ -194,15 +194,18 @@ int main(int argc, char **argv)
         engine.setParam(ParamId::Res, 1.0f);
         engine.setParam(ParamId::Chorus, 1.0f);
         engine.setParam(ParamId::DelayLevel, 0.5f);
+        engine.setParam(ParamId::ReverbLevel, 0.3f);
+        engine.setParam(ParamId::Drive, 0.5f);
+        engine.setParam(ParamId::Analog, 1.0f);
         std::vector<float> out;
         out.reserve(std::size_t(rate) * 60 * 2 + 2 * kBlock);
         const auto t0 = std::chrono::steady_clock::now();
         std::vector<NoteEvent> chord;
-        for (int note : {36, 43, 48, 52, 55, 60, 64, 67})
+        for (int note : {36, 43, 48, 52, 55, 60, 64, 67, 72, 76, 79, 84, 88, 91, 96, 100})
             chord.push_back({0.0, note, 100});
         play(engine, master, chord, 60.0, rate, out);
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-        std::printf("rendered 60 s of 8 voices with chorus and delay at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
+        std::printf("rendered 60 s of 16 voices with chorus, delay and reverb at %d Hz (2x oversampled) in %.3f s: %.2f%% of one core\n", rate,
                     seconds, seconds / 60.0 * 100.0);
         return 0;
     }

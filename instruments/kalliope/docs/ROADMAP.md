@@ -12,6 +12,7 @@ Each milestone ends with something you can run and check, and is committed and p
 | P5 ✅ | **Patches** | 64 patches, factory banks 1–2, select / edit dot / write / manual; Program Change; `patches.json`; `tst_patches`. Result: as planned; `Patches` QML singleton, 16 factory sounds, lit bank and patch buttons, ▲▼ on the display, ARP / HOLD / WRITE / BANK / PATCH actions learnable; first run starts in Manual so an existing panel is kept; `ParamController::setValues()` loads a patch with one change notification; `kalliope_tst_patches` |
 | P6 ✅ | **Arpeggiator and the rack** | Arp on `StepClock` (modes, range, rate, hold) locked to the transport; Kalliope in the Krate rack on channel 2; `krate-render --kalliope`; learn for every control and the actions; `tst_arp`. Result: as planned; keys and voice notes are separate in the engine, and MIDI and arpeggio steps both land on their exact sample; standalone, Arpeggio on starts the transport (and off stops what it started); Kalliope sits between K909 and Klick in the rack; `krate-render --kalliope LEVEL` holds a chord on channel 2 with the arpeggio on (without it the render is byte-identical to before); `kalliope_tst_arp` (10 tests) |
 | P7 ✅ | **Step sequencer and pattern generator** | Play Mode NOTE / ARP / SEQ (replaces the Arpeggio switch); 8 patterns × 16 steps (notes, chords, rests, ties) on `StepClock`; step recording from the keys; transpose while running; GENERATE with DENSITY; the step buttons on the BANK / PATCH rows; `sequences.json`; `tst_sequencer` ([SEQUENCER.md](SEQUENCER.md)). Result: as planned; `play_mode` replaces `arp_on` (Arp Pluck and `krate-render --kalliope` use it), `gen_density` added (50 parameters); the `Sequencer` QML singleton; the generator (`generatePattern`, deterministic per seed) lives in the DSP library; new actions `note`, `seq`, `start`, `rest`, `tie`, `generate`; the function deck re-laid out for them; `kalliope_tst_sequencer` (8 tests) |
+| A1 ✅ | **Analog character** | Analog (drift and voice spread), saturating ladder feedback, Drive, Kalliope's own chorus, reverb, Unison Detune, aftertouch, 16 voices. Result: 57 parameters (`drive`, `unison_detune`, `analog`, `pressure_dest`, `reverb_level`, `reverb_size`); Unison stacks 8 of the 16 voices; Sub Bass at Analog 0; the factory patches within −1.0 … +1.8 dB of before; the worst case (16 voices, everything on) 9.6 % of a core; `kalliope_tst_character` (11 tests) ([DSP.md](DSP.md#analog)) |
 | P8 | **Polish** | Factory patches tuned by ear; accessibility names; docs final; README quick start |
 
 ## Later
@@ -19,8 +20,6 @@ Each milestone ends with something you can run and check, and is committed and p
 | Feature | Notes |
 | --- | --- |
 | Dual and Split | Two patches at once (layer, or split at a key), 4 voices each |
-| Reverb | Third send effect |
 | Portamento | Glide time, Solo and Unison first |
-| Aftertouch | Destination: vibrato or cutoff |
-| Per-voice outputs, more voices | If the CPU budget allows |
+| Per-voice outputs | If the CPU budget allows |
 | Arp patterns from k303/K909 style steps | Only if wanted |

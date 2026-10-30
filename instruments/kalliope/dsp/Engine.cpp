@@ -22,7 +22,11 @@ constexpr int kCcModWheel = 1;
 constexpr int kCcSustain = 64;
 constexpr int kCcAllSoundOff = 120;
 constexpr int kCcAllNotesOff = 123;
-constexpr double kUnisonDetuneCents = 12.0; // voices spread -12 .. +12 cents
+// Aftertouch (Pressure) at full: the cutoff up 2.5 octaves (Filter), the LFO
+// on pitch by 0.7 semitones (LFO), as the mod wheel's vibrato.
+constexpr double kPressureOctaves = 2.5;
+constexpr double kPressureVibratoSemis = 0.7;
+constexpr double kMaxDrive = 8.0; // Drive 100 %: the ladder's input 18 dB hotter
 constexpr std::int8_t kKeyUp = -128;        // m_keyShift: the key is not down
 // Arp Rate positions as steps per beat: 1/8, 1/16, 1/8T, 1/16T.
 constexpr int kArpStepsPerBeat[] = {2, 4, 3, 6};
@@ -34,23 +38,36 @@ constexpr double kDelayBeats[] = {0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0};
 void Engine::prepare(double sampleRate, std::uint32_t) noexcept
 {
     m_sampleRate = sampleRate;
-    for (Voice &voice : m_voices)
-        voice.prepare(2.0 * sampleRate);
+    for (int v = 0; v < kVoices; ++v) {
+        m_voices[std::size_t(v)].prepare(2.0 * sampleRate);
+        m_voices[std::size_t(v)].setSeed(std::uint32_t(0x9E3779B9u * std::uint32_t(v + 1))); // each its own drift
+    }
     m_heldCount = 0;
     m_keyShift.fill(kKeyUp);
     m_sustained.fill(false);
     m_sustain = false;
     m_mode = keyMode();
+    m_unisonDetune = -1.0f;
     applyKeyMode(m_mode);
     m_decimator.reset();
     m_lfo.reset();
     m_chorus.prepare(sampleRate);
     m_delay.prepare(sampleRate);
+    m_reverb.prepare(sampleRate);
+    m_reverbOn = false;
+    m_pressure = 0.0;
     m_volumeSmoothing = 1.0 - std::exp(-1.0 / (kVolumeSmoothingSeconds * sampleRate));
     m_volume = -1.0;
 }
 
 VoiceSettings Engine::settings() const noexcept
+{
+    VoiceSettings s = baseSettings();
+    applyLive(s);
+    return s;
+}
+
+VoiceSettings Engine::baseSettings() const noexcept
 {
     const auto v = [this](ParamId id) { return m_params.get(int(id)); };
     const auto pick = [&](ParamId id, int count) { return units::index(v(id), count); };
@@ -79,6 +96,7 @@ VoiceSettings Engine::settings() const noexcept
 
     s.mix = v(ParamId::Mix);
     s.hpfHz = units::hpfHz(v(ParamId::Hpf));
+    s.drive = 1.0 + (kMaxDrive - 1.0) * v(ParamId::Drive);
     s.cutoffOctaves = std::log2(units::cutoffHz(v(ParamId::Cutoff)));
     s.resonance = kMaxResonance * v(ParamId::Res);
     s.slope24 = pick(ParamId::Slope, kSwitch) == 1;
@@ -96,10 +114,20 @@ VoiceSettings Engine::settings() const noexcept
     s.envKeyFollow = pick(ParamId::EnvKey, kSwitch) == 1;
     s.velocityAmount = v(ParamId::Velocity);
     s.lfoDelay = units::lfoDelaySeconds(v(ParamId::LfoDelay));
-
-    s.bendSemis = m_bend * units::bendSemitones(v(ParamId::BendRange));
-    s.vibratoSemis = kWheelVibratoSemis * m_wheel;
+    s.analog = v(ParamId::Analog);
     return s;
+}
+
+void Engine::applyLive(VoiceSettings &s) const noexcept
+{
+    s.bendSemis = m_bend * units::bendSemitones(m_params.get(int(ParamId::BendRange)));
+    s.vibratoSemis = kWheelVibratoSemis * m_wheel;
+    // Aftertouch: the cutoff up, the LFO on pitch, or both.
+    const int dest = units::index(m_params.get(int(ParamId::PressureDest)), positions::kPressureDest);
+    if (dest == 1 || dest == 3)
+        s.cutoffOctaves += kPressureOctaves * m_pressure;
+    if (dest == 2 || dest == 3)
+        s.vibratoSemis += kPressureVibratoSemis * m_pressure;
 }
 
 int Engine::activeVoices() const noexcept
@@ -118,11 +146,13 @@ Engine::KeyMode Engine::keyMode() const noexcept
 void Engine::applyKeyMode(KeyMode mode) noexcept
 {
     m_mode = mode;
+    m_unisonDetune = m_params.get(int(ParamId::UnisonDetune));
+    const double cents = units::unisonDetuneCents(m_unisonDetune);
     for (int v = 0; v < kVoices; ++v) {
-        if (mode == KeyMode::Unison) {
-            // Detuned across the voices, spread start phases, gain so the stack sums near one voice's level.
-            const double detune = kUnisonDetuneCents * (2.0 * v / (kVoices - 1) - 1.0) / 100.0;
-            m_voices[std::size_t(v)].setSpread(detune, 1.0 / std::sqrt(double(kVoices)), double(v) / kVoices);
+        if (mode == KeyMode::Unison && v < kUnisonVoices) {
+            // Detuned across the stack, spread start phases, gain so the stack sums near one voice's level.
+            const double detune = cents * (2.0 * v / (kUnisonVoices - 1) - 1.0) / 100.0;
+            m_voices[std::size_t(v)].setSpread(detune, 1.0 / std::sqrt(double(kUnisonVoices)), double(v) / kUnisonVoices);
         } else {
             m_voices[std::size_t(v)].setSpread(0.0, 1.0, 0.0);
         }
@@ -167,7 +197,7 @@ int Engine::pickVoice(int note) noexcept
 void Engine::playMono(bool retrigger) noexcept
 {
     const int note = m_held[std::size_t(m_heldCount - 1)];
-    const int count = m_mode == KeyMode::Unison ? kVoices : 1;
+    const int count = monoVoices();
     for (int v = 0; v < count; ++v) {
         m_sustained[std::size_t(v)] = false;
         m_voices[std::size_t(v)].noteOn(note, m_lastVelocity, retrigger);
@@ -274,7 +304,7 @@ void Engine::noteOff(int note) noexcept
             playMono(false); // back to the previous held key, legato
             return;
         }
-        const int count = m_mode == KeyMode::Unison ? kVoices : 1;
+        const int count = monoVoices();
         for (int v = 0; v < count; ++v)
             releaseVoice(v);
         return;
@@ -351,7 +381,7 @@ void Engine::playNotes(const int *notes, int count) noexcept
     }
     // Solo and Unison: one note at a time, the top one.
     const int top = *std::max_element(notes, notes + count);
-    const int voices = m_mode == KeyMode::Unison ? kVoices : 1;
+    const int voices = monoVoices();
     for (int v = 0; v < voices; ++v) {
         m_sustained[std::size_t(v)] = false;
         m_voices[std::size_t(v)].noteOn(top, m_lastVelocity, true);
@@ -367,7 +397,7 @@ void Engine::releaseNotes(const int *notes, int count) noexcept
             voiceOff(notes[i]);
         return;
     }
-    const int voices = m_mode == KeyMode::Unison ? kVoices : 1;
+    const int voices = monoVoices();
     for (int v = 0; v < voices; ++v)
         releaseVoice(v);
 }
@@ -506,10 +536,13 @@ void Engine::handleMidi(const krate::MidiEvent &event) noexcept
         m_programs.push(std::uint8_t(m.data1)); // the patch controller selects the patch
         break;
     case krate::MidiMessage::Type::Other:
-        // Pitch bend: 14 bits, centre 8192.
-        if (event.size == 3 && (event.data[0] & 0xF0) == 0xE0) {
+        if (event.size == 3 && (event.data[0] & 0xF0) == 0xE0) { // pitch bend: 14 bits, centre 8192
             const int value = (event.data[2] << 7) | event.data[1];
             m_bend = std::clamp((value - 8192) / 8191.0, -1.0, 1.0);
+        } else if (event.size >= 2 && (event.data[0] & 0xF0) == 0xD0) { // aftertouch (channel pressure)
+            m_pressure = event.data[1] / 127.0;
+        } else if (event.size == 3 && (event.data[0] & 0xF0) == 0xA0) { // a key's pressure: the whole instrument
+            m_pressure = event.data[2] / 127.0;
         }
         break;
     }
@@ -538,10 +571,12 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     krate::ScopedFlushDenormals noDenormals;
     float *left = block.outputs[0];
     float *right = block.outputs[1];
-    const VoiceSettings s = settings();
+    const VoiceSettings s = baseSettings();
     if (const KeyMode mode = keyMode(); mode != m_mode) {
         allNotesOff(); // a new key mode starts from silence (release tails ring out)
         applyKeyMode(mode);
+    } else if (m_mode == KeyMode::Unison && m_params.get(int(ParamId::UnisonDetune)) != m_unisonDetune) {
+        applyKeyMode(m_mode); // the stack spreads wider or narrower as it plays
     }
     while (const auto n = m_guiNotes.pop()) {
         if (n->velocity > 0)
@@ -562,8 +597,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
         if (frame <= done)
             return;
         VoiceSettings now = s;
-        now.bendSemis = m_bend * units::bendSemitones(m_params.get(int(ParamId::BendRange)));
-        now.vibratoSemis = kWheelVibratoSemis * m_wheel;
+        applyLive(now);
         render(left + done, frame - done, now);
         done = frame;
     };
@@ -600,12 +634,21 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     m_seqPlayingStep.store(m_playMode == PlayMode::Sequencer && m_arpClock.running() ? m_arpClock.step() : -1,
                            std::memory_order_relaxed);
 
-    // The voices are mono: the chorus makes them stereo, then the delay, then Volume.
+    // The voices are mono: the chorus makes them stereo, then the delay, the reverb, then Volume.
     m_chorus.process(left, left, right, block.frames, units::index(m_params.get(int(ParamId::Chorus)), positions::kChorus));
     const double bpm = block.transport ? block.transport->bpm : units::tempoBpm(m_params.get(int(ParamId::Tempo)));
     const double beats = kDelayBeats[units::index(m_params.get(int(ParamId::DelayTime)), positions::kDelayTime)];
     m_delay.process(left, right, block.frames, beats * 60.0 / std::max(bpm, 1.0),
                     m_params.get(int(ParamId::DelayLevel)), units::delayFeedback(m_params.get(int(ParamId::DelayFb))));
+    // The reverb runs only while it is up (cleared when it comes back: no stale tail).
+    if (const double reverb = m_params.get(int(ParamId::ReverbLevel)); reverb > 0.0) {
+        if (!m_reverbOn)
+            m_reverb.clear();
+        m_reverb.process(left, right, block.frames, m_params.get(int(ParamId::ReverbSize)), reverb);
+        m_reverbOn = true;
+    } else {
+        m_reverbOn = false;
+    }
 
     const double target = kOutputTrim * units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)

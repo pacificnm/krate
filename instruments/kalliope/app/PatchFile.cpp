@@ -99,7 +99,7 @@ Patch factoryPatch(int index)
                                           {"cutoff", 0.65}, {"vcf_env", 0.15}, {"env2_r", 0.45}});
     case 14: return make("Sub Bass", {{"vco1_wave", kTriangle}, {"vco1_range", k16}, {"vco2_wave", kSine2},
                                       {"vco2_range", k2_16}, {"cutoff", 0.35}, {"vcf_env", 0.1}, {"key_mode", kSolo},
-                                      {"env2_r", 0.25}, {"chorus", 0.0}});
+                                      {"env2_r", 0.25}, {"chorus", 0.0}, {"analog", 0.0}});
     case 15: return make("Low Wobble", {{"vco1_wave", kSaw1}, {"vco2_wave", kSaw2}, {"vco2_range", k2Low},
                                         {"cross_mod", 0.3}, {"mix", 0.0}, {"cutoff", 0.4}, {"res", 0.5},
                                         {"vcf_lfo", 0.35}, {"lfo_rate", 0.55}});

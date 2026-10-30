@@ -24,12 +24,14 @@ private slots:
     void parameterTable()
     {
         QCOMPARE(int(kParams.size()), ParamCount);
-        QCOMPARE(ParamCount, 51);
+        QCOMPARE(ParamCount, 57);
         QCOMPARE(paramDescriptor(ParamId::LfoRate).key, std::string_view("lfo_rate"));
         QCOMPARE(paramDescriptor(ParamId::Cutoff).key, std::string_view("cutoff"));
         QCOMPARE(paramDescriptor(ParamId::Env2R).key, std::string_view("env2_r"));
         QCOMPARE(paramDescriptor(ParamId::DelayFb).key, std::string_view("delay_fb"));
         QCOMPARE(paramDescriptor(ParamId::Tempo).key, std::string_view("tempo"));
+        QCOMPARE(paramDescriptor(ParamId::Analog).key, std::string_view("analog"));
+        QCOMPARE(paramDescriptor(ParamId::ReverbSize).key, std::string_view("reverb_size"));
         std::set<std::string_view> keys;
         for (const auto &info : kParams) {
             QVERIFY(keys.insert(info.key).second);

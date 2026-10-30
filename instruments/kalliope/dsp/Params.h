@@ -15,15 +15,15 @@ enum class ParamId : int {
     CrossMod, Vco1Range, Vco1Wave,
     Vco2Range, Vco2Fine, Vco2Wave, Sync,
     Mix,
-    Hpf,
+    Hpf, Drive,
     Cutoff, Res, Slope, VcfEnv, VcfEnvSrc, VcfLfo, KeyFollow,
     VcaLevel, VcaLfo,
     Env1A, Env1D, Env1S, Env1R,
     Env2A, Env2D, Env2S, Env2R,
     EnvKey,
-    KeyMode, Velocity, BendRange,
+    KeyMode, UnisonDetune, Analog, Velocity, BendRange, PressureDest,
     PlayMode, ArpMode, ArpRange, ArpRate, ArpHold, GenDensity,
-    Chorus, DelayLevel, DelayTime, DelayFb,
+    Chorus, DelayLevel, DelayTime, DelayFb, ReverbLevel, ReverbSize,
     Octave,
     Volume,
     Tempo,
@@ -51,6 +51,9 @@ std::string slope(float v);
 std::string envSrc(float v);
 std::string envTime(float v);
 std::string keyMode(float v);
+std::string detune(float v);
+std::string pressureDest(float v);
+std::string reverbSize(float v);
 std::string bendRange(float v);
 std::string playMode(float v);
 std::string arpMode(float v);
@@ -74,6 +77,7 @@ inline constexpr int kVco2Range = 5; // Low, 16', 8', 4', 2'
 inline constexpr int kVco2Wave = 4;  // Sine, Saw, Pulse, Noise
 inline constexpr int kSwitch = 2;    // Off, On (and other two-way switches)
 inline constexpr int kKeyMode = 3;   // Poly, Unison, Solo
+inline constexpr int kPressureDest = 4; // Off, Filter, LFO, Both
 inline constexpr int kBendRange = 12;
 inline constexpr int kPlayMode = 3;  // Note, Arpeggio, Sequencer
 inline constexpr int kArpMode = 4;   // Up, Down, Up & Down, Random
@@ -106,6 +110,7 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"sync",        "Sync",              0.0f,                         p::kSwitch,    &format::onOff},
     {"mix",         "Source Mix",        0.5f,                         0,             &format::percent},
     {"hpf",         "HPF Cutoff",        0.0f,                         0,             &format::hpf},
+    {"drive",       "Drive",             0.0f,                         0,             &format::percent},
     {"cutoff",      "VCF Cutoff",        0.6f,                         0,             &format::cutoff},
     {"res",         "Resonance",         0.1f,                         0,             &format::percent},
     {"slope",       "Slope",             1.0f,                         p::kSwitch,    &format::slope},
@@ -125,8 +130,11 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"env2_r",      "ENV-2 Release",     0.35f,                        0,             &format::envTime},
     {"env_key",     "Env Key Follow",    0.0f,                         p::kSwitch,    &format::onOff},
     {"key_mode",    "Key Mode",          0.0f,                         p::kKeyMode,   &format::keyMode},
+    {"unison_detune", "Unison Detune",   0.25f,                        0,             &format::detune}, // 12 cents
+    {"analog",      "Analog",            0.3f,                         0,             &format::percent},
     {"velocity",    "Velocity",          0.5f,                         0,             &format::percent},
     {"bend_range",  "Bend Range",        position(1, p::kBendRange),   p::kBendRange, &format::bendRange},
+    {"pressure_dest", "Pressure",        0.0f,                         p::kPressureDest, &format::pressureDest},
     {"play_mode",   "Play Mode",         0.0f,                         p::kPlayMode,  &format::playMode},
     {"arp_mode",    "Arp Mode",          0.0f,                         p::kArpMode,   &format::arpMode},
     {"arp_range",   "Arp Range",         0.0f,                         p::kArpRange,  &format::arpRange},
@@ -137,6 +145,8 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"delay_level", "Delay Level",       0.0f,                         0,             &format::percent},
     {"delay_time",  "Delay Time",        position(2, p::kDelayTime),   p::kDelayTime, &format::delayTime},
     {"delay_fb",    "Delay Feedback",    0.3f,                         0,             &format::delayFb},
+    {"reverb_level", "Reverb Level",     0.0f,                         0,             &format::percent},
+    {"reverb_size", "Reverb Size",       0.4f,                         0,             &format::reverbSize},
     {"octave",      "Octave",            position(3, p::kOctave),      p::kOctave,    &format::octave},
     {"volume",      "Volume",            0.8f,                         0,             &format::level},
     {"tempo",       "Tempo",             0.4f,                         0,             &format::tempo}, // 120 BPM in 40..240
@@ -163,6 +173,7 @@ double hpfHz(float v);           // 0 = off, else 20..1000 Hz, exponential
 double cutoffHz(float v);        // 20..20000 Hz, exponential
 double envSeconds(float v);      // 0.001..10 s, exponential
 double fineCents(float v);       // -50..+50
+double unisonDetuneCents(float v); // 0..48
 int bendSemitones(float v);      // 1..12
 int octaveShift(float v);        // -3..+3
 double delayFeedback(float v);   // 0..0.9

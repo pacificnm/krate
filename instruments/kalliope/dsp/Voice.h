@@ -33,6 +33,7 @@ struct VoiceSettings
 
     double mix = 0.5;            // 0 = VCO-1 .. 1 = VCO-2
     double hpfHz = 0.0;
+    double drive = 1.0;          // into the ladder: 1 (clean) .. 8
     double cutoffOctaves = 10.0; // log2(Hz)
     double resonance = 0.0;      // ladder feedback k
     bool slope24 = true;
@@ -47,6 +48,7 @@ struct VoiceSettings
     bool envKeyFollow = false;
     double velocityAmount = 0.5;
     double lfoDelay = 0.0;       // seconds
+    double analog = 0.0;         // 0..1: drift and voice-to-voice spread (docs/DSP.md#analog)
 
     double bendSemis = 0.0;      // pitch bend now
     double vibratoSemis = 0.0;   // mod wheel: LFO on pitch, semitones at full LFO
@@ -73,11 +75,17 @@ public:
     // (0, 1, 0 for one voice per note).
     void setSpread(double detuneSemis, double gain, double phase) noexcept;
 
+    // Analog: this voice's own random sequence (a different seed per voice, so
+    // the voices drift apart, as separate voice boards do; repeatable renders).
+    // Draws the voice's fixed spread (tuning, cutoff, envelope times) too.
+    void setSeed(std::uint32_t seed) noexcept;
+
     // Adds 2 * frames samples (2x rate) to out2x. lfo: one value per host-rate frame.
     void render(float *out2x, std::uint32_t frames, const float *lfo, const VoiceSettings &s) noexcept;
 
 private:
     void start(int note, float velocity) noexcept; // a fresh note on a silent voice
+    double random() noexcept;                      // -1..1
 
     double m_rate = 96000.0;
     Oscillator m_vco1, m_vco2;
@@ -99,6 +107,13 @@ private:
     double m_fadeStep = 0.0;
     int m_nextNote = 60;
     float m_nextVelocity = 1.0f;
+
+    // Analog (scaled by VoiceSettings::analog when it plays).
+    std::uint32_t m_random = 0x9E3779B9u;
+    double m_tuneOffset = 0.0, m_cutoffOffset = 0.0, m_envOffset = 0.0; // this voice's parts, -1..1
+    double m_drift1 = 0.0, m_drift2 = 0.0;           // slow wander of each oscillator, now
+    double m_driftTarget1 = 0.0, m_driftTarget2 = 0.0;
+    int m_driftCountdown = 0;                        // host frames until new wander targets
 };
 
 } // namespace kalliope

@@ -2,7 +2,7 @@
 
 2026-10-28
 
-Kalliope is an eight-voice polyphonic synthesizer for the [Krate](../../../README.md) suite: two oscillators per voice, a high-pass and a resonant low-pass filter, two envelopes, an LFO, an arpeggiator on the shared transport, chorus and delay, and 64 patches. It runs standalone (`kalliope`) and as a device in the Krate rack.
+Kalliope is a sixteen-voice polyphonic synthesizer for the [Krate](../../../README.md) suite: two oscillators per voice, a high-pass and a resonant low-pass filter with drive, two envelopes, an LFO, analog drift, an arpeggiator on the shared transport, chorus, delay and reverb, and 64 patches. It runs standalone (`kalliope`) and as a device in the Krate rack.
 
 It follows the classic early-80s flagship polysynth layout: a black panel of vertical sliders under orange section headers, rotary range and waveform selectors, a row of colored function buttons, a keyboard. Every name, logo and graphic is our own: the panel reads "Kalliope" and "Polyphonic Synthesizer". The reference screenshot stays out of the repository (`reference/` is git-ignored).
 
@@ -10,16 +10,17 @@ Related docs: [DSP.md](DSP.md) (voices, filters, effects), [PLAY.md](PLAY.md) (v
 
 ## Scope (v1)
 
-- **8 voices**, each: VCO-1 and VCO-2 (cross-mod, sync, noise), source mix, HPF, 12/24 dB resonant low-pass, VCA, two ADSR envelopes; one LFO shared by all voices with a delay (fade-in) per note.
-- **Key modes**: Poly (8 voices, oldest-note stealing), Unison (all 8 on one note, detuned), Solo (one voice, last-note priority, legato).
+- **16 voices**, each: VCO-1 and VCO-2 (cross-mod, sync, noise), source mix, HPF, 12/24 dB resonant low-pass, VCA, two ADSR envelopes; one LFO shared by all voices with a delay (fade-in) per note.
+- **Key modes**: Poly (16 voices, oldest-note stealing), Unison (8 voices on one note, detuned by Unison Detune), Solo (one voice, last-note priority, legato).
+- **Analog**: per-voice drift and voice-to-voice spread of tuning, cutoff and envelope times ([DSP.md](DSP.md#analog)).
 - **Arpeggiator**: Up, Down, Up & Down, Random; 1–4 octaves; 1/8, 1/16, 1/8T, 1/16T; Hold; locked to the transport (standalone or the rack's).
 - **Step sequencer and pattern generator** ([SEQUENCER.md](SEQUENCER.md)): 8 patterns of up to 16 steps (notes, chords, rests, ties), recorded step by step and transposed from the keys; GENERATE writes a pattern from the held notes.
-- **Effects**: stereo chorus (off, I, II), tempo-synced delay.
+- **Effects**: stereo bucket-brigade chorus (off, I, II), tempo-synced delay, reverb.
 - **Patches**: 8 banks × 8 patches; a set of factory patches; WRITE stores the panel into a patch.
-- **MIDI**: notes with velocity, pitch bend (±2 semitones), mod wheel (adds LFO to pitch), sustain pedal (CC 64), Program Change selects a patch (standalone); MIDI Learn for every slider, selector and button; in the rack, default channel 2.
+- **MIDI**: notes with velocity, pitch bend (±2 semitones), mod wheel (adds LFO to pitch), sustain pedal (CC 64), aftertouch (channel or polyphonic pressure, to the filter, the LFO on pitch, or both), Program Change selects a patch (standalone); MIDI Learn for every slider, selector and button; in the rack, default channel 2.
 - **On-screen keyboard**: two octaves with octave shift, playable with the mouse.
 
-Not in v1 (see [ROADMAP.md](ROADMAP.md#later)): Dual and Split key modes (two patches at once), reverb, portamento, per-voice outputs, an aftertouch destination.
+Not in v1 (see [ROADMAP.md](ROADMAP.md#later)): Dual and Split key modes (two patches at once), portamento, per-voice outputs.
 
 ## Parameters
 
@@ -44,6 +45,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | | `sync` | Sync | Off, On (VCO-2 synced to VCO-1) (2) |
 | Mixer | `mix` | Source Mix | VCO-1 … equal … VCO-2 |
 | HPF | `hpf` | HPF Cutoff | off … 1 kHz, non-resonant |
+| Mixer | `drive` | Drive | 0–100 %: the ladder's input 0 … +18 dB hotter, the output trimmed back by half that |
 | VCF | `cutoff` | VCF Cutoff | 20 Hz–20 kHz, exponential |
 | | `res` | Resonance | 0 … self-oscillation |
 | | `slope` | Slope | −12 dB, −24 dB (2) |
@@ -57,8 +59,11 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | ENV-2 | `env2_a`, `env2_d`, `env2_s`, `env2_r` | ENV-2 A/D/S/R | as ENV-1; ENV-2 always shapes the VCA |
 | | `env_key` | Env Key Follow | Off, On: higher notes have shorter envelopes (2) |
 | Voice | `key_mode` | Key Mode | Poly, Unison, Solo (3) |
+| | `unison_detune` | Unison Detune | ±0–48 cents across the Unison stack (default ±12) |
+| | `analog` | Analog | 0–100 % drift and voice-to-voice spread (default 30 %) |
 | | `velocity` | Velocity | 0–100% of velocity on VCA and VCF env amount |
 | | `bend_range` | Bend Range | 1–12 semitones (12) |
+| | `pressure_dest` | Pressure | Off, Filter, LFO, Both (4): aftertouch opens the cutoff (up to 2.5 octaves) and/or adds LFO vibrato (up to ±0.7 semitone) |
 | Play | `play_mode` | Play Mode | Note, Arpeggio, Sequencer (3): what the keys do (PLAY.md, SEQUENCER.md) |
 | | `arp_mode` | Arp Mode | Up, Down, Up & Down, Random (4) |
 | | `arp_range` | Arp Range | 1–4 octaves (4) |
@@ -69,6 +74,8 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | | `delay_level` | Delay Level | 0–100% wet |
 | | `delay_time` | Delay Time | 1/16, 1/8T, 1/8, 1/8 dotted, 1/4, 1/4 dotted, 1/2 (7), synced to the tempo |
 | | `delay_fb` | Delay Feedback | 0–90% |
+| | `reverb_level` | Reverb Level | 0–100% wet |
+| | `reverb_size` | Reverb Size | decay 0.4–8 s |
 | Keys | `octave` | Octave | −3 … +3 octaves on every key, the LX49's and the on-screen keyboard's (7) *panel* |
 | Master | `volume` | Volume | output level *panel* |
 | | `tempo` | Tempo | 40–240 BPM; drives the standalone transport, unused in the rack (as k303 and K909) *panel* |
@@ -83,6 +90,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | Pitch bend | ±`bend_range` semitones on every voice |
 | CC 1 (mod wheel) | Adds LFO vibrato to every voice's pitch, up to ±1 semitone at full, on top of VCO LFO Mod |
 | CC 64 (sustain) | Holds released notes until the pedal lifts |
+| Channel pressure, poly pressure | Aftertouch, to `pressure_dest` (a key's pressure acts on the whole instrument) |
 | Program Change n | Patch n (bank = n / 8, number = n % 8). In the rack, Program Change may be taken for focus switching first (the rack's setting) |
 | Any other CC | MIDI Learn mappings |
 
