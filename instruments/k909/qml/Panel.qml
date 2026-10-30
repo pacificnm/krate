@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Dialogs
 import Krate
 
 // K909's panel at design size 1800 x 1000 (docs/UI.md): the knob sections
@@ -67,7 +68,7 @@ Item {
             { key: "hh_tune", label: "TUNE", col: 0.5, row: 2 } ] },
         { title: "CYMBAL", columns: 2, knobs: [
             { key: "cr_level", label: "CRASH LVL", col: 0, row: 0 }, { key: "rd_level", label: "RIDE LVL", col: 1, row: 0 },
-            { key: "cr_tune", label: "CRASH TUNE", col: 0, row: 1 }, { key: "rd_tune", label: "RIDE TUNE", col: 1, row: 1 } ] },
+            { key: "cr_tune", label: "CR TUNE", col: 0, row: 1 }, { key: "rd_tune", label: "RD TUNE", col: 1, row: 1 } ] },
         { title: "METAL", columns: 2, knobs: [
             { key: "me_tune", label: "TUNE", col: 0, row: 0 }, { key: "me_level", label: "LEVEL", col: 1, row: 0 },
             { key: "me_decay", label: "DECAY", col: 0, row: 1 }, { key: "me_material", label: "MATERIAL", col: 1, row: 1 } ] },
@@ -79,7 +80,10 @@ Item {
             { key: "nz_decay", label: "DECAY", col: 0, row: 1 }, { key: "nz_sweep", label: "SWEEP", col: 1, row: 1 } ] },
         { title: "BOOM", columns: 1, knobs: [
             { key: "bm_tune", label: "TUNE", col: 0, row: 0 }, { key: "bm_level", label: "LEVEL", col: 0, row: 1 },
-            { key: "bm_decay", label: "DECAY", col: 0, row: 2 } ] }
+            { key: "bm_decay", label: "DECAY", col: 0, row: 2 } ] },
+        { title: "SAMPLE", columns: 2, knobs: [
+            { key: "sm_tune", label: "TUNE", col: 0, row: 0 }, { key: "sm_level", label: "LEVEL", col: 1, row: 0 },
+            { key: "sm_decay", label: "DECAY", col: 0, row: 1 }, { key: "sm_start", label: "START", col: 1, row: 1 } ] }
     ]
 
     // MIX page: a strip per voice, in track order.
@@ -88,7 +92,8 @@ Item {
         { prefix: "mt", title: "MID TOM" }, { prefix: "ht", title: "HI TOM" }, { prefix: "rs", title: "RIM" },
         { prefix: "cp", title: "CLAP" }, { prefix: "ch", title: "CLOSED HAT" }, { prefix: "oh", title: "OPEN HAT" },
         { prefix: "cr", title: "CRASH" }, { prefix: "rd", title: "RIDE" }, { prefix: "me", title: "METAL" },
-        { prefix: "ck", title: "CLANK" }, { prefix: "nz", title: "NOISE" }, { prefix: "bm", title: "BOOM" }
+        { prefix: "ck", title: "CLANK" }, { prefix: "nz", title: "NOISE" }, { prefix: "bm", title: "BOOM" },
+        { prefix: "sm", title: "SAMPLE" }
     ]
     readonly property var mixSections: voices.map(v => ({ title: v.title, columns: 2, knobs: [
         { key: v.prefix + "_pan", label: "PAN", col: 0, row: 0 }, { key: v.prefix + "_drive", label: "DRIVE", col: 1, row: 0 },
@@ -98,14 +103,14 @@ Item {
     readonly property real stepLeft: 220
     readonly property real stepWidth: (width - margin - stepLeft) / 16
     readonly property var tracks: [
-        { name: "BASS DRUM", first: 1, steps: 2 }, { name: "SNARE", first: 3, steps: 1 },
-        { name: "LOW TOM", first: 4, steps: 1 }, { name: "MID TOM", first: 5, steps: 1 },
-        { name: "HI TOM", first: 6, steps: 1 }, { name: "RIM", first: 7, steps: 1 },
-        { name: "CLAP", first: 8, steps: 1 }, { name: "CLOSED", first: 9, steps: 1 },
-        { name: "OPEN", first: 10, steps: 1 }, { name: "CRASH", first: 11, steps: 1 },
-        { name: "RIDE", first: 12, steps: 1 }, { name: "METAL", first: 13, steps: 1 },
-        { name: "CLANK", first: 14, steps: 1 }, { name: "NOISE", first: 15, steps: 1 },
-        { name: "BOOM", first: 16, steps: 1 }
+        { name: "BASS DR", first: 1, steps: 1 }, { name: "SNARE", first: 2, steps: 1 },
+        { name: "LOW TOM", first: 3, steps: 1 }, { name: "MID TOM", first: 4, steps: 1 },
+        { name: "HI TOM", first: 5, steps: 1 }, { name: "RIM", first: 6, steps: 1 },
+        { name: "CLAP", first: 7, steps: 1 }, { name: "CLOSED", first: 8, steps: 1 },
+        { name: "OPEN", first: 9, steps: 1 }, { name: "CRASH", first: 10, steps: 1 },
+        { name: "RIDE", first: 11, steps: 1 }, { name: "METAL", first: 12, steps: 1 },
+        { name: "CLANK", first: 13, steps: 1 }, { name: "NOISE", first: 14, steps: 1 },
+        { name: "BOOM", first: 15, steps: 1 }, { name: "SAMPLE", first: 16, steps: 1 }
     ]
 
     // A knob bound to one of Drums' parameters by key, MIDI-learnable.
@@ -345,7 +350,7 @@ Item {
         x: 400
         y: 612
         width: 440
-        height: 166
+        height: 174
         radius: 4
         color: "transparent"
         border.color: Theme.deckLine
@@ -354,13 +359,13 @@ Item {
     Repeater {
         model: [
             { label: "PATTERN", row: 0 }, { label: "LENGTH", row: 1 },
-            { label: "SCALE", row: 2 }, { label: "ORDER", row: 3 }, { label: "KIT", row: 4 }
+            { label: "SCALE", row: 2 }, { label: "ORDER", row: 3 }, { label: "KIT", row: 4 }, { label: "SAMPLE", row: 5 }
         ]
 
         PanelLabel {
             required property var modelData
             x: 418
-            y: 624 + modelData.row * 30
+            y: 620 + modelData.row * 28
             text: modelData.label
             font.pixelSize: 13
         }
@@ -368,9 +373,9 @@ Item {
     LcdField {
         name: "Pattern"
         x: 510
-        y: 618
+        y: 616
         width: 316
-        height: 26
+        height: 24
         text: "Pattern " + panel.letters[Drums.patternIndex]
               + (Drums.queuedPattern === Drums.patternIndex ? "  (next)"
                  : Drums.playing && Drums.playingPattern !== Drums.patternIndex
@@ -381,9 +386,9 @@ Item {
     LcdField {
         name: "Length"
         x: 510
-        y: 648
+        y: 644
         width: 316
-        height: 26
+        height: 24
         text: Drums.length + (Drums.length === 1 ? " step" : " steps")
         onUp: Drums.length = Drums.length + 1
         onDown: Drums.length = Drums.length - 1
@@ -391,9 +396,9 @@ Item {
     LcdField {
         name: "Scale"
         x: 510
-        y: 678
+        y: 672
         width: 316
-        height: 26
+        height: 24
         text: Drums.scaleNames[Drums.scaleIndex]
         onUp: Drums.scaleIndex = Math.min(Drums.scaleNames.length - 1, Drums.scaleIndex + 1)
         onDown: Drums.scaleIndex = Math.max(0, Drums.scaleIndex - 1)
@@ -401,9 +406,9 @@ Item {
     LcdField {
         name: "Play order"
         x: 510
-        y: 708
+        y: 700
         width: 316
-        height: 26
+        height: 24
         text: Drums.orderNames[Drums.orderIndex]
         onUp: Drums.orderIndex = Math.min(Drums.orderNames.length - 1, Drums.orderIndex + 1)
         onDown: Drums.orderIndex = Math.max(0, Drums.orderIndex - 1)
@@ -412,9 +417,9 @@ Item {
     LcdField {
         name: "Kit"
         x: 510
-        y: 738
+        y: 728
         width: 240
-        height: 26
+        height: 24
         text: Kits.writing ? "WRITE to " + (Kits.target + 1) + " " + Kits.targetName
                            : (Kits.index + 1) + " " + Kits.name + (Kits.edited ? "  •" : "")
         onUp: Kits.step(1)
@@ -422,13 +427,65 @@ Item {
     }
     PanelButton {
         x: 762
-        y: 738
+        y: 728
         width: 66
-        height: 26
+        height: 24
         faceText: "WRITE"
         text: "Write the kit: press, choose the slot with the arrows, press again (Esc cancels)"
         dark: Kits.writing && panel.blink
         onClicked: Kits.pressWrite()
+    }
+
+    // The SAMPLE voice's sample (docs/KITS.md#samples): the arrows step through
+    // the library, LOAD imports WAV files (or drop them on the panel). An
+    // import's result shows here for a few seconds.
+    property string sampleMessage: ""
+    Connections {
+        target: Samples
+        function onChanged() {
+            panel.sampleMessage = Samples.message
+            sampleMessageTimer.restart()
+        }
+    }
+    Timer {
+        id: sampleMessageTimer
+        interval: 4000
+        onTriggered: panel.sampleMessage = ""
+    }
+    LcdField {
+        name: "Sample"
+        x: 510
+        y: 756
+        width: 240
+        height: 24
+        text: panel.sampleMessage !== "" ? panel.sampleMessage
+            : Samples.name === "" ? "No sample: LOAD a WAV"
+            : Samples.name + "  " + Samples.seconds.toFixed(2) + " s"
+        onUp: Samples.step(1)
+        onDown: Samples.step(-1)
+    }
+    PanelButton {
+        x: 762
+        y: 756
+        width: 66
+        height: 24
+        faceText: "LOAD"
+        text: "Load samples: WAV files, copied into K909's sample library"
+        onClicked: sampleDialog.open()
+    }
+    FileDialog {
+        id: sampleDialog
+        title: "Load samples (WAV)"
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["WAV files (*.wav *.WAV)"]
+        onAccepted: Samples.importUrls(selectedFiles)
+    }
+    DropArea { // WAV files dropped anywhere on the panel
+        anchors.fill: parent
+        onDropped: drop => {
+            if (drop.hasUrls)
+                Samples.importUrls(drop.urls)
+        }
     }
 
     // Effects: the reverb (and its gate) and delay the voices send to, the bus compressor and crusher

@@ -243,10 +243,10 @@ bool validStep(int track, int step) { return track >= 0 && track < k909::DrumCou
 // Each track's TUNE and DECAY parameter keys (DrumId order); "" = none.
 constexpr std::array<const char *, k909::DrumCount> kTuneKeys{
     "bd_tune", "sd_tune", "lt_tune", "mt_tune", "ht_tune", "rs_tune", "cp_tune", "hh_tune",
-    "hh_tune", "cr_tune", "rd_tune", "me_tune", "ck_tune", "nz_tone", "bm_tune"};
+    "hh_tune", "cr_tune", "rd_tune", "me_tune", "ck_tune", "nz_tone", "bm_tune", "sm_tune"};
 constexpr std::array<const char *, k909::DrumCount> kDecayKeys{
     "bd_decay", "sd_decay", "lt_decay", "mt_decay", "ht_decay", "rs_decay", "cp_decay", "ch_decay",
-    "oh_decay", "", "", "me_decay", "ck_decay", "nz_decay", "bm_decay"};
+    "oh_decay", "", "", "me_decay", "ck_decay", "nz_decay", "bm_decay", "sm_decay"};
 } // namespace
 
 QString DrumsController::tuneKey(int track) const

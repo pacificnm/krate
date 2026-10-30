@@ -10,9 +10,13 @@
 
 #include "dsp/Fft.h"
 
+namespace krate {
+struct WavData;
+}
+
 namespace krunch {
 
-struct WavData;
+using krate::WavData;
 
 // An impulse response, ready for the Cabinet at one sample rate: resampled,
 // level-normalised and split into the direct head (the first kBlock taps) and

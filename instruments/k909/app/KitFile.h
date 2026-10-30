@@ -23,6 +23,7 @@ struct Kit
 {
     QString name;
     QHash<QString, qreal> values;
+    QString sample; // the SAMPLE voice's file in the library; "" = the kit leaves the sample as it is
 
     bool operator==(const Kit &) const = default;
 };

@@ -316,6 +316,76 @@ private slots:
         QCOMPARE(Engine::drumForNote(52), DrumId::Nz);
         QCOMPARE(Engine::drumForNote(34), DrumId::Bm);
     }
+
+    // ---- The sample voice
+
+    // A sample: 0.5 s of 200 Hz, flat (so tune, start and decay are easy to see).
+    static const Sample &tone()
+    {
+        static const Sample s = [] {
+            std::vector<float> x(24000);
+            for (std::size_t i = 0; i < x.size(); ++i)
+                x[i] = float(std::sin(2.0 * std::numbers::pi * 200.0 * double(i) / 48000.0)) * (i < 12000 ? 1.0f : 0.5f);
+            return Sample::fromChannels(x, {}, 48000.0, "tone");
+        }();
+        return s;
+    }
+
+    static Render sampleHit(std::vector<std::pair<ParamId, float>> params, double seconds)
+    {
+        Engine engine;
+        engine.prepare(kRate, kBlock);
+        engine.setSample(&tone());
+        for (const auto &[id, v] : params)
+            engine.setParam(int(id), v);
+        Render out;
+        std::vector<float> l(kBlock), r(kBlock);
+        for (std::uint64_t f = 0; f < std::uint64_t(seconds * kRate); f += kBlock) {
+            const krate::MidiEvent on{0, 3, {0x99, 60, 100}};
+            krate::processStereo(engine, l.data(), r.data(), kBlock, f == 0 ? &on : nullptr, f == 0 ? 1 : 0);
+            out.left.insert(out.left.end(), l.begin(), l.end());
+        }
+        return out;
+    }
+
+    // It plays the sample, at its pitch; Tune +12 is an octave up (and half as long).
+    void samplePlaysAndTunes()
+    {
+        const Render plain = sampleHit({}, 0.6);
+        QVERIFY2(std::fabs(frequency(plain.left, 0.05, 0.2) - 200.0) < 1.0, qPrintable(QString::number(frequency(plain.left, 0.05, 0.2))));
+        QVERIFY(rms(plain.left, 0.52, 0.6) < 1e-6); // over after 0.5 s
+        const Render up = sampleHit({{ParamId::SmTune, 0.75f}}, 0.6); // +12 semitones
+        QVERIFY2(std::fabs(frequency(up.left, 0.02, 0.1) - 400.0) < 2.0, qPrintable(QString::number(frequency(up.left, 0.02, 0.1))));
+        QVERIFY(rms(up.left, 0.26, 0.3) < 1e-6);
+    }
+
+    // Start skips into it (here past the loud half: quieter); Decay fades it.
+    void sampleStartAndDecay()
+    {
+        const double loud = rms(sampleHit({}, 0.1).left, 0.01, 0.09);
+        const double late = rms(sampleHit({{ParamId::SmStart, 0.6f}}, 0.1).left, 0.01, 0.09); // 54 %: the quiet half
+        QVERIFY2(late < 0.6 * loud && late > 0.4 * loud, qPrintable(QStringLiteral("%1 %2").arg(loud).arg(late)));
+        const double faded = rms(sampleHit({{ParamId::SmDecay, 0.2f}}, 0.5).left, 0.3, 0.45);
+        QVERIFY2(faded < 0.01 * rms(sampleHit({}, 0.5).left, 0.3, 0.45), qPrintable(QString::number(faded)));
+    }
+
+    // A new sample stops the old one's hit at once (it may be freed after two blocks).
+    void newSampleStopsTheOldHit()
+    {
+        Engine engine;
+        engine.prepare(kRate, kBlock);
+        engine.setSample(&tone());
+        std::vector<float> l(kBlock), r(kBlock);
+        const krate::MidiEvent on{0, 3, {0x99, 60, 100}};
+        krate::processStereo(engine, l.data(), r.data(), kBlock, &on, 1);
+        QVERIFY(engine.sounding(DrumId::Sm));
+        engine.setSample(nullptr);
+        krate::processStereo(engine, l.data(), r.data(), kBlock, nullptr, 0);
+        QVERIFY(!engine.sounding(DrumId::Sm));
+        QCOMPARE(engine.blocksProcessed(), std::uint64_t(2));
+        krate::processStereo(engine, l.data(), r.data(), kBlock, &on, 1); // no sample: silent, no crash
+        QVERIFY(!engine.sounding(DrumId::Sm));
+    }
 };
 
 QTEST_GUILESS_MAIN(TestCharacter)

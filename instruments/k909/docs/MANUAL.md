@@ -1,6 +1,6 @@
 # K909 manual
 
-K909 is a drum machine: fifteen synthesized drum voices (the classic eleven of an analog drum machine, plus four for industrial and EBM sounds: Metal, Clank, Noise and Boom), a mixer with drive and effect sends for every voice, a gated reverb, a delay, a bus compressor and crusher, 16 kits, and a 16-step sequencer with accents, flams, step velocities and per-step tune and decay.
+K909 is a drum machine: fifteen synthesized drum voices (the classic eleven of an analog drum machine, plus four for industrial and EBM sounds: Metal, Clank, Noise and Boom), a sample voice for your own WAV files, a mixer with drive and effect sends for every voice, a gated reverb, a delay, a bus compressor and crusher, 16 kits, and a 16-step sequencer with accents, flams, step velocities and per-step tune and decay.
 
 This manual goes through the panel from top to bottom. Every knob, button and display is described here: what it does, its range, and how to use it. Drag a knob up or down (Shift for fine moves) or use the mouse wheel; its value shows while you drag; double-click to put it back to its default.
 
@@ -88,7 +88,7 @@ Hats and cymbals are six detuned square waves (a metallic cluster) through filte
 | **CH DECAY**, **OH DECAY** | Closed hat 20–150 ms, open hat 100 ms–1 s. A closed hat cuts a ringing open hat short, as on a real hi hat. |
 | **TUNE** (hi hat) | Both hats' pitch, darker to brighter: the metal and its filters move together. |
 | **CRASH LVL**, **RIDE LVL** | The crash and ride's volumes. |
-| **CRASH TUNE**, **RIDE TUNE** | Their pitch. |
+| **CR TUNE**, **RD TUNE** | The crash and ride's pitch. |
 
 ## The industrial voices
 
@@ -107,6 +107,21 @@ Hats and cymbals are six detuned square waves (a metallic cluster) through filte
 | **BOOM**: DECAY | 0.3–3 s: from a deep thump to a long, rumbling impact for drops and breakdowns. |
 
 Each also has a **LEVEL** knob. Play them from MIDI on notes 56 (Metal), 54 (Clank), 52 (Noise) and 34 (Boom).
+
+## The sample voice
+
+SAMPLE plays a WAV file of your own: a drum hit, a vocal shout, a hit on a metal bin you recorded, a short loop. It works like every other drum: its own track, accents, flams, step velocities and locks, and a MIX strip with drive and sends.
+
+| Control | What it does |
+| --- | --- |
+| **LOAD** | Opens a file dialog: choose one or more WAV files (or drop them anywhere on the panel). They are copied into K909's sample library, so they stay available even if you move the originals. |
+| **SAMPLE** display | The sample playing and its length; ▲▼ step through your library. |
+| **TUNE** | ±24 semitones: lower for a bigger, darker hit, higher for a smaller one. Lock TUNE on steps (the step editor) to play a sample as a melody. |
+| **LEVEL** | Its volume (every sample is normalized to the same peak, so they start at a similar level). |
+| **DECAY** | **Full** at the top: the whole sample plays. Turn it down to fade it out sooner (4 s down to 50 ms): tighten a loose recording, or chop a long sound into a short stab. |
+| **START** | Where in the sample it starts, 0–90 %: skip a soft attack, or pick a different part of a long sound. |
+
+Play it from MIDI on notes 60 and 61. A kit you WRITE remembers its sample. Files: any WAV (stereo is mixed to mono); longer than 30 s is cut; non-WAV files are refused with a message in the display.
 
 ## The mix page
 
@@ -199,7 +214,7 @@ A knob in orange shows the drum's own value; move it and it turns blue: the step
 | **UNMAP** | Removes every MIDI link. |
 | **AUDIO** | Lit when K909 is connected to the audio system; click to reconnect. The line under it shows the sample rate, buffer and dropouts, and the meter the output level. |
 
-- **Notes** play the drums (General MIDI numbers): 35/36 bass drum, 37 rim, 38/40 snare, 39 clap, 41/43 low tom, 42/44 closed hat, 45/47 mid tom, 46 open hat, 48/50 hi tom, 49/57 crash, 51/59 ride, 56/67 metal, 54/69 clank, 52/70 noise, 33/34 boom. Velocity 100 and up plays accented.
+- **Notes** play the drums (General MIDI numbers): 35/36 bass drum, 37 rim, 38/40 snare, 39 clap, 41/43 low tom, 42/44 closed hat, 45/47 mid tom, 46 open hat, 48/50 hi tom, 49/57 crash, 51/59 ride, 56/67 metal, 54/69 clank, 52/70 noise, 33/34 boom, 60/61 sample. Velocity 100 and up plays accented.
 - **Channel**: standalone, any channel; in the Krate rack, channel 10.
 - **Learnable buttons**: the patterns (A–P) and START, so a controller can switch patterns while it plays.
 
@@ -213,13 +228,16 @@ A knob in orange shows the drum's own value; move it and it turns blue: the step
 - **Hammer on steel**: CLANK with HARD high and DECAY short; lock different TUNE values on a few steps for a melodic clatter.
 - **Hiss stabs**: NOISE with SWEEP up, DECAY short, TONE high; DRIVE for grit; DELAY send for echoes.
 - **Drop**: BOOM with DECAY long on the first step of the bar, DRIVE a little; the kick off on that step.
+- **Your own industrial hit**: record a hit on a metal object or a door slam, LOAD it, TUNE it down 5–12 semitones, DRIVE 40 %, REVERB with GATE on.
+- **Stab melody**: a short vocal or synth stab as the sample, DECAY around 300 ms, TUNE locked to different notes on a few steps.
 - **Broken machine**: CRUSH 30–60 %, COMP high, DRIVE on everything.
 - **Ghost notes**: snare steps at VELOCITY 30–50 between the backbeats.
 
 ## Troubleshooting
 
 - **No sound when pressing START**: is the pattern empty (an E–H slot)? Is VOLUME down? Is AUDIO lit? In the rack, press the rack's PLAY.
-- **A drum is silent**: its LEVEL (SOUND page), or a step's VELOCITY set very low.
+- **A drum is silent**: its LEVEL (SOUND page), or a step's VELOCITY set very low. The SAMPLE voice is silent until you LOAD a sample.
+- **A file won't load**: only WAV files are read (no MP3, FLAC or AIFF); convert it first.
 - **The reverb or delay does nothing**: turn up that drum's REVERB or DELAY send on the MIX page.
 - **The sound is distorted**: DRIVE, COMP or CRUSH are up (load the Classic kit to compare), or many loud drums hit together: turn VOLUME down.
 - **The open hat stops short**: a closed hat on a later step cuts it, as on a real hi hat.

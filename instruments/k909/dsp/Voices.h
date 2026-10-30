@@ -3,11 +3,14 @@
 #include <array>
 #include <cstdint>
 
+#include "k909/dsp/Sample.h"
+
 namespace k909 {
 
 // The voices in panel and track order (docs/DSP.md#voices): the classic
-// eleven, then the industrial four (Metal, Clank, Noise, Boom).
-enum class DrumId : int { Bd, Sd, Lt, Mt, Ht, Rs, Cp, Ch, Oh, Cr, Rd, Me, Ck, Nz, Bm, Count };
+// eleven, the industrial four (Metal, Clank, Noise, Boom), then the sample.
+enum class DrumId : int { Bd, Sd, Lt, Mt, Ht, Rs, Cp, Ch, Oh, Cr, Rd, Me, Ck, Nz, Bm, Sm, Count };
+static_assert(int(DrumId::Count) <= 16, "Hits are 16-bit masks");
 inline constexpr int DrumCount = int(DrumId::Count);
 
 // ---- Building blocks (docs/DSP.md#building-blocks). Realtime-safe, no allocation.
@@ -101,7 +104,7 @@ struct Hit
     bool accent = false;
     float tune = 0.5f;     // the voice's knobs, normalized, read at trigger time
     float decay = 0.5f;
-    // BD: attack, sweep, bend time, tone. SD: tone, snappy, crack. CP: spread.
+    // BD: attack, sweep, bend time, tone. SD: tone, snappy, crack. CP: spread. Sample: start.
     std::array<float, 4> extra{0.5f, 0.5f, 0.5f, 0.5f};
 };
 
@@ -128,6 +131,9 @@ public:
     void prepare(double sampleRate) noexcept;
     void trigger(DrumId drum, const Hit &hit) noexcept;
     void setMix(DrumId drum, const Mix &mix) noexcept;
+    // The SAMPLE voice's sample (nullptr: none). A playing hit stops at once
+    // (declicked): it must never read a sample the caller may then free.
+    void setSample(const Sample *sample) noexcept;
     // Add `frames` samples of every sounding voice to left/right and its sends
     // to `sends` (none of them cleared).
     void render(float *left, float *right, const Sends &sends, std::uint32_t frames) noexcept;
@@ -230,6 +236,14 @@ private:
     Env m_nzAmp, m_nzSweepEnv;
     Noise m_nzNoise{0xC5D6E7F8u};
     double m_nzHz = 1500.0, m_nzSweepOctaves = 2.0;
+
+    // Sample: played from Start at its pitch (Tune), faded by Decay.
+    const Sample *m_sample = nullptr;
+    double m_smPosition = 0.0, m_smStep = 1.0; // source frames
+    Env m_smAmp;
+    bool m_smFade = false;     // Decay below the top: the envelope fades it
+    int m_smFadeIn = 0;        // samples of fade-in left (a start inside the sample)
+    int m_smFadeInLength = 96;
 
     // Boom: a long sub with a slow pitch drop, saturated.
     Sine m_bmOsc;

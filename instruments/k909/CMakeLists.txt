@@ -8,6 +8,8 @@ add_library(k909_dsp STATIC
     dsp/Engine.cpp
     dsp/Params.h
     dsp/Params.cpp
+    dsp/Sample.h
+    dsp/Sample.cpp
     dsp/Sequencer.h
     dsp/Sequencer.cpp
     dsp/Voices.h
@@ -32,6 +34,8 @@ qt_add_qml_module(k909_ui
         app/KitController.cpp
         app/KitFile.h
         app/KitFile.cpp
+        app/SampleController.h
+        app/SampleController.cpp
         app/K909Instrument.h
         app/K909Instrument.cpp
         app/PatternFile.h
@@ -76,6 +80,8 @@ add_executable(tst_k909
     app/KitController.cpp
     app/KitFile.h
     app/KitFile.cpp
+    app/SampleController.h
+    app/SampleController.cpp
     app/K909Instrument.h
     app/K909Instrument.cpp
     app/PatternFile.h

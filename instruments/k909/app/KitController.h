@@ -10,6 +10,7 @@
 class QQmlEngine;
 class QJSEngine;
 class DrumsController;
+class SampleController;
 
 // QML singleton "Kits": K909's 16 kits (docs/KITS.md). Choosing a kit loads
 // its sound and mix knobs into the panel; any edit after that shows the edited
@@ -31,7 +32,8 @@ class KitController : public QObject
 
 public:
     // Not default-constructible on purpose (see k303's SynthController).
-    KitController(DrumsController &panel, const QString &filePath, QObject *parent);
+    // samples: the kit's SAMPLE voice file is loaded with it and stored by WRITE.
+    KitController(DrumsController &panel, SampleController &samples, const QString &filePath, QObject *parent);
     ~KitController() override;
 
     static KitController *create(QQmlEngine *, QJSEngine *);
@@ -60,6 +62,7 @@ private:
     static inline KitController *s_instance = nullptr;
 
     DrumsController &m_panel;
+    SampleController &m_samples;
     QString m_filePath;
     k909::persistence::KitBank m_bank;
     bool m_writing = false;

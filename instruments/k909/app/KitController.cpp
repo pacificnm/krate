@@ -6,6 +6,7 @@
 #include <QLoggingCategory>
 
 #include "k909/app/DrumsController.h"
+#include "k909/app/SampleController.h"
 
 Q_LOGGING_CATEGORY(lcKits, "k909.kits")
 
@@ -16,9 +17,11 @@ constexpr qreal kSameValue = 1e-4; // a panel value this close to the kit's coun
 
 using namespace k909::persistence;
 
-KitController::KitController(DrumsController &panel, const QString &filePath, QObject *parent)
+KitController::KitController(DrumsController &panel, SampleController &samples, const QString &filePath,
+                             QObject *parent)
     : QObject(parent)
     , m_panel(panel)
+    , m_samples(samples)
     , m_filePath(filePath)
 {
     Q_ASSERT(!s_instance);
@@ -88,6 +91,8 @@ void KitController::select(int index)
     m_bank.current = index;
     m_target = index;
     m_panel.setValues(m_bank.kits[std::size_t(index)].values);
+    if (const QString &sample = m_bank.kits[std::size_t(index)].sample; !sample.isEmpty())
+        m_samples.select(sample);
     updateEdited();
     emit changed();
     m_saveTimer.start();
@@ -116,6 +121,7 @@ void KitController::pressWrite()
     Kit &kit = m_bank.kits[std::size_t(m_target)];
     for (auto it = kit.values.begin(); it != kit.values.end(); ++it)
         it.value() = m_panel.value(it.key());
+    kit.sample = m_samples.name();
     if (kit.name == initKit().name)
         kit.name = QStringLiteral("Kit %1").arg(m_target + 1);
     m_bank.current = m_target;

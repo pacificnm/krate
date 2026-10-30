@@ -14,8 +14,8 @@ Each milestone ends with something you can run and check, and is committed and p
 
 | D7 ✅ | **Engine** | Kick SWEEP / BEND / TONE, snare DECAY / CRACK, rim and clap TUNE / DECAY, clap SPREAD, hat TUNE; a MIX page (per-voice PAN, DRIVE, REVERB and DELAY sends); the gated reverb, delay, bus compressor and crusher; 92 parameters (`ParamValues` past 64). Result: every new control defaults to the original kit (all reference renders byte-identical); `k909_tst_character` |
 | D8 ✅ | **Industrial voices and kits** | METAL, CLANK, NOISE, BOOM; 16 kits with six factory kits (Classic, Industrial, EBM, Gated 80s, Crushed, Machine Shop), KIT display and WRITE; patterns I–P with eight industrial factory patterns. Result: 123 parameters; every factory kit on every factory pattern measured (all peaks under 0 dBFS); the compressor's makeup raised to ¾ of the reduction; bench 1.9 % (15 voices), 3.4 % with everything on ([KITS.md](KITS.md)) |
-
 | D9 ✅ | **Step details** | Flam (a fourth step state), per-step velocity, tune and decay locks; the step editor (right-click a step); stored in `patterns.json`. Result: as planned; flam's main hit 18 ms after a 60 % grace hit; patterns without details render byte-identically; tests in `k909_tst_sequencer` and `tst_k909` |
+| D10 ✅ | **Sample voice** | A 16th voice, SAMPLE, playing a WAV file of your own: TUNE, LEVEL, DECAY, START, its mixer strip and track; LOAD (file dialog) and drag-and-drop import into a sample library; kits remember their sample. Result: the WAV reader moved from Krunch to the shared library (`krate::readWavFile`); samples handed to the engine through an atomic and freed two blocks after a swap; the classic patterns still render byte-identically; bench 1.9 %; tests for playback (pitch, start, decay, swap), the library (import, refusal, persistence) and kits |
 
 ## Later
 

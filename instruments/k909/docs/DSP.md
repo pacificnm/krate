@@ -33,10 +33,19 @@ The voice set is deterministic for a given sample rate and trigger sequence, so 
 | **Clank** | FM (phase modulation): a sine carrier, two sine modulators at inharmonic ratios (×1.414 and ×3.732, the second at half depth), index up to 12 × Hardness, falling at 0.3 × the amplitude decay (bright metallic strike, then a duller ring), plus a 6 ms noise click | Tune: carrier 80–900 Hz. Decay 50 ms–1.2 s. Hardness |
 | **Noise** (stab) | White noise through a resonant state-variable filter (Q 3; lowpass plus 0.6 × bandpass) whose cutoff starts Sweep × 4 octaves above Tone and falls over half the decay, then tanh grit | Tone 300 Hz–8 kHz. Decay 30 ms–1.5 s. Sweep 0–4 octaves |
 | **Boom** | A long sub: a sine falling from 3× to its pitch (60 dB in 250 ms), through tanh(2.5x) for weight | Tune: 28–65 Hz. Decay 0.3–3 s |
+| **Sample** | A WAV file of your own ([Sample](#sample)), read at its pitch from Start, faded by Decay | Tune ±24 semitones. Decay 50 ms–4 s, or Full (the whole sample). Start 0–90 % into it |
 
 `MetalBank` squares alias at 48 kHz: PolyBLEP keeps that low at these pitches. `tst_voices` checks that under 2% of each metallic voice's energy is above 20 kHz (measured: hats 0.6%, cymbals under 0.1%). If it is ever audible, the bank can run at 2× through k303's half-band decimator (moved to `shared/` then).
 
-**Levels.** Each voice has a fixed output trim (`kTrim` in `dsp/Voices.cpp`: BD 0.9, SD 0.75, toms 0.8, rim 0.35, clap 0.9, hats 1.4, crash 1.9, ride 1.75; metal 1.0, clank 0.85, noise 1.0, boom 1.15) so default-level hits sit in a sensible balance; `k909-render` prints every voice's peak, normal and accented. The engine then applies Volume and a fixed −3 dB output trim (`kOutputTrim`), so the demo beat at the default Volume peaks around −3.5 dBFS, under the host's tanh soft clip. Velocity maps 1..127 to 0.5..1.0 of the voice's gain.
+**Levels.** Each voice has a fixed output trim (`kTrim` in `dsp/Voices.cpp`: BD 0.9, SD 0.75, toms 0.8, rim 0.35, clap 0.9, hats 1.4, crash 1.9, ride 1.75; metal 1.0, clank 0.85, noise 1.0, boom 1.15, sample 1.4) so default-level hits sit in a sensible balance; `k909-render` prints every voice's peak, normal and accented. The engine then applies Volume and a fixed −3 dB output trim (`kOutputTrim`), so the demo beat at the default Volume peaks around −3.5 dBFS, under the host's tanh soft clip. Velocity maps 1..127 to 0.5..1.0 of the voice's gain.
+
+## Sample
+
+The SAMPLE voice plays a WAV file (16, 24 or 32-bit PCM or 32-bit float, any rate, any channel count; the shared `krate::readWavFile`, which Krunch's impulse responses use too). On loading, off the audio thread, the file becomes a `Sample`: its first two channels averaged to mono, cut to 30 s, peak-normalized to 0.9 (so the LEVEL knob behaves the same for any file), kept at its own rate.
+
+- **Playback**: the read position starts at Start × 90 % of the length and moves by (file rate / engine rate) × 2^(Tune / 12) per sample; a 4-point (hermite) read between the file's samples. A start inside the file fades in over 2 ms; the last 5 ms of output fade so a file cut short ends without a click. Decay at the top plays the whole sample; below, an exponential fade (60 dB in 50 ms … 4 s). Velocity, accent, per-step velocity and tune / decay locks, drive, pan and sends all apply as to every voice.
+- **Handing it over**: the controller owns every `Sample`; `Engine::setSample()` publishes the new one through an atomic, and the engine takes it at the start of the next block. A hit still playing the old sample stops at once (its last value fades out as the 1 ms declick residual), so nothing reads the old one after that block; the controller frees it once `Engine::blocksProcessed()` has moved two blocks past the swap. No allocation or freeing on the audio thread.
+- **Notes**: 60 and 61. No sample: the voice is silent.
 
 ## Mixer and effects
 
@@ -69,4 +78,4 @@ Each voice is monophonic: a new hit restarts it, with a 1 ms fade of the previou
 
 ## CPU
 
-Budget: all voices ringing at once under 2% of a core at 48 kHz / 64 frames, measured by `k909-render --bench`. D1 measured 1.05% with the 11 voices hit on every beat; now all 15 voices, 1.9%; with every voice driven and sent to both effects, the gated reverb, the compressor and the crusher on, 3.4%. Voices that have decayed below −100 dB are skipped.
+Budget: all voices ringing at once under 2% of a core at 48 kHz / 64 frames, measured by `k909-render --bench`. D1 measured 1.05% with the 11 voices hit on every beat; now all 16 voices (the sample playing a test tone), 1.9%; with every voice driven and sent to both effects, the gated reverb, the compressor and the crusher on, 3.4%. Voices that have decayed below −100 dB are skipped.

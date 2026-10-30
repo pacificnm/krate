@@ -70,9 +70,9 @@ int main(int argc, char **argv)
     int rate = 48000;
     std::vector<float> di;
     if (!in.empty()) {
-        krunch::WavData wav;
+        krate::WavData wav;
         std::string error;
-        if (!krunch::readWavFile(in, &wav, &error)) {
+        if (!krate::readWavFile(in, &wav, &error)) {
             std::fprintf(stderr, "could not read %s: %s\n", in.c_str(), error.c_str());
             return 1;
         }
@@ -91,9 +91,9 @@ int main(int argc, char **argv)
         const std::string &path = k == 0 ? irA : irB;
         if (path.empty())
             continue;
-        krunch::WavData wav;
+        krate::WavData wav;
         std::string error;
-        if (!krunch::readWavFile(path, &wav, &error) || !(kernels[k] = krunch::IrKernel::build(wav, rate, &error))) {
+        if (!krate::readWavFile(path, &wav, &error) || !(kernels[k] = krunch::IrKernel::build(wav, rate, &error))) {
             std::fprintf(stderr, "could not load the IR %s: %s\n", path.c_str(), error.c_str());
             return 1;
         }

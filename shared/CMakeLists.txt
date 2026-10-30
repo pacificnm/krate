@@ -35,6 +35,8 @@ add_library(krate_dsp STATIC
     dsp/PolyBlep.h
     dsp/Reverb.h
     dsp/Reverb.cpp
+    dsp/Wav.h
+    dsp/Wav.cpp
 )
 target_include_directories(krate_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(krate_dsp PRIVATE ${KRATE_WARNINGS})

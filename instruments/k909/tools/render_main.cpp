@@ -32,10 +32,10 @@ namespace {
 constexpr std::uint32_t kBlock = 64;
 
 // The first note of each voice in docs/BRIEF.md#midi-notes, in DrumId order.
-constexpr int kNotes[k909::DrumCount] = {36, 38, 41, 45, 48, 37, 39, 42, 46, 49, 51, 56, 54, 52, 34};
+constexpr int kNotes[k909::DrumCount] = {36, 38, 41, 45, 48, 37, 39, 42, 46, 49, 51, 56, 54, 52, 34, 60};
 constexpr const char *kNames[k909::DrumCount] = {"bass drum", "snare drum", "low tom", "mid tom", "hi tom",
                                                   "rim", "clap", "closed hat", "open hat", "crash", "ride",
-                                                  "metal", "clank", "noise", "boom"};
+                                                  "metal", "clank", "noise", "boom", "sample"};
 
 struct NoteAt
 {

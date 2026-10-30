@@ -40,6 +40,7 @@ constexpr std::array<VoiceKnobs, DrumCount> kVoiceKnobs{{
     {ParamId::CkTune, ParamId::CkLevel, ParamId::CkDecay, {ParamId::CkHard, kNone, kNone, kNone}},
     {ParamId::NzTone, ParamId::NzLevel, ParamId::NzDecay, {ParamId::NzSweep, kNone, kNone, kNone}},
     {ParamId::BmTune, ParamId::BmLevel, ParamId::BmDecay},
+    {ParamId::SmTune, ParamId::SmLevel, ParamId::SmDecay, {ParamId::SmStart, kNone, kNone, kNone}},
 }};
 // The mixer's parameters are in DrumId order, one block per kind.
 constexpr ParamId mixParam(ParamId first, int drum) { return ParamId(int(first) + drum); }
@@ -95,6 +96,7 @@ DrumId Engine::drumForNote(int note) noexcept
     case 54: case 69: return DrumId::Ck; // tambourine, cabasa
     case 52: case 70: return DrumId::Nz; // Chinese cymbal, maracas
     case 34: case 33: return DrumId::Bm; // below the GM kit: no clash
+    case 60: case 61: return DrumId::Sm; // the bongos: middle C
     default: return DrumId::Count;
     }
 }
@@ -324,6 +326,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
 
     m_sequencer.setShuffle(units::shuffleAmount(m_params.get(int(ParamId::Shuffle))));
     updateMix();
+    m_voices.setSample(m_pendingSample.load(std::memory_order_acquire));
 
     static constexpr krate::TransportState kStopped{};
     const krate::TransportState &transport = block.transport ? *block.transport : kStopped;
@@ -380,6 +383,7 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     m_playingSlot.store(m_sequencer.slot(), std::memory_order_relaxed);
     m_queuedSlot.store(m_sequencer.queuedSlot(), std::memory_order_relaxed);
     processBus(left, right, block.frames);
+    m_blocks.fetch_add(1, std::memory_order_release); // after the last read of the sample
 
     const double target = kOutputTrim * units::gain(m_params.get(int(ParamId::Volume)));
     if (m_volume < 0.0)

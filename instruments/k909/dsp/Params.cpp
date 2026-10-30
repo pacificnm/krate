@@ -14,6 +14,8 @@ double delayBeats(float v)
     static constexpr double kBeats[kDelayTimes] = {0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0};
     return kBeats[index(v, kDelayTimes)];
 }
+double sampleSemitones(float v) { return 48.0 * (double(v) - 0.5); }
+double sampleDecaySeconds(float v) { return v >= 0.999f ? -1.0 : 0.05 * std::pow(80.0, double(v)); }
 } // namespace units
 
 namespace format {
@@ -27,6 +29,16 @@ std::string pan(float v)
 {
     const long p = std::lround(units::pan(v) * 100.0);
     return p == 0 ? std::string("C") : p < 0 ? std::format("L{}", -p) : std::format("R{}", p);
+}
+std::string semitones(float v)
+{
+    const long st = std::lround(units::sampleSemitones(v));
+    return st == 0 ? std::string("0 st") : std::format("{:+} st", st);
+}
+std::string sampleDecay(float v)
+{
+    const double s = units::sampleDecaySeconds(v);
+    return s < 0.0 ? std::string("Full") : s < 1.0 ? std::format("{} ms", std::lround(s * 1000.0)) : std::format("{:.1f} s", s);
 }
 std::string onOff(float v) { return units::index(v, 2) == 1 ? "On" : "Off"; }
 std::string delayTime(float v)

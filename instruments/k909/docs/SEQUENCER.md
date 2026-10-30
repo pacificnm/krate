@@ -9,9 +9,9 @@ Pattern (one of 16 bank slots, A..P)
   length       1..16 steps
   scale        steps per beat: 4 (1/16, default), 8 (1/32), 3 (1/8T), 6 (1/16T)
   order        Forward, Reverse, Fwd+Rev, Random (krate::StepClock::Order)
-  tracks[15]   one per voice, in panel order: BD SD LT MT HT RS CP CH OH CR RD ME CK NZ BM
+  tracks[16]   one per voice, in panel order: BD SD LT MT HT RS CP CH OH CR RD ME CK NZ BM SM
     steps[16]  0 = off, 1 = on, 2 = accent, 3 = flam
-  velocity[15][16], tune[15][16], decay[15][16]   step details, 0 = none (below)
+  velocity[16][16], tune[16][16], decay[16][16]   step details, 0 = none (below)
 ```
 
 16 patterns in two pages of eight: A–H and I–P (the A–H / I–P buttons switch which the pattern buttons show; choosing a pattern shows its page). Total Accent, Shuffle and Tempo are panel knobs (they belong to the sound, not the pattern), as on the original style of machine.
@@ -89,4 +89,4 @@ They sound like the classic machine on the Classic kit; load an industrial kit (
 }
 ```
 
-Tracks are strings of `0`/`1`/`2`/`3`, one character per step, keyed `bd sd lt mt ht rs cp ch oh cr rd me ck nz bm`; empty tracks are left out and missing ones are empty. Out-of-range values are clamped. Unknown keys are ignored so the format can grow. Step details are optional objects keyed by track, each an array of 16 numbers, written only where a track has any: `"velocity": { "sd": [0, 0, 0, 0, 90, …] }`, `"tune"`, `"decay"` (older files simply have none).
+Tracks are strings of `0`/`1`/`2`/`3`, one character per step, keyed `bd sd lt mt ht rs cp ch oh cr rd me ck nz bm sm`; empty tracks are left out and missing ones are empty. Out-of-range values are clamped. Unknown keys are ignored so the format can grow. Step details are optional objects keyed by track, each an array of 16 numbers, written only where a track has any: `"velocity": { "sd": [0, 0, 0, 0, 90, …] }`, `"tune"`, `"decay"` (older files simply have none).

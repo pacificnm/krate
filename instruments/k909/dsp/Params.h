@@ -27,10 +27,11 @@ enum class ParamId : int {
     CkTune, CkLevel, CkDecay, CkHard,
     NzTone, NzLevel, NzDecay, NzSweep,
     BmTune, BmLevel, BmDecay,
-    BdPan, SdPan, LtPan, MtPan, HtPan, RsPan, CpPan, ChPan, OhPan, CrPan, RdPan, MePan, CkPan, NzPan, BmPan,
-    BdDrive, SdDrive, LtDrive, MtDrive, HtDrive, RsDrive, CpDrive, ChDrive, OhDrive, CrDrive, RdDrive, MeDrive, CkDrive, NzDrive, BmDrive,
-    BdRev, SdRev, LtRev, MtRev, HtRev, RsRev, CpRev, ChRev, OhRev, CrRev, RdRev, MeRev, CkRev, NzRev, BmRev,
-    BdDly, SdDly, LtDly, MtDly, HtDly, RsDly, CpDly, ChDly, OhDly, CrDly, RdDly, MeDly, CkDly, NzDly, BmDly,
+    SmTune, SmLevel, SmDecay, SmStart,
+    BdPan, SdPan, LtPan, MtPan, HtPan, RsPan, CpPan, ChPan, OhPan, CrPan, RdPan, MePan, CkPan, NzPan, BmPan, SmPan,
+    BdDrive, SdDrive, LtDrive, MtDrive, HtDrive, RsDrive, CpDrive, ChDrive, OhDrive, CrDrive, RdDrive, MeDrive, CkDrive, NzDrive, BmDrive, SmDrive,
+    BdRev, SdRev, LtRev, MtRev, HtRev, RsRev, CpRev, ChRev, OhRev, CrRev, RdRev, MeRev, CkRev, NzRev, BmRev, SmRev,
+    BdDly, SdDly, LtDly, MtDly, HtDly, RsDly, CpDly, ChDly, OhDly, CrDly, RdDly, MeDly, CkDly, NzDly, BmDly, SmDly,
     RevSize, RevGate, DlyTime, DlyFb, Comp, Crush,
     Volume,
     Shuffle,
@@ -43,6 +44,8 @@ namespace format {
 std::string percent(float v);
 std::string level(float v);
 std::string pan(float v);
+std::string semitones(float v);
+std::string sampleDecay(float v);
 std::string onOff(float v);
 std::string delayTime(float v);
 std::string shuffle(float v);
@@ -109,6 +112,10 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"bm_tune",     "Boom Tune",             0.5f,                        0, &format::percent},
     {"bm_level",    "Boom Level",            0.7f,                        0, &format::level},
     {"bm_decay",    "Boom Decay",            0.5f,                        0, &format::percent},
+    {"sm_tune",     "Sample Tune",           0.5f,                        0, &format::semitones},
+    {"sm_level",    "Sample Level",          0.7f,                        0, &format::level},
+    {"sm_decay",    "Sample Decay",          1.0f,                        0, &format::sampleDecay},
+    {"sm_start",    "Sample Start",          0.0f,                        0, &format::percent},
     {"bd_pan",      "Bass Drum Pan",         0.5f,                        0, &format::pan},
     {"sd_pan",      "Snare Pan",             0.5f,                        0, &format::pan},
     {"lt_pan",      "Low Tom Pan",           0.325f,                      0, &format::pan},
@@ -124,6 +131,7 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"ck_pan",      "Clank Pan",             0.35f,                       0, &format::pan},
     {"nz_pan",      "Noise Pan",             0.5f,                        0, &format::pan},
     {"bm_pan",      "Boom Pan",              0.5f,                        0, &format::pan},
+    {"sm_pan",      "Sample Pan",            0.5f,                        0, &format::pan},
     {"bd_drive",    "Bass Drum Drive",       0.0f,                        0, &format::percent},
     {"sd_drive",    "Snare Drive",           0.0f,                        0, &format::percent},
     {"lt_drive",    "Low Tom Drive",         0.0f,                        0, &format::percent},
@@ -139,6 +147,7 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"ck_drive",    "Clank Drive",           0.0f,                        0, &format::percent},
     {"nz_drive",    "Noise Drive",           0.0f,                        0, &format::percent},
     {"bm_drive",    "Boom Drive",            0.0f,                        0, &format::percent},
+    {"sm_drive",    "Sample Drive",          0.0f,                        0, &format::percent},
     {"bd_rev",      "Bass Drum Reverb Send", 0.0f,                        0, &format::percent},
     {"sd_rev",      "Snare Reverb Send",     0.0f,                        0, &format::percent},
     {"lt_rev",      "Low Tom Reverb Send",   0.0f,                        0, &format::percent},
@@ -154,6 +163,7 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"ck_rev",      "Clank Reverb Send",     0.0f,                        0, &format::percent},
     {"nz_rev",      "Noise Reverb Send",     0.0f,                        0, &format::percent},
     {"bm_rev",      "Boom Reverb Send",      0.0f,                        0, &format::percent},
+    {"sm_rev",      "Sample Reverb Send",    0.0f,                        0, &format::percent},
     {"bd_dly",      "Bass Drum Delay Send",  0.0f,                        0, &format::percent},
     {"sd_dly",      "Snare Delay Send",      0.0f,                        0, &format::percent},
     {"lt_dly",      "Low Tom Delay Send",    0.0f,                        0, &format::percent},
@@ -169,6 +179,7 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"ck_dly",      "Clank Delay Send",      0.0f,                        0, &format::percent},
     {"nz_dly",      "Noise Delay Send",      0.0f,                        0, &format::percent},
     {"bm_dly",      "Boom Delay Send",       0.0f,                        0, &format::percent},
+    {"sm_dly",      "Sample Delay Send",     0.0f,                        0, &format::percent},
     {"rev_size",    "Reverb Size",           0.5f,                        0, &format::percent},
     {"rev_gate",    "Reverb Gate",           0.0f,                        2, &format::onOff},
     {"dly_time",    "Delay Time",            position(2, kDelayTimes),    kDelayTimes, &format::delayTime},
@@ -192,6 +203,8 @@ int shuffleAmount(float v);     // 0..5
 inline double pan(float v) { return 2.0 * double(v) - 1.0; } // -1 (left) .. 1 (right)
 int index(float v, int count);  // detent position 0..count-1
 double delayBeats(float v);     // the Delay Time position in beats
+double sampleSemitones(float v); // -24..+24
+double sampleDecaySeconds(float v); // 0.05..4 s; < 0 at the top: the whole sample, no fade
 } // namespace units
 
 } // namespace k909

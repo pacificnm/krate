@@ -5,7 +5,8 @@ namespace k909 {
 Instance::Instance(const krate::InstrumentContext &context)
     : drums(engine, context.configDir + QStringLiteral("/panel.json"), context.dataDir + QStringLiteral("/patterns.json"),
             context.transport, nullptr)
-    , kits(drums, context.dataDir + QStringLiteral("/kits.json"), nullptr)
+    , samples(engine, context.dataDir, nullptr)
+    , kits(drums, samples, context.dataDir + QStringLiteral("/kits.json"), nullptr)
 {
     if (context.run)
         drums.setRunControl(context.run, QStringLiteral("k909"));

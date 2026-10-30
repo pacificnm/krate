@@ -176,9 +176,9 @@ void IrLibrary::importZip(const QString &path, ImportResult &result)
 void IrLibrary::importBytes(const QByteArray &bytes, const QString &pack, const QString &folder, const QString &name,
                             ImportResult &result)
 {
-    krunch::WavData wav;
+    krate::WavData wav;
     std::string error;
-    if (!krunch::readWav({reinterpret_cast<const std::uint8_t *>(bytes.constData()), std::size_t(bytes.size())}, &wav, &error)) {
+    if (!krate::readWav({reinterpret_cast<const std::uint8_t *>(bytes.constData()), std::size_t(bytes.size())}, &wav, &error)) {
         noteError(result, name + QStringLiteral(": ") + QString::fromStdString(error));
         return;
     }

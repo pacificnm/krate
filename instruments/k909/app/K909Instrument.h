@@ -3,12 +3,13 @@
 #include "app/InstrumentRegistry.h"
 #include "k909/app/DrumsController.h"
 #include "k909/app/KitController.h"
+#include "k909/app/SampleController.h"
 #include "k909/dsp/Engine.h"
 
 namespace k909 {
 
-// K909 as a hostable instrument: the engine, its panel controller ("Drums")
-// and its kits ("Kits").
+// K909 as a hostable instrument: the engine, its panel controller ("Drums"),
+// the sample library ("Samples") and its kits ("Kits").
 class Instance final : public krate::InstrumentInstance
 {
 public:
@@ -18,6 +19,7 @@ public:
 
     Engine engine;
     DrumsController drums;
+    SampleController samples;
     KitController kits;
 };
 

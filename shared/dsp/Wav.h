@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace krunch {
+namespace krate {
 
 // A decoded WAV file: its channels (up to two kept), at its own rate.
 struct WavData
@@ -21,4 +21,4 @@ struct WavData
 bool readWav(std::span<const std::uint8_t> bytes, WavData *out, std::string *error = nullptr);
 bool readWavFile(const std::string &path, WavData *out, std::string *error = nullptr);
 
-} // namespace krunch
+} // namespace krate

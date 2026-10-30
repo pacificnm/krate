@@ -68,6 +68,12 @@ public:
     static constexpr float kFlamGrace = 0.6f;     // the grace hit's velocity, of the main one's
     bool sounding(DrumId drum) const noexcept { return m_voices.sounding(drum); }
 
+    // Any thread: the SAMPLE voice's sample (nullptr: none), taken at the next
+    // block. The caller keeps it alive until blocksProcessed() has moved two
+    // past the call that replaced it (docs/DSP.md#sample).
+    void setSample(const Sample *sample) noexcept { m_pendingSample.store(sample, std::memory_order_release); }
+    std::uint64_t blocksProcessed() const noexcept { return m_blocks.load(std::memory_order_acquire); }
+
     // Any thread: the playing step 0..15, or -1 when stopped (step LEDs); the
     // bank slot playing, and the one waiting for the next pass (-1 = none).
     int currentStep() const noexcept { return m_currentStep.load(std::memory_order_relaxed); }
@@ -119,6 +125,8 @@ private:
     std::atomic<int> m_playingSlot{0};
     std::atomic<int> m_queuedSlot{-1};
     double m_sampleRate = 48000.0;
+    std::atomic<const Sample *> m_pendingSample{nullptr};
+    std::atomic<std::uint64_t> m_blocks{0};
 
     // Send effects (docs/DSP.md#mixer-and-effects); buses rendered kChunk frames at a time.
     static constexpr std::uint32_t kChunk = 256;

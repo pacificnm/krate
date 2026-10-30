@@ -10,7 +10,7 @@ QString trackKey(int track);
 
 namespace {
 constexpr std::array<const char *, DrumCount> kTrackKeys{"bd", "sd", "lt", "mt", "ht", "rs", "cp", "ch",
-                                                          "oh", "cr", "rd", "me", "ck", "nz", "bm"};
+                                                          "oh", "cr", "rd", "me", "ck", "nz", "bm", "sm"};
 
 // A track's step details as a JSON array, or nothing when they are all 0.
 QJsonArray detailArray(const std::array<std::uint8_t, 16> &bytes)

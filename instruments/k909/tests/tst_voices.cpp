@@ -12,7 +12,7 @@ namespace {
 
 constexpr double kRate = 48000.0;
 constexpr std::uint32_t kBlock = 64;
-constexpr int kNotes[DrumCount] = {36, 38, 41, 45, 48, 37, 39, 42, 46, 49, 51, 56, 54, 52, 34};
+constexpr int kNotes[DrumCount] = {36, 38, 41, 45, 48, 37, 39, 42, 46, 49, 51, 56, 54, 52, 34, 60};
 
 struct Render
 {
@@ -46,10 +46,23 @@ Render play(Engine &engine, std::vector<std::array<int, 3>> notes, std::uint64_t
     return out;
 }
 
+// A test sample for the SAMPLE voice: a decaying 200 Hz tone, 0.5 s (no third-party audio).
+const Sample &testSample()
+{
+    static const Sample s = [] {
+        std::vector<float> x(24000);
+        for (std::size_t i = 0; i < x.size(); ++i)
+            x[i] = float(std::sin(2.0 * 3.141592653589793 * 200.0 * double(i) / 48000.0) * std::exp(-double(i) / 4800.0));
+        return Sample::fromChannels(x, {}, 48000.0, "test");
+    }();
+    return s;
+}
+
 Render hit(int note, int velocity, double seconds)
 {
     Engine engine;
     engine.prepare(kRate, kBlock);
+    engine.setSample(&testSample());
     return play(engine, {{0, note, velocity}}, std::uint64_t(seconds * kRate));
 }
 
@@ -89,7 +102,7 @@ private slots:
         QCOMPARE(Engine::drumForNote(44), DrumId::Ch);
         QCOMPARE(Engine::drumForNote(46), DrumId::Oh);
         QCOMPARE(Engine::drumForNote(51), DrumId::Rd);
-        QCOMPARE(Engine::drumForNote(60), DrumId::Count);
+        QCOMPARE(Engine::drumForNote(64), DrumId::Count);
         for (int v = 0; v < DrumCount; ++v)
             QCOMPARE(Engine::drumForNote(kNotes[v]), DrumId(v));
     }

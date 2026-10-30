@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstring>
 
-namespace krunch {
+namespace krate {
 
 namespace {
 bool fail(std::string *error, const char *why)
@@ -91,4 +91,4 @@ bool readWavFile(const std::string &path, WavData *out, std::string *error)
     return readWav(bytes, out, error);
 }
 
-} // namespace krunch
+} // namespace krate

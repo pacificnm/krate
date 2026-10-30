@@ -32,8 +32,6 @@ add_library(krunch_dsp STATIC
     dsp/TimePedals.cpp
     dsp/ToneStack.h
     dsp/ToneStack.cpp
-    dsp/Wav.h
-    dsp/Wav.cpp
 )
 target_include_directories(krunch_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(krunch_dsp PUBLIC krate_core krate_dsp)

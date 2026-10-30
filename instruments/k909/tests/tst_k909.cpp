@@ -15,6 +15,7 @@
 #include "k909/app/KitFile.h"
 #include "k909/app/PatternFile.h"
 #include "core/Transport.h"
+#include "tools/WavFile.h"
 #include "k909/dsp/Params.h"
 
 using namespace k909;
@@ -28,7 +29,7 @@ private slots:
     void parameterTable()
     {
         QCOMPARE(int(kParams.size()), ParamCount);
-        QCOMPARE(ParamCount, 123);
+        QCOMPARE(ParamCount, 131);
         QCOMPARE(paramDescriptor(ParamId::Accent).key, std::string_view("accent"));
         QCOMPARE(paramDescriptor(ParamId::BdDecay).key, std::string_view("bd_decay"));
         QCOMPARE(paramDescriptor(ParamId::RdTune).key, std::string_view("rd_tune"));
@@ -38,7 +39,7 @@ private slots:
             QVERIFY(keys.insert(info.key).second);
         // The mixer's blocks run in voice order (the engine indexes them so).
         static constexpr const char *kPrefix[] = {"bd", "sd", "lt", "mt", "ht", "rs", "cp", "ch",
-                                                  "oh", "cr", "rd", "me", "ck", "nz", "bm"};
+                                                  "oh", "cr", "rd", "me", "ck", "nz", "bm", "sm"};
         for (int d = 0; d < DrumCount; ++d)
             for (const auto &[first, suffix] : {std::pair{ParamId::BdPan, "_pan"}, std::pair{ParamId::BdDrive, "_drive"},
                                                 std::pair{ParamId::BdRev, "_rev"}, std::pair{ParamId::BdDly, "_dly"}})
@@ -173,6 +174,60 @@ private slots:
         auto &k = static_cast<Instance &>(*instance);
         QCOMPARE(k.kits.index(), 7);
         QVERIFY(std::abs(k.kits.kitBank().kits[7].values.value(QStringLiteral("sd_crack")) - 0.9) < 1e-6);
+    }
+
+    // A WAV file of `seconds` of a 220 Hz tone, stereo, 44.1 kHz.
+    static QString writeTone(const QString &path, double seconds)
+    {
+        std::vector<float> x;
+        for (int i = 0; i < int(seconds * 44100); ++i) {
+            const auto v = float(0.5 * std::sin(2.0 * 3.141592653589793 * 220.0 * i / 44100.0));
+            x.push_back(v);
+            x.push_back(v);
+        }
+        krate::writeStereoWav(path.toStdString(), x, 44100);
+        return path;
+    }
+
+    // Importing copies the file into the library and plays it; it is still
+    // there after a restart; a kit WRITE stores it, and loading that kit
+    // brings it back; a factory kit leaves it alone; a non-WAV file is refused.
+    void samplesImportPersistAndFollowKits()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const QString kick = writeTone(dir.filePath("kick.wav"), 0.5), loop = writeTone(dir.filePath("loop.wav"), 2.0);
+        QFile junk(dir.filePath("notes.wav"));
+        QVERIFY(junk.open(QIODevice::WriteOnly));
+        junk.write("not a wav file");
+        junk.close();
+        {
+            const auto instance = registryEntry().create(context);
+            auto &k = static_cast<Instance &>(*instance);
+            QCOMPARE(k.samples.name(), QString());
+            k.samples.importUrls({QUrl::fromLocalFile(kick), QUrl::fromLocalFile(junk.fileName())});
+            QCOMPARE(k.samples.name(), QStringLiteral("kick.wav"));
+            QVERIFY(QFile::exists(dir.filePath("data/samples/kick.wav")));
+            QVERIFY(k.samples.message().contains(QStringLiteral("notes.wav")));
+            QVERIFY(std::abs(k.samples.seconds() - 0.5) < 0.01);
+            k.kits.select(7);
+            k.kits.pressWrite();
+            k.kits.pressWrite(); // store into kit 8, with kick.wav
+            QCOMPARE(k.kits.kitBank().kits[7].sample, QStringLiteral("kick.wav"));
+            k.samples.importUrls({QUrl::fromLocalFile(loop)});
+            QCOMPARE(k.samples.names(), (QStringList{QStringLiteral("kick.wav"), QStringLiteral("loop.wav")}));
+            QCOMPARE(k.samples.name(), QStringLiteral("loop.wav"));
+            k.kits.select(1); // Industrial: no sample of its own
+            QCOMPARE(k.samples.name(), QStringLiteral("loop.wav"));
+            k.kits.select(7);
+            QCOMPARE(k.samples.name(), QStringLiteral("kick.wav"));
+            k.samples.step(1);
+            QCOMPARE(k.samples.name(), QStringLiteral("loop.wav"));
+        }
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        QCOMPARE(k.samples.name(), QStringLiteral("loop.wav"));
+        QVERIFY(std::abs(k.samples.seconds() - 2.0) < 0.01);
     }
 
     void patternJsonRoundTrip()

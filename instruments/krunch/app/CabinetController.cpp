@@ -138,11 +138,11 @@ void CabinetController::build(int s)
     const QString &id = m_ids[std::size_t(s)];
     if (!id.isEmpty()) {
         const QString path = m_library.filePath(id);
-        krunch::WavData wav;
+        krate::WavData wav;
         std::string error;
         if (path.isEmpty())
             qCWarning(lcCabinets) << "IR" << id << "is not in the library";
-        else if (!krunch::readWavFile(path.toStdString(), &wav, &error)
+        else if (!krate::readWavFile(path.toStdString(), &wav, &error)
                  || !(kernel = krunch::IrKernel::build(wav, m_engine.sampleRate(), &error)))
             qCWarning(lcCabinets) << "can't load" << path << ":" << error.c_str();
     }

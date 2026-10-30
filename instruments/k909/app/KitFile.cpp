@@ -126,7 +126,10 @@ QJsonObject kitsToJson(const KitBank &bank)
         QJsonObject values;
         for (auto it = kit.values.begin(); it != kit.values.end(); ++it)
             values.insert(it.key(), it.value());
-        kits.append(QJsonObject{{QStringLiteral("name"), kit.name}, {QStringLiteral("params"), values}});
+        QJsonObject ko{{QStringLiteral("name"), kit.name}, {QStringLiteral("params"), values}};
+        if (!kit.sample.isEmpty())
+            ko.insert(QStringLiteral("sample"), kit.sample);
+        kits.append(ko);
     }
     return {
         {QStringLiteral("version"), kKitFileVersion},
@@ -146,6 +149,7 @@ KitBank kitsFromJson(const QJsonObject &json)
         Kit &kit = bank.kits[std::size_t(i)];
         kit = init;
         kit.name = ko.value(u"name").toString(init.name).left(16);
+        kit.sample = ko.value(u"sample").toString();
         const QJsonObject values = ko.value(u"params").toObject();
         for (auto it = kit.values.begin(); it != kit.values.end(); ++it)
             if (const QJsonValue v = values.value(it.key()); v.isDouble())

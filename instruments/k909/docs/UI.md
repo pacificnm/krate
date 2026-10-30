@@ -31,7 +31,7 @@ Branding: "Krate" wordmark top left, **K909** large, **Drum Machine** on the rig
 └────────┴────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The industrial voices have their own sections after CYMBAL: METAL (TUNE, LEVEL, DECAY, MATERIAL), CLANK (TUNE, LEVEL, DECAY, HARD), NOISE (TONE, LEVEL, DECAY, SWEEP), BOOM (TUNE, LEVEL, DECAY); the track strip has a cell per voice (BASS DRUM two, the rest one). The LCD block has a fifth row, **KIT**, with **WRITE** beside it ([KITS.md](KITS.md)), and the pattern buttons a page switch, **A–H / I–P**.
+The industrial voices have their own sections after CYMBAL: METAL (TUNE, LEVEL, DECAY, MATERIAL), CLANK (TUNE, LEVEL, DECAY, HARD), NOISE (TONE, LEVEL, DECAY, SWEEP), BOOM (TUNE, LEVEL, DECAY), then SAMPLE (TUNE, LEVEL, DECAY, START); the track strip has a cell per voice (16). The LCD block has a fifth row, **KIT**, with **WRITE** beside it, and a sixth, **SAMPLE** (the file playing and its length; ▲▼ step through the library), with **LOAD** beside it (a file dialog for WAV files); WAV files dropped anywhere on the panel are imported too ([KITS.md](KITS.md#samples)). The pattern buttons have a page switch, **A–H / I–P**. The cymbal's tune knobs read CR TUNE and RD TUNE (the columns are narrower).
 
 The knob sections have three rows and two pages: **SOUND** (each voice's own knobs, as drawn above with the newer ones in a third row) and **MIX** (a strip per voice: PAN, DRIVE, REVERB, DELAY); the SOUND / MIX buttons sit under DRUM MACHINE. Between the LCD block and TEMPO, **EFFECTS**: REV SIZE, GATE, DLY TIME, FEEDBACK, COMP, CRUSH, each with its value under it.
 

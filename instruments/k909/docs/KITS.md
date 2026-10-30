@@ -11,6 +11,20 @@ A kit is a saved set of every sound and mix knob: the voices' own knobs, each vo
 
 Kits and patterns are separate: load any kit under any pattern.
 
+A kit you WRITE also remembers the SAMPLE voice's file; loading it brings that file back. The factory kits have none and leave the sample as it is.
+
+## Samples
+
+The SAMPLE voice plays a WAV file of your own: a hit, a vocal stab, a found sound, a loop.
+
+| Action | How |
+| --- | --- |
+| Load | **LOAD** (beside the SAMPLE display) opens a file dialog; choose one or more WAV files. Or drop WAV files anywhere on the panel. The last one loaded plays |
+| Choose | The SAMPLE display's ▲▼ step through the library |
+| Play | Track **SAMPLE** in the sequencer, MIDI notes 60 and 61, or right-click its name in the track strip |
+
+Loading **copies** the file into K909's sample library, `~/.local/share/k909/samples/` (a different file with the same name gets a number), so kits keep working if the original moves or is deleted. To remove a sample, delete it from that folder. Any WAV works (16, 24, 32-bit or float, any rate, mono or stereo: stereo is mixed to mono, the bass drum's way); files longer than 30 s are cut; every sample is normalized to the same peak. The sample playing is kept in `samples.json`. Files that aren't WAV (or are silent) are refused, with a message in the SAMPLE display.
+
 ## Factory kits
 
 | # | Kit | Sound |
@@ -33,7 +47,8 @@ Every factory kit on every factory pattern peaks under 0 dBFS before the host's 
   "version": 1,
   "current": 1,
   "kits": [
-    { "name": "Classic", "params": { "bd_tune": 0.5, "bd_drive": 0.0 } }
+    { "name": "Classic", "params": { "bd_tune": 0.5, "bd_drive": 0.0 } },
+    { "name": "Kit 8", "params": { "sm_tune": 0.5 }, "sample": "kick.wav" }
   ]
 }
 ```
