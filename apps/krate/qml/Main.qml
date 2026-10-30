@@ -4,8 +4,8 @@ import QtQuick
 import Krate
 
 // The Krate rack window: transport bar, instrument tabs (click = focus), the
-// Mixer and Song tabs; below them the focused instrument's panel scaled to
-// fit, the mixer screen or the song screen.
+// Mixer, Song and Seq tabs; below them the focused instrument's panel scaled
+// to fit, the mixer screen, the song screen or the sequencer.
 Window {
     id: root
 
@@ -34,6 +34,10 @@ Window {
         onActivated: Rack.songShown = !Rack.songShown
     }
     Shortcut {
+        sequence: "Q"
+        onActivated: Rack.seqShown = !Rack.seqShown
+    }
+    Shortcut {
         sequence: "L"
         onActivated: MidiLearn.active = !MidiLearn.active
     }
@@ -53,6 +57,11 @@ Window {
         y: transportBar.height + 10
         x: 16
         spacing: 8
+        // Tabs fit the window: the screens' tabs keep their size, the instruments' share the rest.
+        readonly property int screenTabWidth: 112
+        readonly property int instrumentTabs: Rack.panelComponents.filter(c => c !== "").length
+        readonly property real tabWidth: Math.max(72, Math.min(150, (root.width - 32 - 2 * 40 - 16 - 3 * screenTabWidth
+                                                                     - (instrumentTabs + 5) * spacing) / instrumentTabs))
 
         PanelButton { // focus previous (learnable)
             width: 40
@@ -71,10 +80,11 @@ Window {
                 required property int index
                 required property string modelData
                 readonly property bool focused: Rack.focus === index
-                readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown
+                readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown
 
                 visible: Rack.panelComponents[index] !== "" // devices without a panel (the backing track) have no tab
-                width: 150
+                width: tabs.tabWidth
+                clip: true
                 height: 40
                 radius: 4
                 color: shown ? Theme.silverLight : Theme.lowerDeck
@@ -125,7 +135,7 @@ Window {
 
         Rectangle { // the mixer screen (learnable, M)
             id: mixerTab
-            width: 130
+            width: tabs.screenTabWidth
             height: 40
             radius: 4
             color: Rack.mixerShown ? Theme.silverLight : Theme.lowerDeck
@@ -161,7 +171,7 @@ Window {
 
         Rectangle { // the song screen (learnable, S)
             id: songTab
-            width: 130
+            width: tabs.screenTabWidth
             height: 40
             radius: 4
             color: Rack.songShown ? Theme.silverLight : Theme.lowerDeck
@@ -194,6 +204,42 @@ Window {
             Accessible.role: Accessible.PageTab
             Accessible.name: "Song" + (Rack.songShown ? " (shown)" : "")
         }
+
+        Rectangle { // the sequencer (learnable, Q)
+            id: seqTab
+            width: tabs.screenTabWidth
+            height: 40
+            radius: 4
+            color: Rack.seqShown ? Theme.silverLight : Theme.lowerDeck
+            border.color: Rack.seqShown ? Theme.accentUi : Theme.deckLine
+            border.width: Rack.seqShown ? 3 : 1
+
+            Led {
+                x: 12
+                anchors.verticalCenter: parent.verticalCenter
+                on: Rack.seqShown
+            }
+            Text {
+                x: 34
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Seq"
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 18
+                font.bold: Rack.seqShown
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: Rack.seqShown = !Rack.seqShown
+            }
+            LearnOverlay {
+                anchors.fill: parent
+                paramKey: "rack:seq"
+                round: false
+            }
+            Accessible.role: Accessible.PageTab
+            Accessible.name: "Sequencer" + (Rack.seqShown ? " (shown)" : "")
+        }
     }
 
     Item { // the focused instrument's panel, scaled to fit
@@ -202,7 +248,7 @@ Window {
         y: tabs.y + tabs.height + 10
         width: root.width - 32
         height: root.height - y - 16
-        visible: !Rack.mixerShown && !Rack.songShown
+        visible: !Rack.mixerShown && !Rack.songShown && !Rack.seqShown
 
         Repeater {
             model: Rack.deviceCount
@@ -274,5 +320,13 @@ Window {
         width: root.width - 32
         height: panelArea.height
         visible: Rack.songShown
+    }
+
+    SeqScreen {
+        x: 16
+        y: panelArea.y
+        width: root.width - 32
+        height: panelArea.height
+        visible: Rack.seqShown
     }
 }

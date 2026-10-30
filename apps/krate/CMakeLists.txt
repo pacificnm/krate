@@ -22,6 +22,8 @@ qt_add_qml_module(krate
         NoteTargets.cpp
         SequencerFile.h
         SequencerFile.cpp
+        SequencerController.h
+        SequencerController.cpp
         SongController.h
         SongController.cpp
         SongLibrary.h
@@ -35,6 +37,7 @@ qt_add_qml_module(krate
         qml/Fader.qml
         qml/Meter.qml
         qml/SongScreen.qml
+        qml/SeqScreen.qml
         qml/LibraryPanel.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -96,6 +99,14 @@ target_include_directories(tst_sequencerfile PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 target_compile_options(tst_sequencerfile PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_sequencerfile PRIVATE krate_seq Qt6::Core Qt6::Test)
 add_test(NAME tst_sequencerfile COMMAND tst_sequencerfile)
+
+# The sequencer screen's controller.
+add_executable(tst_seqcontroller tests/tst_seqcontroller.cpp SequencerController.h SequencerController.cpp
+               SequencerFile.h SequencerFile.cpp NoteTargets.h NoteTargets.cpp)
+target_include_directories(tst_seqcontroller PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_seqcontroller PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_seqcontroller PRIVATE krate_seq krate_app Qt6::Qml Qt6::Test)
+add_test(NAME tst_seqcontroller COMMAND tst_seqcontroller)
 
 # The song library's database, with generated files.
 add_executable(tst_library tests/tst_library.cpp SongLibrary.h SongLibrary.cpp)

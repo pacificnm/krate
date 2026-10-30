@@ -83,14 +83,17 @@ void RackController::setFocus(int device)
     emit focusChanged();
     setMixerShown(false);
     setSongShown(false);
+    setSeqShown(false);
 }
 
 void RackController::setMixerShown(bool shown)
 {
     if (shown == m_mixerShown)
         return;
-    if (shown)
+    if (shown) {
         setSongShown(false);
+        setSeqShown(false);
+    }
     m_mixerShown = shown;
     emit mixerShownChanged();
 }
@@ -99,10 +102,24 @@ void RackController::setSongShown(bool shown)
 {
     if (shown == m_songShown)
         return;
-    if (shown)
+    if (shown) {
         setMixerShown(false);
+        setSeqShown(false);
+    }
     m_songShown = shown;
     emit songShownChanged();
+}
+
+void RackController::setSeqShown(bool shown)
+{
+    if (shown == m_seqShown)
+        return;
+    if (shown) {
+        setMixerShown(false);
+        setSongShown(false);
+    }
+    m_seqShown = shown;
+    emit seqShownChanged();
 }
 
 bool RackController::playing() const { return m_transport.playing(); }

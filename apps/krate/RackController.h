@@ -32,10 +32,11 @@ class RackController : public QObject
     Q_PROPERTY(QStringList panelModules READ panelModules CONSTANT)
     Q_PROPERTY(QStringList panelComponents READ panelComponents CONSTANT)
     Q_PROPERTY(int focus READ focus WRITE setFocus NOTIFY focusChanged)
-    // The mixer or the song screen instead of the focused instrument's panel
+    // The mixer, the song screen or the sequencer instead of the focused instrument's panel
     // (one at a time); a focus change shows the instrument.
     Q_PROPERTY(bool mixerShown READ mixerShown WRITE setMixerShown NOTIFY mixerShownChanged)
     Q_PROPERTY(bool songShown READ songShown WRITE setSongShown NOTIFY songShownChanged)
+    Q_PROPERTY(bool seqShown READ seqShown WRITE setSeqShown NOTIFY seqShownChanged)
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     Q_PROPERTY(qreal bpm READ bpm WRITE setBpm NOTIFY bpmChanged)
     Q_PROPERTY(bool beat READ beat NOTIFY beatChanged)
@@ -66,6 +67,8 @@ public:
     void setMixerShown(bool shown);
     bool songShown() const { return m_songShown; }
     void setSongShown(bool shown);
+    bool seqShown() const { return m_seqShown; }
+    void setSeqShown(bool shown);
     bool playing() const;
     void setPlaying(bool playing);
     qreal bpm() const;
@@ -107,6 +110,7 @@ signals:
     void focusChanged();
     void mixerShownChanged();
     void songShownChanged();
+    void seqShownChanged();
     void playingChanged();
     void bpmChanged();
     void beatChanged();
@@ -138,6 +142,7 @@ private:
     bool m_shownPlaying = false; // the play state last announced
     bool m_mixerShown = false;
     bool m_songShown = false;
+    bool m_seqShown = false;
     double m_shownBpm = 0.0; // the tempo last announced (a song's tempo map moves it from the audio thread)
     bool m_beat = false;
     int m_mixerRevision = 0;
