@@ -4,6 +4,7 @@
 #include "app/CabinetController.h"
 #include "app/KrunchController.h"
 #include "app/PedalController.h"
+#include "app/PresetController.h"
 #include "dsp/Krunch.h"
 
 namespace krunch {
@@ -16,7 +17,8 @@ public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
     // "channel1".."channel4", "loop" (the playing channel's effects loop),
-    // "pedal1".."pedal8" (the footswitches, by position on the board).
+    // "pedal1".."pedal8" (the footswitches, by position on the board),
+    // "presetNext", "presetPrevious".
     void triggerAction(const QString &action) override;
     // The knobs, plus each channel's IRs (by library id) and the pedalboard.
     QJsonObject saveSound() override;
@@ -26,6 +28,7 @@ public:
     KrunchController controller;
     CabinetController cabinets; // after the engine: empties its slots first when destroyed
     PedalController pedals;     // likewise: takes the pedals off the chain first
+    PresetController presets;   // the whole amp, saved and loaded by name
 };
 
 krate::InstrumentEntry registryEntry();

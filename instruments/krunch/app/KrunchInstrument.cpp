@@ -6,7 +6,13 @@ Instance::Instance(const krate::InstrumentContext &context)
     : controller(engine, context.configDir + QStringLiteral("/panel.json"), nullptr)
     , cabinets(engine, context.dataDir + QStringLiteral("/irs"), context.configDir + QStringLiteral("/cabinets.json"), nullptr)
     , pedals(engine, context.configDir + QStringLiteral("/pedals.json"), nullptr)
+    , presets(context.dataDir + QStringLiteral("/presets.json"), [this] { return saveSound(); },
+              [this](const QJsonObject &sound) { loadSound(sound); }, nullptr)
 {
+    // Anything on the amp changing may make the current preset "modified".
+    QObject::connect(&controller, &KrunchController::paramsChanged, &presets, &PresetController::ampChanged);
+    QObject::connect(&cabinets, &CabinetController::changed, &presets, &PresetController::ampChanged);
+    QObject::connect(&pedals, &PedalController::changed, &presets, &PresetController::ampChanged);
 }
 
 QJsonObject Instance::saveSound()
@@ -32,6 +38,8 @@ void Instance::triggerAction(const QString &action)
         const int channel = action.mid(7).toInt() - 1;
         if (channel >= 0 && channel < kChannels)
             controller.setValue(QStringLiteral("channel"), qreal(channel) / (kChannels - 1));
+    } else if (action == u"presetNext" || action == u"presetPrevious") {
+        presets.step(action == u"presetNext" ? 1 : -1);
     } else if (action.startsWith(u"pedal")) {
         pedals.toggle(action.mid(5).toInt() - 1);
     } else if (action == u"loop") {
@@ -54,6 +62,7 @@ krate::InstrumentEntry registryEntry()
     entry.actions << QStringLiteral("loop");
     for (int p = 1; p <= PedalList::kMaxPedals; ++p)
         entry.actions << QStringLiteral("pedal%1").arg(p);
+    entry.actions << QStringLiteral("presetNext") << QStringLiteral("presetPrevious");
     entry.create = [](const krate::InstrumentContext &context) -> std::unique_ptr<krate::InstrumentInstance> {
         return std::make_unique<Instance>(context);
     };

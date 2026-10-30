@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import Krate
 
 // Krunch's panel at design size 1400 x 990: grille cloth with the logo and
@@ -138,10 +139,75 @@ Item {
             font.italic: true
         }
 
+        // The preset: its name (* when the amp has changed since), the list,
+        // previous and next (learnable), SAVE over it, SAVE AS a new one.
+        Row {
+            x: 400
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+
+            Rectangle { // the name; a click opens the list
+                width: 230
+                height: 40
+                radius: 4
+                color: "#0F1410"
+                border.color: "#3A3B3E"
+                Text {
+                    anchors.fill: parent
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    verticalAlignment: Text.AlignVCenter
+                    text: Presets.current === "" ? "NO PRESET" : Presets.current + (Presets.modified ? " *" : "")
+                    color: Presets.current === "" ? "#6A7A6A" : "#9CFF9C"
+                    font.family: "monospace"
+                    font.pixelSize: 17
+                    font.bold: true
+                    elide: Text.ElideRight
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: presetList.open()
+                }
+                Accessible.role: Accessible.Button
+                Accessible.name: "Preset: " + (Presets.current || "none") + (Presets.modified ? ", modified" : "") + ". Open the list"
+            }
+            Repeater {
+                model: [{ face: "◂", by: -1, action: "presetPrevious", name: "Previous preset" },
+                        { face: "▸", by: 1, action: "presetNext", name: "Next preset" }]
+                PanelButton {
+                    required property var modelData
+                    width: 40
+                    height: 40
+                    dark: true
+                    faceText: modelData.face
+                    text: modelData.name
+                    onClicked: Presets.step(modelData.by)
+                    LearnOverlay { anchors.fill: parent; paramKey: parent.modelData.action; round: false }
+                }
+            }
+            PanelButton {
+                width: 64
+                height: 40
+                dark: true
+                faceText: "SAVE"
+                text: Presets.current === "" ? "Save the amp as a new preset" : "Save the amp over " + Presets.current
+                tint: Presets.modified ? Theme.labelOrange : "transparent"
+                onClicked: Presets.current === "" ? saveAsPopup.open() : Presets.save()
+            }
+            PanelButton {
+                width: 84
+                height: 40
+                dark: true
+                faceText: "SAVE AS…"
+                text: "Save the amp as a new preset"
+                onClicked: saveAsPopup.open()
+            }
+        }
+
         // Where the guitar comes from, and how long it takes to reach the speakers.
         Column {
-            x: 520
-            width: parent.width - 560
+            x: 900
+            width: parent.width - 940
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
 
@@ -388,6 +454,171 @@ Item {
         y: 712
         width: parent.width
         height: 278
+    }
+
+    // A new preset (or over one of that name): the whole amp, pedals and IRs included.
+    Popup {
+        id: saveAsPopup
+        x: 400
+        y: 110
+        width: 420
+        padding: 14
+        modal: true
+        onOpened: {
+            nameField.text = Presets.current
+            nameField.selectAll()
+            nameField.forceActiveFocus()
+        }
+        background: Rectangle { radius: 6; color: "#232325"; border.color: "#5A5B5E" }
+        Column {
+            width: parent.width
+            spacing: 10
+            Label { text: "SAVE THE AMP AS"; horizontalAlignment: Text.AlignLeft }
+            TextField {
+                id: nameField
+                width: parent.width
+                placeholderText: "Preset name"
+                onAccepted: if (Presets.saveAs(text)) saveAsPopup.close()
+                Accessible.name: "Preset name"
+            }
+            Text {
+                width: parent.width
+                visible: Presets.names.indexOf(nameField.text.trim()) >= 0
+                text: "There's a preset of that name: saving replaces it."
+                color: Theme.labelOrange
+                font.family: Theme.labelFont
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                spacing: 10
+                PanelButton {
+                    width: 90
+                    height: 32
+                    faceText: "SAVE"
+                    text: "Save the preset"
+                    onClicked: if (Presets.saveAs(nameField.text)) saveAsPopup.close()
+                }
+                PanelButton {
+                    width: 90
+                    height: 32
+                    faceText: "CANCEL"
+                    text: "Cancel"
+                    onClicked: saveAsPopup.close()
+                }
+            }
+        }
+    }
+
+    // The presets: a click loads one; rename or delete it.
+    Popup {
+        id: presetList
+        x: 400
+        y: 110
+        width: 460
+        height: Math.min(520, 90 + Math.max(1, Presets.names.length) * 44)
+        padding: 14
+        modal: true
+        property string renaming: ""
+        property string deleting: ""
+        onClosed: {
+            renaming = ""
+            deleting = ""
+        }
+        background: Rectangle { radius: 6; color: "#232325"; border.color: "#5A5B5E" }
+        Column {
+            anchors.fill: parent
+            spacing: 8
+            Label { text: "PRESETS"; horizontalAlignment: Text.AlignLeft }
+            Text {
+                visible: Presets.names.length === 0
+                width: parent.width
+                text: "No presets yet: set the amp, the pedals and the cabinets up, then SAVE AS…"
+                color: "#B9B2A0"
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+                wrapMode: Text.WordWrap
+            }
+            ListView {
+                width: parent.width
+                height: parent.height - 30
+                clip: true
+                model: Presets.names
+                ScrollBar.vertical: ScrollBar {}
+                delegate: Rectangle {
+                    id: presetRow
+                    required property string modelData
+                    readonly property bool chosen: modelData === Presets.current
+                    width: ListView.view.width - 12
+                    height: 40
+                    radius: 4
+                    color: chosen ? "#3B4A5A" : (rowArea.containsMouse ? "#2E2F32" : "transparent")
+                    MouseArea {
+                        id: rowArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            Presets.load(presetRow.modelData)
+                            presetList.close()
+                        }
+                    }
+                    Text {
+                        visible: presetList.renaming !== presetRow.modelData
+                        x: 12
+                        width: parent.width - 150
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: presetRow.modelData
+                        color: "#F2F2F2"
+                        font.family: Theme.labelFont
+                        font.pixelSize: 15
+                        font.bold: presetRow.chosen
+                        elide: Text.ElideRight
+                    }
+                    TextField {
+                        visible: presetList.renaming === presetRow.modelData
+                        x: 6
+                        width: parent.width - 150
+                        height: 32
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: presetRow.modelData
+                        onVisibleChanged: if (visible) { selectAll(); forceActiveFocus() }
+                        onAccepted: {
+                            if (Presets.rename(presetRow.modelData, text))
+                                presetList.renaming = ""
+                        }
+                        Accessible.name: "New name for " + presetRow.modelData
+                    }
+                    Row {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 6
+                        PanelButton {
+                            width: 70
+                            height: 28
+                            faceText: "RENAME"
+                            text: "Rename " + presetRow.modelData
+                            onClicked: presetList.renaming = presetRow.modelData
+                        }
+                        PanelButton {
+                            width: 62
+                            height: 28
+                            faceText: presetList.deleting === presetRow.modelData ? "SURE?" : "DELETE"
+                            text: "Delete " + presetRow.modelData
+                            tint: presetList.deleting === presetRow.modelData ? Theme.labelOrange : "transparent"
+                            onClicked: {
+                                if (presetList.deleting === presetRow.modelData) {
+                                    Presets.remove(presetRow.modelData)
+                                    presetList.deleting = ""
+                                } else {
+                                    presetList.deleting = presetRow.modelData
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     IrPicker {

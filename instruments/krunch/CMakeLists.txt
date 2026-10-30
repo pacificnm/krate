@@ -62,6 +62,8 @@ qt_add_qml_module(krunch_ui
         app/KrunchInstrument.cpp
         app/PedalController.h
         app/PedalController.cpp
+        app/PresetController.h
+        app/PresetController.cpp
     QML_FILES
         qml/Panel.qml
         qml/IrPicker.qml
@@ -94,3 +96,10 @@ target_compile_options(tst_pedals PRIVATE -Wall -Wextra -Wpedantic)
 target_include_directories(tst_pedals PRIVATE tools)
 target_link_libraries(tst_pedals PRIVATE krunch_dsp krate_testing Qt6::Test)
 add_test(NAME tst_pedals COMMAND tst_pedals)
+
+# Presets, with a fake amp.
+add_executable(tst_presets tests/tst_presets.cpp app/PresetController.h app/PresetController.cpp)
+target_include_directories(tst_presets PRIVATE app)
+target_compile_options(tst_presets PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_presets PRIVATE krate_app Qt6::Qml Qt6::Test)
+add_test(NAME tst_presets COMMAND tst_presets)
