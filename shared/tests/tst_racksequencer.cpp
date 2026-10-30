@@ -34,7 +34,7 @@ class TestRackSequencer : public QObject
         double bpm = 120.0;
         std::uint64_t at = 0;
         bool playing = true;
-        std::vector<Hit> hits;
+        std::vector<Hit> hits{};
 
         void blocks(std::uint64_t frames)
         {
