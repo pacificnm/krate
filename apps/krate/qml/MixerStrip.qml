@@ -3,8 +3,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Krate
 
-// One mixer channel: name, EQ (high shelf, parametric mid, low shelf), pan,
-// mute/solo, fader, meter, MIDI channel. device -1 = master.
+// One mixer channel: name, EQ (high shelf, parametric mid, low shelf), the
+// reverb and delay sends, pan, mute/solo, fader, meter, MIDI channel.
+// device -1 = master: the effects' returns above its fader.
 Item {
     id: strip
 
@@ -23,7 +24,9 @@ Item {
     // Where the controls under the EQ start.
     readonly property int eqTop: 28
     readonly property int eqHeight: isMaster ? 0 : 196
-    readonly property int below: eqTop + eqHeight
+    readonly property int sendsHeight: isMaster ? 0 : 66
+    readonly property int returnsHeight: isMaster ? 152 : 0
+    readonly property int below: eqTop + eqHeight + sendsHeight + returnsHeight
 
     Rectangle {
         anchors.fill: parent
@@ -131,6 +134,132 @@ Item {
         }
     }
 
+    // A small knob with its name under it.
+    component SmallKnob: Item {
+        id: small
+        property string label
+        property string learnKey
+        property real value
+        property real defaultValue
+        property string text
+        property int detents: 0
+        signal moved(real v)
+        width: 44
+        height: 42
+        Knob {
+            x: (parent.width - width) / 2
+            width: 28
+            height: 28
+            name: strip.name + " " + small.label
+            value: small.value
+            defaultValue: small.defaultValue
+            detents: small.detents
+            displayText: small.text
+            onMoved: v => small.moved(v)
+            LearnOverlay { anchors.fill: parent; paramKey: small.learnKey }
+        }
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 29
+            text: small.label
+            color: Theme.ink
+            font.family: Theme.labelFont
+            font.pixelSize: 8
+            font.bold: true
+        }
+    }
+
+    // --- Sends: how much goes to the reverb and the delay (after the fader) ------------
+    Item {
+        visible: !strip.isMaster
+        x: 4
+        y: strip.eqTop + strip.eqHeight
+        width: strip.width - 8
+        height: strip.sendsHeight - 6
+        Rectangle {
+            anchors.fill: parent
+            radius: 3
+            color: "#C2C3C6"
+            border.color: Theme.deckLine
+        }
+        Text {
+            x: 6
+            y: 3
+            text: "SENDS"
+            color: Theme.ink
+            font.family: Theme.labelFont
+            font.pixelSize: 10
+            font.bold: true
+        }
+        Row {
+            x: (parent.width - width) / 2
+            y: 16
+            spacing: 4
+            SmallKnob {
+                label: "REV"
+                learnKey: strip.learnKey + "revsend"
+                value: strip.rev >= 0 ? Rack.send(strip.device, 0) : 0
+                defaultValue: 0
+                text: Rack.sendText(value)
+                onMoved: v => Rack.setSend(strip.device, 0, v)
+            }
+            SmallKnob {
+                label: "DLY"
+                learnKey: strip.learnKey + "dlysend"
+                value: strip.rev >= 0 ? Rack.send(strip.device, 1) : 0
+                defaultValue: 0
+                text: Rack.sendText(value)
+                onMoved: v => Rack.setSend(strip.device, 1, v)
+            }
+        }
+    }
+
+    // --- The master's effect returns ---------------------------------------------------
+    Item {
+        visible: strip.isMaster
+        x: 4
+        y: strip.eqTop
+        width: strip.width - 8
+        height: strip.returnsHeight - 6
+        Rectangle {
+            anchors.fill: parent
+            radius: 3
+            color: "#C2C3C6"
+            border.color: Theme.deckLine
+        }
+        Text {
+            x: 6
+            y: 3
+            text: "EFFECTS"
+            color: Theme.ink
+            font.family: Theme.labelFont
+            font.pixelSize: 10
+            font.bold: true
+        }
+        Grid {
+            x: (parent.width - width) / 2
+            y: 16
+            columns: 2
+            columnSpacing: 4
+            Repeater {
+                model: [{label: "REV", key: "revlevel"}, {label: "SIZE", key: "revsize"},
+                        {label: "DLY", key: "dlylevel"}, {label: "TIME", key: "dlytime"},
+                        {label: "FDBK", key: "dlyfeedback"}]
+                SmallKnob {
+                    required property int index
+                    required property var modelData
+                    label: modelData.label
+                    learnKey: strip.learnKey + modelData.key
+                    value: strip.rev >= 0 ? Rack.effect(index) : 0
+                    defaultValue: Rack.effectDefault(index)
+                    detents: index === 3 ? 7 : 0
+                    text: Rack.effectText(index, value)
+                    onMoved: v => Rack.setEffect(index, v)
+                }
+            }
+        }
+    }
+
     Knob { // pan
         visible: !strip.isMaster
         x: (strip.width - width) / 2
@@ -173,7 +302,7 @@ Item {
 
     Fader {
         x: strip.width / 2 - width + 6
-        y: strip.isMaster ? 34 : strip.below + 72
+        y: strip.isMaster ? strip.below + 6 : strip.below + 72
         height: strip.height - y - 32
         value: strip.rev >= 0 ? Rack.fader(strip.device) : 0.8
         displayText: Rack.faderText(value)
@@ -183,7 +312,7 @@ Item {
 
     Meter {
         x: strip.width / 2 + 14
-        y: strip.isMaster ? 40 : strip.below + 78
+        y: strip.isMaster ? strip.below + 12 : strip.below + 78
         height: strip.height - y - 38
         level: strip.isMaster ? Host.outputLevel : (Rack.meters[strip.device] ?? 0)
     }

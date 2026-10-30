@@ -25,8 +25,8 @@ class InstrumentInstance;
 // that instrument's button. Rack keys: "rack:playstop", "rack:mixer", "rack:song", "rack:seq", the sequencer's
 // "rack:seqrun", "rack:seqchain", "rack:seqnext", "rack:seqprevious", "rack:seqpattern1".."16", "rack:seqrange" (the
 // rack's own actions, kRackActions), "rack:focus:<n>", "rack:next",
-// "rack:previous", and the mixer's "rack:mix:<n>:fader|pan|mute|solo|lowgain|lowfreq|midgain|midfreq|midq|highgain|highfreq" (strip
-// n) and "rack:mix:master:fader". Notes can be learned for buttons (mute and
+// "rack:previous", and the mixer's "rack:mix:<n>:fader|pan|mute|solo|lowgain|lowfreq|midgain|midfreq|midq|highgain|highfreq|revsend|dlysend" (strip
+// n) and "rack:mix:master:fader|revlevel|revsize|dlylevel|dlytime|dlyfeedback". Notes can be learned for buttons (mute and
 // solo too).
 class RackMidiLearn final : public MidiLearnController
 {
@@ -56,7 +56,17 @@ public:
     inline static const QStringList kMixerControls{
         QStringLiteral("fader"),   QStringLiteral("pan"),     QStringLiteral("mute"),    QStringLiteral("solo"),
         QStringLiteral("lowgain"), QStringLiteral("lowfreq"), QStringLiteral("midgain"), QStringLiteral("midfreq"),
-        QStringLiteral("midq"),    QStringLiteral("highgain"), QStringLiteral("highfreq")};
+        QStringLiteral("midq"),    QStringLiteral("highgain"), QStringLiteral("highfreq"),
+        QStringLiteral("revsend"), QStringLiteral("dlysend"),
+        // The master strip's: the effects' returns.
+        QStringLiteral("revlevel"), QStringLiteral("revsize"), QStringLiteral("dlylevel"), QStringLiteral("dlytime"),
+        QStringLiteral("dlyfeedback")};
+    // Whether a mixer control belongs to the master strip (the fader and the returns) or to a strip.
+    static bool masterControl(int control)
+    {
+        return control == krate::Rack::MixerFader || control >= krate::Rack::MixerReverbLevel;
+    }
+    static bool stripControl(int control) { return control >= 0 && control < krate::Rack::MixerReverbLevel; }
     using ActionHandler = std::function<void(const QString &action)>; // one of kRackActions
 
     RackMidiLearn(krate::Rack &rack, std::vector<Device> devices, ActionHandler rackAction, QObject *parent);

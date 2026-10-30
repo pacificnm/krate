@@ -57,7 +57,7 @@ add_library(krate_rack STATIC
     rack/Rack.cpp
     rack/RackProcessor.h
 )
-target_link_libraries(krate_rack PUBLIC krate_core)
+target_link_libraries(krate_rack PUBLIC krate_core krate_dsp)
 target_compile_options(krate_rack PRIVATE ${KRATE_WARNINGS})
 
 # --- krate_song: songs to play along with (tempo map, MIDI files, .gp tab files, the player); no Qt

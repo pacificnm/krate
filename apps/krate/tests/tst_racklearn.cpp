@@ -290,6 +290,51 @@ private slots:
         QVERIFY(std::fabs(f.rack.eq(0, ChannelEq::MidFreq) - 10000.0f) < 0.5f);
     }
 
+    // Effects: sends per strip and the master's returns reach the rack, are
+    // kept in the mixer state (older states: no sends, default returns), the
+    // delay time snaps to its 7 positions, and both learn (returns only on the master).
+    void effects()
+    {
+        Fixture f;
+        QCOMPARE(f.controller->send(0, 0), 0.0);
+        QCOMPARE(f.controller->effectText(3, f.controller->effect(3)), QStringLiteral("1/8."));
+        f.controller->setSend(1, 0, 0.4);
+        f.controller->setSend(1, 1, 0.25);
+        QVERIFY(std::fabs(f.rack.send(1, Rack::Reverb) - 0.4f) < 1e-6f);
+        f.controller->setEffect(3, 0.95); // delay time: snaps to 1/2
+        QCOMPARE(f.controller->effect(3), 1.0);
+        QCOMPARE(f.controller->effectText(3, 1.0), QStringLiteral("1/2"));
+        QCOMPARE(f.controller->sendText(0.0), QStringLiteral("off"));
+
+        const QJsonObject state = f.controller->mixerState();
+        f.controller->setSend(1, 0, 0.0);
+        f.controller->setEffect(0, 0.1);
+        f.controller->setMixerState(state);
+        QCOMPARE(f.controller->send(1, 0), 0.4);
+        QCOMPARE(f.controller->send(1, 1), 0.25);
+        QCOMPARE(f.controller->effect(0), f.controller->effectDefault(0));
+        QCOMPARE(f.controller->effect(3), 1.0);
+
+        f.controller->setMixerState(QJsonObject{{"strips", QJsonObject{{"beta", QJsonObject{{"fader", 0.8}}}}}});
+        QCOMPARE(f.controller->send(1, 0), 0.0);    // an older state: no sends
+        QCOMPARE(f.controller->effect(3), 0.5);     // and the returns' defaults
+
+        f.teach("rack:mix:0:revsend", {cc(0, 30, 0)});
+        f.send({cc(0, 30, 127)});
+        f.controller->applyMixerMoves();
+        QCOMPARE(f.controller->send(0, 0), 1.0);
+        f.teach("rack:mix:master:dlyfeedback", {cc(0, 31, 0)});
+        f.send({cc(0, 31, 127)});
+        f.controller->applyMixerMoves();
+        QCOMPARE(f.controller->effect(4), 1.0);
+        f.learn->setActive(true);
+        f.learn->arm("rack:mix:0:revlevel"); // a return: only on the master
+        QVERIFY(f.learn->armedParam().isEmpty());
+        f.learn->arm("rack:mix:master:revsend"); // a send: only on a strip
+        QVERIFY(f.learn->armedParam().isEmpty());
+        f.learn->setActive(false);
+    }
+
     // Each instrument's own RUN / STOP runs just its sequencer; the rack's PLAY runs them all.
     void instrumentsRunOnTheirOwn()
     {

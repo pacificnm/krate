@@ -12,6 +12,10 @@ Rack::Rack(std::uint32_t maxFrames)
     : m_maxFrames(std::max<std::uint32_t>(maxFrames, 1))
     , m_silence(m_maxFrames, 0.0f)
 {
+    for (auto &bus : m_bus)
+        bus.assign(m_maxFrames, 0.0f);
+    m_dry.assign(2 * std::size_t(m_maxFrames), 0.0f);
+    m_quietFrames.fill(~std::uint64_t(0) / 2);
     for (auto &c : m_channelDevice)
         c.store(-1, std::memory_order_relaxed);
     clearMappings();
@@ -39,6 +43,8 @@ void Rack::prepare(double sampleRate) noexcept
         m_devices[std::size_t(i)].instrument->prepare(sampleRate, m_maxFrames);
         m_devices[std::size_t(i)].eqDsp.prepare(sampleRate);
     }
+    m_reverb.prepare(sampleRate);
+    m_delay.prepare(sampleRate);
 }
 
 // --- Any thread ---------------------------------------------------------------
@@ -85,6 +91,33 @@ float Rack::eq(int device, int band) const noexcept
     if (device < 0 || device >= m_count || band < 0 || band >= ChannelEq::Count)
         return 0.0f;
     return m_devices[std::size_t(device)].eq[std::size_t(band)].load(std::memory_order_relaxed);
+}
+
+void Rack::setSend(int device, int effect, float level) noexcept
+{
+    if (device >= 0 && device < m_count && effect >= 0 && effect < EffectCount)
+        m_devices[std::size_t(device)].sends[std::size_t(effect)].store(std::clamp(level, 0.0f, 1.0f),
+                                                                        std::memory_order_relaxed);
+}
+
+float Rack::send(int device, int effect) const noexcept
+{
+    if (device < 0 || device >= m_count || effect < 0 || effect >= EffectCount)
+        return 0.0f;
+    return m_devices[std::size_t(device)].sends[std::size_t(effect)].load(std::memory_order_relaxed);
+}
+
+void Rack::setReverb(float level, float size) noexcept
+{
+    m_reverbLevel.store(std::clamp(level, 0.0f, 1.0f), std::memory_order_relaxed);
+    m_reverbSize.store(std::clamp(size, 0.0f, 1.0f), std::memory_order_relaxed);
+}
+
+void Rack::setDelay(float level, int division, float feedback) noexcept
+{
+    m_delayLevel.store(std::clamp(level, 0.0f, 1.0f), std::memory_order_relaxed);
+    m_delayDivision.store(std::clamp(division, 0, int(kDelayBeats.size()) - 1), std::memory_order_relaxed);
+    m_delayFeedback.store(std::clamp(feedback, 0.0f, 0.9f), std::memory_order_relaxed);
 }
 
 void Rack::setMute(int device, bool mute) noexcept
@@ -376,6 +409,8 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
 
     std::fill_n(block.masterL + offset, frames, 0.0f);
     std::fill_n(block.masterR + offset, frames, 0.0f);
+    for (auto &bus : m_bus)
+        std::fill_n(bus.data(), frames, 0.0f);
 
     for (int i = 0; i < m_count; ++i) {
         Device &d = m_devices[std::size_t(i)];
@@ -413,6 +448,16 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
         // Ramp gains across the chunk so fader moves don't click.
         const float stepL = (targetL - d.gainL) / float(frames);
         const float stepR = (targetR - d.gainR) / float(frames);
+        // Effect sends, after the fader and pan (ramped too).
+        std::array<float, EffectCount> sendStep{};
+        bool sending = false;
+        for (int e = 0; e < EffectCount; ++e) {
+            const float target = d.sends[std::size_t(e)].load(std::memory_order_relaxed);
+            if (!m_primed)
+                d.sendGain[std::size_t(e)] = target;
+            sendStep[std::size_t(e)] = (target - d.sendGain[std::size_t(e)]) / float(frames);
+            sending = sending || target > 0.0f || d.sendGain[std::size_t(e)] > 0.0f;
+        }
         float peak = 0.0f;
         for (std::uint32_t s = 0; s < frames; ++s) {
             d.gainL += stepL;
@@ -421,6 +466,13 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
             const float r = d.right[s] * d.gainR;
             block.masterL[offset + s] += l;
             block.masterR[offset + s] += r;
+            if (sending)
+                for (int e = 0; e < EffectCount; ++e) {
+                    float &g = d.sendGain[std::size_t(e)];
+                    g += sendStep[std::size_t(e)];
+                    m_bus[std::size_t(2 * e)][s] += l * g;
+                    m_bus[std::size_t(2 * e + 1)][s] += r * g;
+                }
             peak = std::max(peak, std::max(std::fabs(l), std::fabs(r)));
         }
         d.gainL = targetL;
@@ -428,6 +480,9 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
         if (peak > d.peak.load(std::memory_order_relaxed))
             d.peak.store(peak, std::memory_order_relaxed);
     }
+
+    // The effects: each bus through its effect, only the effect's sound into the master.
+    processEffects(block, offset, frames);
 
     // Master level, then the master stage (soft clip + meter).
     const float masterTarget = m_masterLevel.load(std::memory_order_relaxed);
@@ -443,6 +498,41 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
     m_masterGain = masterTarget;
     float *const master[2] = {block.masterL + offset, block.masterR + offset};
     m_master.process(master, 2, frames);
+}
+
+void Rack::processEffects(const RackBlock &block, std::uint32_t offset, std::uint32_t frames) noexcept
+{
+    const double bpm = block.transport ? std::max(block.transport->bpm, 1.0) : 120.0;
+    for (int e = 0; e < EffectCount; ++e) {
+        float *l = m_bus[std::size_t(2 * e)].data();
+        float *r = m_bus[std::size_t(2 * e + 1)].data();
+        const float level = (e == Reverb ? m_reverbLevel : m_delayLevel).load(std::memory_order_relaxed);
+        bool input = false;
+        for (std::uint32_t s = 0; s < frames && !input; ++s)
+            input = l[s] != 0.0f || r[s] != 0.0f;
+        std::uint64_t &quiet = m_quietFrames[std::size_t(e)];
+        quiet = input ? 0 : quiet + frames;
+        // Nothing sent for longer than the longest tail (8 s reverb, the delay's
+        // echoes): skip it, and start clean next time.
+        const auto ringFrames = std::uint64_t(12.0 * m_sampleRate);
+        if (level <= 0.0f || quiet > ringFrames) {
+            if (quiet > ringFrames && quiet - frames <= ringFrames)
+                (e == Reverb ? static_cast<void>(m_reverb.clear()) : m_delay.clear());
+            continue;
+        }
+        std::copy_n(l, frames, m_dry.data());
+        std::copy_n(r, frames, m_dry.data() + frames);
+        if (e == Reverb) {
+            m_reverb.process(l, r, frames, m_reverbSize.load(std::memory_order_relaxed), 1.0);
+        } else {
+            const double beats = kDelayBeats[std::size_t(m_delayDivision.load(std::memory_order_relaxed))];
+            m_delay.process(l, r, frames, beats * 60.0 / bpm, 1.0, m_delayFeedback.load(std::memory_order_relaxed));
+        }
+        for (std::uint32_t s = 0; s < frames; ++s) { // the effect alone, at its return level
+            block.masterL[offset + s] += level * (l[s] - m_dry[s]);
+            block.masterR[offset + s] += level * (r[s] - m_dry[frames + s]);
+        }
+    }
 }
 
 } // namespace krate

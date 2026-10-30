@@ -10,6 +10,8 @@
 #include "core/Instrument.h"
 #include "core/MasterStage.h"
 #include "rack/ChannelEq.h"
+#include "dsp/Effects.h"
+#include "dsp/Reverb.h"
 #include "core/SpscQueue.h"
 
 namespace krate {
@@ -80,6 +82,10 @@ public:
         MixerFader, MixerPan, MixerMute, MixerSolo,
         // The strip's EQ knobs, in ChannelEq::Band order.
         MixerEqFirst, MixerEqLast = MixerEqFirst + ChannelEq::Count - 1,
+        // Its effect sends.
+        MixerReverbSend, MixerDelaySend,
+        // The effects' returns (the master strip's: device kRackDevice).
+        MixerReverbLevel, MixerReverbSize, MixerDelayLevel, MixerDelayTime, MixerDelayFeedback,
     };
     static constexpr bool isMixerButton(int control) { return control == MixerMute || control == MixerSolo; }
 
@@ -136,6 +142,16 @@ public:
     // Mixer. Level is linear gain (1 = unity); pan -1 (left) .. +1 (right), balance law.
     void setLevel(int device, float gain) noexcept;
     void setPan(int device, float pan) noexcept;
+    // Effects (docs/SHARED_FOUNDATIONS.MD#mixer-effects): each strip sends to
+    // the reverb and the delay (after its fader and pan; 0..1); their returns
+    // join the master before its fader. Delay time is a division of the beat.
+    enum Effect : int { Reverb, Delay, EffectCount };
+    static constexpr std::array<double, 7> kDelayBeats{0.25, 1.0 / 3.0, 0.5, 0.75, 1.0, 1.5, 2.0}; // 1/16 .. 1/2
+    void setSend(int device, int effect, float level) noexcept;
+    float send(int device, int effect) const noexcept;
+    void setReverb(float level, float size) noexcept;   // return level 0..1, size 0..1 (0.4 .. 8 s)
+    void setDelay(float level, int division, float feedback) noexcept; // division into kDelayBeats; feedback 0..0.9
+
     // A strip's EQ setting (ChannelEq::Band: dB, Hz or Q).
     void setEq(int device, int band, float value) noexcept;
     float eq(int device, int band) const noexcept;
@@ -178,6 +194,8 @@ private:
         std::atomic<float> pan{0.0f};
         std::array<std::atomic<float>, ChannelEq::Count> eq{};
         ChannelEq eqDsp; // audio thread
+        std::array<std::atomic<float>, EffectCount> sends{};
+        std::array<float, EffectCount> sendGain{}; // ramped, audio thread
         std::atomic<bool> mute{false};
         std::atomic<bool> solo{false};
         std::atomic<bool> focusable{true};
@@ -192,6 +210,7 @@ private:
     void processChunk(const RackBlock &block, std::uint32_t offset, std::uint32_t frames, std::uint32_t &nextEvent,
                       std::uint32_t &nextDeviceEvent) noexcept;
     void route(MidiEvent event) noexcept;
+    void processEffects(const RackBlock &block, std::uint32_t offset, std::uint32_t frames) noexcept;
     bool runAction(int action) noexcept;
     void forward(int device, const MidiEvent &event) noexcept;
     void applyCc(int channel, int cc, int value) noexcept;
@@ -218,6 +237,16 @@ private:
     SpscQueue<MixerMove, 512> m_mixerMoves; // faders send many
 
     MasterStage m_master;
+
+    // Effects: the buses the strips send to, the effects, their settings.
+    std::array<std::vector<float>, 2 * EffectCount> m_bus; // reverb L, R, delay L, R
+    std::vector<float> m_dry;                              // the bus before the effect (to keep only the effect)
+    krate::Reverb m_reverb;
+    krate::Delay m_delay{4.0};
+    std::atomic<float> m_reverbLevel{0.0f}, m_reverbSize{0.5f};
+    std::atomic<float> m_delayLevel{0.0f}, m_delayFeedback{0.35f};
+    std::atomic<int> m_delayDivision{3};
+    std::array<std::uint64_t, EffectCount> m_quietFrames{}; // since the bus last had anything in it
 };
 
 } // namespace krate

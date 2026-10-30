@@ -99,6 +99,19 @@ public:
     // Knob position <-> its value (dB, Hz or Q).
     static double eqValue(int band, qreal position);
     static qreal eqPosition(int band, double value);
+    // Effects (docs/SHARED_FOUNDATIONS.MD#mixer-effects): a strip's sends
+    // (effect 0 reverb, 1 delay; 0..1), and the returns on the master strip:
+    // 0 reverb level, 1 reverb size, 2 delay level, 3 delay time (7 positions:
+    // 1/16 .. 1/2), 4 delay feedback; all knob positions 0..1.
+    Q_INVOKABLE qreal send(int device, int effect) const;
+    Q_INVOKABLE void setSend(int device, int effect, qreal position);
+    Q_INVOKABLE QString sendText(qreal position) const;
+    Q_INVOKABLE qreal effect(int control) const;
+    Q_INVOKABLE void setEffect(int control, qreal position);
+    Q_INVOKABLE QString effectText(int control, qreal position) const;
+    Q_INVOKABLE qreal effectDefault(int control) const;
+    static constexpr int kEffectControls = 5;
+    static constexpr int kDelayTimes = 7;
     Q_INVOKABLE bool mute(int device) const;
     Q_INVOKABLE void setMute(int device, bool mute);
     Q_INVOKABLE bool solo(int device) const;
@@ -123,6 +136,9 @@ public:
     // A strip's EQ knobs as saved ([7 positions]); missing ones are flat.
     QJsonArray eqJson(int device) const;
     void setEqJson(int device, const QJsonArray &values);
+    // The effects' returns as saved ([5 positions]); missing: the defaults.
+    QJsonArray effectsJson() const;
+    void setEffectsJson(const QJsonArray &values);
     void setMixerState(const QJsonObject &state);
 
 signals:
@@ -142,6 +158,7 @@ private:
         qreal fader = kUnityFader;
         qreal pan = 0.0;
         std::array<qreal, krate::ChannelEq::Count> eq = defaultEq();
+        std::array<qreal, 2> sends{};
         bool mute = false;
         bool solo = false;
     };
@@ -158,6 +175,8 @@ private:
     QStringList m_names, m_modules, m_components;
     QList<Strip> m_strips;
     qreal m_masterFader = kUnityFader;
+    std::array<qreal, kEffectControls> m_effects{0.7, 0.5, 0.7, 0.5, 0.35 / 0.9};
+    void applyEffects();
     int m_focus = 0;
     RackRunControl *m_run = nullptr;
     bool m_shownPlaying = false; // the play state last announced

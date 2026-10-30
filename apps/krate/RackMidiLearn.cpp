@@ -54,11 +54,11 @@ std::optional<RackMidiLearn::Mapping> RackMidiLearn::resolve(const QString &key)
         if (parts.size() != 4 || control < 0)
             return std::nullopt;
         if (parts[2] == u"master")
-            return control == krate::Rack::MixerFader ? std::optional(Mapping{Kind::Mixer, krate::Rack::kRackDevice, krate::Rack::MixerFader})
-                                                      : std::nullopt;
+            return masterControl(int(control)) ? std::optional(Mapping{Kind::Mixer, krate::Rack::kRackDevice, int(control)})
+                                               : std::nullopt;
         bool ok = false;
         const int device = parts[2].toInt(&ok);
-        if (ok && device >= 0 && device < int(m_devices.size()))
+        if (ok && device >= 0 && device < int(m_devices.size()) && stripControl(int(control)))
             return Mapping{Kind::Mixer, device, int(control)};
         return std::nullopt;
     }
@@ -289,9 +289,9 @@ void RackMidiLearn::loadMappings(const QJsonArray &mappings)
             }
         } else if (kind == u"mixer") {
             const qsizetype control = kMixerControls.indexOf(key);
-            if (deviceId == u"master" && control == krate::Rack::MixerFader)
-                m = Mapping{Kind::Mixer, krate::Rack::kRackDevice, krate::Rack::MixerFader};
-            else if (device >= 0 && control >= 0)
+            if (deviceId == u"master" && masterControl(int(control)))
+                m = Mapping{Kind::Mixer, krate::Rack::kRackDevice, int(control)};
+            else if (device >= 0 && stripControl(int(control)))
                 m = Mapping{Kind::Mixer, device, int(control)};
         }
         const bool button = m && (m->kind == Kind::FocusAction || m->kind == Kind::Action

@@ -42,6 +42,7 @@ RackController::RackController(krate::Rack &rack, krate::Transport &transport,
         m_meters.append(0.0);
     }
     m_focus = m_rack.focus();
+    applyEffects(); // the returns' defaults
 
     m_pollTimer.setInterval(kPollIntervalMs);
     connect(&m_pollTimer, &QTimer::timeout, this, &RackController::poll);
@@ -305,6 +306,76 @@ void RackController::setEqJson(int device, const QJsonArray &values)
         setEq(device, b, b < values.size() ? values[b].toDouble(eqDefault(b)) : eqDefault(b));
 }
 
+// --- Effects ----------------------------------------------------------------------------
+
+qreal RackController::send(int device, int effect) const
+{
+    if (device < 0 || device >= m_strips.size() || effect < 0 || effect > 1)
+        return 0.0;
+    return m_strips[device].sends[std::size_t(effect)];
+}
+
+void RackController::setSend(int device, int effect, qreal position)
+{
+    if (device < 0 || device >= m_strips.size() || effect < 0 || effect > 1)
+        return;
+    m_strips[device].sends[std::size_t(effect)] = qBound(0.0, position, 1.0);
+    m_rack.setSend(device, effect, float(m_strips[device].sends[std::size_t(effect)]));
+    ++m_mixerRevision;
+    emit mixerChanged();
+}
+
+QString RackController::sendText(qreal position) const
+{
+    return position <= 0.0 ? QStringLiteral("off") : QStringLiteral("%1%").arg(qRound(position * 100.0));
+}
+
+qreal RackController::effect(int control) const
+{
+    return control >= 0 && control < kEffectControls ? m_effects[std::size_t(control)] : 0.0;
+}
+
+qreal RackController::effectDefault(int control) const
+{
+    static constexpr std::array<qreal, kEffectControls> defaults{0.7, 0.5, 0.7, 0.5, 0.35 / 0.9};
+    return control >= 0 && control < kEffectControls ? defaults[std::size_t(control)] : 0.0;
+}
+
+void RackController::setEffect(int control, qreal position)
+{
+    if (control < 0 || control >= kEffectControls)
+        return;
+    position = qBound(0.0, position, 1.0);
+    if (control == 3) // delay time: one of its positions
+        position = qRound(position * (kDelayTimes - 1)) / qreal(kDelayTimes - 1);
+    m_effects[std::size_t(control)] = position;
+    applyEffects();
+    ++m_mixerRevision;
+    emit mixerChanged();
+}
+
+void RackController::applyEffects()
+{
+    m_rack.setReverb(float(m_effects[0]), float(m_effects[1]));
+    m_rack.setDelay(float(m_effects[2]), qRound(m_effects[3] * (kDelayTimes - 1)), float(m_effects[4] * 0.9));
+}
+
+QString RackController::effectText(int control, qreal position) const
+{
+    switch (control) {
+    case 1:
+        return QStringLiteral("%1 s").arg(krate::Reverb::decaySeconds(position), 0, 'f', 1);
+    case 3: {
+        static const char *names[kDelayTimes] = {"1/16", "1/8T", "1/8", "1/8.", "1/4", "1/4.", "1/2"};
+        return QString::fromLatin1(names[qBound(0, qRound(position * (kDelayTimes - 1)), kDelayTimes - 1)]);
+    }
+    case 4:
+        return QStringLiteral("%1%").arg(qRound(position * 90.0));
+    default:
+        return QStringLiteral("%1%").arg(qRound(position * 100.0));
+    }
+}
+
 bool RackController::mute(int device) const
 {
     return device >= 0 && device < m_strips.size() && m_strips[device].mute;
@@ -376,6 +447,20 @@ void RackController::setSolo(int device, bool solo)
     emit mixerChanged();
 }
 
+QJsonArray RackController::effectsJson() const
+{
+    QJsonArray a;
+    for (qreal v : m_effects)
+        a.append(v);
+    return a;
+}
+
+void RackController::setEffectsJson(const QJsonArray &values)
+{
+    for (int c = 0; c < kEffectControls; ++c)
+        setEffect(c, c < values.size() ? values[c].toDouble(effectDefault(c)) : effectDefault(c));
+}
+
 QJsonObject RackController::mixerState() const
 {
     QJsonObject strips;
@@ -384,8 +469,11 @@ QJsonObject RackController::mixerState() const
                                               {QStringLiteral("pan"), m_strips[i].pan},
                                               {QStringLiteral("mute"), m_strips[i].mute},
                                               {QStringLiteral("solo"), m_strips[i].solo},
-                                              {QStringLiteral("eq"), eqJson(int(i))}};
-    return QJsonObject{{QStringLiteral("strips"), strips}, {QStringLiteral("master"), m_masterFader}};
+                                              {QStringLiteral("eq"), eqJson(int(i))},
+                                              {QStringLiteral("sends"), QJsonArray{m_strips[i].sends[0], m_strips[i].sends[1]}}};
+    return QJsonObject{{QStringLiteral("strips"), strips},
+                       {QStringLiteral("master"), m_masterFader},
+                       {QStringLiteral("effects"), effectsJson()}};
 }
 
 void RackController::setMixerState(const QJsonObject &state)
@@ -400,9 +488,13 @@ void RackController::setMixerState(const QJsonObject &state)
         setMute(int(i), s.value(u"mute").toBool(false));
         setSolo(int(i), s.value(u"solo").toBool(false));
         setEqJson(int(i), s.value(u"eq").toArray()); // none saved (older files): flat
+        const QJsonArray sends = s.value(u"sends").toArray();
+        for (int e = 0; e < 2; ++e)
+            setSend(int(i), e, sends.at(e).toDouble(0.0)); // none saved: no sends
     }
     if (state.contains(u"master"))
         setFader(-1, state.value(u"master").toDouble(kUnityFader));
+    setEffectsJson(state.value(u"effects").toArray());
 }
 
 void RackController::applyMixerMoves()
@@ -432,6 +524,17 @@ void RackController::applyMixerMoves()
         case krate::Rack::MixerEqFirst + krate::ChannelEq::HighGain:
         case krate::Rack::MixerEqFirst + krate::ChannelEq::HighFreq:
             setEq(device, move->control - krate::Rack::MixerEqFirst, move->value / 127.0);
+            break;
+        case krate::Rack::MixerReverbSend:
+        case krate::Rack::MixerDelaySend:
+            setSend(device, move->control - krate::Rack::MixerReverbSend, move->value / 127.0);
+            break;
+        case krate::Rack::MixerReverbLevel:
+        case krate::Rack::MixerReverbSize:
+        case krate::Rack::MixerDelayLevel:
+        case krate::Rack::MixerDelayTime:
+        case krate::Rack::MixerDelayFeedback:
+            setEffect(move->control - krate::Rack::MixerReverbLevel, move->value / 127.0);
             break;
         default:
             break;

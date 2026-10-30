@@ -57,6 +57,7 @@ void RackSession::load()
         if (const double bpm = json.value(u"tempo").toDouble(0); bpm > 0)
             m_controller.setBpm(bpm);
         m_controller.setFader(-1, json.value(u"master").toDouble(RackController::kUnityFader));
+        m_controller.setEffectsJson(json.value(u"effects").toArray());
 
         const QJsonObject devices = json.value(u"devices").toObject();
         for (int i = 0; i < m_ids.size(); ++i) {
@@ -66,6 +67,9 @@ void RackSession::load()
             m_controller.setFader(i, d.value(u"fader").toDouble(RackController::kUnityFader));
             m_controller.setPan(i, d.value(u"pan").toDouble(0.0));
             m_controller.setEqJson(i, d.value(u"eq").toArray());
+            const QJsonArray sends = d.value(u"sends").toArray();
+            for (int e = 0; e < 2; ++e)
+                m_controller.setSend(i, e, sends.at(e).toDouble(0.0));
             m_controller.setMute(i, d.value(u"mute").toBool(false));
             m_controller.setSolo(i, d.value(u"solo").toBool(false));
             // Channel routing: notes on these channels (1..16) go to the instrument;
@@ -142,6 +146,7 @@ void RackSession::save()
                                      {QStringLiteral("fader"), m_controller.fader(i)},
                                      {QStringLiteral("pan"), m_controller.pan(i)},
                                      {QStringLiteral("eq"), m_controller.eqJson(i)},
+                                     {QStringLiteral("sends"), QJsonArray{m_controller.send(i, 0), m_controller.send(i, 1)}},
                                      {QStringLiteral("mute"), m_controller.mute(i)},
                                      {QStringLiteral("solo"), m_controller.solo(i)},
                                      {QStringLiteral("channels"), channels},
@@ -160,6 +165,7 @@ void RackSession::save()
         {QStringLiteral("bufferSize"), m_bufferSize},
         {QStringLiteral("outputDevice"), m_outputDevice},
         {QStringLiteral("master"), m_controller.fader(-1)},
+        {QStringLiteral("effects"), m_controller.effectsJson()},
         {QStringLiteral("devices"), devices},
         {QStringLiteral("mappings"), m_learn.saveMappings()},
     };

@@ -64,10 +64,11 @@ public:
             received.push_back(block.midi[i]);
         if (block.transport)
             transports.push_back(*block.transport);
-        if (sineHz > 0.0) { // a sine of amplitude dc instead
+        if (sineHz > 0.0) { // a sine of amplitude dc instead (silent from `quietAfter` on)
             for (std::uint32_t i = 0; i < block.frames; ++i) {
-                block.outputs[0][i] = block.outputs[1][i] = dc * float(std::sin(phase));
+                block.outputs[0][i] = block.outputs[1][i] = played < quietAfter ? dc * float(std::sin(phase)) : 0.0f;
                 phase += 2.0 * std::numbers::pi * sineHz / sampleRate;
+                ++played;
             }
             return;
         }
@@ -76,6 +77,7 @@ public:
     }
     double sineHz = 0.0;
     double phase = 0.0;
+    std::uint64_t played = 0, quietAfter = ~std::uint64_t(0);
 
     std::span<const ParamDescriptor> params;
     std::vector<float> values;
@@ -549,6 +551,70 @@ private slots:
         const auto out = run(rack, 4800);
         for (std::size_t i = 0; i < out.left.size(); ++i)
             QCOMPARE(out.left[i], MasterStage::shape(out.devices[0][i]));
+    }
+
+    // Effects: nothing sent, nothing changes (bit for bit, returns up or not);
+    // the delay's first echo comes exactly one division later; the reverb rings
+    // on after the sound stops; a return at 0, a muted strip or a closed fader
+    // sends nothing.
+    void effects()
+    {
+        TransportState t;
+        t.playing = true;
+        t.bpm = 120.0;
+        struct Setup
+        {
+            float send = 0.0f;
+            int effect = Rack::Reverb;
+            float returnLevel = 1.0f;
+            bool mute = false;
+            float level = 1.0f;
+        };
+        const auto run2 = [&t](Setup su, std::uint64_t frames) {
+            FakeDevice a(kParamsA, 0.2f);
+            a.sineHz = 1000.0;
+            a.quietAfter = 4800; // 0.1 s of sine, then silence
+            Rack rack(256);
+            rack.addDevice(a);
+            rack.prepare(48000.0);
+            rack.setLevel(0, su.level);
+            rack.setMute(0, su.mute);
+            rack.setSend(0, su.effect, su.send);
+            rack.setReverb(su.effect == Rack::Reverb ? su.returnLevel : 0.0f, 0.5f);
+            rack.setDelay(su.effect == Rack::Delay ? su.returnLevel : 0.0f, 4, 0.5f); // 1/4: 0.5 s at 120 BPM
+            std::vector<float> left;
+            for (std::uint64_t done = 0; done < frames; done += 256) {
+                const auto out = run(rack, 256, {}, &t);
+                left.insert(left.end(), out.left.begin(), out.left.end());
+            }
+            return left;
+        };
+        const auto rms = [](const std::vector<float> &x, std::size_t from, std::size_t to) {
+            double sum = 0.0;
+            for (std::size_t i = from; i < to; ++i)
+                sum += double(x[i]) * x[i];
+            return std::sqrt(sum / double(to - from));
+        };
+
+        // Nothing sent: the same samples as with the effects' returns down.
+        const auto none = run2({0.0f, Rack::Reverb, 1.0f}, 24064);
+        const auto off = run2({0.0f, Rack::Reverb, 0.0f}, 24064);
+        QVERIFY(none == off);
+        QVERIFY(rms(none, 4900, 24000) == 0.0);
+
+        // Delay: silence after the sine until the echo, 0.5 s after it began.
+        const auto delayed = run2({1.0f, Rack::Delay}, 48000);
+        QVERIFY2(rms(delayed, 5000, 23900) < 1e-6, qPrintable(QString::number(rms(delayed, 5000, 23900))));
+        QVERIFY2(rms(delayed, 24100, 28700) > 0.02, qPrintable(QString::number(rms(delayed, 24100, 28700))));
+
+        // Reverb: a tail after the sound stops; none with its return at 0.
+        const auto wet = run2({1.0f, Rack::Reverb}, 24064);
+        QVERIFY2(rms(wet, 9600, 19200) > 1e-3, qPrintable(QString::number(rms(wet, 9600, 19200))));
+        QVERIFY(rms(run2({1.0f, Rack::Reverb, 0.0f}, 24064), 9600, 19200) == 0.0);
+
+        // Muted, or the fader down: nothing reaches the effects (sends are after the fader).
+        QVERIFY(rms(run2({1.0f, Rack::Reverb, 1.0f, true}, 24064), 0, 24000) == 0.0);
+        QVERIFY(rms(run2({1.0f, Rack::Reverb, 1.0f, false, 0.0f}, 24064), 0, 24000) == 0.0);
     }
 
     void meters()

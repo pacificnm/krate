@@ -199,6 +199,18 @@ Every instrument's strip has an EQ above its pan knob (`krate::ChannelEq`, `shar
 - MIDI Learn: every EQ knob, keys `rack:mix:<n>:lowgain|lowfreq|midgain|midfreq|midq|highgain|highfreq`.
 - Measured (`tst_rack`): each band on a sine within 0.2 dB of the filter's response.
 
+### Mixer effects
+
+The mixer has two shared effects, a **reverb** and a **delay**, that every strip can send to (`krate::Rack`: `setSend`, `setReverb`, `setDelay`):
+
+- **SENDS** (under each strip's EQ): **REV** and **DLY**, 0–100 %, taken after the strip's fader and pan, so a muted strip or a closed fader sends nothing. Off by default.
+- **EFFECTS** (on the master strip, above its fader): **REV** (the reverb's return level) and **SIZE** (0.4–8 s); **DLY** (the delay's return level), **TIME** (1/16, 1/8T, 1/8, 1/8., 1/4, 1/4., 1/2, in time with the rack's tempo) and **FDBK** (feedback 0–90 %). Defaults: returns 70 %, size 1.3 s, 1/8., 35 %.
+- The effects are the shared `krate::Reverb` (an 8-line feedback delay network) and `krate::Delay` (ping-pong, darker each repeat). Each bus goes through its effect and only the effect's sound joins the master, before the master fader and the master stage.
+- Nothing sent (or a return at 0): the effect isn't run, and the output is bit for bit what it was without it. After 12 s with nothing sent (longer than any tail) it stops and starts clean next time.
+- Saved with the mixer: each device's `"sends"` and the top-level `"effects"` (5 knob positions) in `rack.json`, and in songs' and sequences' mixers; older files: no sends, default returns.
+- MIDI Learn: `rack:mix:<n>:revsend|dlysend`, `rack:mix:master:revlevel|revsize|dlylevel|dlytime|dlyfeedback`.
+- Measured (`tst_rack`): the delay's first echo exactly one division later (silent before it), the reverb's tail after the sound stops, nothing from a muted strip or a closed fader, bit-exact with nothing sent.
+
 ### Master stage
 
 `krate::MasterStage` (`shared/core/MasterStage.h`) is the last stage before the outputs, in the rack and in every standalone host and render tool: a soft clip plus the master meter. The instruments don't limit; this stage makes sure nothing ever leaves as a hard over. The curve is linear up to the knee at 0.5 (−6 dBFS), untouched, then `0.5 + 0.5·tanh((|x| − 0.5) / 0.5)` above it: the same slope where they meet (no corner), approaching 1.0.
