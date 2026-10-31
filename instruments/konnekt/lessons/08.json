@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "A sequenced bass part",
- "text": "A Clock ticks; a Sequencer steps through 8 notes on each tick and sends its own PITCH and GATE. Hold a key: TRANSPOSE (from MIDI In's PITCH) plays the pattern from it. Try: turn the step knobs to make a line; switch steps off for rests; LENGTH 5 or 7 for odd loops; the Slew's RISE and FALL up a little for glides; RESONANCE and the filter's CV for squelch. One voice: a monophonic synth.",
+ "text": "A Clock ticks; a Sequencer steps through 8 notes on each tick and sends its own PITCH and GATE. Hold a key around C3: TRANSPOSE (from MIDI In's PITCH) plays the pattern from it. Try: turn the step knobs to make a line; switch steps off for rests; LENGTH 5 or 7 for odd loops; the Slew's RISE and FALL up a little for glides; RESONANCE and the filter's CV for squelch. One voice: a monophonic synth.",
  "voices": 1,
  "modules": [
   {
@@ -53,7 +53,7 @@
    "x": 168,
    "y": 486,
    "knobs": {
-    "octave": -2.0
+    "octave": -1.0
    }
   },
   {
@@ -112,60 +112,67 @@
    "color": 1
   },
   {
+   "from": 2,
+   "out": "pitch",
+   "to": 1,
+   "in": "transpose",
+   "color": 2
+  },
+  {
    "from": 1,
    "out": "pitch",
    "to": 3,
    "in": "in",
-   "color": 2
+   "color": 3
   },
   {
    "from": 3,
    "out": "out",
    "to": 4,
    "in": "pitch",
-   "color": 3
+   "color": 4
   },
   {
    "from": 4,
    "out": "saw",
    "to": 5,
    "in": "in",
-   "color": 4
+   "color": 5
   },
   {
    "from": 1,
    "out": "gate",
    "to": 6,
    "in": "gate",
-   "color": 5
+   "color": 6
   },
   {
    "from": 6,
    "out": "env",
    "to": 5,
    "in": "cutoff",
-   "color": 6
+   "color": 7
   },
   {
    "from": 6,
    "out": "env",
    "to": 7,
    "in": "cv",
-   "color": 7
+   "color": 0
   },
   {
    "from": 5,
    "out": "out",
    "to": 7,
    "in": "in",
-   "color": 0
+   "color": 1
   },
   {
    "from": 7,
    "out": "out",
    "to": 8,
    "in": "left",
-   "color": 1
+   "color": 2
   }
  ],
  "midi": []

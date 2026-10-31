@@ -1,0 +1,135 @@
+{
+ "version": 1,
+ "title": "Sub Drop",
+ "category": "Bass",
+ "text": "Sound: a deep sine bass that drops into each note from above, the punchy low end of big beat and breakbeat tracks (and a passable electronic kick on low notes).\n\nHow it's built: a sine two octaves down; a fast envelope into its FM bends the pitch down over the first few hundredths of a second; the amp envelope holds while the key is down; a little Drive adds harmonics so it's heard on small speakers.\n\nPlay: low notes, short and long.\n\nTweak: the pitch envelope's DECAY (longer is a slower drop, a 'boing'), the oscillator's FM (how far it drops), DRIVE.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": -2.0,
+    "fm_amount": 1.5
+   }
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.06,
+    "sustain": 0.0,
+    "release": 0.05
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 664,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.4,
+    "sustain": 0.8,
+    "release": 0.15
+   }
+  },
+  {
+   "slot": 4,
+   "type": "vca",
+   "x": 16,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 5,
+   "type": "drive",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "drive": 0.35,
+    "level": 0.8
+   }
+  },
+  {
+   "slot": 6,
+   "type": "output",
+   "x": 320,
+   "y": 486,
+   "knobs": {
+    "volume": 0.6
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 1,
+   "in": "fm",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "sine",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 3,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 4,
+   "in": "cv",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 6,
+   "in": "left",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

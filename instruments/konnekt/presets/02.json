@@ -1,0 +1,258 @@
+{
+ "version": 1,
+ "title": "Acid Squelch",
+ "category": "Bass",
+ "text": "Sound: the rubbery, screaming acid line of acid house and acid techno: a resonant filter squelching on every note, sliding between some of them, the cutoff slowly drifting as if a hand were on the knob.\n\nHow it's built: Clock 1/16 \u2192 Sequencer \u2192 Slew (the slides) \u2192 a saw, an octave down. The Ladder filter at -24 dB with RESONANCE high; a short envelope and a slow LFO are mixed into its CUTOFF (the envelope squelches each note, the LFO plays the knob for you). Drive after the filter for grit; a delay for space. Hold a key around C3 and the line plays from it (it plays from C3 until you do).\n\nTweak: RESONANCE (the scream), the filter's CV (how far each note squelches), the envelope's DECAY, the Slew's times (longer slides), the LFO's RATE; turn the LFO's mixer level down and play CUTOFF yourself.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 132.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "sequencer",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "pitch1": 0,
+    "pitch2": 12,
+    "pitch3": 0,
+    "pitch4": 3,
+    "pitch5": 0,
+    "pitch6": 12,
+    "pitch7": 7,
+    "pitch8": 10,
+    "gate4": 0.0,
+    "gate_length": 0.6
+   }
+  },
+  {
+   "slot": 2,
+   "type": "midi_in",
+   "x": 704,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "slew",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "rise": 0.035,
+    "fall": 0.035
+   }
+  },
+  {
+   "slot": 4,
+   "type": "oscillator",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 448,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.16,
+    "sustain": 0.0,
+    "release": 0.08
+   }
+  },
+  {
+   "slot": 6,
+   "type": "lfo",
+   "x": 664,
+   "y": 486,
+   "knobs": {
+    "rate": 0.09,
+    "wave": 0.0
+   }
+  },
+  {
+   "slot": 7,
+   "type": "mixer",
+   "x": 880,
+   "y": 486,
+   "knobs": {
+    "level1": 1.0,
+    "level2": 0.45
+   }
+  },
+  {
+   "slot": 8,
+   "type": "ladder",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "cutoff": 260.0,
+    "res": 0.82,
+    "cv_amount": 4.5,
+    "slope": 1.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "vca",
+   "x": 232,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 10,
+   "type": "drive",
+   "x": 384,
+   "y": 956,
+   "knobs": {
+    "drive": 0.45,
+    "level": 0.6
+   }
+  },
+  {
+   "slot": 11,
+   "type": "delay",
+   "x": 536,
+   "y": 956,
+   "knobs": {
+    "time": 0.34,
+    "feedback": 0.35,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 12,
+   "type": "output",
+   "x": 688,
+   "y": 956,
+   "knobs": {
+    "volume": 1.0
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "sixteenth",
+   "to": 1,
+   "in": "clock",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 1,
+   "in": "reset",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "pitch",
+   "to": 1,
+   "in": "transpose",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "pitch",
+   "to": 3,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "pitch",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "saw",
+   "to": 8,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 1,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 7,
+   "in": "in1",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "in2",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "cutoff",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 9,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 10,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 10,
+   "out": "out",
+   "to": 11,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 11,
+   "out": "left",
+   "to": 12,
+   "in": "left",
+   "color": 6
+  },
+  {
+   "from": 11,
+   "out": "right",
+   "to": 12,
+   "in": "right",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

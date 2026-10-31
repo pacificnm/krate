@@ -1,0 +1,206 @@
+{
+ "version": 1,
+ "title": "Industrial Drone",
+ "category": "Pads and atmospheres",
+ "text": "Sound: a dark, breathing drone: low hum and hiss in a huge space, a resonant band slowly moving through it. The bed under an industrial track.\n\nHow it's built: pink noise and a low saw mixed into the State-Variable filter's band-pass, with RESONANCE up so it rings; a very slow LFO moves the CUTOFF. The envelope fades it in over seconds and out over more. A long Delay and a big Reverb.\n\nPlay: hold one low note (or two).\n\nTweak: the LFO's RATE, the filter's RESONANCE and CV, the mixer's noise level, the reverb's SIZE.",
+ "voices": 2,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": -2.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "noise",
+   "x": 448,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "lfo",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "rate": 0.06,
+    "wave": 6.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 816,
+   "y": 16,
+   "knobs": {
+    "level1": 0.5,
+    "level2": 0.6
+   }
+  },
+  {
+   "slot": 5,
+   "type": "svf",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 350.0,
+    "res": 0.6,
+    "cv_amount": 2.5
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 1.5,
+    "decay": 1.0,
+    "sustain": 1.0,
+    "release": 3.0
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "delay",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "time": 0.8,
+    "feedback": 0.55,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 9,
+   "type": "reverb",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "size": 0.9,
+    "mix": 0.45
+   }
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 904,
+   "y": 486,
+   "knobs": {
+    "volume": 1.0
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 4,
+   "in": "in1",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "pink",
+   "to": 4,
+   "in": "in2",
+   "color": 2
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 5,
+   "in": "cutoff",
+   "color": 4
+  },
+  {
+   "from": 5,
+   "out": "band",
+   "to": 7,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 2
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "title": "Noise Riser",
+ "category": "Effects",
+ "text": "Sound: the rising white-noise sweep that builds tension before a drop in big beat, rave and techno: hold a key and it climbs for eight seconds.\n\nHow it's built: white noise through the State-Variable filter's band-pass; an envelope with an eight-second ATTACK sweeps the CUTOFF up (CV at 6 octaves) while a second, slightly quicker envelope fades the volume in. A Reverb for size.\n\nPlay: hold one key for the build, let go at the drop.\n\nTweak: the sweep envelope's ATTACK (the length of the build), the filter's RESONANCE (more is whistlier), the reverb's MIX.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "noise",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "svf",
+   "x": 320,
+   "y": 16,
+   "knobs": {
+    "cutoff": 200.0,
+    "res": 0.45,
+    "cv_amount": 6.0
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 536,
+   "y": 16,
+   "knobs": {
+    "attack": 8.0,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 0.5
+   }
+  },
+  {
+   "slot": 4,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 3.0,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 0.6
+   }
+  },
+  {
+   "slot": 5,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 6,
+   "type": "reverb",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "size": 0.7,
+    "mix": 0.35
+   }
+  },
+  {
+   "slot": 7,
+   "type": "output",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "volume": 1.0
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 1,
+   "out": "white",
+   "to": 2,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 3,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 2,
+   "in": "cutoff",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "band",
+   "to": 5,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 4,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "env",
+   "to": 5,
+   "in": "cv",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 6,
+   "in": "left",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "left",
+   "to": 7,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "right",
+   "to": 7,
+   "in": "right",
+   "color": 0
+  }
+ ],
+ "midi": []
+}

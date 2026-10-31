@@ -1,0 +1,252 @@
+{
+ "version": 1,
+ "title": "Rave Stab",
+ "category": "Leads and stabs",
+ "text": "Sound: the bright, short chord stab of early-90s rave, acid and techno: play a chord and it hits and dies away into a little room.\n\nHow it's built: per voice, two saws a few cents apart and a pulse an octave up, through the Ladder filter; one envelope sweeps the filter shut quickly, another shapes the volume (no sustain: a stab). Then Chorus for width and Reverb for the room. Six voices for chords.\n\nPlay: minor chords and minor sevenths, in rhythm.\n\nTweak: the filter envelope's DECAY (shorter is snappier), the filter's CUTOFF and CV, the reverb's SIZE and MIX.",
+ "voices": 6,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "tune": 0.1
+   }
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0,
+    "width": 0.35
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "level1": 0.5,
+    "level2": 0.5,
+    "level3": 0.3
+   }
+  },
+  {
+   "slot": 5,
+   "type": "ladder",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "cutoff": 700.0,
+    "res": 0.25,
+    "cv_amount": 4.0
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.22,
+    "sustain": 0.0,
+    "release": 0.2
+   }
+  },
+  {
+   "slot": 7,
+   "type": "envelope",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.45,
+    "sustain": 0.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 8,
+   "type": "vca",
+   "x": 16,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 9,
+   "type": "chorus",
+   "x": 168,
+   "y": 956,
+   "knobs": {
+    "mode": 1.0
+   }
+  },
+  {
+   "slot": 10,
+   "type": "reverb",
+   "x": 320,
+   "y": 956,
+   "knobs": {
+    "size": 0.55,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 11,
+   "type": "output",
+   "x": 472,
+   "y": 956,
+   "knobs": {
+    "volume": 0.89
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 4,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 4,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "pulse",
+   "to": 4,
+   "in": "in3",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 5,
+   "in": "cutoff",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 5,
+   "in": "key",
+   "color": 1
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 8,
+   "in": "cv",
+   "color": 4
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 6
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 7
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 1
+  }
+ ],
+ "midi": []
+}

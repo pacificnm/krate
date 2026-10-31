@@ -39,13 +39,17 @@ class KonnektController : public QObject
     Q_PROPERTY(bool learning READ learning WRITE setLearning NOTIFY learnChanged)
     Q_PROPERTY(int notesHeld READ notesHeld NOTIFY frameChanged)
     Q_PROPERTY(QString scopeName READ scopeName NOTIFY changed)          // what the scope shows, "" = nothing
-    // Patches saved by name (~/.local/share/konnekt/patches), and the lessons.
+    // Patches saved by name (~/.local/share/konnekt/patches), the lessons and the
+    // presets (in the app's resources). A lesson or preset loaded shows its
+    // text (the sheet) until it's closed or something else is loaded.
     Q_PROPERTY(QStringList patchNames READ patchNames NOTIFY patchesChanged)
     Q_PROPERTY(QString patchName READ patchName NOTIFY patchesChanged)   // the one loaded or saved last, "" = none
     Q_PROPERTY(QVariantList lessons READ lessons NOTIFY patchesChanged) // [{index, title}]
     Q_PROPERTY(int lesson READ lesson NOTIFY patchesChanged)            // the lesson loaded, -1 = none
-    Q_PROPERTY(QString lessonTitle READ lessonTitle NOTIFY patchesChanged)
-    Q_PROPERTY(QString lessonText READ lessonText NOTIFY patchesChanged)
+    Q_PROPERTY(QVariantList presets READ presets NOTIFY patchesChanged) // [{index, title, category}]
+    Q_PROPERTY(int preset READ preset NOTIFY patchesChanged)            // the preset loaded, -1 = none
+    Q_PROPERTY(QString sheetTitle READ sheetTitle NOTIFY patchesChanged) // the lesson's or preset's
+    Q_PROPERTY(QString sheetText READ sheetText NOTIFY patchesChanged)
 
 public:
     KonnektController(konnekt::Engine &engine, const QString &dataDir, QObject *parent);
@@ -118,12 +122,16 @@ public:
     Q_INVOKABLE void deletePatch(const QString &name);
     QVariantList lessons() const;
     int lesson() const { return m_lesson; }
-    QString lessonTitle() const { return m_lessonTitle; }
-    QString lessonText() const { return m_lessonText; }
     Q_INVOKABLE bool loadLesson(int index);
-    Q_INVOKABLE void closeLesson();
-    // Where the lessons are: the app's resources (tests: the source folder).
+    QVariantList presets() const;
+    int preset() const { return m_preset; }
+    Q_INVOKABLE bool loadPreset(int index);
+    QString sheetTitle() const { return m_sheetTitle; }
+    QString sheetText() const { return m_sheetText; }
+    Q_INVOKABLE void closeSheet(); // the text goes; the patch stays
+    // Where the lessons and presets are: the app's resources (tests: the source folders).
     void setLessonsDir(const QString &dir) { m_lessonsDir = dir; emit patchesChanged(); }
+    void setPresetsDir(const QString &dir) { m_presetsDir = dir; emit patchesChanged(); }
 
 signals:
     void patchesChanged();
@@ -146,6 +154,8 @@ private:
     };
 
     void structureChanged(); // the order to the engine, notify, save soon
+    QVariantList sheets(const QString &dir) const;
+    bool loadSheet(const QString &dir, int index, int *loaded);
     void poll();
     const konnekt::Module *module(int slot) const;
 
@@ -168,7 +178,8 @@ private:
     QString m_patchesDir;
     QString m_patchName;
     QString m_lessonsDir = QStringLiteral(":/qt/qml/Konnekt/lessons");
-    int m_lesson = -1;
-    QString m_lessonTitle, m_lessonText;
+    QString m_presetsDir = QStringLiteral(":/qt/qml/Konnekt/presets");
+    int m_lesson = -1, m_preset = -1;
+    QString m_sheetTitle, m_sheetText;
     konnekt::Explainer m_explainer;
 };

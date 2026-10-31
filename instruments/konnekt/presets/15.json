@@ -1,0 +1,164 @@
+{
+ "version": 1,
+ "title": "Computer Burble",
+ "category": "Effects",
+ "text": "Sound: the bubbling, stepping 'computer thinking' sound of sci-fi and acid: a resonant filter jumping to a new random place sixteen times a bar.\n\nHow it's built: a Sample & Hold takes a new random value (its own noise) on every Clock 1/16 and holds it; that staircase goes into the Ladder filter's CUTOFF, with RESONANCE high. The saw plays the key you hold.\n\nPlay: hold a low note.\n\nTweak: the clock's TEMPO and which output drives the Sample & Hold (1/8, 1/16); the filter's CV (how wide the jumps) and RESONANCE; put a Slew after the Sample & Hold to turn the steps into glides.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "clock",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "tempo": 120.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "sample_hold",
+   "x": 320,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 472,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 700.0,
+    "res": 0.75,
+    "cv_amount": 2.5
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.005,
+    "decay": 0.3,
+    "sustain": 1.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "delay",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "time": 0.25,
+    "feedback": 0.3,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 8,
+   "type": "output",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "volume": 0.88
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "sixteenth",
+   "to": 2,
+   "in": "trigger",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 4,
+   "in": "cutoff",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "saw",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 1
+  }
+ ],
+ "midi": []
+}

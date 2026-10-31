@@ -1,0 +1,192 @@
+{
+ "version": 1,
+ "title": "Metal Clang",
+ "category": "Leads and stabs",
+ "text": "Sound: a struck, metallic, out-of-tune hit, the clanging 'sampled scrap metal' of industrial music, made with no samples at all.\n\nHow it's built: a Ring Mod multiplies two oscillators tuned an odd interval apart, which gives inharmonic tones like struck metal; a band-pass filter picks a band of them; a short envelope strikes it; Drive and a big Reverb make it hang in a warehouse.\n\nPlay: single notes and clusters, low and high.\n\nTweak: the second oscillator's TUNE (every setting is a different piece of metal), the filter's CUTOFF, the reverb's SIZE.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0,
+    "tune": 6.3
+   }
+  },
+  {
+   "slot": 3,
+   "type": "ring_mod",
+   "x": 728,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "svf",
+   "x": 880,
+   "y": 16,
+   "knobs": {
+    "cutoff": 1800.0,
+    "res": 0.35
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.5,
+    "sustain": 0.0,
+    "release": 0.4
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "drive",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "drive": 0.4,
+    "level": 0.6
+   }
+  },
+  {
+   "slot": 8,
+   "type": "reverb",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "size": 0.8,
+    "mix": 0.35
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 688,
+   "y": 486,
+   "knobs": {
+    "volume": 0.93
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 3,
+   "in": "a",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "sine",
+   "to": 3,
+   "in": "b",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 4,
+   "in": "key",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "band",
+   "to": 6,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

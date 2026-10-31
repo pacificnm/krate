@@ -491,7 +491,7 @@ bool KonnektController::loadPatch(const QString &name)
     if (n.isEmpty() || !fromJson(readJson(m_patchesDir + u'/' + n + QStringLiteral(".json"))))
         return false;
     m_patchName = n;
-    m_lesson = -1;
+    m_lesson = m_preset = -1;
     emit patchesChanged();
     return true;
 }
@@ -506,35 +506,46 @@ void KonnektController::deletePatch(const QString &name)
     }
 }
 
-QVariantList KonnektController::lessons() const
+QVariantList KonnektController::sheets(const QString &dir) const
 {
     QVariantList out;
-    const QStringList files = QDir(m_lessonsDir).entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
-    for (qsizetype i = 0; i < files.size(); ++i)
+    const QStringList files = QDir(dir).entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
+    for (qsizetype i = 0; i < files.size(); ++i) {
+        const QJsonObject json = readJson(dir + u'/' + files[i]);
         out << QVariantMap{{QStringLiteral("index"), int(i)},
-                           {QStringLiteral("title"), readJson(m_lessonsDir + u'/' + files[i]).value(u"title").toString()}};
+                           {QStringLiteral("title"), json.value(u"title").toString()},
+                           {QStringLiteral("category"), json.value(u"category").toString()}};
+    }
     return out;
 }
 
-bool KonnektController::loadLesson(int index)
+// Loads the index'th patch in `dir` with its text; *loaded is the lesson or
+// preset index to set (the other is cleared).
+bool KonnektController::loadSheet(const QString &dir, int index, int *loaded)
 {
-    const QStringList files = QDir(m_lessonsDir).entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
+    const QStringList files = QDir(dir).entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
     if (index < 0 || index >= files.size())
         return false;
-    const QJsonObject json = readJson(m_lessonsDir + u'/' + files[index]);
+    const QJsonObject json = readJson(dir + u'/' + files[index]);
     if (!fromJson(json))
         return false;
-    m_lesson = index;
-    m_lessonTitle = QStringLiteral("%1 · %2").arg(index + 1).arg(json.value(u"title").toString());
-    m_lessonText = json.value(u"text").toString();
+    m_lesson = m_preset = -1;
+    *loaded = index;
+    m_sheetTitle = QStringLiteral("%1 · %2").arg(index + 1).arg(json.value(u"title").toString());
+    m_sheetText = json.value(u"text").toString();
     m_patchName.clear();
     emit patchesChanged();
     return true;
 }
 
-void KonnektController::closeLesson()
+QVariantList KonnektController::lessons() const { return sheets(m_lessonsDir); }
+bool KonnektController::loadLesson(int index) { return loadSheet(m_lessonsDir, index, &m_lesson); }
+QVariantList KonnektController::presets() const { return sheets(m_presetsDir); }
+bool KonnektController::loadPreset(int index) { return loadSheet(m_presetsDir, index, &m_preset); }
+
+void KonnektController::closeSheet()
 {
-    m_lesson = -1;
+    m_lesson = m_preset = -1;
     emit patchesChanged();
 }
 

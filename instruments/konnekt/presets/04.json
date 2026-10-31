@@ -1,0 +1,182 @@
+{
+ "version": 1,
+ "title": "Big Beat Wobble",
+ "category": "Bass",
+ "text": "Sound: the fat, filtered, wobbling bass of 1990s big beat and breaks: a growling saw and square opening and closing in rhythm, with some dirt on top.\n\nHow it's built: one oscillator's saw and pulse, mixed, into the Ladder filter (low CUTOFF, RESONANCE up); a triangle LFO into the CUTOFF makes the wobble, restarted by each key (RESET on the gate) so every note wobbles the same way. Drive after the filter. One voice.\n\nPlay: long held notes and slides between keys.\n\nTweak: the LFO's RATE (the speed of the wobble: try 2, 4, 6 Hz), its WAVE (Square chops, Saw down pumps), the filter's CV (how deep), DRIVE.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0,
+    "width": 0.5
+   }
+  },
+  {
+   "slot": 2,
+   "type": "lfo",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "rate": 3.0,
+    "wave": 0.0
+   }
+  },
+  {
+   "slot": 3,
+   "type": "ladder",
+   "x": 664,
+   "y": 16,
+   "knobs": {
+    "cutoff": 160.0,
+    "res": 0.55,
+    "cv_amount": 3.5
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "level1": 0.7,
+    "level2": 0.6
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "attack": 0.004,
+    "decay": 0.3,
+    "sustain": 1.0,
+    "release": 0.12
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 384,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "drive",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "drive": 0.55,
+    "level": 0.6
+   }
+  },
+  {
+   "slot": 8,
+   "type": "output",
+   "x": 688,
+   "y": 486,
+   "knobs": {
+    "volume": 0.78
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 4,
+   "in": "in1",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "pulse",
+   "to": 4,
+   "in": "in2",
+   "color": 2
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 3,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 3,
+   "in": "cutoff",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "reset",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "key",
+   "color": 6
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "left",
+   "color": 3
+  }
+ ],
+ "midi": []
+}

@@ -1,0 +1,226 @@
+{
+ "version": 1,
+ "title": "Industrial Grind Bass",
+ "category": "Bass",
+ "text": "Sound: the heavy, distorted synth bass of industrial rock and metal, built to sit under (or double) down-tuned guitars: thick, saturated, a little snarl at the start of each note.\n\nHow it's built: two saws a few cents apart plus a sine an octave below for weight, mixed and pushed hard through Drive (with a touch of FOLD for the snarl), then the Ladder filter to tame the fizz. A filter envelope opens it a little on each note; the VCA's envelope holds while you hold the key. One voice, so you can play it legato like a bass guitar.\n\nPlay: low riffs, short notes, palm-mute style.\n\nTweak: DRIVE and FOLD; the filter's CUTOFF (darker sits under guitars, brighter cuts through); TUNE on the second oscillator for more or less width.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0,
+    "tune": 0.12
+   }
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "octave": -2.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "level1": 0.6,
+    "level2": 0.6,
+    "level3": 0.6
+   }
+  },
+  {
+   "slot": 5,
+   "type": "drive",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "drive": 0.85,
+    "fold": 0.15,
+    "level": 0.55
+   }
+  },
+  {
+   "slot": 6,
+   "type": "ladder",
+   "x": 320,
+   "y": 486,
+   "knobs": {
+    "cutoff": 700.0,
+    "res": 0.2,
+    "cv_amount": 2.0,
+    "drive": 1.5
+   }
+  },
+  {
+   "slot": 7,
+   "type": "envelope",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.25,
+    "sustain": 0.35,
+    "release": 0.1
+   }
+  },
+  {
+   "slot": 8,
+   "type": "envelope",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "attack": 0.002,
+    "decay": 0.2,
+    "sustain": 1.0,
+    "release": 0.07
+   }
+  },
+  {
+   "slot": 9,
+   "type": "vca",
+   "x": 232,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 384,
+   "y": 956,
+   "knobs": {
+    "volume": 0.79
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 4,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 4,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "sine",
+   "to": 4,
+   "in": "in3",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 6,
+   "in": "cutoff",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 6,
+   "in": "key",
+   "color": 2
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 9,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 8,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 8,
+   "out": "env",
+   "to": 9,
+   "in": "cv",
+   "color": 5
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 10,
+   "in": "left",
+   "color": 6
+  }
+ ],
+ "midi": []
+}

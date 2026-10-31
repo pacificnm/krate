@@ -5,32 +5,61 @@
    "what": "A sound: a signal that swings between about -1 and +1 hundreds or thousands of times a second. Played through a speaker, it is what you hear.",
    "does": "How fast it swings is the pitch; the shape of each swing is the tone (a saw sounds bright, a sine pure); how far it swings is the volume. Everything that makes or changes sound passes audio from module to module.",
    "why": "Sound is the end product: every patch is a chain that makes audio (an oscillator, noise), shapes it (filter, VCA, effects) and sends it to the Output.",
-   "try": ["Right-click an orange output to see it on the scope: the shape you see is the shape you hear.", "Plug an audio output into a modulation input (an oscillator into a filter's CUTOFF): modulation at audio speed makes new, rough tones."],
-   "see": ["signal/mod", "oscillator", "output"]
+   "try": [
+    "Right-click an orange output to see it on the scope: the shape you see is the shape you hear.",
+    "Plug an audio output into a modulation input (an oscillator into a filter's CUTOFF): modulation at audio speed makes new, rough tones."
+   ],
+   "see": [
+    "signal/mod",
+    "oscillator",
+    "output"
+   ]
   },
   "pitch": {
    "title": "Pitch signals (blue jacks)",
    "what": "A note, as a number: 1 per octave, 0 is middle C. +1 is the C above, -1 the C below, 1/12 is a semitone.",
    "does": "An oscillator turns pitch into a frequency: each +1 doubles it. Because the scale is in octaves, adding signals transposes: 0.583 (7 semitones) added to any note gives its fifth. That's why a sequencer's pitch plus your key's pitch plays the pattern from your key.",
    "why": "It is how notes travel through a patch: from your keyboard (MIDI In's PITCH) or a sequencer to the oscillators, and to a filter's KEY so the filter follows the notes.",
-   "try": ["Plug MIDI In's PITCH into an oscillator's PITCH and play: the oscillator follows.", "Put a Slew between them: notes glide.", "Plug an LFO into the oscillator's FM instead: the pitch wobbles."],
-   "see": ["midi_in/out/pitch", "oscillator/in/pitch", "slew"]
+   "try": [
+    "Plug MIDI In's PITCH into an oscillator's PITCH and play: the oscillator follows.",
+    "Put a Slew between them: notes glide.",
+    "Plug an LFO into the oscillator's FM instead: the pitch wobbles."
+   ],
+   "see": [
+    "midi_in/out/pitch",
+    "oscillator/in/pitch",
+    "slew"
+   ]
   },
   "gate": {
    "title": "Gate signals (green jacks)",
    "what": "On or off: 1 while something is happening (a key held, a clock tick), 0 when not. A very short gate is called a trigger.",
    "does": "Modules that start things listen for the gate to rise from 0 to 1: an envelope starts its attack, a sequencer moves a step, a Sample & Hold takes a sample. Some also watch it fall: an envelope releases when the gate closes.",
    "why": "Gates are the timing of a patch: when notes start and stop. Pitch says which note; the gate says when.",
-   "try": ["Plug MIDI In's GATE into a VCA's CV: the note switches on and off, with a click.", "Plug it into an envelope's GATE instead, and the envelope into the VCA: the note fades in and out."],
-   "see": ["midi_in/out/gate", "envelope/in/gate", "clock"]
+   "try": [
+    "Plug MIDI In's GATE into a VCA's CV: the note switches on and off, with a click.",
+    "Plug it into an envelope's GATE instead, and the envelope into the VCA: the note fades in and out."
+   ],
+   "see": [
+    "midi_in/out/gate",
+    "envelope/in/gate",
+    "clock"
+   ]
   },
   "mod": {
    "title": "Modulation signals (violet jacks)",
    "what": "A control that changes slowly compared to sound: an envelope rising from 0 to 1 and falling back, an LFO swinging between -1 and +1, the mod wheel.",
    "does": "Plugged into a module's input, it moves one of its settings for you, faster or more precisely than a hand on a knob: the cutoff of a filter, the volume of a VCA, the pitch of an oscillator. The input's amount knob sets how far.",
    "why": "Movement is what makes synth sounds alive: a filter that opens on each note, vibrato, a tremolo, a wah. Modulation is how you get it.",
-   "try": ["Plug an LFO's OUT into a filter's CUTOFF and turn the filter's CV up: a wah.", "Plug an envelope into the same CUTOFF instead: a sweep on every note."],
-   "see": ["lfo", "envelope", "signal/audio"]
+   "try": [
+    "Plug an LFO's OUT into a filter's CUTOFF and turn the filter's CV up: a wah.",
+    "Plug an envelope into the same CUTOFF instead: a sweep on every note."
+   ],
+   "see": [
+    "lfo",
+    "envelope",
+    "signal/audio"
+   ]
   }
  },
  "app": {
@@ -39,36 +68,65 @@
    "what": "The list of every module Konnekt has, grouped by what they do: sources, filters, envelopes, modulation, utilities, effects, sequencing.",
    "does": "Click one and it appears in view on the rack, ready to drag where you want it and wire up. Right-click one in the list to read about it before adding it.",
    "why": "A modular synth starts empty: you choose the parts. Adding them one at a time and hearing what each does is the best way to learn them.",
-   "try": ["Start from lesson 1 and add one module at a time: a filter between the oscillator and the VCA, then an envelope for the filter."],
-   "see": ["app/cables", "app/lessons"]
+   "try": [
+    "Start from lesson 1 and add one module at a time: a filter between the oscillator and the VCA, then an envelope for the filter."
+   ],
+   "see": [
+    "app/cables",
+    "app/lessons"
+   ]
   },
   "voices": {
    "title": "VOICES",
    "what": "How many notes can sound at once, 1 to 8. The lights next to it show the notes being held.",
    "does": "Modules that run per voice (oscillators, filters, envelopes, VCAs...) run once for each voice: every note gets its own oscillator, its own envelope. Modules that run once (effects, the clock, the Output) get all the voices mixed together.",
    "why": "With 1 voice Konnekt is a monophonic synth, like a classic bass or lead: the newest key plays, and going back to a key still held doesn't restart the envelopes (legato). More voices let you play chords.",
-   "try": ["Set 1 for a bass part and play legato: hold one key, press another, let go of the second.", "Set 4 and play chords."]
+   "try": [
+    "Set 1 for a bass part and play legato: hold one key, press another, let go of the second.",
+    "Set 4 and play chords."
+   ]
   },
   "learn": {
    "title": "LEARN (MIDI Learn)",
    "what": "Links a knob on the screen to a knob or slider on your MIDI controller.",
    "does": "Press LEARN: every knob gets a ring. Click one (its ring turns red), then move a knob on your controller: they're linked, and the screen knob shows the CC number. Right-click a ring to forget its link. LEARN again, or Esc, to finish.",
    "why": "Turning a real knob while you play is how you hear what a control does, and it's how you perform with a patch. The links are saved with the patch.",
-   "try": ["Link a filter's CUTOFF and RESONANCE to two knobs and sweep them while playing."]
+   "try": [
+    "Link a filter's CUTOFF and RESONANCE to two knobs and sweep them while playing."
+   ]
   },
   "patches": {
    "title": "PATCHES",
    "what": "Your saved racks: modules, where they sit, every knob, the cables, the voices and the MIDI links.",
    "does": "Type a name and SAVE (the same name replaces it); click a name to load it, which replaces the rack; ✕ deletes one. The rack as you leave it also comes back next time you open Konnekt.",
    "why": "Keep the sounds you make, and keep a working patch before you start taking it apart.",
-   "see": ["app/new"]
+   "see": [
+    "app/new"
+   ]
   },
   "lessons": {
    "title": "LESSONS",
    "what": "Ten patches that build a synth up a module at a time, each with what to listen for and what to try.",
    "does": "Each loads its patch (replacing the rack: save yours first) and opens its text at the bottom left, with ◂ ▸ to move between them.",
    "why": "They take you from one oscillator to filters, envelopes, LFOs, FM, sequencing and effects in order, each building on the last.",
-   "try": ["Load a lesson, then pull out one cable at a time and hear what each did."]
+   "try": [
+    "Load a lesson, then pull out one cable at a time and hear what each did."
+   ]
+  },
+  "presets": {
+   "title": "PRESETS",
+   "what": "Finished sounds, ready to play: basses, leads and stabs, pads, drum loops and effects, in the styles of industrial, EBM, acid and big beat.",
+   "does": "Each loads its patch (replacing the rack: save yours first) and opens its text at the bottom left: the sound, how it's built, how to play it and what to tweak. ◂ ▸ step through them.",
+   "why": "Seeing how a finished sound is wired is the quickest way to learn how to make one: every cable is there to follow, every knob to try.",
+   "try": [
+    "Load one, then right-click its modules and jacks to read what each does.",
+    "Pull one cable at a time and hear what it did.",
+    "Save your own version under PATCHES."
+   ],
+   "see": [
+    "app/lessons",
+    "app/patches"
+   ]
   },
   "help": {
    "title": "HELP",
@@ -80,22 +138,33 @@
    "what": "Empties the rack: every module and cable goes.",
    "does": "Press it twice (it asks CLEAR ALL? first).",
    "why": "To start a patch from nothing. Save the one you have first if you want to keep it.",
-   "see": ["app/patches"]
+   "see": [
+    "app/patches"
+   ]
   },
   "cables": {
    "title": "Cables",
    "what": "A cable carries a signal from an output (square jack) to an input (round jack).",
    "does": "Click a jack, then another: an output and an input are joined. Click a plugged input to lift its cable and plug it somewhere else. An output can feed as many inputs as you like; an input takes one cable. A cable back up the chain makes a loop, which arrives one block (a third of a millisecond) late.",
    "why": "In a modular synth the cables are the design: the same modules wired differently make completely different instruments.",
-   "try": ["Move one cable at a time and listen. Nothing can break: the worst that happens is silence or a loud noise (turn the Output's VOLUME down)."],
-   "see": ["signal/audio", "signal/pitch", "signal/gate", "signal/mod"]
+   "try": [
+    "Move one cable at a time and listen. Nothing can break: the worst that happens is silence or a loud noise (turn the Output's VOLUME down)."
+   ],
+   "see": [
+    "signal/audio",
+    "signal/pitch",
+    "signal/gate",
+    "signal/mod"
+   ]
   },
   "explain": {
    "title": "These explanations",
    "what": "Right-click any knob, button, jack or module header (or a module in + ADD MODULE, or a button in the top bar) to read about it here.",
    "does": "Each explanation says what the thing is, how it works, why you'd want it, where it goes in a patch and what to try, with what it is doing on your rack right now: its value, what's plugged in, where its cable goes. Click a link to follow it; ◂ goes back.",
    "why": "Hovering gives a line in the help bar; this gives the whole story, while you keep playing.",
-   "see": ["app/cables"]
+   "see": [
+    "app/cables"
+   ]
   }
  }
 }

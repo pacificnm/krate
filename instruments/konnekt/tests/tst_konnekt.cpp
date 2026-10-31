@@ -122,7 +122,7 @@ private slots:
             const QJsonObject json = QJsonDocument::fromJson(f.readAll()).object();
             QVERIFY(c.loadLesson(i));
             QCOMPARE(c.lesson(), i);
-            QVERIFY(c.lessonText().size() > 100);
+            QVERIFY(c.sheetText().size() > 100);
             QCOMPARE(c.modules().size(), json.value(u"modules").toArray().size());
             QCOMPARE(c.cables().size(), json.value(u"cables").toArray().size());
             for (const QJsonValue m : json.value(u"modules").toArray()) { // every knob key is a knob
@@ -142,8 +142,8 @@ private slots:
                 QVERIFY(std::isfinite(s));
                 peak = std::max(peak, std::fabs(s));
             }
-            QVERIFY2(peak > 0.02f, qPrintable(c.lessonTitle() + u' ' + QString::number(peak)));
-            QVERIFY2(peak < 2.0f, qPrintable(c.lessonTitle() + u' ' + QString::number(peak)));
+            QVERIFY2(peak > 0.02f, qPrintable(c.sheetTitle() + u' ' + QString::number(peak)));
+            QVERIFY2(peak < 2.0f, qPrintable(c.sheetTitle() + u' ' + QString::number(peak)));
             const krate::MidiEvent offs[] = {{0, 3, {0x80, 48, 0}}, {0, 3, {0x80, 55, 0}}};
             krate::processStereo(engine, l.data(), r.data(), 48000, offs, 2);
             // Keys up: the ones that aren't clocked go quiet (after their release and echoes).
@@ -157,7 +157,62 @@ private slots:
             float tail = 0.0f;
             for (float s : l)
                 tail = std::max(tail, std::fabs(s));
-            QVERIFY2(tail < 0.01f, qPrintable(c.lessonTitle() + QStringLiteral(" still sounds ") + QString::number(tail)));
+            QVERIFY2(tail < 0.01f, qPrintable(c.sheetTitle() + QStringLiteral(" still sounds ") + QString::number(tail)));
+        }
+    }
+
+    // Every preset loads whole, sounds without clipping, and (unless it's
+    // clocked) goes quiet when the keys are let go.
+    void presets()
+    {
+        QTemporaryDir dir;
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        KonnektController c(engine, dir.path(), nullptr);
+        c.setPresetsDir(QStringLiteral(KONNEKT_PRESETS));
+        const QVariantList presets = c.presets();
+        QCOMPARE(presets.size(), 17);
+        for (int i = 0; i < int(presets.size()); ++i) {
+            QFile f(QStringLiteral(KONNEKT_PRESETS "/%1.json").arg(i + 1, 2, 10, QChar(u'0')));
+            QVERIFY(f.open(QIODevice::ReadOnly));
+            const QJsonObject json = QJsonDocument::fromJson(f.readAll()).object();
+            QVERIFY(!presets[i].toMap().value(QStringLiteral("category")).toString().isEmpty());
+            QVERIFY(c.loadPreset(i));
+            QCOMPARE(c.preset(), i);
+            QCOMPARE(c.lesson(), -1);
+            QVERIFY(c.sheetText().size() > 200);
+            QCOMPARE(c.modules().size(), json.value(u"modules").toArray().size());
+            QCOMPARE(c.cables().size(), json.value(u"cables").toArray().size());
+            bool clocked = false;
+            for (const QJsonValue m : json.value(u"modules").toArray()) {
+                const QJsonObject o = m.toObject();
+                const ModuleInfo *info = findModule(o.value(u"type").toString().toStdString());
+                QVERIFY(info);
+                for (const QString &key : o.value(u"knobs").toObject().keys())
+                    QVERIFY2(knobIndex(*info, key.toStdString()) >= 0, qPrintable(key));
+                clocked = clocked || o.value(u"type").toString() == u"clock";
+            }
+            // Two notes held for 2 s (a fifth; the one-voice presets play the newer).
+            pump(engine);
+            std::vector<float> l(96000), r(96000);
+            const krate::MidiEvent notes[] = {{0, 3, {0x90, 43, 110}}, {0, 3, {0x90, 50, 110}}};
+            krate::processStereo(engine, l.data(), r.data(), 96000, notes, 2);
+            float peak = 0.0f;
+            for (std::size_t s = 0; s < l.size(); ++s) {
+                QVERIFY(std::isfinite(l[s]) && std::isfinite(r[s]));
+                peak = std::max({peak, std::fabs(l[s]), std::fabs(r[s])});
+            }
+            QVERIFY2(peak > 0.05f && peak < 1.0f, qPrintable(c.sheetTitle() + u' ' + QString::number(peak)));
+            const krate::MidiEvent offs[] = {{0, 3, {0x80, 43, 0}}, {0, 3, {0x80, 50, 0}}};
+            krate::processStereo(engine, l.data(), r.data(), 48000, offs, 2);
+            if (clocked)
+                continue;
+            for (int s = 0; s < 6; ++s) // the longest release and reverb tails
+                krate::processStereo(engine, l.data(), r.data(), 48000);
+            float tail = 0.0f;
+            for (std::size_t s = 0; s < 48000; ++s) // the last second (the buffer holds two)
+                tail = std::max({tail, std::fabs(l[s]), std::fabs(r[s])});
+            QVERIFY2(tail < 0.01f, qPrintable(c.sheetTitle() + QStringLiteral(" still sounds ") + QString::number(tail)));
         }
     }
 

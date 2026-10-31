@@ -10,6 +10,7 @@ Konnekt is a modular synthesizer: instead of a fixed synth with its parts alread
 4. **Add a module.** **+ ADD MODULE**, pick one: it appears in view. Drag it by its header.
 5. **Wire.** Click a jack, then another: an output and an input. The cable follows the modules when you drag them.
 6. **Keep it.** **PATCHES**, type a name, **SAVE**.
+7. **Take a finished sound apart.** **PRESETS** loads one of 17 ready-made sounds (basses, leads, pads, drum loops, effects), each with how it's built and what to tweak.
 
 The rack as you leave it comes back next time.
 
@@ -138,9 +139,23 @@ All three have CUTOFF, RESONANCE, CV (how far the CUTOFF input moves it, in octa
 5. **LFOs**: vibrato and wah.
 6. **Two oscillators**: detune, octaves, sync.
 7. **FM**: bells and metal.
-8. **A sequenced bass part**: a clock, a sequencer, glide.
+8. **A sequenced bass part**: a clock, a sequencer, glide; hold a key around C3 to move it.
 9. **Noise and percussion**: drums with no oscillator.
 10. **Effects**: chorus, delay and reverb in stereo.
+
+## Presets
+
+**PRESETS** in the top bar: 17 finished sounds in the styles of industrial, EBM (body music), acid and big beat, to play and to take apart. Click one to load it (the rack is replaced: save yours first); its text opens at the bottom left (the sound, how it's built, how to play it, what to tweak), with **◂ ▸** to step through them and **✕** to close the text.
+
+| Category | Presets |
+| --- | --- |
+| Bass | **Body Music Bass** (a sequenced EBM pluck), **Acid Squelch** (a resonant, sliding acid line), **Industrial Grind Bass** (distorted, for playing under guitars), **Big Beat Wobble** (an LFO-filtered growl), **Sub Drop** (a sine that drops into each note) |
+| Leads and stabs | **Rave Stab** (chords that hit and fade), **Siren Lead**, **Sync Scream** (a tearing hard-sync lead), **Whirling Rave Lead** (detuned, swirling pulses that swoop up), **Metal Clang** (ring-modulated scrap metal) |
+| Pads and atmospheres | **Industrial Drone**, **Breathy Acid Pad** |
+| Drums and grooves | **Industrial Drum Loop** (kick, crushed snare, hats), **Body Music Groove** (bass, kick and hats together) |
+| Effects | **Computer Burble** (sample & hold on a resonant filter), **Laser Zap**, **Noise Riser** |
+
+The ones with a Clock (Body Music Bass, Acid Squelch, the drums and grooves, Computer Burble) play by themselves; on the sequenced basses, hold a key around C3 and the line plays from it. All are set to about the same loudness.
 
 ## Patches
 

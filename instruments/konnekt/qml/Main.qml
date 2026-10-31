@@ -172,6 +172,17 @@ ApplicationWindow {
                 ExplainTap { path: "app/lessons" }
             }
             PanelButton {
+                width: 100
+                height: 34
+                dark: true
+                faceText: "PRESETS"
+                text: "Finished sounds to play and take apart: basses, leads, pads, drums, effects"
+                hasLed: true
+                ledOn: Konnekt.preset >= 0
+                onClicked: presetsPopup.open()
+                ExplainTap { path: "app/presets" }
+            }
+            PanelButton {
                 width: 70
                 height: 34
                 dark: true
@@ -612,6 +623,70 @@ ApplicationWindow {
         }
     }
 
+    // ---- Presets: finished sounds, by category
+    Popup {
+        id: presetsPopup
+        x: 560
+        y: topBar.height + 4
+        width: Math.min(root.width - 580, 760)
+        padding: 14
+        modal: true
+        background: Rectangle { radius: 8; color: "#23252A"; border.color: "#3A3D44" }
+
+        readonly property var categories: {
+            const seen = []
+            for (const p of Konnekt.presets)
+                if (seen.indexOf(p.category) < 0)
+                    seen.push(p.category)
+            return seen
+        }
+
+        Column {
+            width: parent.width
+            spacing: 10
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "PRESETS: finished sounds to play and take apart. Each replaces the rack (save yours first) and says how it's built and what to tweak."
+                color: "#F2B632"
+                font.family: Theme.labelFont
+                font.pixelSize: 12
+                font.bold: true
+            }
+            Flow {
+                width: parent.width
+                spacing: 16
+                Repeater {
+                    model: presetsPopup.categories
+                    Column {
+                        id: presetCategory
+                        required property string modelData
+                        spacing: 6
+                        Text {
+                            text: presetCategory.modelData.toUpperCase()
+                            color: "#9A968E"
+                            font.family: Theme.labelFont
+                            font.pixelSize: 11
+                            font.bold: true
+                        }
+                        Repeater {
+                            model: Konnekt.presets.filter(p => p.category === presetCategory.modelData)
+                            PanelButton {
+                                required property var modelData
+                                width: 220
+                                height: 28
+                                dark: true
+                                faceText: modelData.title
+                                text: "Load " + modelData.title + " (the rack is replaced: save yours first)"
+                                onClicked: { Konnekt.loadPreset(modelData.index); presetsPopup.close() }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // ---- Lessons: a list to pick from, and the lesson's text while it's loaded
     Popup {
         id: lessonsPopup
@@ -649,7 +724,11 @@ ApplicationWindow {
     }
     Rectangle {
         id: lessonPanel
-        visible: Konnekt.lesson >= 0
+        readonly property bool isPreset: Konnekt.preset >= 0
+        readonly property int index: isPreset ? Konnekt.preset : Konnekt.lesson
+        readonly property int count: isPreset ? Konnekt.presets.length : Konnekt.lessons.length
+        function go(i) { if (isPreset) Konnekt.loadPreset(i); else Konnekt.loadLesson(i) }
+        visible: index >= 0
         anchors.left: parent.left
         anchors.bottom: helpBar.top
         anchors.margins: 14
@@ -666,7 +745,7 @@ ApplicationWindow {
             y: 8
             width: parent.width - 120
             elide: Text.ElideRight
-            text: "LESSON " + Konnekt.lessonTitle
+            text: (lessonPanel.isPreset ? "PRESET " : "LESSON ") + Konnekt.sheetTitle
             color: "#F2B632"
             font.family: Theme.labelFont
             font.pixelSize: 13
@@ -677,9 +756,9 @@ ApplicationWindow {
             anchors.rightMargin: 10
             y: 4
             spacing: 6
-            PanelButton { width: 28; height: 24; dark: true; faceText: "◂"; text: "The lesson before"; enabled: Konnekt.lesson > 0; onClicked: Konnekt.loadLesson(Konnekt.lesson - 1) }
-            PanelButton { width: 28; height: 24; dark: true; faceText: "▸"; text: "The next lesson"; enabled: Konnekt.lesson + 1 < Konnekt.lessons.length; onClicked: Konnekt.loadLesson(Konnekt.lesson + 1) }
-            PanelButton { width: 28; height: 24; dark: true; faceText: "✕"; text: "Close the lesson (the patch stays)"; onClicked: Konnekt.closeLesson() }
+            PanelButton { width: 28; height: 24; dark: true; faceText: "◂"; text: "The one before"; enabled: lessonPanel.index > 0; onClicked: lessonPanel.go(lessonPanel.index - 1) }
+            PanelButton { width: 28; height: 24; dark: true; faceText: "▸"; text: "The next one"; enabled: lessonPanel.index + 1 < lessonPanel.count; onClicked: lessonPanel.go(lessonPanel.index + 1) }
+            PanelButton { width: 28; height: 24; dark: true; faceText: "✕"; text: "Close the text (the patch stays)"; onClicked: Konnekt.closeSheet() }
         }
         Flickable {
             x: 12
@@ -692,7 +771,7 @@ ApplicationWindow {
                 id: lessonText
                 width: parent.width
                 wrapMode: Text.WordWrap
-                text: Konnekt.lessonText
+                text: Konnekt.sheetText
                 color: "#DAD5CB"
                 font.family: Theme.labelFont
                 font.pixelSize: 13
