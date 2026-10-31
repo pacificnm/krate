@@ -184,9 +184,9 @@ void PadVoice::render(const PadBuses &out, const float *gate, std::uint32_t fram
             l = m_held[0];
             r = m_held[1];
         }
-        if (quant > 0.0) {
-            l = std::round(l * quant) / quant;
-            r = std::round(r * quant) / quant;
+        if (quant > 0.0) { // n bits: 2^n levels from -1 up to just under +1, as a converter has
+            l = std::clamp(std::floor(l * quant + 0.5), -quant, quant - 1.0) / quant;
+            r = std::clamp(std::floor(r * quant + 0.5), -quant, quant - 1.0) / quant;
         }
         // Ring modulator.
         if (s.ring > 0.0) {

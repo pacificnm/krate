@@ -14,7 +14,7 @@ inline constexpr int kBlock = 16;      // samples processed at a time: a loop's 
 inline constexpr int kMaxModules = 64;
 inline constexpr int kMaxCables = 256;
 inline constexpr int kMaxJacks = 12;   // inputs, and outputs, per module
-inline constexpr int kMaxKnobs = 16;
+inline constexpr int kMaxKnobs = 24;
 
 // What a jack carries (docs/BRIEF.md#scope-v1): it sets the jack's colour and
 // how its trace is drawn; any output can go to any input all the same.

@@ -5,6 +5,7 @@ set(KONNEKT_WARNINGS -Wall -Wextra -Wpedantic -Werror)
 # --- konnekt_dsp: the engine and the modules; no Qt, no JACK
 add_library(konnekt_dsp STATIC
     dsp/CoreModules.cpp
+    dsp/MoreModules.cpp
     dsp/Engine.h
     dsp/Engine.cpp
     dsp/Module.h
@@ -13,7 +14,8 @@ add_library(konnekt_dsp STATIC
     dsp/PatchSpec.cpp
 )
 target_include_directories(konnekt_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(konnekt_dsp PUBLIC krate_core krate_dsp)
+# Kalliope's ladder and Kobalt's four-pole filter, as they are.
+target_link_libraries(konnekt_dsp PUBLIC krate_core krate_dsp kalliope_dsp kobalt_dsp)
 target_compile_options(konnekt_dsp PRIVATE ${KONNEKT_WARNINGS})
 
 # --- konnekt-render: offline renderer and benchmark
@@ -22,7 +24,7 @@ target_link_libraries(konnekt-render PRIVATE konnekt_dsp)
 target_compile_options(konnekt-render PRIVATE ${KONNEKT_WARNINGS})
 
 # --- Tests
-foreach(test tst_engine)
+foreach(test tst_engine tst_modules)
     add_executable(konnekt_${test} tests/${test}.cpp)
     target_compile_options(konnekt_${test} PRIVATE -Wall -Wextra -Wpedantic)
     target_link_libraries(konnekt_${test} PRIVATE konnekt_dsp krate_testing Qt6::Test)

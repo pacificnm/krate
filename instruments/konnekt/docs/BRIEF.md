@@ -40,7 +40,7 @@ Related docs: [ROADMAP.md](ROADMAP.md).
 | Crusher | per voice | Bits and rate | Klang |
 | Ring mod | per voice | Multiplies two signals | Klang |
 | Clock | one | Tempo, divisions, start / stop | |
-| Sequencer | one | 16 steps of pitch and gate, clocked | k303, Kobalt |
+| Sequencer | one | 8 steps, each a pitch and on / off, clocked (length, gate length) | k303, Kobalt |
 | Chorus | one | Stereo chorus | shared |
 | Delay | one | Tempo-synced stereo ping-pong delay | shared |
 | Reverb | one | Stereo reverb | shared |

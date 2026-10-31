@@ -417,9 +417,16 @@ namespace konnekt {
 
 std::span<const ModuleInfo *const> moduleTypes()
 {
-    static const ModuleInfo *const kTypes[] = {&modules::kMidiIn,  &modules::kOscillator,   &modules::kEnvelope,
-                                               &modules::kLfo,     &modules::kVca,          &modules::kMixer,
-                                               &modules::kAttenuverter, &modules::kOutput};
+    using namespace modules;
+    static const ModuleInfo *const kTypes[] = {
+        &kMidiIn, &kOscillator, &kNoise,                                     // sources
+        &kLadder, &kOtaFilter, &kSvf,                                         // filters
+        &kEnvelope, &kLfo, &kSampleHold, &kSlew,                              // envelopes, modulation
+        &kVca, &kMixer, &kAttenuverter, &kRingMod,                            // utilities
+        &kDrive, &kCrusher, &kChorus, &kDelay, &kReverb,                      // effects
+        &kClock, &kSequencer,                                                 // sequencing
+        &kScope, &kOutput,                                                    // in / out
+    };
     return kTypes;
 }
 
