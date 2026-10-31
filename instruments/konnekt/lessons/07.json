@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "FM: bells and metal",
- "text": "Frequency modulation: one oscillator (the modulator) shakes another's frequency (the carrier) at audio rate. The result isn't vibrato but new tones: bells, glass, metal. Here the modulator's SINE goes into the carrier's LIN FM. Try: the carrier's LIN FM knob from 0 up; the modulator's OCTAVE and TUNE (whole octaves give clean tones, odd tunings clangs); an envelope into a VCA between them makes the brightness fade as the note does.",
+ "text": "Frequency modulation: one oscillator (the modulator) shakes another's frequency (the carrier) at audio rate. The result isn't vibrato but new tones: bells, glass, metal. Here the modulator's SINE goes into the carrier's LIN FM.\n\nTry: the carrier's LIN FM knob from 0 up; the modulator's OCTAVE and TUNE (whole octaves give clean tones, odd tunings clangs); an envelope into a VCA between them makes the brightness fade as the note does.",
  "voices": 4,
  "modules": [
   {

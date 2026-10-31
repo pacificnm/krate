@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "LFOs: vibrato and wah",
- "text": "An LFO is an oscillator too slow to hear: it moves other things. One LFO into the oscillator's FM (scaled by FM) wobbles the pitch: vibrato. Another into the filter's CUTOFF: a wah. Try: the vibrato LFO's RATE around 5 Hz and FM small; the wah LFO slow with the filter's CV up; change WAVE to Square (a trill) or Random (burbles). Reset on MIDI In's GATE makes every note's wobble start the same way.",
+ "text": "An LFO is an oscillator too slow to hear: it moves other things. One LFO into the oscillator's FM (scaled by FM) wobbles the pitch: vibrato. Another into the filter's CUTOFF: a wah.\n\nTry: the vibrato LFO's RATE around 5 Hz and FM small; the wah LFO slow with the filter's CV up; change WAVE to Square (a trill) or Random (burbles). Reset on MIDI In's GATE makes every note's wobble start the same way.",
  "voices": 4,
  "modules": [
   {

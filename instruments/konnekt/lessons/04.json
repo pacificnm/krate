@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "A filter envelope",
- "text": "Two envelopes: one opens the VCA (the volume), the other moves the filter's CUTOFF, scaled by the filter's CV knob. Each note now starts bright and closes: that movement is most of what makes a synth sound alive. Try: the filter envelope's DECAY short and SUSTAIN 0 for a pluck or a squelchy bass (RESONANCE up); a slow ATTACK for brass; turn the filter's CV up and down.",
+ "text": "Two envelopes: one opens the VCA (the volume), the other moves the filter's CUTOFF, scaled by the filter's CV knob. Each note now starts bright and closes: that movement is most of what makes a synth sound alive.\n\nTry: the filter envelope's DECAY short and SUSTAIN 0 for a pluck or a squelchy bass (RESONANCE up); a slow ATTACK for brass; turn the filter's CV up and down.",
  "voices": 4,
  "modules": [
   {

@@ -76,7 +76,7 @@ private slots:
     void everyPatchIntoEverySynth()
     {
         const QList<QJsonObject> patches = all();
-        QCOMPARE(patches.size(), 94);
+        QCOMPARE(patches.size(), 104);
         for (const QJsonObject &p : patches)
             for (const SendTarget t : {SendTarget::Kalliope, SendTarget::Kobalt, SendTarget::Krimson}) {
                 const Translation tr = translate(p, t);

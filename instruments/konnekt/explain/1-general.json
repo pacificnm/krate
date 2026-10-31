@@ -120,7 +120,7 @@
   },
   "lessons": {
    "title": "LESSONS",
-   "what": "Ten patches that build a synth up a module at a time, each with what to listen for and what to try.",
+   "what": "Twenty patches: ten that build a synth up a module at a time, then ten advanced techniques (fading vibrato, sync sweeps, FM with an envelope, ring mod, wavefolding, sample & hold, modulating modulators, rhythmic envelopes, drums, the filter as an oscillator). Each says what to listen for and what to try.",
    "does": "Each loads its patch (replacing the rack: save yours first) and opens its text at the bottom left, with ◂ ▸ to move between them.",
    "why": "They take you from one oscillator to filters, envelopes, LFOs, FM, sequencing and effects in order, each building on the last.",
    "try": [

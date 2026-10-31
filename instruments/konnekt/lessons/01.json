@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "A tone",
- "text": "An oscillator makes the raw sound: here a saw wave, at the pitch of the key you play (MIDI In's PITCH into the oscillator's PITCH). On its own it would never stop, so it goes through a VCA (a volume something else turns) on its way to the Output, and MIDI In's GATE opens the VCA: 1 while a key is held, 0 when you let go. Try: move the cable from SAW to PULSE, TRIANGLE, SINE and hear each wave (right-click the output to see it on the scope). Turn OCTAVE. With PULSE, turn WIDTH. Then pull the GATE cable out of the VCA's CV: the VCA closes and it goes quiet; turn the VCA's LEVEL up and the tone plays all the time, keys or not.",
+ "text": "An oscillator makes the raw sound: here a saw wave, at the pitch of the key you play (MIDI In's PITCH into the oscillator's PITCH). On its own it would never stop, so it goes through a VCA (a volume something else turns) on its way to the Output, and MIDI In's GATE opens the VCA: 1 while a key is held, 0 when you let go.\n\nTry: move the cable from SAW to PULSE, TRIANGLE, SINE and hear each wave (right-click the output to see it on the scope). Turn OCTAVE. With PULSE, turn WIDTH. Then pull the GATE cable out of the VCA's CV: the VCA closes and it goes quiet; turn the VCA's LEVEL up and the tone plays all the time, keys or not.",
  "voices": 1,
  "modules": [
   {

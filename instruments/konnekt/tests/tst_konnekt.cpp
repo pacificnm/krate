@@ -118,8 +118,8 @@ private slots:
         engine.setParam(0, 1.0f);
         KonnektController c(engine, dir.path(), nullptr);
         c.setLessonsDir(QStringLiteral(KONNEKT_LESSONS));
-        QCOMPARE(c.lessons().size(), 10);
-        for (int i = 0; i < 10; ++i) {
+        QCOMPARE(c.lessons().size(), 20);
+        for (int i = 0; i < 20; ++i) {
             QFile f(QStringLiteral(KONNEKT_LESSONS "/%1.json").arg(i + 1, 2, 10, QChar(u'0')));
             QVERIFY(f.open(QIODevice::ReadOnly));
             const QJsonObject json = QJsonDocument::fromJson(f.readAll()).object();

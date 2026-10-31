@@ -1,0 +1,124 @@
+{
+ "version": 1,
+ "title": "Advanced 5 \u00b7 Wavefolding",
+ "text": "A filter makes a sound duller by taking harmonics away. A wavefolder does the opposite: when a wave goes past a limit, it's folded back on itself, and every fold adds new harmonics. How many folds depends on how loud the signal is going in. So here the VCA comes before the folder: the envelope turns the level going in up and down, and with it the brightness. The note starts loud (folded, bright and buzzy) and mellows as it decays (fewer folds), with no filter at all. Watch the Scope: a triangle going in, a folded shape coming out.\n\nTry: FOLD from 0 (plain soft clipping) to 1; the envelope's DECAY and SUSTAIN (they now set the tone as well as the level); DRIVE (more gain: more folds); the oscillator's SINE output instead of the triangle; an LFO through a second VCA into the folder for a moving, vocal tone.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "attack": 0.002,
+    "decay": 0.5,
+    "sustain": 0.3,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 3,
+   "type": "vca",
+   "x": 664,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "drive",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "drive": 0.4,
+    "fold": 0.85,
+    "level": 0.7
+   }
+  },
+  {
+   "slot": 5,
+   "type": "scope",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "time": 0.0
+   }
+  },
+  {
+   "slot": 6,
+   "type": "output",
+   "x": 448,
+   "y": 486,
+   "knobs": {
+    "volume": 0.5
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "triangle",
+   "to": 3,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 3,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "thru",
+   "to": 6,
+   "in": "left",
+   "color": 6
+  }
+ ],
+ "midi": []
+}

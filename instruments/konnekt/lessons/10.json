@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "Effects: space and width",
- "text": "The voices are mixed into the effects (they run once): a Chorus makes the sound stereo and thicker, a Delay echoes left and right, a Reverb puts it in a room. Each goes into the next, LEFT to LEFT and RIGHT to RIGHT, then to the Output. Try: the delay's TIME and FEEDBACK; the reverb's SIZE; take the chorus out (its input straight to the delay) and hear the width go.",
+ "text": "The voices are mixed into the effects (they run once): a Chorus makes the sound stereo and thicker, a Delay echoes left and right, a Reverb puts it in a room. Each goes into the next, LEFT to LEFT and RIGHT to RIGHT, then to the Output.\n\nTry: the delay's TIME and FEEDBACK; the reverb's SIZE; take the chorus out (its input straight to the delay) and hear the width go.",
  "voices": 4,
  "modules": [
   {

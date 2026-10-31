@@ -1,0 +1,266 @@
+{
+ "version": 1,
+ "title": "Advanced 9 \u00b7 Drums from scratch",
+ "text": "No samples: a kick and a snare built from an oscillator and noise. The kick is a sine an octave below the bass, whose pitch drops fast at the start of each hit: one envelope with a 45 ms DECAY into its FM (2.5 octaves) does the drop, another shapes its volume. That drop is what makes a sine sound like a kick: the 'click' and 'thud' are the same sweep. The snare is two layers: noise through a band-pass (the rattle of the snares) plus a low triangle (the drum's body), struck by a short envelope. The Clock plays the kick on every beat; a Sequencer stepping on eighths with steps 3 and 7 on plays the snare on 2 and 4.\n\nTry: the kick's pitch envelope DECAY (longer: a long, booming drop; shorter: a tight click), its FM (how far it drops), its TUNE; the snare's filter CUTOFF and the mixer's body level; switch other sequencer steps on.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 110.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": -3.0,
+    "tune": 7.0,
+    "fm_amount": 2.5
+   }
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.045,
+    "sustain": 0.0,
+    "release": 0.04
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 664,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.3,
+    "sustain": 0.0,
+    "release": 0.2
+   }
+  },
+  {
+   "slot": 4,
+   "type": "vca",
+   "x": 880,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 5,
+   "type": "sequencer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "gate1": 0.0,
+    "gate2": 0.0,
+    "gate3": 1.0,
+    "gate4": 0.0,
+    "gate5": 0.0,
+    "gate6": 0.0,
+    "gate7": 1.0,
+    "gate8": 0.0,
+    "gate_length": 0.5
+   }
+  },
+  {
+   "slot": 6,
+   "type": "noise",
+   "x": 552,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "svf",
+   "x": 704,
+   "y": 486,
+   "knobs": {
+    "cutoff": 1900.0,
+    "res": 0.25
+   }
+  },
+  {
+   "slot": 8,
+   "type": "oscillator",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "octave": -1.0,
+    "tune": 5.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "mixer",
+   "x": 296,
+   "y": 956,
+   "knobs": {
+    "level1": 0.8,
+    "level2": 0.45
+   }
+  },
+  {
+   "slot": 10,
+   "type": "envelope",
+   "x": 448,
+   "y": 956,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.16,
+    "sustain": 0.0,
+    "release": 0.12
+   }
+  },
+  {
+   "slot": 11,
+   "type": "vca",
+   "x": 664,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 12,
+   "type": "mixer",
+   "x": 816,
+   "y": 956,
+   "knobs": {
+    "level1": 0.9,
+    "level2": 0.6
+   }
+  },
+  {
+   "slot": 13,
+   "type": "output",
+   "x": 968,
+   "y": 956,
+   "knobs": {
+    "volume": 0.6
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 2,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 3,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 1,
+   "in": "fm",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "sine",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 4,
+   "in": "cv",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 5,
+   "in": "clock",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 5,
+   "in": "reset",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "white",
+   "to": 7,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 7,
+   "out": "band",
+   "to": 9,
+   "in": "in1",
+   "color": 0
+  },
+  {
+   "from": 8,
+   "out": "triangle",
+   "to": 9,
+   "in": "in2",
+   "color": 1
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 11,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 5,
+   "out": "gate",
+   "to": 10,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 10,
+   "out": "env",
+   "to": 11,
+   "in": "cv",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 12,
+   "in": "in1",
+   "color": 5
+  },
+  {
+   "from": 11,
+   "out": "out",
+   "to": 12,
+   "in": "in2",
+   "color": 6
+  },
+  {
+   "from": 12,
+   "out": "out",
+   "to": 13,
+   "in": "left",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

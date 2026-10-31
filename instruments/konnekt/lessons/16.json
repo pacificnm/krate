@@ -1,0 +1,180 @@
+{
+ "version": 1,
+ "title": "Advanced 6 \u00b7 Sample & hold, and slew",
+ "text": "A Sample & Hold takes a snapshot of a signal on each trigger and holds it until the next. With nothing plugged into its IN it snapshots its own noise: a new random value on every tick of the Clock. Into a resonant filter, that's the bubbling 'computer' sound. Then a Slew smooths the jumps into glides: the same random movement, but liquid instead of stepped. Hold a note and listen.\n\nTry: pull the Slew out (plug the Sample & Hold straight into the filter's CUTOFF): steps; the Slew's RISE and FALL (longer: lazier); the Clock's 1/16 into the TRIGGER (faster); an LFO's OUT into the Sample & Hold's IN (it samples the LFO: a staircase that climbs and falls); send the Sample & Hold to the oscillator's FM instead, with FM small (0.1): a random melody.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "clock",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "tempo": 120.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "sample_hold",
+   "x": 320,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "slew",
+   "x": 472,
+   "y": 16,
+   "knobs": {
+    "rise": 0.08,
+    "fall": 0.08
+   }
+  },
+  {
+   "slot": 4,
+   "type": "oscillator",
+   "x": 624,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "ladder",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 700.0,
+    "res": 0.7,
+    "cv_amount": 3.0
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.01,
+    "decay": 0.3,
+    "sustain": 1.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "delay",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "time": 0.25,
+    "feedback": 0.3,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "volume": 0.5
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 4,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "eighth",
+   "to": 2,
+   "in": "trigger",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 3,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 5,
+   "in": "cutoff",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "saw",
+   "to": 5,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 2
+  }
+ ],
+ "midi": []
+}

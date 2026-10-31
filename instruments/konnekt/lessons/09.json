@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "Noise and percussion",
- "text": "No oscillator: Noise through a filter, opened briefly by a short envelope, makes drums. The Clock retriggers them. A band-pass is a snare's crack; a high-pass a hi-hat. Try: the filter's CUTOFF and RESONANCE (high resonance on noise rings like a tom); the envelope's DECAY; move the clock cable from 1/8 to 1/16; plug the SVF's other outputs in.",
+ "text": "No oscillator: Noise through a filter, opened briefly by a short envelope, makes drums. The Clock retriggers them. A band-pass is a snare's crack; a high-pass a hi-hat.\n\nTry: the filter's CUTOFF and RESONANCE (high resonance on noise rings like a tom); the envelope's DECAY; move the clock cable from 1/8 to 1/16; plug the SVF's other outputs in.",
  "voices": 1,
  "modules": [
   {

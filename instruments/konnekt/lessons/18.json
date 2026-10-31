@@ -1,0 +1,219 @@
+{
+ "version": 1,
+ "title": "Advanced 8 \u00b7 Rhythm from envelopes",
+ "text": "An envelope normally runs once per key. Its RETRIG input starts it again while the key is still held: plug a Clock into it and a held chord becomes a rhythm, the trance gate. The VCA's envelope here has no sustain, so each retrigger is a short pulse, sixteen to the bar. A second envelope on the filter is retriggered on the eighths: the brightness pulses at half the speed, against the volume. Hold a chord.\n\nTry: the volume envelope's DECAY (long: the pulses blur into a pad); move its RETRIG cable to 1/8 or BEAT; the filter envelope on BAR (one sweep per bar); give the volume envelope some SUSTAIN (it pulses on top of a held level instead of from silence); TEMPO.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "clock",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "tempo": 128.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 320,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "tune": 0.12
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "level1": 0.6,
+    "level2": 0.6
+   }
+  },
+  {
+   "slot": 5,
+   "type": "ladder",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "cutoff": 600.0,
+    "res": 0.3,
+    "cv_amount": 3.5
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.2,
+    "sustain": 0.0,
+    "release": 0.1
+   }
+  },
+  {
+   "slot": 7,
+   "type": "envelope",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.09,
+    "sustain": 0.0,
+    "release": 0.06
+   }
+  },
+  {
+   "slot": 8,
+   "type": "vca",
+   "x": 16,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 9,
+   "type": "reverb",
+   "x": 168,
+   "y": 956,
+   "knobs": {
+    "size": 0.5,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 320,
+   "y": 956,
+   "knobs": {
+    "volume": 0.5
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 4,
+   "in": "in1",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "saw",
+   "to": 4,
+   "in": "in2",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 5
+  },
+  {
+   "from": 1,
+   "out": "eighth",
+   "to": 6,
+   "in": "retrig",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 5,
+   "in": "cutoff",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "sixteenth",
+   "to": 7,
+   "in": "retrig",
+   "color": 2
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 8,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 6
+  }
+ ],
+ "midi": []
+}

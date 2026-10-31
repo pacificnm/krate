@@ -57,6 +57,16 @@ qt_add_qml_module(konnekt_ui
         lessons/08.json
         lessons/09.json
         lessons/10.json
+        lessons/11.json
+        lessons/12.json
+        lessons/13.json
+        lessons/14.json
+        lessons/15.json
+        lessons/16.json
+        lessons/17.json
+        lessons/18.json
+        lessons/19.json
+        lessons/20.json
         presets/01.json
         presets/02.json
         presets/03.json

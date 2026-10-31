@@ -1,0 +1,143 @@
+{
+ "version": 1,
+ "title": "Advanced 7 \u00b7 Modulating the modulators",
+ "text": "A patch where one LFO wobbles the filter (a wah) and a second, much slower LFO changes how fast the first one goes (its RATE input): the wah speeds up and slows down by itself over about ten seconds. Modulating a modulator (its rate, or its depth through a VCA as in Advanced 1) is how patches stay alive instead of repeating mechanically. Watch the first LFO's trace speed up and slow down.\n\nTry: the slow LFO's RATE; the first LFO's RATE MOD (how much the slow one changes it); an envelope into the first LFO's RATE instead (a wobble that speeds up on every note); MIDI In's MOD WHEEL into it (you play the speed); the first LFO's WAVE (Square: a rhythmic chop whose tempo drifts).",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "lfo",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "rate": 0.1,
+    "wave": 0.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "lfo",
+   "x": 384,
+   "y": 16,
+   "knobs": {
+    "rate": 2.5,
+    "wave": 0.0,
+    "rate_amount": 1.5
+   }
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 400.0,
+    "res": 0.55,
+    "cv_amount": 2.5
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.01,
+    "decay": 0.3,
+    "sustain": 1.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "output",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "volume": 0.5
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "out",
+   "to": 2,
+   "in": "rate",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 4,
+   "in": "cutoff",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "saw",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

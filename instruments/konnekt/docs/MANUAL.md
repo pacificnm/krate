@@ -6,7 +6,7 @@ Konnekt is a modular synthesizer: instead of a fixed synth with its parts alread
 
 1. **Play.** Konnekt opens with a small patch: MIDI In → Oscillator → VCA (opened by an Envelope) → Output. Play your keyboard.
 2. **Point at things, right-click them.** Hover over any module, knob or jack: the bar at the bottom says what it is in a line. Right-click it for the whole story: what it is, how it works, why you'd want it, where it goes, what to try (see [Explanations](#explanations)).
-3. **Do the lessons.** **LESSONS** loads patches that build a synth up a module at a time, each with what to listen for and what to try. Start with lesson 1.
+3. **Do the lessons.** **LESSONS** loads patches that build a synth up a module at a time (ten basics, then ten advanced techniques), each with what to listen for and what to try. Start with lesson 1.
 4. **Add a module.** **+ ADD MODULE**, pick one: it appears in view. Drag it by its header.
 5. **Wire.** Click a jack, then another: an output and an input. The cable follows the modules when you drag them.
 6. **Keep it.** **PATCHES**, type a name, **SAVE**.
@@ -142,6 +142,19 @@ All three have CUTOFF, RESONANCE, CV (how far the CUTOFF input moves it, in octa
 8. **A sequenced bass part**: a clock, a sequencer, glide; hold a key around C3 to move it.
 9. **Noise and percussion**: drums with no oscillator.
 10. **Effects**: chorus, delay and reverb in stereo.
+
+The **advanced** lessons (the right-hand column) are the techniques behind the more complex presets, one at a time:
+
+11. **Vibrato that fades in**: modulating the amount of a modulation (an LFO through a VCA a slow envelope opens).
+12. **Hard sync sweeps**: an oscillator locked to another's pitch, its tone swept by an envelope.
+13. **FM with a brightness envelope**: ratio and index, and an envelope on the index (bells, electric piano, brass).
+14. **Ring modulation**: sum and difference tones, in tune and out; the robot voice.
+15. **Wavefolding**: brightness from loudness, an envelope before the folder.
+16. **Sample & hold, and slew**: random steps, and random glides.
+17. **Modulating the modulators**: a slow LFO speeding up and slowing down another.
+18. **Rhythm from envelopes**: a clock into RETRIG, the trance gate.
+19. **Drums from scratch**: a kick from a sine and a pitch drop, a snare from noise and a body.
+20. **The filter as an oscillator**: a pinged, resonant, key-tracked filter playing notes with no oscillator.
 
 ## Presets
 

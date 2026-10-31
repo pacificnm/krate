@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "Two oscillators",
- "text": "Two oscillators on the same note, mixed: TUNE one a few cents off and they beat against each other: thicker. Put one an octave down for weight. Try: the second oscillator's TUNE at 0.1 st; its OCTAVE at -1; then plug the first oscillator's SAW into the second's SYNC and turn the second's TUNE up: the tearing sync sound (an envelope into its FM sweeps it).",
+ "text": "Two oscillators on the same note, mixed: TUNE one a few cents off and they beat against each other: thicker. Put one an octave down for weight.\n\nTry: the second oscillator's TUNE at 0.1 st; its OCTAVE at -1; then plug the first oscillator's SAW into the second's SYNC and turn the second's TUNE up: the tearing sync sound (an envelope into its FM sweeps it).",
  "voices": 4,
  "modules": [
   {

@@ -711,34 +711,52 @@ ApplicationWindow {
     // ---- Lessons: a list to pick from, and the lesson's text while it's loaded
     Popup {
         id: lessonsPopup
-        x: 660
+        x: 560
         y: topBar.height + 4
-        width: 340
+        width: 668
         padding: 14
         modal: true
         background: Rectangle { radius: 8; color: "#23252A"; border.color: "#3A3D44" }
         Column {
             width: parent.width
-            spacing: 6
+            spacing: 8
             Text {
                 width: parent.width
                 wrapMode: Text.WordWrap
-                text: "LESSONS: each loads a patch (replacing the rack: save yours first) and says what to try."
+                text: "LESSONS: each loads a patch (replacing the rack: save yours first) and says what to try. The basics on the left, in order; then the advanced techniques."
                 color: "#F2B632"
                 font.family: Theme.labelFont
                 font.pixelSize: 12
                 font.bold: true
             }
-            Repeater {
-                model: Konnekt.lessons
-                PanelButton {
-                    required property var modelData
-                    width: 310
-                    height: 28
-                    dark: true
-                    faceText: (modelData.index + 1) + " · " + modelData.title
-                    text: "Lesson " + (modelData.index + 1) + ": " + modelData.title
-                    onClicked: { Konnekt.loadLesson(modelData.index); lessonsPopup.close() }
+            Row {
+                spacing: 12
+                Repeater {
+                    model: [{ title: "BASICS", from: 0, to: 10 }, { title: "ADVANCED", from: 10, to: 20 }]
+                    Column {
+                        id: lessonColumn
+                        required property var modelData
+                        spacing: 6
+                        Text {
+                            text: lessonColumn.modelData.title
+                            color: "#9A968E"
+                            font.family: Theme.labelFont
+                            font.pixelSize: 11
+                            font.bold: true
+                        }
+                        Repeater {
+                            model: Konnekt.lessons.slice(lessonColumn.modelData.from, lessonColumn.modelData.to)
+                            PanelButton {
+                                required property var modelData
+                                width: 314
+                                height: 28
+                                dark: true
+                                faceText: (modelData.index + 1) + " · " + modelData.title.replace(/^Advanced [0-9]+ · /, "")
+                                text: "Lesson " + (modelData.index + 1) + ": " + modelData.title
+                                onClicked: { Konnekt.loadLesson(modelData.index); lessonsPopup.close() }
+                            }
+                        }
+                    }
                 }
             }
         }

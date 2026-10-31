@@ -1,0 +1,171 @@
+{
+ "version": 1,
+ "title": "Advanced 10 \u00b7 The filter as an oscillator",
+ "text": "There's no oscillator in this patch. A resonant filter rings at its cutoff frequency when something hits it, like a bell or a wine glass; here a tiny burst of noise (a VCA opened for a few milliseconds) 'pings' the Ladder filter, with RESONANCE almost at the top, and it rings a pitch. Its KEY input follows MIDI In's PITCH and its CUTOFF is set to middle C, so the ring is tuned to the key you play. The filter's DRIVE pushes the ping in harder, so it rings louder. A second VCA with a normal envelope makes notes start and stop.\n\nTry: RESONANCE (lower: a short 'tok', like a wood block; higher: a long ring; at the very top the filter sings by itself even without the ping: it has become an oscillator, a sine); the ping envelope's DECAY (longer: more noise, a breathier, flute-like attack); the noise level of the ping VCA's LEVEL (a little left open: a breathy whistle); SLOPE -12.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "noise",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 320,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.015,
+    "sustain": 0.0,
+    "release": 0.008
+   }
+  },
+  {
+   "slot": 3,
+   "type": "vca",
+   "x": 536,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 261.6,
+    "res": 0.97,
+    "cv_amount": 2.0,
+    "drive": 4.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 1.2,
+    "sustain": 0.4,
+    "release": 0.5
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "reverb",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "size": 0.5,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 8,
+   "type": "output",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "volume": 0.8
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 1,
+   "out": "white",
+   "to": 3,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 3,
+   "in": "cv",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 4,
+   "in": "key",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 2
+  }
+ ],
+ "midi": []
+}
