@@ -1,0 +1,285 @@
+{
+ "version": 1,
+ "title": "Tribal Toms",
+ "category": "Drums and grooves",
+ "text": "Sound: rolling, pitched tom drums over a steady kick: a tribal, ritual rhythm, the drums of darker industrial and EBM. It plays by itself.\n\nHow it's built: one Clock at 100. The toms are a single drum (a sine with a small pitch drop) whose PITCH comes from a Sequencer: each step plays a different tom, high to low, and steps switched off are rests. The kick on every beat. A big Reverb.\n\nTweak: the sequencer's step knobs (the tom tunings) and buttons (the rhythm), the tom envelope's DECAY, TEMPO.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 100.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "sequencer",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "gate1": 1.0,
+    "gate2": 0.0,
+    "gate3": 1.0,
+    "gate4": 1.0,
+    "gate5": 0.0,
+    "gate6": 1.0,
+    "gate7": 1.0,
+    "gate8": 1.0,
+    "gate_length": 0.3,
+    "pitch1": 12.0,
+    "pitch2": 0.0,
+    "pitch3": 7.0,
+    "pitch4": 5.0,
+    "pitch5": 0.0,
+    "pitch6": 3.0,
+    "pitch7": 0.0,
+    "pitch8": -5.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 704,
+   "y": 16,
+   "knobs": {
+    "octave": -3.0,
+    "tune": 7.0,
+    "fm_amount": 2.5
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 984,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.045,
+    "sustain": 0.0,
+    "release": 0.04
+   }
+  },
+  {
+   "slot": 4,
+   "type": "envelope",
+   "x": 1200,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.35,
+    "sustain": 0.0,
+    "release": 0.21
+   }
+  },
+  {
+   "slot": 5,
+   "type": "vca",
+   "x": 16,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 6,
+   "type": "oscillator",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "octave": -1.0,
+    "tune": 0.0,
+    "fm_amount": 0.6
+   }
+  },
+  {
+   "slot": 7,
+   "type": "envelope",
+   "x": 448,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.08,
+    "sustain": 0.0,
+    "release": 0.06
+   }
+  },
+  {
+   "slot": 8,
+   "type": "envelope",
+   "x": 664,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.35,
+    "sustain": 0.0,
+    "release": 0.21
+   }
+  },
+  {
+   "slot": 9,
+   "type": "vca",
+   "x": 880,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 10,
+   "type": "mixer",
+   "x": 1032,
+   "y": 486,
+   "knobs": {
+    "level1": 0.8,
+    "level2": 0.7
+   }
+  },
+  {
+   "slot": 11,
+   "type": "reverb",
+   "x": 1184,
+   "y": 486,
+   "knobs": {
+    "size": 0.7,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 12,
+   "type": "output",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "volume": 0.84
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 1,
+   "in": "clock",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 1,
+   "in": "reset",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 3,
+   "in": "gate",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 4,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 2,
+   "in": "fm",
+   "color": 4
+  },
+  {
+   "from": 2,
+   "out": "sine",
+   "to": 5,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "env",
+   "to": 5,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 1,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 1,
+   "out": "gate",
+   "to": 8,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 6,
+   "in": "fm",
+   "color": 1
+  },
+  {
+   "from": 6,
+   "out": "sine",
+   "to": 9,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "env",
+   "to": 9,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 1,
+   "out": "pitch",
+   "to": 6,
+   "in": "pitch",
+   "color": 4
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 10,
+   "in": "in1",
+   "color": 5
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 10,
+   "in": "in2",
+   "color": 6
+  },
+  {
+   "from": 10,
+   "out": "out",
+   "to": 11,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 11,
+   "out": "left",
+   "to": 12,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 11,
+   "out": "right",
+   "to": 12,
+   "in": "right",
+   "color": 1
+  }
+ ],
+ "midi": []
+}

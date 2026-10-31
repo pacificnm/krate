@@ -1,0 +1,527 @@
+{
+ "version": 1,
+ "title": "Electro Beat",
+ "category": "Drums and grooves",
+ "text": "Sound: an early-80s electro and hip-hop machine beat: a punchy, syncopated kick, a snappy snare on 2 and 4, ticking sixteenth hats and a cowbell. It plays by itself.\n\nHow it's built: one Clock at 112. Three Sequencers on eighths: the kick (steps 1, 4 and 7), the snare (3 and 7), the cowbell (2, 6 and 8). The cowbell is two pulse waves a sixth apart through a band-pass, struck by a short envelope. Hats on every 1/16.\n\nTweak: the kick and cowbell steps, the cowbell oscillators' TUNE, TEMPO.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 112.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "noise",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "sequencer",
+   "x": 320,
+   "y": 16,
+   "knobs": {
+    "gate1": 1.0,
+    "gate2": 0.0,
+    "gate3": 0.0,
+    "gate4": 1.0,
+    "gate5": 0.0,
+    "gate6": 0.0,
+    "gate7": 1.0,
+    "gate8": 0.0,
+    "gate_length": 0.5
+   }
+  },
+  {
+   "slot": 3,
+   "type": "sequencer",
+   "x": 856,
+   "y": 16,
+   "knobs": {
+    "gate1": 0.0,
+    "gate2": 0.0,
+    "gate3": 1.0,
+    "gate4": 0.0,
+    "gate5": 0.0,
+    "gate6": 0.0,
+    "gate7": 1.0,
+    "gate8": 0.0,
+    "gate_length": 0.5
+   }
+  },
+  {
+   "slot": 4,
+   "type": "sequencer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "gate1": 0.0,
+    "gate2": 1.0,
+    "gate3": 0.0,
+    "gate4": 0.0,
+    "gate5": 0.0,
+    "gate6": 1.0,
+    "gate7": 0.0,
+    "gate8": 1.0,
+    "gate_length": 0.3
+   }
+  },
+  {
+   "slot": 5,
+   "type": "oscillator",
+   "x": 552,
+   "y": 486,
+   "knobs": {
+    "octave": -3.0,
+    "tune": 7.0,
+    "fm_amount": 2.5
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 832,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.045,
+    "sustain": 0.0,
+    "release": 0.04
+   }
+  },
+  {
+   "slot": 7,
+   "type": "envelope",
+   "x": 1048,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.35,
+    "sustain": 0.0,
+    "release": 0.21
+   }
+  },
+  {
+   "slot": 8,
+   "type": "vca",
+   "x": 1264,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 9,
+   "type": "svf",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "cutoff": 1900.0,
+    "res": 0.25
+   }
+  },
+  {
+   "slot": 10,
+   "type": "oscillator",
+   "x": 232,
+   "y": 956,
+   "knobs": {
+    "octave": -1.0,
+    "tune": 5.0
+   }
+  },
+  {
+   "slot": 11,
+   "type": "mixer",
+   "x": 512,
+   "y": 956,
+   "knobs": {
+    "level1": 0.8,
+    "level2": 0.45
+   }
+  },
+  {
+   "slot": 12,
+   "type": "envelope",
+   "x": 664,
+   "y": 956,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.13,
+    "sustain": 0.0,
+    "release": 0.0975
+   }
+  },
+  {
+   "slot": 13,
+   "type": "vca",
+   "x": 880,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 14,
+   "type": "svf",
+   "x": 1032,
+   "y": 956,
+   "knobs": {
+    "cutoff": 8000.0,
+    "res": 0.1
+   }
+  },
+  {
+   "slot": 15,
+   "type": "envelope",
+   "x": 1248,
+   "y": 956,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.025,
+    "sustain": 0.0,
+    "release": 0.020000000000000004
+   }
+  },
+  {
+   "slot": 16,
+   "type": "vca",
+   "x": 16,
+   "y": 1426,
+   "knobs": {}
+  },
+  {
+   "slot": 17,
+   "type": "oscillator",
+   "x": 168,
+   "y": 1426,
+   "knobs": {
+    "octave": 1.0,
+    "tune": 0.5
+   }
+  },
+  {
+   "slot": 18,
+   "type": "oscillator",
+   "x": 448,
+   "y": 1426,
+   "knobs": {
+    "octave": 1.0,
+    "tune": 7.4
+   }
+  },
+  {
+   "slot": 19,
+   "type": "mixer",
+   "x": 728,
+   "y": 1426,
+   "knobs": {
+    "level1": 0.6,
+    "level2": 0.6
+   }
+  },
+  {
+   "slot": 20,
+   "type": "svf",
+   "x": 880,
+   "y": 1426,
+   "knobs": {
+    "cutoff": 700.0,
+    "res": 0.3
+   }
+  },
+  {
+   "slot": 21,
+   "type": "envelope",
+   "x": 1096,
+   "y": 1426,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.15,
+    "sustain": 0.0,
+    "release": 0.12
+   }
+  },
+  {
+   "slot": 22,
+   "type": "vca",
+   "x": 1312,
+   "y": 1426,
+   "knobs": {}
+  },
+  {
+   "slot": 23,
+   "type": "mixer",
+   "x": 16,
+   "y": 1896,
+   "knobs": {
+    "level1": 0.9,
+    "level2": 0.6,
+    "level3": 0.2,
+    "level4": 0.35
+   }
+  },
+  {
+   "slot": 24,
+   "type": "reverb",
+   "x": 168,
+   "y": 1896,
+   "knobs": {
+    "size": 0.3,
+    "mix": 0.1
+   }
+  },
+  {
+   "slot": 25,
+   "type": "output",
+   "x": 320,
+   "y": 1896,
+   "knobs": {
+    "volume": 0.89
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 2,
+   "in": "clock",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 2,
+   "in": "reset",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 3,
+   "in": "clock",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 3,
+   "in": "reset",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 4,
+   "in": "clock",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 4,
+   "in": "reset",
+   "color": 5
+  },
+  {
+   "from": 2,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 2,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 5,
+   "in": "fm",
+   "color": 0
+  },
+  {
+   "from": 5,
+   "out": "sine",
+   "to": 8,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 8,
+   "in": "cv",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "white",
+   "to": 9,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "band",
+   "to": 11,
+   "in": "in1",
+   "color": 4
+  },
+  {
+   "from": 10,
+   "out": "triangle",
+   "to": 11,
+   "in": "in2",
+   "color": 5
+  },
+  {
+   "from": 11,
+   "out": "out",
+   "to": 13,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 3,
+   "out": "gate",
+   "to": 12,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 12,
+   "out": "env",
+   "to": 13,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "white",
+   "to": 14,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 14,
+   "out": "high",
+   "to": 16,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "sixteenth",
+   "to": 15,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 15,
+   "out": "env",
+   "to": 16,
+   "in": "cv",
+   "color": 4
+  },
+  {
+   "from": 17,
+   "out": "pulse",
+   "to": 19,
+   "in": "in1",
+   "color": 5
+  },
+  {
+   "from": 18,
+   "out": "pulse",
+   "to": 19,
+   "in": "in2",
+   "color": 6
+  },
+  {
+   "from": 19,
+   "out": "out",
+   "to": 20,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 20,
+   "out": "band",
+   "to": 22,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 4,
+   "out": "gate",
+   "to": 21,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 21,
+   "out": "env",
+   "to": 22,
+   "in": "cv",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 23,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 13,
+   "out": "out",
+   "to": 23,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 16,
+   "out": "out",
+   "to": 23,
+   "in": "in3",
+   "color": 5
+  },
+  {
+   "from": 22,
+   "out": "out",
+   "to": 23,
+   "in": "in4",
+   "color": 6
+  },
+  {
+   "from": 23,
+   "out": "out",
+   "to": 24,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 24,
+   "out": "left",
+   "to": 25,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 24,
+   "out": "right",
+   "to": 25,
+   "in": "right",
+   "color": 1
+  }
+ ],
+ "midi": []
+}

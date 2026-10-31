@@ -1,0 +1,140 @@
+{
+ "version": 1,
+ "title": "Sonar Ping",
+ "category": "Effects",
+ "text": "Sound: a submarine sonar ping: a pure, clean blip that echoes away into deep water.\n\nHow it's built: a sine with a quick envelope (a 'ping'), then a Delay with long feedback and a large Reverb, both quite wet. Four voices.\n\nPlay: single high notes, spaced out.\n\nTweak: the delay's TIME and FEEDBACK, the reverb's SIZE.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "attack": 0.002,
+    "decay": 0.4,
+    "sustain": 0.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 3,
+   "type": "vca",
+   "x": 664,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "delay",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "time": 0.6,
+    "feedback": 0.55,
+    "mix": 0.4
+   }
+  },
+  {
+   "slot": 5,
+   "type": "reverb",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "size": 0.85,
+    "mix": 0.4
+   }
+  },
+  {
+   "slot": 6,
+   "type": "output",
+   "x": 320,
+   "y": 486,
+   "knobs": {
+    "volume": 0.68
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "sine",
+   "to": 3,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 3,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "left",
+   "to": 5,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "right",
+   "to": 5,
+   "in": "right",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "left",
+   "to": 6,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "right",
+   "to": 6,
+   "in": "right",
+   "color": 0
+  }
+ ],
+ "midi": []
+}

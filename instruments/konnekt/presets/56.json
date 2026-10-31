@@ -1,0 +1,197 @@
+{
+ "version": 1,
+ "title": "Reverse Swell",
+ "category": "Pads and atmospheres",
+ "text": "Sound: a sound that swells up out of nothing and stops short, like a tape played backwards: the 'reverse cymbal' build before a hit.\n\nHow it's built: a long ATTACK (1.5 s) and an almost instant RELEASE on the volume, and a filter envelope that opens over the same time, so each note grows brighter and louder and then cuts off when you let go; a small Reverb after, kept short so the stop stays sharp. Six voices.\n\nPlay: hold a chord for a beat or two and let go on the downbeat.\n\nTweak: the two ATTACKs (keep them together), the reverb's SIZE and MIX (more blurs the stop).",
+ "voices": 6,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "tune": 0.1
+   }
+  },
+  {
+   "slot": 3,
+   "type": "mixer",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "level1": 0.55,
+    "level2": 0.55
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 880,
+   "y": 16,
+   "knobs": {
+    "cutoff": 300.0,
+    "res": 0.2,
+    "cv_amount": 4.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 1.5,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 0.02
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 1.5,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 0.02
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "reverb",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "size": 0.35,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "volume": 0.74
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 3,
+   "in": "in1",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 3,
+   "in": "in2",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 4,
+   "in": "cutoff",
+   "color": 6
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

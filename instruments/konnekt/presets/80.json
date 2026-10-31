@@ -1,0 +1,197 @@
+{
+ "version": 1,
+ "title": "Metal Scrape",
+ "category": "Effects",
+ "text": "Sound: a grinding, screeching scrape of metal on metal, slowly dragging up and down: the harsh texture of industrial noise.\n\nHow it's built: white noise ring-modulated by a high saw, through the State-Variable filter's band-pass with high RESONANCE (a screech); a slow saw-shaped LFO drags the CUTOFF up and drops it; Drive and a Reverb.\n\nPlay: hold a key (its pitch sets the saw, the 'metal').\n\nTweak: the LFO's RATE and WAVE, RESONANCE, the ring mod's MIX.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "noise",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 320,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0
+   }
+  },
+  {
+   "slot": 3,
+   "type": "ring_mod",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "mix": 0.7
+   }
+  },
+  {
+   "slot": 4,
+   "type": "svf",
+   "x": 752,
+   "y": 16,
+   "knobs": {
+    "cutoff": 1500.0,
+    "res": 0.75,
+    "cv_amount": 2.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "lfo",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "rate": 0.35,
+    "wave": 2.0
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.1,
+    "decay": 0.3,
+    "sustain": 1.0,
+    "release": 0.4
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "drive",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "drive": 0.55,
+    "level": 1.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "reverb",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "size": 0.6,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 904,
+   "y": 486,
+   "knobs": {
+    "volume": 0.85
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "white",
+   "to": 3,
+   "in": "a",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 3,
+   "in": "b",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 4,
+   "in": "cutoff",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "band",
+   "to": 7,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 3
+  }
+ ],
+ "midi": []
+}

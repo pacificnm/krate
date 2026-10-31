@@ -1,0 +1,353 @@
+{
+ "version": 1,
+ "title": "House Groove",
+ "category": "Drums and grooves",
+ "text": "Sound: the classic four-on-the-floor of house and dance music: a kick on every beat, a clap on 2 and 4, open-ish hats on the off-beats. It plays by itself.\n\nHow it's built: one Clock. The kick (a sine with a fast pitch drop) on every BEAT. The clap: band-passed noise with a slightly soft attack, from a Sequencer on eighths with steps 3 and 7 on. The hats: high-passed noise from a second Sequencer, even steps only (the off-beats), with a longer decay. Mixed, a touch of Reverb.\n\nTweak: TEMPO; the hats' DECAY; the sequencers' steps; the drum levels.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 124.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "noise",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "sequencer",
+   "x": 320,
+   "y": 16,
+   "knobs": {
+    "gate1": 0.0,
+    "gate2": 0.0,
+    "gate3": 1.0,
+    "gate4": 0.0,
+    "gate5": 0.0,
+    "gate6": 0.0,
+    "gate7": 1.0,
+    "gate8": 0.0,
+    "gate_length": 0.5
+   }
+  },
+  {
+   "slot": 3,
+   "type": "sequencer",
+   "x": 856,
+   "y": 16,
+   "knobs": {
+    "gate1": 0.0,
+    "gate2": 1.0,
+    "gate3": 0.0,
+    "gate4": 1.0,
+    "gate5": 0.0,
+    "gate6": 1.0,
+    "gate7": 0.0,
+    "gate8": 1.0,
+    "gate_length": 0.3
+   }
+  },
+  {
+   "slot": 4,
+   "type": "oscillator",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "octave": -3.0,
+    "tune": 7.0,
+    "fm_amount": 2.5
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 296,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.045,
+    "sustain": 0.0,
+    "release": 0.04
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 512,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.28,
+    "sustain": 0.0,
+    "release": 0.168
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 728,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "svf",
+   "x": 880,
+   "y": 486,
+   "knobs": {
+    "cutoff": 1200.0,
+    "res": 0.2
+   }
+  },
+  {
+   "slot": 9,
+   "type": "envelope",
+   "x": 1096,
+   "y": 486,
+   "knobs": {
+    "attack": 0.004,
+    "decay": 0.14,
+    "sustain": 0.0,
+    "release": 0.11200000000000002
+   }
+  },
+  {
+   "slot": 10,
+   "type": "vca",
+   "x": 1312,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 11,
+   "type": "svf",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "cutoff": 8000.0,
+    "res": 0.1
+   }
+  },
+  {
+   "slot": 12,
+   "type": "envelope",
+   "x": 232,
+   "y": 956,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.09,
+    "sustain": 0.0,
+    "release": 0.072
+   }
+  },
+  {
+   "slot": 13,
+   "type": "vca",
+   "x": 448,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 14,
+   "type": "mixer",
+   "x": 600,
+   "y": 956,
+   "knobs": {
+    "level1": 0.9,
+    "level2": 0.55,
+    "level3": 0.3
+   }
+  },
+  {
+   "slot": 15,
+   "type": "reverb",
+   "x": 752,
+   "y": 956,
+   "knobs": {
+    "size": 0.35,
+    "mix": 0.12
+   }
+  },
+  {
+   "slot": 16,
+   "type": "output",
+   "x": 904,
+   "y": 956,
+   "knobs": {
+    "volume": 0.93
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 2,
+   "in": "clock",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 2,
+   "in": "reset",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 3,
+   "in": "clock",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 3,
+   "in": "reset",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 5,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 6,
+   "in": "gate",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 4,
+   "in": "fm",
+   "color": 6
+  },
+  {
+   "from": 4,
+   "out": "sine",
+   "to": 7,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "white",
+   "to": 8,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "band",
+   "to": 10,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "gate",
+   "to": 9,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "env",
+   "to": 10,
+   "in": "cv",
+   "color": 4
+  },
+  {
+   "from": 1,
+   "out": "white",
+   "to": 11,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 11,
+   "out": "high",
+   "to": 13,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 3,
+   "out": "gate",
+   "to": 12,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 12,
+   "out": "env",
+   "to": 13,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 14,
+   "in": "in1",
+   "color": 1
+  },
+  {
+   "from": 10,
+   "out": "out",
+   "to": 14,
+   "in": "in2",
+   "color": 2
+  },
+  {
+   "from": 13,
+   "out": "out",
+   "to": 14,
+   "in": "in3",
+   "color": 3
+  },
+  {
+   "from": 14,
+   "out": "out",
+   "to": 15,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 15,
+   "out": "left",
+   "to": 16,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 15,
+   "out": "right",
+   "to": 16,
+   "in": "right",
+   "color": 6
+  }
+ ],
+ "midi": []
+}

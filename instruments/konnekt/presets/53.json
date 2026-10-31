@@ -1,0 +1,240 @@
+{
+ "version": 1,
+ "title": "Factory Hum",
+ "category": "Pads and atmospheres",
+ "text": "Sound: an electrical, mechanical drone: the hum and buzz of machinery in a dark industrial space, pulsing slowly.\n\nHow it's built: a low pulse and pink noise through the Crusher (a few bits: grit and buzz), then a band-pass; an LFO's 0..1 output into the VCA's CV with its LEVEL half up makes the slow throb; a Delay and a big Reverb. The envelope fades it in and out. Two voices.\n\nPlay: hold one or two low notes.\n\nTweak: the LFO's RATE (the throb), BITS, the filter's CUTOFF, the noise level.",
+ "voices": 2,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": -2.0,
+    "width": 0.2
+   }
+  },
+  {
+   "slot": 2,
+   "type": "noise",
+   "x": 448,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "mixer",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "level1": 0.7,
+    "level2": 0.3
+   }
+  },
+  {
+   "slot": 4,
+   "type": "crusher",
+   "x": 752,
+   "y": 16,
+   "knobs": {
+    "bits": 12.0,
+    "rate": 1.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "svf",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 400.0,
+    "res": 0.4
+   }
+  },
+  {
+   "slot": 6,
+   "type": "lfo",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "rate": 0.7,
+    "wave": 1.0
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {
+    "level": 0.5,
+    "cv_amount": 0.5
+   }
+  },
+  {
+   "slot": 8,
+   "type": "envelope",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "attack": 1.0,
+    "decay": 1.0,
+    "sustain": 1.0,
+    "release": 2.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "vca",
+   "x": 816,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 10,
+   "type": "delay",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "time": 0.6,
+    "feedback": 0.45,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 11,
+   "type": "reverb",
+   "x": 168,
+   "y": 956,
+   "knobs": {
+    "size": 0.85,
+    "mix": 0.4
+   }
+  },
+  {
+   "slot": 12,
+   "type": "output",
+   "x": 320,
+   "y": 956,
+   "knobs": {
+    "volume": 1.0
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "pulse",
+   "to": 3,
+   "in": "in1",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "pink",
+   "to": 3,
+   "in": "in2",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 5,
+   "out": "band",
+   "to": 7,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 6,
+   "out": "unipolar",
+   "to": 7,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 9,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 8,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 8,
+   "out": "env",
+   "to": 9,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 10,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 4
+  },
+  {
+   "from": 11,
+   "out": "left",
+   "to": 12,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 11,
+   "out": "right",
+   "to": 12,
+   "in": "right",
+   "color": 6
+  }
+ ],
+ "midi": []
+}

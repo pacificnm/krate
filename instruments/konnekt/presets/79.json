@@ -1,0 +1,187 @@
+{
+ "version": 1,
+ "title": "Heartbeat",
+ "category": "Effects",
+ "text": "Sound: a slow, deep human heartbeat, 'lub-dub', in the dark: the tension sound of thrillers and dark ambient. It plays by itself.\n\nHow it's built: a Clock at 100 BPM ticks a Sequencer on sixteenths with only its first two steps on: lub and dub, a sixteenth apart, then a rest of six. The 8 steps last two beats, so the heart beats at 50 per minute. Each beat is a low sine with a little pitch drop through a filter, like the kick drum but softer and deeper.\n\nTweak: the clock's TEMPO (faster is a racing heart), the second step's on/off, the drum's DECAY.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 100.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "sequencer",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "gate1": 1.0,
+    "gate2": 1.0,
+    "gate3": 0.0,
+    "gate4": 0.0,
+    "gate5": 0.0,
+    "gate6": 0.0,
+    "gate7": 0.0,
+    "gate8": 0.0,
+    "gate_length": 0.4,
+    "pitch2": -2.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "octave": -3.0,
+    "tune": 10.0,
+    "fm_amount": 0.8
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 296,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.06,
+    "sustain": 0.0,
+    "release": 0.05
+   }
+  },
+  {
+   "slot": 4,
+   "type": "envelope",
+   "x": 512,
+   "y": 486,
+   "knobs": {
+    "attack": 0.005,
+    "decay": 0.18,
+    "sustain": 0.0,
+    "release": 0.12
+   }
+  },
+  {
+   "slot": 5,
+   "type": "vca",
+   "x": 728,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 6,
+   "type": "ladder",
+   "x": 880,
+   "y": 486,
+   "knobs": {
+    "cutoff": 200.0,
+    "res": 0.1
+   }
+  },
+  {
+   "slot": 7,
+   "type": "drive",
+   "x": 1096,
+   "y": 486,
+   "knobs": {
+    "drive": 0.3,
+    "level": 1.0
+   }
+  },
+  {
+   "slot": 8,
+   "type": "output",
+   "x": 1248,
+   "y": 486,
+   "knobs": {
+    "volume": 0.8
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "sixteenth",
+   "to": 1,
+   "in": "clock",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 1,
+   "in": "reset",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "gate",
+   "to": 3,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 1,
+   "out": "gate",
+   "to": 4,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 2,
+   "in": "fm",
+   "color": 5
+  },
+  {
+   "from": 2,
+   "out": "sine",
+   "to": 5,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 4,
+   "out": "env",
+   "to": 5,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "left",
+   "color": 2
+  }
+ ],
+ "midi": []
+}

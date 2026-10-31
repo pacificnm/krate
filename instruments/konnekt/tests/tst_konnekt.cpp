@@ -171,7 +171,7 @@ private slots:
         KonnektController c(engine, dir.path(), nullptr);
         c.setPresetsDir(QStringLiteral(KONNEKT_PRESETS));
         const QVariantList presets = c.presets();
-        QCOMPARE(presets.size(), 49);
+        QCOMPARE(presets.size(), 84);
         for (int i = 0; i < int(presets.size()); ++i) {
             QFile f(QStringLiteral(KONNEKT_PRESETS "/%1.json").arg(i + 1, 2, 10, QChar(u'0')));
             QVERIFY(f.open(QIODevice::ReadOnly));

@@ -1,0 +1,193 @@
+{
+ "version": 1,
+ "title": "Ring Mod Atmosphere",
+ "category": "Pads and atmospheres",
+ "text": "Sound: an eerie, unsettled, shifting drone: tones that never quite agree, drifting in and out of strange harmonies. The tension under a horror or sci-fi scene.\n\nHow it's built: two sines multiplied in a Ring Mod; a very slow LFO moves the second one's pitch (FM), so the sum and difference tones keep sliding against each other. Slow attack, Chorus and a big Reverb. Four voices.\n\nPlay: single held notes and odd intervals.\n\nTweak: the LFO's RATE, the second oscillator's FM and TUNE, the ring mod's MIX.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "tune": 6.0,
+    "fm_amount": 0.15
+   }
+  },
+  {
+   "slot": 3,
+   "type": "lfo",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "rate": 0.05,
+    "wave": 6.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ring_mod",
+   "x": 944,
+   "y": 16,
+   "knobs": {
+    "mix": 0.8
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 1.5,
+    "decay": 1.0,
+    "sustain": 1.0,
+    "release": 2.5
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "chorus",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "mode": 0.0
+   }
+  },
+  {
+   "slot": 8,
+   "type": "reverb",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "size": 0.85,
+    "mix": 0.45
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 688,
+   "y": 486,
+   "knobs": {
+    "volume": 0.62
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 2,
+   "in": "fm",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "sine",
+   "to": 4,
+   "in": "a",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "sine",
+   "to": 4,
+   "in": "b",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

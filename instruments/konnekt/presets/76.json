@@ -1,0 +1,191 @@
+{
+ "version": 1,
+ "title": "Sci-Fi Warble",
+ "category": "Effects",
+ "text": "Sound: the warbling, wobbling flying-saucer sound of old sci-fi films: a tone trembling fast while it slowly rises and falls.\n\nHow it's built: two LFOs mixed into the oscillator's FM: a fast one (9 Hz) for the warble, a slow one for the drift. A sine through a Delay and Reverb.\n\nPlay: hold a high note.\n\nTweak: each LFO's RATE and its mixer level, the oscillator's FM.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "lfo",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "rate": 9.0,
+    "wave": 1.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "lfo",
+   "x": 384,
+   "y": 16,
+   "knobs": {
+    "rate": 0.2,
+    "wave": 0.0
+   }
+  },
+  {
+   "slot": 3,
+   "type": "mixer",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "level1": 0.3,
+    "level2": 1.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "oscillator",
+   "x": 752,
+   "y": 16,
+   "knobs": {
+    "fm_amount": 0.5
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.2,
+    "decay": 0.3,
+    "sustain": 1.0,
+    "release": 0.8
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "delay",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "time": 0.3,
+    "feedback": 0.4,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 8,
+   "type": "reverb",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "size": 0.6,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 688,
+   "y": 486,
+   "knobs": {
+    "volume": 0.56
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 4,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "out",
+   "to": 3,
+   "in": "in1",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 3,
+   "in": "in2",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "fm",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "sine",
+   "to": 6,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 3
+  }
+ ],
+ "midi": []
+}

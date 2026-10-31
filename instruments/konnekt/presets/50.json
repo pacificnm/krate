@@ -1,0 +1,203 @@
+{
+ "version": 1,
+ "title": "Shimmer Pad",
+ "category": "Pads and atmospheres",
+ "text": "Sound: a bright, airy, heavenly pad: each note with its octave and fifth above, ringing in a long echo and a huge reverb.\n\nHow it's built: three sines on each key: the note, its fifth an octave up, and two octaves up: soft but full of shimmer. A slow attack, a long Delay and a big Reverb. Six voices.\n\nPlay: high chords, slow.\n\nTweak: the levels on the mixer (the top sines are the shimmer), the delay's FEEDBACK, the reverb's SIZE.",
+ "voices": 6,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0,
+    "tune": 7.0
+   }
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "octave": 2.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 1008,
+   "y": 16,
+   "knobs": {
+    "level1": 0.6,
+    "level2": 0.35,
+    "level3": 0.25
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.8,
+    "decay": 1.0,
+    "sustain": 0.9,
+    "release": 2.0
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "delay",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "time": 0.5,
+    "feedback": 0.5,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 8,
+   "type": "reverb",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "size": 0.9,
+    "mix": 0.45
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 688,
+   "y": 486,
+   "knobs": {
+    "volume": 0.61
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "triangle",
+   "to": 4,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "sine",
+   "to": 4,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "sine",
+   "to": 4,
+   "in": "in3",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 5
+  }
+ ],
+ "midi": []
+}

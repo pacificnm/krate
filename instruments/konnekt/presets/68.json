@@ -1,0 +1,426 @@
+{
+ "version": 1,
+ "title": "Trance Pulse",
+ "category": "Drums and grooves",
+ "text": "Sound: the driving engine of 90s trance: kick on every beat, a rolling bass on every off-beat between the kicks, open hats on the off-beats too, quiet sixteenth ticks. It plays by itself; hold a key around C3 to move the bass.\n\nHow it's built: one Clock at 138. Kick on every BEAT. The bass: a Sequencer on eighths with only the even steps on (the off-beats) \u2192 a saw through the OTA filter, plucked by a short envelope. Hats on the same off-beats, and quieter hats on every 1/16. A Delay.\n\nTweak: the bass filter's CUTOFF, the bass steps' notes, TEMPO.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 138.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "noise",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "midi_in",
+   "x": 320,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "sequencer",
+   "x": 472,
+   "y": 16,
+   "knobs": {
+    "gate1": 0.0,
+    "gate2": 1.0,
+    "gate3": 0.0,
+    "gate4": 1.0,
+    "gate5": 0.0,
+    "gate6": 1.0,
+    "gate7": 0.0,
+    "gate8": 1.0,
+    "gate_length": 0.45
+   }
+  },
+  {
+   "slot": 4,
+   "type": "oscillator",
+   "x": 1008,
+   "y": 16,
+   "knobs": {
+    "octave": -3.0,
+    "tune": 7.0,
+    "fm_amount": 2.5
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.045,
+    "sustain": 0.0,
+    "release": 0.04
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.28,
+    "sustain": 0.0,
+    "release": 0.168
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "oscillator",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "ota_filter",
+   "x": 880,
+   "y": 486,
+   "knobs": {
+    "cutoff": 300.0,
+    "res": 0.45,
+    "cv_amount": 4.0
+   }
+  },
+  {
+   "slot": 10,
+   "type": "envelope",
+   "x": 1096,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.1,
+    "sustain": 0.0,
+    "release": 0.06
+   }
+  },
+  {
+   "slot": 11,
+   "type": "vca",
+   "x": 1312,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 12,
+   "type": "svf",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "cutoff": 8000.0,
+    "res": 0.1
+   }
+  },
+  {
+   "slot": 13,
+   "type": "envelope",
+   "x": 232,
+   "y": 956,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.08,
+    "sustain": 0.0,
+    "release": 0.064
+   }
+  },
+  {
+   "slot": 14,
+   "type": "vca",
+   "x": 448,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 15,
+   "type": "svf",
+   "x": 600,
+   "y": 956,
+   "knobs": {
+    "cutoff": 8000.0,
+    "res": 0.1
+   }
+  },
+  {
+   "slot": 16,
+   "type": "envelope",
+   "x": 816,
+   "y": 956,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.02,
+    "sustain": 0.0,
+    "release": 0.016
+   }
+  },
+  {
+   "slot": 17,
+   "type": "vca",
+   "x": 1032,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 18,
+   "type": "mixer",
+   "x": 1184,
+   "y": 956,
+   "knobs": {
+    "level1": 0.9,
+    "level2": 0.65,
+    "level3": 0.3,
+    "level4": 0.12
+   }
+  },
+  {
+   "slot": 19,
+   "type": "delay",
+   "x": 16,
+   "y": 1426,
+   "knobs": {
+    "time": 0.326,
+    "feedback": 0.2,
+    "mix": 0.1
+   }
+  },
+  {
+   "slot": 20,
+   "type": "output",
+   "x": 168,
+   "y": 1426,
+   "knobs": {
+    "volume": 0.93
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 3,
+   "in": "clock",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 3,
+   "in": "reset",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 5,
+   "in": "gate",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 6,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 4,
+   "in": "fm",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "sine",
+   "to": 7,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 8,
+   "out": "saw",
+   "to": 9,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 3,
+   "out": "gate",
+   "to": 10,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 10,
+   "out": "env",
+   "to": 9,
+   "in": "cutoff",
+   "color": 1
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 11,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 10,
+   "out": "env",
+   "to": 11,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "pitch",
+   "to": 3,
+   "in": "transpose",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "pitch",
+   "to": 8,
+   "in": "pitch",
+   "color": 5
+  },
+  {
+   "from": 1,
+   "out": "white",
+   "to": 12,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 12,
+   "out": "high",
+   "to": 14,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 3,
+   "out": "gate",
+   "to": 13,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 13,
+   "out": "env",
+   "to": 14,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "white",
+   "to": 15,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 15,
+   "out": "high",
+   "to": 17,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "sixteenth",
+   "to": 16,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 16,
+   "out": "env",
+   "to": 17,
+   "in": "cv",
+   "color": 5
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 18,
+   "in": "in1",
+   "color": 6
+  },
+  {
+   "from": 11,
+   "out": "out",
+   "to": 18,
+   "in": "in2",
+   "color": 7
+  },
+  {
+   "from": 14,
+   "out": "out",
+   "to": 18,
+   "in": "in3",
+   "color": 0
+  },
+  {
+   "from": 17,
+   "out": "out",
+   "to": 18,
+   "in": "in4",
+   "color": 1
+  },
+  {
+   "from": 18,
+   "out": "out",
+   "to": 19,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 19,
+   "out": "left",
+   "to": 20,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 19,
+   "out": "right",
+   "to": 20,
+   "in": "right",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

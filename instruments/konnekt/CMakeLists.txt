@@ -103,6 +103,41 @@ qt_add_qml_module(konnekt_ui
         presets/47.json
         presets/48.json
         presets/49.json
+        presets/50.json
+        presets/51.json
+        presets/52.json
+        presets/53.json
+        presets/54.json
+        presets/55.json
+        presets/56.json
+        presets/57.json
+        presets/58.json
+        presets/59.json
+        presets/60.json
+        presets/61.json
+        presets/62.json
+        presets/63.json
+        presets/64.json
+        presets/65.json
+        presets/66.json
+        presets/67.json
+        presets/68.json
+        presets/69.json
+        presets/70.json
+        presets/71.json
+        presets/72.json
+        presets/73.json
+        presets/74.json
+        presets/75.json
+        presets/76.json
+        presets/77.json
+        presets/78.json
+        presets/79.json
+        presets/80.json
+        presets/81.json
+        presets/82.json
+        presets/83.json
+        presets/84.json
 )
 target_include_directories(konnekt_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
 target_link_libraries(konnekt_ui PUBLIC konnekt_dsp krate_host krate_app krate_qml Qt6::Quick Qt6::QuickControls2)

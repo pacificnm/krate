@@ -1,0 +1,229 @@
+{
+ "version": 1,
+ "title": "Falling Bomb",
+ "category": "Effects",
+ "text": "Sound: the long, whistling fall of a bomb (or a dive-bombing synth): a pitch dropping for two seconds, ending in a low boom.\n\nHow it's built: a sine whose FM gets an envelope with a 2-second DECAY at 4 octaves: the note starts four octaves up and slides all the way down. A second envelope brings in low noise through a filter at the end for the boom. A Reverb.\n\nPlay: hold a key. Higher keys fall from higher.\n\nTweak: the fall envelope's DECAY (the length of the fall), the oscillator's FM (from how high), the boom envelope's ATTACK.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "fm_amount": 4.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 2.0,
+    "sustain": 0.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 664,
+   "y": 16,
+   "knobs": {
+    "attack": 0.01,
+    "decay": 2.5,
+    "sustain": 0.0,
+    "release": 0.5
+   }
+  },
+  {
+   "slot": 4,
+   "type": "vca",
+   "x": 880,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 5,
+   "type": "noise",
+   "x": 16,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 6,
+   "type": "ladder",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "cutoff": 150.0,
+    "res": 0.2
+   }
+  },
+  {
+   "slot": 7,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 1.9,
+    "decay": 0.8,
+    "sustain": 0.0,
+    "release": 0.6
+   }
+  },
+  {
+   "slot": 8,
+   "type": "vca",
+   "x": 600,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 9,
+   "type": "mixer",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "level1": 0.6,
+    "level2": 1.0
+   }
+  },
+  {
+   "slot": 10,
+   "type": "reverb",
+   "x": 904,
+   "y": 486,
+   "knobs": {
+    "size": 0.7,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 11,
+   "type": "output",
+   "x": 1056,
+   "y": 486,
+   "knobs": {
+    "volume": 0.81
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 1,
+   "in": "fm",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "sine",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 3,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 4,
+   "in": "cv",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "pink",
+   "to": 6,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 8,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 9,
+   "in": "in1",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "in2",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 10,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 6
+  }
+ ],
+ "midi": []
+}

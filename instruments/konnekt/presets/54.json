@@ -1,0 +1,227 @@
+{
+ "version": 1,
+ "title": "Tremolo Pad",
+ "category": "Pads and atmospheres",
+ "text": "Sound: a pad with a fast, shimmering pulse in its volume, like a vibraphone's motor or a spinning speaker: a classic 80s ballad texture.\n\nHow it's built: two detuned saws through a soft filter; then a tremolo: an LFO's 0..1 output into a VCA's CV, with the VCA's LEVEL half up so the volume dips rather than vanishes; then the note's own VCA. Chorus and Reverb. Six voices.\n\nPlay: slow chords.\n\nTweak: the LFO's RATE (the speed of the pulse), the tremolo VCA's CV (the depth), the LFO's WAVE (Square chops).",
+ "voices": 6,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "tune": 0.1
+   }
+  },
+  {
+   "slot": 3,
+   "type": "mixer",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "level1": 0.55,
+    "level2": 0.55
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 880,
+   "y": 16,
+   "knobs": {
+    "cutoff": 1800.0,
+    "res": 0.1
+   }
+  },
+  {
+   "slot": 5,
+   "type": "lfo",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "rate": 5.0,
+    "wave": 1.0
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "level": 0.5,
+    "cv_amount": 0.5
+   }
+  },
+  {
+   "slot": 7,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 0.3,
+    "decay": 1.0,
+    "sustain": 0.9,
+    "release": 1.0
+   }
+  },
+  {
+   "slot": 8,
+   "type": "vca",
+   "x": 600,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 9,
+   "type": "chorus",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "mode": 1.0
+   }
+  },
+  {
+   "slot": 10,
+   "type": "reverb",
+   "x": 904,
+   "y": 486,
+   "knobs": {
+    "size": 0.7,
+    "mix": 0.35
+   }
+  },
+  {
+   "slot": 11,
+   "type": "output",
+   "x": 1056,
+   "y": 486,
+   "knobs": {
+    "volume": 0.72
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 3,
+   "in": "in1",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 3,
+   "in": "in2",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "unipolar",
+   "to": 6,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 8,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 4
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 6
+  }
+ ],
+ "midi": []
+}

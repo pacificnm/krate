@@ -1,0 +1,241 @@
+{
+ "version": 1,
+ "title": "Drifting Pad",
+ "category": "Pads and atmospheres",
+ "text": "Sound: a pad whose tone wanders on its own, never the same twice: the filter drifting from one random place to the next.\n\nHow it's built: a Clock ticks every bar; a Sample & Hold takes a random value on each tick; a Slew turns the jumps into slow, two-second glides; that drives the Ladder filter's CUTOFF. Two saws, slow attack, Chorus, Reverb. Six voices.\n\nPlay: hold chords for a while.\n\nTweak: the Slew's times (shorter glides become steps), which clock output ticks the Sample & Hold, the filter's CV.",
+ "voices": 6,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "clock",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "tempo": 90.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "sample_hold",
+   "x": 320,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "slew",
+   "x": 472,
+   "y": 16,
+   "knobs": {
+    "rise": 2.0,
+    "fall": 2.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "oscillator",
+   "x": 624,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 5,
+   "type": "oscillator",
+   "x": 904,
+   "y": 16,
+   "knobs": {
+    "tune": 0.12
+   }
+  },
+  {
+   "slot": 6,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "level1": 0.55,
+    "level2": 0.55
+   }
+  },
+  {
+   "slot": 7,
+   "type": "ladder",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "cutoff": 900.0,
+    "res": 0.3,
+    "cv_amount": 2.0
+   }
+  },
+  {
+   "slot": 8,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 0.5,
+    "decay": 1.0,
+    "sustain": 0.9,
+    "release": 1.5
+   }
+  },
+  {
+   "slot": 9,
+   "type": "vca",
+   "x": 600,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 10,
+   "type": "chorus",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "mode": 2.0
+   }
+  },
+  {
+   "slot": 11,
+   "type": "reverb",
+   "x": 904,
+   "y": 486,
+   "knobs": {
+    "size": 0.7,
+    "mix": 0.35
+   }
+  },
+  {
+   "slot": 12,
+   "type": "output",
+   "x": 1056,
+   "y": 486,
+   "knobs": {
+    "volume": 0.75
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 4,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 5,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "bar",
+   "to": 2,
+   "in": "trigger",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 3,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 7,
+   "in": "cutoff",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "saw",
+   "to": 6,
+   "in": "in1",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "saw",
+   "to": 6,
+   "in": "in2",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 9,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 8,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "env",
+   "to": 9,
+   "in": "cv",
+   "color": 2
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 10,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 5
+  },
+  {
+   "from": 11,
+   "out": "left",
+   "to": 12,
+   "in": "left",
+   "color": 6
+  },
+  {
+   "from": 11,
+   "out": "right",
+   "to": 12,
+   "in": "right",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

@@ -1,0 +1,131 @@
+{
+ "version": 1,
+ "title": "Power Down",
+ "category": "Effects",
+ "text": "Sound: a machine (or a tape) winding down: hold a note, and when you let go its pitch sags and falls away to nothing.\n\nHow it's built: one envelope with an instant attack, full sustain and a 1.5-second RELEASE. Its ENV opens the VCA; its INVERTED output (0 while the key is held, rising to 1 as it releases) is flipped by the Attenuverter into the oscillator's FM at 2 octaves: so when you let go, the pitch falls two octaves as the sound fades. Saw through a filter.\n\nPlay: hold a note, then let go.\n\nTweak: the envelope's RELEASE (how long it winds down), the oscillator's FM (how far it falls).",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "envelope",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "attack": 0.002,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 1.5
+   }
+  },
+  {
+   "slot": 2,
+   "type": "attenuverter",
+   "x": 384,
+   "y": 16,
+   "knobs": {
+    "scale_a": -1.0
+   }
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 536,
+   "y": 16,
+   "knobs": {
+    "fm_amount": 2.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 2500.0,
+    "res": 0.1
+   }
+  },
+  {
+   "slot": 5,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 6,
+   "type": "output",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "volume": 0.76
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 1,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "inverted",
+   "to": 2,
+   "in": "a",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "out_a",
+   "to": 3,
+   "in": "fm",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "saw",
+   "to": 4,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 1,
+   "out": "env",
+   "to": 5,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 6,
+   "in": "left",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

@@ -623,12 +623,13 @@ ApplicationWindow {
         }
     }
 
-    // ---- Presets: finished sounds, by category
+    // ---- Presets: finished sounds, by category (six columns at full width; it scrolls when narrower)
     Popup {
         id: presetsPopup
-        x: 560
+        width: Math.min(root.width - 40, 1360)
+        height: Math.min(presetsBody.height + 2 * padding, root.height - topBar.height - 24)
+        x: (root.width - width) / 2
         y: topBar.height + 4
-        width: Math.min(root.width - 580, 760)
         padding: 14
         modal: true
         background: Rectangle { radius: 8; color: "#23252A"; border.color: "#3A3D44" }
@@ -641,44 +642,53 @@ ApplicationWindow {
             return seen
         }
 
-        Column {
-            width: parent.width
-            spacing: 10
-            Text {
+        Flickable {
+            anchors.fill: parent
+            contentHeight: presetsBody.height
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar { }
+
+            Column {
+                id: presetsBody
                 width: parent.width
-                wrapMode: Text.WordWrap
-                text: "PRESETS: finished sounds to play and take apart. Each replaces the rack (save yours first) and says how it's built and what to tweak."
-                color: "#F2B632"
-                font.family: Theme.labelFont
-                font.pixelSize: 12
-                font.bold: true
-            }
-            Flow {
-                width: parent.width
-                spacing: 16
-                Repeater {
-                    model: presetsPopup.categories
-                    Column {
-                        id: presetCategory
-                        required property string modelData
-                        spacing: 6
-                        Text {
-                            text: presetCategory.modelData.toUpperCase()
-                            color: "#9A968E"
-                            font.family: Theme.labelFont
-                            font.pixelSize: 11
-                            font.bold: true
-                        }
-                        Repeater {
-                            model: Konnekt.presets.filter(p => p.category === presetCategory.modelData)
-                            PanelButton {
-                                required property var modelData
-                                width: 220
-                                height: 28
-                                dark: true
-                                faceText: modelData.title
-                                text: "Load " + modelData.title + " (the rack is replaced: save yours first)"
-                                onClicked: { Konnekt.loadPreset(modelData.index); presetsPopup.close() }
+                spacing: 10
+                Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    text: "PRESETS: finished sounds to play and take apart. Each replaces the rack (save yours first) and says how it's built and what to tweak."
+                    color: "#F2B632"
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+                Flow {
+                    width: parent.width
+                    spacing: 12
+                    Repeater {
+                        model: presetsPopup.categories
+                        Column {
+                            id: presetCategory
+                            required property string modelData
+                            spacing: 6
+                            Text {
+                                text: presetCategory.modelData.toUpperCase()
+                                color: "#9A968E"
+                                font.family: Theme.labelFont
+                                font.pixelSize: 11
+                                font.bold: true
+                            }
+                            Repeater {
+                                model: Konnekt.presets.filter(p => p.category === presetCategory.modelData)
+                                PanelButton {
+                                    required property var modelData
+                                    width: 210
+                                    height: 28
+                                    dark: true
+                                    faceText: modelData.title
+                                    text: "Load " + modelData.title + " (the rack is replaced: save yours first)"
+                                    onClicked: { Konnekt.loadPreset(modelData.index); presetsPopup.close() }
+                                }
                             }
                         }
                     }
