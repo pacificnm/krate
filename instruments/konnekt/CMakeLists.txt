@@ -32,6 +32,8 @@ qt_add_qml_module(konnekt_ui
     SOURCES
         app/Explainer.h
         app/Explainer.cpp
+        app/Translate.h
+        app/Translate.cpp
         app/KonnektController.h
         app/KonnektController.cpp
     QML_FILES
@@ -161,3 +163,12 @@ target_compile_definitions(konnekt_tst_konnekt PRIVATE KONNEKT_LESSONS="${CMAKE_
     KONNEKT_EXPLAIN="${CMAKE_CURRENT_SOURCE_DIR}/explain")
 target_link_libraries(konnekt_tst_konnekt PRIVATE konnekt_dsp krate_app Qt6::Qml Qt6::Test)
 add_test(NAME konnekt_tst_konnekt COMMAND konnekt_tst_konnekt)
+
+# Konnekt patches into Kalliope, Kobalt and Krimson presets.
+add_executable(konnekt_tst_translate tests/tst_translate.cpp app/Translate.h app/Translate.cpp)
+target_include_directories(konnekt_tst_translate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_compile_options(konnekt_tst_translate PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(konnekt_tst_translate PRIVATE KONNEKT_LESSONS="${CMAKE_CURRENT_SOURCE_DIR}/lessons"
+    KONNEKT_PRESETS="${CMAKE_CURRENT_SOURCE_DIR}/presets")
+target_link_libraries(konnekt_tst_translate PRIVATE konnekt_dsp kalliope_dsp kobalt_dsp krimson_dsp Qt6::Core Qt6::Test)
+add_test(NAME konnekt_tst_translate COMMAND konnekt_tst_translate)
