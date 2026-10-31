@@ -35,7 +35,6 @@ QVariantList jacks(std::span<const JackInfo> list)
     return out;
 }
 
-QString number(double v, int decimals) { return QString::number(v, 'f', decimals); }
 } // namespace
 
 KonnektController::KonnektController(Engine &engine, const QString &dataDir, QObject *parent)
@@ -70,6 +69,8 @@ KonnektController::KonnektController(Engine &engine, const QString &dataDir, QOb
         plug(env, 0, vca, 1);
         plug(vca, 0, out, 0);
     }
+
+    m_explainer.load(QStringLiteral(":/qt/qml/Konnekt/explain"));
 
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(kSaveDelayMs);
@@ -261,26 +262,7 @@ QString KonnektController::knobText(int slot, int k, qreal position) const
     const Module *m = module(slot);
     if (!m || k < 0 || k >= int(m->info().knobs.size()))
         return {};
-    const KnobInfo &info = m->info().knobs[std::size_t(k)];
-    if (!info.labels.empty())
-        return text(info.labels[std::size_t(info.index(float(position)))]);
-    const double v = info.value(float(position));
-    const std::string_view unit = info.unit;
-    if (unit == "Hz")
-        return v >= 1000.0 ? number(v / 1000.0, 2) + QStringLiteral(" kHz") : number(v, v < 10.0 ? 2 : 0) + QStringLiteral(" Hz");
-    if (unit == "s")
-        return v < 1.0 ? number(v * 1000.0, v < 0.01 ? 1 : 0) + QStringLiteral(" ms") : number(v, 2) + QStringLiteral(" s");
-    if (unit == "st")
-        return (v > 0.0 ? QStringLiteral("+") : QString()) + number(v, info.detents > 1 ? 0 : 1) + QStringLiteral(" st");
-    if (unit == "oct")
-        return (info.detents > 1 && v > 0.0 ? QStringLiteral("+") : QString()) + number(v, info.detents > 1 ? 0 : 2) + QStringLiteral(" oct");
-    if (unit == "BPM")
-        return number(v, 0) + QStringLiteral(" BPM");
-    if (info.detents > 1)
-        return number(v, 0);
-    if (info.min >= 0.0f && info.max <= 1.0f)
-        return number(v * 100.0, 0) + u'%';
-    return number(v, 2);
+    return knobValueText(m->info().knobs[std::size_t(k)], position);
 }
 
 // --- Cables ---------------------------------------------------------------------------------
@@ -446,6 +428,18 @@ void KonnektController::poll()
 }
 
 // --- JSON ----------------------------------------------------------------------------------------
+
+// --- Explanations --------------------------------------------------------------------------
+
+QVariantMap KonnektController::explain(const QString &path) const
+{
+    Explainer::Rack rack;
+    rack.module = [this](int slot) { return module(slot); };
+    for (const Cable &c : m_cables)
+        rack.cables.push_back({c.fromSlot, c.fromJack, c.toSlot, c.toJack});
+    rack.learnedCc = [this](int slot, int k) { return learnedCc(slot, k); };
+    return m_explainer.card(path, rack);
+}
 
 // --- Saved patches and lessons ---------------------------------------------------------------
 

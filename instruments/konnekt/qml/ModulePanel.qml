@@ -7,6 +7,7 @@ import Krate
 // to drag it by (and ✕ to remove it), its knobs, its input jacks, its output
 // jacks with their live traces. Jacks are clicked to wire them (the rack does
 // the wiring: jackClicked); jackPoint() says where a jack is, for the cables.
+// Right-clicking anything asks for its explanation (explain).
 Item {
     id: panel
 
@@ -16,6 +17,7 @@ Item {
 
     signal jackClicked(int slot, bool output, int jack)
     signal jackScope(int slot, int jack)
+    signal explain(string path)
     signal moved()
 
     readonly property real unit: 64
@@ -31,6 +33,7 @@ Item {
     readonly property real outputsTop: inputsTop + inputsHeight
     readonly property real outputsHeight: info.outputs.length > 0 ? 18 + Math.ceil(info.outputs.length / jackColumns) * 64 : 0
     readonly property bool isScope: type === "scope"
+    readonly property string path: "m/" + slot
 
     width: info.width * unit - 6
     height: outputsTop + outputsHeight + (isScope ? 150 : 0) + 8
@@ -89,7 +92,11 @@ Item {
         HoverHandler {
             onHoveredChanged: if (hovered) Konnekt.help = panel.info.name + ": " + panel.info.help
                                                           + (panel.info.perVoice ? "  It runs once per voice." : "  It runs once: per-voice cables into it are mixed.")
-                                                          + "  (Drag here to move it.)"
+                                                          + "  (Drag here to move it. Right-click: what it is and why.)"
+        }
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: panel.explain(panel.path)
         }
         DragHandler {
             target: panel
@@ -179,7 +186,13 @@ Item {
                 }
                 HoverHandler {
                     onHoveredChanged: if (hovered) Konnekt.help = knobCell.modelData.name + ": " + knobCell.modelData.help
-                                                                  + (Konnekt.learning ? "  (LEARN: click, then move a knob on your controller; right-click to forget.)" : "")
+                                                                  + (Konnekt.learning ? "  (LEARN: click, then move a knob on your controller; right-click to forget.)"
+                                                                                      : "  (Right-click: what it is and why.)")
+                }
+                TapHandler { // while learning, right-click forgets a link instead
+                    enabled: !Konnekt.learning
+                    acceptedButtons: Qt.RightButton
+                    onTapped: panel.explain(panel.path + "/knob/" + knobCell.modelData.key)
                 }
                 Rectangle { // MIDI Learn: click to arm, right-click to forget
                     visible: Konnekt.learning
@@ -257,9 +270,16 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: panel.jackClicked(panel.slot, false, inJack.index)
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: mouse => {
+                    if (mouse.button === Qt.RightButton)
+                        panel.explain(panel.path + "/in/" + inJack.modelData.key)
+                    else
+                        panel.jackClicked(panel.slot, false, inJack.index)
+                }
                 onEntered: Konnekt.help = "Input · " + inJack.modelData.name + ": " + inJack.modelData.help
-                                          + (inJack.plugged ? "  (Click to pull its cable out and plug it elsewhere.)" : "  (Click, then click an output to connect.)")
+                                          + (inJack.plugged ? "  (Click to pull its cable out and plug it elsewhere." : "  (Click, then click an output to connect.")
+                                          + " Right-click: what it is and why.)"
             }
         }
     }
@@ -338,13 +358,14 @@ Item {
                 hoverEnabled: true
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onClicked: mouse => {
-                    if (mouse.button === Qt.RightButton)
+                    if (mouse.button === Qt.RightButton) {
                         panel.jackScope(panel.slot, outJack.index)
-                    else
+                        panel.explain(panel.path + "/out/" + outJack.modelData.key)
+                    } else
                         panel.jackClicked(panel.slot, true, outJack.index)
                 }
                 onEntered: Konnekt.help = "Output · " + outJack.modelData.name + ": " + outJack.modelData.help
-                                          + "  (Click, then click an input to connect. Right-click: show it on the scope.)"
+                                          + "  (Click, then click an input to connect. Right-click: what it is and why, and see it on the scope.)"
             }
         }
     }

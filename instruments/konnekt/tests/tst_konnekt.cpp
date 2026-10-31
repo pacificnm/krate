@@ -161,6 +161,103 @@ private slots:
         }
     }
 
+    // Every module, knob and jack has its explanation; every link leads somewhere.
+    void explanationsComplete()
+    {
+        QTemporaryDir dir;
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        KonnektController c(engine, dir.path(), nullptr);
+        c.setExplainDir(QStringLiteral(KONNEKT_EXPLAIN));
+        const QStringList problems = c.explainer().problems();
+        QVERIFY2(problems.isEmpty(), qPrintable(problems.join(QStringLiteral(" | "))));
+
+        // Every card opens, and so does everything it links to.
+        QStringList paths{QStringLiteral("signal/audio"), QStringLiteral("signal/pitch"), QStringLiteral("signal/gate"),
+                          QStringLiteral("signal/mod"), QStringLiteral("app/voices"), QStringLiteral("app/explain")};
+        for (const ModuleInfo *info : moduleTypes()) {
+            const QString t = QStringLiteral("t/") + QString::fromUtf8(info->type);
+            paths << t;
+            for (const KnobInfo &k : info->knobs)
+                paths << t + QStringLiteral("/knob/") + QString::fromUtf8(k.key);
+            for (const JackInfo &j : info->inputs)
+                paths << t + QStringLiteral("/in/") + QString::fromUtf8(j.key);
+            for (const JackInfo &j : info->outputs)
+                paths << t + QStringLiteral("/out/") + QString::fromUtf8(j.key);
+        }
+        for (const QString &path : paths) {
+            const QVariantMap card = c.explain(path);
+            QVERIFY2(!card.value(QStringLiteral("title")).toString().isEmpty(), qPrintable(path));
+            QVERIFY2(!card.value(QStringLiteral("sections")).toList().isEmpty(), qPrintable(path));
+            for (const QVariant &g : card.value(QStringLiteral("groups")).toList())
+                for (const QVariant &l : g.toMap().value(QStringLiteral("links")).toList()) {
+                    const QString to = l.toMap().value(QStringLiteral("path")).toString();
+                    QVERIFY2(!c.explain(to).isEmpty(), qPrintable(path + QStringLiteral(" -> ") + to));
+                    QVERIFY2(!l.toMap().value(QStringLiteral("label")).toString().isEmpty(), qPrintable(to));
+                }
+            for (const QVariant &f : card.value(QStringLiteral("facts")).toList())
+                if (const QString to = f.toMap().value(QStringLiteral("link")).toString(); !to.isEmpty())
+                    QVERIFY2(!c.explain(to).isEmpty(), qPrintable(path + QStringLiteral(" -> ") + to));
+        }
+        // Numbered parts get their number; the filters share the Ladder's knobs.
+        QVERIFY(c.explain(QStringLiteral("t/mixer/knob/level3")).value(QStringLiteral("sections")).toList()[0].toMap()
+                    .value(QStringLiteral("text")).toString().contains(u'3'));
+        QVERIFY(!c.explain(QStringLiteral("t/ota_filter/knob/res")).value(QStringLiteral("sections")).toList().isEmpty());
+        QVERIFY(c.explain(QStringLiteral("t/nonsense")).isEmpty());
+        QVERIFY(c.explain(QStringLiteral("t/vca/knob/nonsense")).isEmpty());
+        QVERIFY(c.explain(QStringLiteral("m/63")).isEmpty());
+    }
+
+    // On the rack, a card says what the part is doing: its value, its cables.
+    void explanationsShowTheRack()
+    {
+        QTemporaryDir dir;
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        KonnektController c(engine, dir.path(), nullptr); // MIDI In -> Oscillator -> VCA (Envelope) -> Output
+        c.setExplainDir(QStringLiteral(KONNEKT_EXPLAIN));
+        const QVariantList mods = c.modules();
+        const auto slotOf = [&](const char *type) {
+            return mods[find(mods, QStringLiteral("type"), QString::fromLatin1(type))].toMap().value(QStringLiteral("slot")).toInt();
+        };
+        const int osc = slotOf("oscillator"), env = slotOf("envelope"), vca = slotOf("vca");
+        const auto factsOf = [&](const QString &path) {
+            QStringList out;
+            for (const QVariant &f : c.explain(path).value(QStringLiteral("facts")).toList())
+                out << f.toMap().value(QStringLiteral("label")).toString() + u'=' + f.toMap().value(QStringLiteral("text")).toString()
+                           + u'>' + f.toMap().value(QStringLiteral("link")).toString();
+            return out;
+        };
+        const QString m = QStringLiteral("m/%1");
+
+        QVERIFY2(factsOf(m.arg(vca) + QStringLiteral("/in/cv")).contains(QStringLiteral("Plugged in=Envelope · Env>m/%1/out/env").arg(env)),
+                 qPrintable(factsOf(m.arg(vca) + QStringLiteral("/in/cv")).join(u'|')));
+        QVERIFY(factsOf(m.arg(osc) + QStringLiteral("/in/fm")).contains(QStringLiteral("Plugged in=Nothing: it reads 0>")));
+        QVERIFY(factsOf(m.arg(osc) + QStringLiteral("/out/saw")).contains(QStringLiteral("Goes to=VCA · In>m/%1/in/in").arg(vca)));
+        QVERIFY(factsOf(m.arg(osc) + QStringLiteral("/out/sine")).contains(QStringLiteral("Goes to=Nothing yet: click it, then click an input>")));
+        QCOMPARE(c.explain(m.arg(osc) + QStringLiteral("/out/saw")).value(QStringLiteral("scopeSlot")).toInt(), osc);
+        QCOMPARE(c.explain(QStringLiteral("t/oscillator/out/saw")).value(QStringLiteral("scopeSlot")).toInt(), -1);
+
+        c.setKnob(osc, 0, 1.0); // octave +3: the card follows
+        QVERIFY(factsOf(m.arg(osc) + QStringLiteral("/knob/octave")).contains(QStringLiteral("Now=+3>")));
+        QVERIFY(factsOf(m.arg(osc) + QStringLiteral("/knob/fm_amount")).contains(QStringLiteral("Works with=Sets how much the FM input does>m/%1/in/fm").arg(osc)));
+        QVERIFY(factsOf(m.arg(vca) + QStringLiteral("/knob/level")).contains(
+            QStringLiteral("Works with=What the CV input reads with nothing plugged in; added to what is>m/%1/in/cv").arg(vca)));
+        engine.setCcMapping(21, osc, 1);
+        QVERIFY(factsOf(m.arg(osc) + QStringLiteral("/knob/tune")).contains(QStringLiteral("MIDI=Linked to CC 21>")));
+        QCOMPARE(c.explain(m.arg(vca)).value(QStringLiteral("facts")).toList()[1].toMap().value(QStringLiteral("text")).toString(),
+                 QStringLiteral("2 in, 1 out"));
+
+        // A link into its own type stays on the module; others go to the type.
+        QStringList links;
+        for (const QVariant &g : c.explain(m.arg(osc) + QStringLiteral("/knob/width")).value(QStringLiteral("groups")).toList())
+            for (const QVariant &l : g.toMap().value(QStringLiteral("links")).toList())
+                links << l.toMap().value(QStringLiteral("path")).toString();
+        QCOMPARE(links, QStringList{m.arg(osc) + QStringLiteral("/knob/pwm_amount")});
+        QVERIFY(c.explain(m.arg(vca)).value(QStringLiteral("groups")).toList().last().toMap().value(QStringLiteral("links")).toList()[0]
+                    .toMap().value(QStringLiteral("path")).toString().startsWith(u"t/envelope"));
+    }
+
     // Patches saved by name: listed, loaded, deleted; names made safe.
     void savedPatches()
     {

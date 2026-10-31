@@ -215,7 +215,7 @@ The mixer has two shared effects, a **reverb** and a **delay**, that every strip
 
 `krate::MasterStage` (`shared/core/MasterStage.h`) is the last stage before the outputs, in the rack and in every standalone host and render tool: a soft clip plus the master meter. The instruments don't limit; this stage makes sure nothing ever leaves as a hard over. The curve is linear up to the knee at 0.5 (−6 dBFS), untouched, then `0.5 + 0.5·tanh((|x| − 0.5) / 0.5)` above it: the same slope where they meet (no corner), approaching 1.0.
 
-It was a plain `tanh` until it was measured on a live take: `tanh` bends everything, and a song whose mix peaked at 0.85 (a sustained low bass line with drums) picked up about 6 % distortion (23 dB below the music) through whole sections, heard as clipping on the bass. With the knee, the same take measures 46 dB or more below the music; mixes that stay under −6 dBFS pass bit-exact.
+It was a plain `tanh` until it was measured on a live take: `tanh` bends everything, and a song whose mix peaked at 0.85 (a sustained low bass part with drums) picked up about 6 % distortion (23 dB below the music) through whole sections, heard as clipping on the bass. With the knee, the same take measures 46 dB or more below the music; mixes that stay under −6 dBFS pass bit-exact.
 
 ### Audio inputs
 

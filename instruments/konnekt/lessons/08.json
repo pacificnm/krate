@@ -1,6 +1,6 @@
 {
  "version": 1,
- "title": "A sequenced bass line",
+ "title": "A sequenced bass part",
  "text": "A Clock ticks; a Sequencer steps through 8 notes on each tick and sends its own PITCH and GATE. Hold a key: TRANSPOSE (from MIDI In's PITCH) plays the pattern from it. Try: turn the step knobs to make a line; switch steps off for rests; LENGTH 5 or 7 for odd loops; the Slew's RISE and FALL up a little for glides; RESONANCE and the filter's CV for squelch. One voice: a monophonic synth.",
  "voices": 1,
  "modules": [

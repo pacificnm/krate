@@ -1,6 +1,6 @@
 # Korrode manual
 
-Korrode is an acid bass synthesizer: one voice (a saw or square oscillator into a resonant diode-ladder filter), an envelope that sweeps the filter, accent and slide, and a 16-step pattern sequencer to program the squelchy, gliding bass lines of acid house and techno. After the voice, an overdrive and a delay and reverb make it as big or as dirty as you like.
+Korrode is an acid bass synthesizer: one voice (a saw or square oscillator into a resonant diode-ladder filter), an envelope that sweeps the filter, accent and slide, and a 16-step pattern sequencer to program the squelchy, gliding bass parts of acid house and techno. After the voice, an overdrive and a delay and reverb make it as big or as dirty as you like.
 
 This manual goes through the panel from the top left to the bottom right. Every knob, button and display is described here: what it does, its range, and how to use it. Drag a knob up or down (Shift for fine moves) or use the mouse wheel; its value shows while you drag; double-click to put it back to its default.
 

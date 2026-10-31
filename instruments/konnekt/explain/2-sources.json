@@ -1,0 +1,299 @@
+{
+ "modules": {
+  "midi_in": {
+   "what": "Your keyboard, as signals. Every key you play becomes a voice, and each voice gets its own pitch, gate, velocity and pressure.",
+   "does": "When you press a key it gives the note a free voice and sets that voice's PITCH to the note and GATE to 1; when you let go, GATE falls to 0. VELOCITY holds how hard you played. The mod wheel and pitch bend are shared by all voices.",
+   "why": "A modular synth does nothing by itself: something has to say which note and when. MIDI In turns your playing into the pitch and gate signals the rest of the patch follows.",
+   "where": "At the start of almost every patch: PITCH into the oscillators (and a filter's KEY), GATE into the envelopes. One MIDI In is enough; its outputs can feed as many inputs as you like.",
+   "try": [
+    "Plug VELOCITY into a VCA's CV (through a Mixer with the envelope) so harder notes are louder.",
+    "Plug MOD WHEEL into a filter's CUTOFF and play with the wheel."
+   ],
+   "see": [
+    "signal/pitch",
+    "signal/gate",
+    "app/voices"
+   ],
+   "knobs": {
+    "bend_range": {
+     "what": "How far the pitch bend wheel bends the notes, in semitones (0 to 12).",
+     "does": "The wheel's -1..+1 is scaled by this and added to PITCH, so everything following PITCH bends together.",
+     "why": "2 semitones is the usual range for expressive bends; 12 gives octave dives and swoops; 0 leaves the wheel free to use only through the BEND output.",
+     "try": [
+      "Set it to 7 and bend up a fifth at the end of a phrase."
+     ]
+    }
+   },
+   "outputs": {
+    "pitch": {
+     "what": "The note of each voice, 1 per octave (0 is middle C), with the pitch bend added.",
+     "does": "It jumps to the new note when a key is pressed and stays there after you let go, so the release of a note keeps its pitch.",
+     "why": "This is what makes the oscillators play the notes you press. Without it every key would play the same pitch.",
+     "where": "Into each oscillator's PITCH; into a filter's KEY so bright notes stay bright; through a Slew first for glide; into a Sequencer's TRANSPOSE to play a pattern from a key.",
+     "see": [
+      "oscillator/in/pitch",
+      "slew",
+      "ladder/in/key"
+     ]
+    },
+    "gate": {
+     "what": "1 while a key is held, 0 when it's let go: one gate per voice.",
+     "does": "It rises the moment you press and falls the moment you let go. With one voice, playing legato (pressing a new key before letting go of the last) keeps it at 1.",
+     "why": "It is the timing of your playing. Envelopes need it to know when to start (attack) and when to let go (release).",
+     "where": "Into an envelope's GATE (usually); into a VCA's CV for a plain on/off; into an LFO's RESET so each note's wobble starts the same way.",
+     "see": [
+      "envelope/in/gate",
+      "vca/in/cv",
+      "lfo/in/reset"
+     ]
+    },
+    "velocity": {
+     "what": "How hard the key was struck, 0 (softest) to 1 (hardest), held for the whole note.",
+     "why": "Dynamics: a synth that answers to how you play sounds more alive. Classic synths often ignored it; here you choose what it moves.",
+     "where": "Into a filter's CUTOFF (harder is brighter), or mixed with the envelope into a VCA's CV (harder is louder), or an envelope's level through a VCA.",
+     "see": [
+      "ladder/in/cutoff",
+      "vca/in/cv"
+     ]
+    },
+    "pressure": {
+     "what": "Aftertouch: how hard you press into a key you're already holding, 0..1. Not every keyboard sends it.",
+     "why": "It lets you change a note while it sounds, with the same hand that plays it: swell the vibrato or open the filter by leaning on the key.",
+     "where": "Into an oscillator's FM through a VCA opened by an LFO (vibrato on pressure), or a filter's CUTOFF.",
+     "see": [
+      "vca",
+      "lfo"
+     ]
+    },
+    "mod_wheel": {
+     "what": "The modulation wheel on your keyboard, 0..1, the same for every voice.",
+     "why": "A hand control for anything: the usual job is bringing in vibrato, but it can open a filter, speed up an LFO or bring in an effect.",
+     "where": "Into a VCA's CV with an LFO going through the VCA, then on to an oscillator's FM: the wheel sets how much vibrato.",
+     "try": [
+      "Plug it straight into a filter's CUTOFF with CV turned up, and play the wheel like a wah pedal."
+     ],
+     "see": [
+      "vca",
+      "lfo"
+     ]
+    },
+    "bend": {
+     "what": "The pitch bend wheel, -1 (down) to +1 (up), 0 at rest, the same for every voice.",
+     "why": "PITCH already includes the bend; this output lets you bend something else: the filter, an LFO's rate, the pulse width.",
+     "where": "Into a filter's CUTOFF for a wheel-controlled sweep, or an LFO's RATE."
+    }
+   }
+  },
+  "oscillator": {
+   "what": "The source of the tone: it makes a steady, repeating wave at the pitch you give it. Four waves come out at once: saw, pulse, triangle and sine.",
+   "does": "PITCH sets how many times a second the wave repeats (440 times a second is the A above middle C). OCTAVE and TUNE shift that. Each output is the same pitch with a different shape, and the shape decides the tone: how many harmonics (higher overtones) it has.",
+   "why": "Almost every synth sound starts with an oscillator. A filter can only take away what the oscillator gives it, so the wave you pick is the raw material of the sound.",
+   "where": "PITCH from MIDI In (or a sequencer); an output into a filter, a mixer or straight into a VCA; the VCA then goes to the Output. Two oscillators into a Mixer make a thicker sound.",
+   "try": [
+    "Listen to each output in turn on the same note.",
+    "Right-click each output to see its shape on the scope.",
+    "Add a second oscillator a few cents off for a thicker sound (lesson 6)."
+   ],
+   "see": [
+    "signal/audio",
+    "ladder",
+    "vca"
+   ],
+   "knobs": {
+    "octave": {
+     "what": "Shifts the pitch by whole octaves, -3 to +3.",
+     "does": "Each step doubles or halves the frequency; the note name stays the same.",
+     "why": "Put a bass where a bass belongs (-1, -2) without playing at the bottom of the keyboard, or stack a second oscillator an octave above or below for weight."
+    },
+    "tune": {
+     "what": "Shifts the pitch up or down by up to 12 semitones, smoothly.",
+     "does": "Small amounts (0.05 to 0.2 semitones) detune; whole numbers transpose: 7 is a fifth, 12 an octave.",
+     "why": "Two oscillators slightly apart drift in and out of phase, which sounds wide and rich (the 'beating' you hear). A second oscillator at +7 plays a fifth: a power chord from one key.",
+     "try": [
+      "With two oscillators on the same note, turn one's TUNE slowly from 0: hear the beating start slow and speed up."
+     ]
+    },
+    "width": {
+     "what": "The pulse wave's width: how much of each cycle it's up rather than down (5% to 95%).",
+     "does": "At 50% it's a square: hollow, woody, with only odd harmonics. Narrower (or wider) gets thinner and more nasal, down to a reedy buzz.",
+     "why": "It changes the tone of the PULSE output without a filter. Moving it over time (PWM) is one of the classic synth sounds.",
+     "see": [
+      "oscillator/knob/pwm_amount"
+     ]
+    },
+    "fm_amount": {
+     "what": "How far the FM input moves the pitch, in octaves for a full-size signal.",
+     "does": "An LFO's -1..+1 times this is added to the pitch: at 0.03 it's a gentle vibrato, at 1 a full octave up and down.",
+     "why": "This is how the pitch moves on its own: vibrato from an LFO, a drop or rise at the start of each note from an envelope (great for drums and zaps).",
+     "try": [
+      "An LFO at 5 Hz and FM at 0.02 to 0.05: vibrato.",
+      "An envelope with a short decay and FM at 2: a laser zap."
+     ]
+    },
+    "lin_fm_amount": {
+     "what": "How much the LIN FM input shakes the frequency itself.",
+     "does": "The input times this speeds the wave up and slows it down at audio rate. When the input is another oscillator, the result isn't a wobble but new tones, sideband frequencies around the note.",
+     "why": "This is FM synthesis: bells, electric piano, glass, metal, from just two sine waves. A little gives brightness; a lot gives clangs.",
+     "try": [
+      "Another oscillator's SINE into LIN FM, an octave up. Turn this from 0: the tone gets brighter. Now tune the other one off whole octaves: bells and gongs (lesson 7)."
+     ]
+    },
+    "pwm_amount": {
+     "what": "How far the PWM input moves the pulse width.",
+     "does": "The input times this is added to WIDTH (kept between 5% and 95%), so the PULSE output's tone changes with it.",
+     "why": "A pulse whose width slowly moves sounds like several oscillators chorusing together: rich, swirling strings and pads from one oscillator.",
+     "try": [
+      "A slow LFO (0.5 Hz) into PWM, this at 0.3, listen to PULSE."
+     ]
+    }
+   },
+   "inputs": {
+    "pitch": {
+     "what": "The note to play, 1 per octave, 0 is middle C.",
+     "does": "Added to OCTAVE and TUNE: the oscillator plays exactly what comes in, so anything that changes this signal changes the note.",
+     "why": "With nothing plugged in the oscillator just drones on middle C (plus OCTAVE and TUNE). Plugging in MIDI In's PITCH makes it play your keys.",
+     "where": "From MIDI In's PITCH, a Sequencer's PITCH, or a Slew (for glide)."
+    },
+    "fm": {
+     "what": "Pitch modulation: a signal that moves the pitch, scaled by the FM knob.",
+     "does": "It's added to the pitch in octaves, so the same amount moves every note by the same musical interval.",
+     "why": "Vibrato, trills, sirens, pitch drops at the start of a note: anything where the pitch moves by itself.",
+     "where": "From an LFO (vibrato), an envelope (pitch sweeps), a Sample & Hold (random notes)."
+    },
+    "lin_fm": {
+     "what": "Linear frequency modulation, scaled by LIN FM: another audio signal shaking this oscillator's frequency.",
+     "does": "Unlike FM, which moves the pitch musically, this pushes the frequency directly and evenly, so a fast signal here creates new frequencies rather than a wobble.",
+     "why": "The way to get FM tones: bells, metal, glassy keys.",
+     "where": "From another oscillator (usually its SINE). An envelope through a VCA on the way in makes the brightness fade like a struck bell."
+    },
+    "pwm": {
+     "what": "Pulse-width modulation, scaled by PWM: a signal that moves the pulse width.",
+     "why": "To make the PULSE output's tone move on its own: a swirling, chorused sound.",
+     "where": "From a slow LFO, or an envelope for a tone that changes as the note goes."
+    },
+    "sync": {
+     "what": "Hard sync: another signal resets this oscillator's wave each time it rises through zero.",
+     "does": "This oscillator is forced to restart at the other's rate, so its pitch is locked to the other one. Tuning this one higher no longer changes the note: it changes the tone, with a tearing, vocal sound.",
+     "why": "Sync gives aggressive leads that cut through. Sweeping this oscillator's pitch (FM from an envelope) while it's synced is the classic screaming lead.",
+     "where": "From another oscillator's SAW or SINE, both playing the same PITCH.",
+     "try": [
+      "Sync this to another oscillator, then turn this one's TUNE up slowly: the pitch stays, the tone tears (lesson 6)."
+     ]
+    }
+   },
+   "outputs": {
+    "saw": {
+     "what": "The sawtooth wave: a ramp up and a drop, every cycle.",
+     "does": "It has every harmonic, each a little quieter than the one before: the brightest, buzziest wave here.",
+     "why": "With so much in it, a filter has plenty to shape: the go-to wave for basses, brass, strings and leads.",
+     "try": [
+      "Right-click it to see the ramp on the scope."
+     ]
+    },
+    "pulse": {
+     "what": "The pulse wave: up for part of each cycle, down for the rest. At 50% WIDTH it's a square.",
+     "does": "A square has only the odd harmonics: hollow, woody, like a clarinet. Narrow widths sound thinner and nastier.",
+     "why": "A different colour from the saw, and the one wave whose tone you can move without a filter (WIDTH and PWM).",
+     "see": [
+      "oscillator/knob/width"
+     ]
+    },
+    "triangle": {
+     "what": "The triangle wave: up and down in straight lines.",
+     "does": "Like the square, only odd harmonics, but they fall away much faster: soft and round, a little like a flute or an ocarina.",
+     "why": "For gentle sounds that don't need a filter, and as a smooth sub under another wave."
+    },
+    "sine": {
+     "what": "The sine wave: the pure note, with no harmonics at all.",
+     "does": "A filter can't change it (there's nothing above the note to take away), so it stays the same through one.",
+     "why": "A clean sub-bass under a busier sound, a soft whistle, and the best modulator for FM: its sideband tones are clean.",
+     "see": [
+      "oscillator/in/lin_fm"
+     ]
+    }
+   }
+  },
+  "noise": {
+   "what": "A source of random signal: hiss, with no pitch.",
+   "does": "Each sample is random. WHITE has all frequencies equally (bright, like steam); PINK has less treble and more weight, like rain or the sea.",
+   "why": "Noise is the raw material for anything without a clear pitch: snares, hi-hats, wind, breath, the hiss of a wave. Into a Sample & Hold it gives random steps; through a slow filter it's random modulation.",
+   "where": "Into a filter (a band-pass for a snare, a high-pass for hats), then a VCA opened by a short envelope. Or into a Mixer with an oscillator to add breath.",
+   "try": [
+    "WHITE into a State-Variable Filter's IN, listen to BAND, sweep CUTOFF: whooshing wind (lesson 9 builds drums like this)."
+   ],
+   "see": [
+    "svf",
+    "sample_hold"
+   ],
+   "outputs": {
+    "white": {
+     "what": "White noise: every frequency at equal strength.",
+     "why": "The brightest hiss: filtered, it becomes hi-hats, snares, cymbal-like washes and sweeps."
+    },
+    "pink": {
+     "what": "Pink noise: each octave as loud as the next, so it has less treble than white.",
+     "why": "A softer, more natural hiss for wind, surf and rain, and smoother random modulation."
+    }
+   }
+  },
+  "output": {
+   "what": "Where the sound leaves Konnekt for your speakers or headphones.",
+   "does": "Everything plugged into LEFT and RIGHT is turned up or down by VOLUME and sent out. All the voices are mixed together here.",
+   "why": "Nothing is heard until something is plugged into it: it's the end of every patch.",
+   "where": "At the end: from a VCA (so notes start and stop), or from an effect's LEFT and RIGHT outputs.",
+   "try": [
+    "If nothing sounds, right-click the outputs along your chain, working back from here, and see where the signal stops."
+   ],
+   "see": [
+    "vca",
+    "app/cables"
+   ],
+   "knobs": {
+    "volume": {
+     "what": "The overall volume of the patch.",
+     "why": "Several voices add up and some patches are much louder than others: keep it where your speakers are comfortable. The meter at the top right shows the level."
+    }
+   },
+   "inputs": {
+    "left": {
+     "what": "The left speaker. If RIGHT is empty, it goes to both.",
+     "why": "A mono patch only needs this one cable."
+    },
+    "right": {
+     "what": "The right speaker.",
+     "why": "For stereo: an effect's RIGHT output, or a second voice panned apart. Empty, the right speaker plays LEFT."
+    }
+   }
+  },
+  "scope": {
+   "what": "A screen on the rack that draws a signal as it happens: time across, value up and down.",
+   "does": "It shows whatever is plugged into IN, and passes it through THRU unchanged so you can put it in the middle of a cable. Click its screen to show it there.",
+   "why": "Seeing a signal makes it make sense: the shape of a wave, an envelope rising and falling, an LFO, what a filter does to a saw.",
+   "where": "Anywhere you want to look: between an oscillator and a filter, after the filter (watch the corners round off as you lower CUTOFF), on an envelope.",
+   "try": [
+    "Put it after a filter, play a saw and turn CUTOFF down: watch the sharp edges soften."
+   ],
+   "see": [
+    "signal/audio"
+   ],
+   "knobs": {
+    "time": {
+     "what": "How much time the screen shows across: 5, 20 or 80 milliseconds.",
+     "why": "5 ms shows the shape of a single wave in detail; 80 ms shows slower movement like a fast envelope or a vibrato."
+    }
+   },
+   "inputs": {
+    "in": {
+     "what": "What to look at: any signal.",
+     "why": "Audio, an envelope, an LFO: anything you plug in is drawn."
+    }
+   },
+   "outputs": {
+    "thru": {
+     "what": "What comes in, passed on unchanged.",
+     "why": "So you can watch a signal on its way somewhere instead of taking it off its path."
+    }
+   }
+  }
+ }
+}

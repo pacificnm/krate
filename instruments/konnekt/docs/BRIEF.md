@@ -15,7 +15,7 @@ Related docs: [ROADMAP.md](ROADMAP.md).
 - **Voices**: 1 to 8 (VOICES in the top bar). The MIDI In module gives each new note a voice (the oldest is taken when all are busy; the same key reuses its voice). Per-voice modules (oscillators, filters, envelopes, VCAs...) run once per voice; the others (effects, the output, the clock, the sequencer, the scope) once. A per-voice cable into a one-voice input mixes its voices; a one-voice cable into a per-voice input reaches every voice.
 - **Signals**: audio ±1; pitch 1 per octave, 0 = C4 (MIDI 60, 261.63 Hz); gates and triggers 0 or 1 (on above 0.5); modulation ±1 or 0..1. An unplugged input reads 0, unless it has a knob of its own (the knob's value then stands in). A modulation input has an amount knob beside it.
 - **Feedback**: modules run in signal order each 16-sample block; a cable going back up the chain (a loop) arrives one block (16 samples) later.
-- **Learning aids**: every jack shows its signal live (a small moving trace); a scope opens on any cable; hovering a module, knob or jack explains it in the help bar; lesson patches.
+- **Learning aids**: every jack shows its signal live (a small moving trace); a scope opens on any cable; hovering a module, knob or jack explains it in the help bar, and right-clicking it opens the whole explanation (what it is, how it works, why, where it goes, what to try, what it's doing now); lesson patches.
 - **Patches**: saved and loaded by name (`~/.local/share/konnekt/patches/*.json`); the patch in use is kept when you quit.
 - **MIDI**: notes with velocity, pitch bend, mod wheel, aftertouch, sustain into MIDI In; MIDI Learn: any knob from a controller's knob or slider.
 

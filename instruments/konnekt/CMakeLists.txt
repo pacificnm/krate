@@ -30,13 +30,20 @@ qt_add_qml_module(konnekt_ui
     VERSION 1.0
     IMPORTS Krate
     SOURCES
+        app/Explainer.h
+        app/Explainer.cpp
         app/KonnektController.h
         app/KonnektController.cpp
     QML_FILES
         qml/Main.qml
         qml/ModulePanel.qml
+        qml/ExplainPanel.qml
     RESOURCES
         docs/MANUAL.md
+        explain/1-general.json
+        explain/2-sources.json
+        explain/3-shaping.json
+        explain/4-effects.json
         lessons/01.json
         lessons/02.json
         lessons/03.json
@@ -61,9 +68,11 @@ foreach(test tst_engine tst_modules)
 endforeach()
 
 # The app's controller (its sources compiled in: no QML plugin).
-add_executable(konnekt_tst_konnekt tests/tst_konnekt.cpp app/KonnektController.h app/KonnektController.cpp)
+add_executable(konnekt_tst_konnekt tests/tst_konnekt.cpp app/KonnektController.h app/KonnektController.cpp
+    app/Explainer.h app/Explainer.cpp)
 target_include_directories(konnekt_tst_konnekt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(konnekt_tst_konnekt PRIVATE -Wall -Wextra -Wpedantic)
-target_compile_definitions(konnekt_tst_konnekt PRIVATE KONNEKT_LESSONS="${CMAKE_CURRENT_SOURCE_DIR}/lessons")
+target_compile_definitions(konnekt_tst_konnekt PRIVATE KONNEKT_LESSONS="${CMAKE_CURRENT_SOURCE_DIR}/lessons"
+    KONNEKT_EXPLAIN="${CMAKE_CURRENT_SOURCE_DIR}/explain")
 target_link_libraries(konnekt_tst_konnekt PRIVATE konnekt_dsp krate_app Qt6::Qml Qt6::Test)
 add_test(NAME konnekt_tst_konnekt COMMAND konnekt_tst_konnekt)

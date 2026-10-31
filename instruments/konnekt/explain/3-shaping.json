@@ -1,0 +1,489 @@
+{
+ "modules": {
+  "ladder": {
+   "what": "A low-pass filter built like a transistor ladder (the same code as Kalliope's): it lets the low frequencies through and takes away the highs.",
+   "does": "Below CUTOFF the sound passes; above it, it's turned down more and more the higher you go: -12 or -24 dB for every octave (SLOPE). RESONANCE feeds some of the output back in, which boosts a narrow band right at the cutoff. DRIVE pushes the sound into the filter harder for warmth and grit.",
+   "why": "A raw oscillator is harsh and static. The filter is the main tone control of a synth: lower CUTOFF and a bright saw turns dark and warm; move it and the sound comes alive. Subtractive synthesis, the way most analog synths work, is exactly this: start bright, take away.",
+   "where": "Between the oscillator (or a Mixer of oscillators, or noise) and the VCA. An envelope into CUTOFF makes each note open and close; MIDI In's PITCH into KEY keeps high notes as bright as low ones.",
+   "try": [
+    "Play and sweep CUTOFF from top to bottom.",
+    "RESONANCE at 0.7, then sweep again: the classic 'wow'.",
+    "An envelope into CUTOFF with CV at 4 (lesson 4)."
+   ],
+   "see": [
+    "ota_filter",
+    "svf",
+    "envelope"
+   ],
+   "knobs": {
+    "cutoff": {
+     "what": "The frequency where the filter starts cutting, from 20 Hz to 20 kHz.",
+     "does": "Everything above it is turned down; everything below passes. The knob is spread evenly by octaves, so each turn moves it by the same musical amount.",
+     "why": "It is the brightness of the sound: the single most played knob on a synth.",
+     "try": [
+      "Play a low note and sweep it slowly: the sound goes from muffled to open.",
+      "Link it to a knob on your controller with LEARN."
+     ]
+    },
+    "res": {
+     "what": "Resonance: a boost of the frequencies right around the cutoff.",
+     "does": "The filter feeds part of its output back to its input. A little makes a peak that sounds vocal and nasal; a lot makes it ring and whistle at the cutoff; near the top the filter oscillates by itself, a pure tone even with no input.",
+     "why": "Resonance is what makes a filter sweep sound like a sweep: the peak travels with the cutoff. It's the squelch in acid bass parts and the 'wow' in a synth brass.",
+     "try": [
+      "Turn it right up, unplug the IN: the filter whistles on its own. Plug MIDI In's PITCH into KEY and the whistle follows your notes."
+     ]
+    },
+    "cv_amount": {
+     "what": "How far the CUTOFF input moves the cutoff, in octaves for a full-size signal (0 to 8).",
+     "does": "An envelope going 0 to 1 with this at 4 opens the filter 4 octaves above where the CUTOFF knob is, then back. An LFO going -1 to +1 swings it 4 octaves either way.",
+     "why": "It sets how much a modulation does, without changing the modulation itself: the depth of the sweep.",
+     "try": [
+      "With an envelope plugged into CUTOFF, set the CUTOFF knob low and turn this up from 0."
+     ]
+    },
+    "drive": {
+     "what": "How hard the sound is pushed into the filter (1 is clean, 8 is hot).",
+     "does": "The input is turned up before the filter, so its transistor stages saturate: rounded, thicker, then gritty. Lots of drive also tames the resonance.",
+     "why": "Warmth and dirt, inside the filter, where it sounds most natural."
+    },
+    "slope": {
+     "what": "How steeply the filter cuts above the cutoff: -12 dB or -24 dB per octave.",
+     "does": "-24 (four stages) is steep: the highs vanish quickly, a round, fat sound. -12 (two stages) lets more through: brighter, buzzier, and the resonance sounds different.",
+     "why": "Two characters from one filter: -24 for deep basses and smooth pads, -12 for brassy, cutting sounds."
+    }
+   },
+   "inputs": {
+    "in": {
+     "what": "The sound to filter.",
+     "why": "A filter shapes what it's given: plug in something with plenty of harmonics (a saw, a pulse, noise) for it to work on.",
+     "where": "From an oscillator, a Mixer, or noise."
+    },
+    "cutoff": {
+     "what": "Cutoff modulation: a signal that moves the cutoff, scaled by the CV knob.",
+     "does": "It's added to the CUTOFF knob in octaves, so the knob sets where the movement starts from and the signal moves it from there.",
+     "why": "This is how a filter moves by itself: the sweep on each note, a wah, a rhythmic pulse.",
+     "where": "From an envelope (a sweep each note), an LFO (wah), VELOCITY (harder is brighter), the mod wheel."
+    },
+    "key": {
+     "what": "Keyboard tracking: a pitch signal that moves the cutoff along with the notes.",
+     "does": "It moves the cutoff one octave for each octave of pitch, so the cutoff stays the same distance above every note.",
+     "why": "Without it, a filter set nicely for low notes makes high notes dull (their harmonics are above the cutoff). With it, every note has the same brightness.",
+     "where": "From MIDI In's PITCH, or a Sequencer's."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "The filtered sound.",
+     "why": "On to a VCA so notes start and stop, or a Mixer, an effect, or the Output.",
+     "where": "Into a VCA's IN."
+    }
+   }
+  },
+  "ota_filter": {
+   "like": "ladder",
+   "what": "A four-pole low-pass filter built from OTA chips (the same code as Kobalt's filter): rubbery and aggressive.",
+   "does": "It works like the Ladder Filter (CUTOFF, RESONANCE, CV, KEY), but each of its four stages saturates on its own. Push a loud, resonant sound through it and it buzzes and squelches rather than getting louder.",
+   "why": "Filters aren't all the same: the same settings sound different through each. This one is punchier and rougher than the smooth Ladder, good for basses and leads with bite.",
+   "where": "Between the oscillator and the VCA, like any filter.",
+   "try": [
+    "Build the same patch with the Ladder and with this, and switch the cable between them.",
+    "RESONANCE high, a short envelope into CUTOFF, a low saw: a rubbery bass (lesson 8 uses it)."
+   ],
+   "see": [
+    "ladder",
+    "svf"
+   ]
+  },
+  "svf": {
+   "like": "ladder",
+   "what": "A state-variable filter: one filter with three outputs, low-pass, band-pass and high-pass, all at once.",
+   "does": "It works around one CUTOFF like the others (with RESONANCE, CV and KEY), but you choose what to keep by which output you plug in: below the cutoff (LOW), around it (BAND) or above it (HIGH).",
+   "why": "Not every sound wants the highs taken off: a high-pass thins a sound out (hats, airy pads), a band-pass leaves a narrow band (snares, voices, telephone). It's also the clearest way to learn what each filter type does.",
+   "where": "Like any filter, between a source and a VCA. Noise into it is the start of most drum sounds.",
+   "try": [
+    "Play a saw through it and move the cable between LOW, BAND and HIGH.",
+    "BAND with RESONANCE up and an LFO into CUTOFF: a talking wah."
+   ],
+   "see": [
+    "ladder",
+    "noise"
+   ],
+   "outputs": {
+    "low": {
+     "what": "Low-pass: what's below the cutoff.",
+     "why": "The usual synth filter: warm and dark as the cutoff goes down."
+    },
+    "band": {
+     "what": "Band-pass: only a band of frequencies around the cutoff; the lows and the highs are both cut.",
+     "why": "Thin, vocal, nasal sounds: snares from noise, telephone voices, wahs. With RESONANCE up the band is narrower."
+    },
+    "high": {
+     "what": "High-pass: what's above the cutoff; the lows are cut.",
+     "why": "To thin a sound out: hi-hats from noise, airy pads, taking the mud out of a busy patch."
+    }
+   }
+  },
+  "envelope": {
+   "what": "A shape that plays once each time a note starts: up, down a little, held, then away when you let go. The four stages are Attack, Decay, Sustain and Release (ADSR).",
+   "does": "When its GATE opens, ENV rises from 0 to 1 (ATTACK), falls to the SUSTAIN level (DECAY) and stays there while the gate is open. When the gate closes it falls to 0 (RELEASE). It doesn't make sound: it moves something else.",
+   "why": "Real instruments don't switch on and off: a piano strikes and fades, a violin swells, a pluck snaps. An envelope gives a synth note that shape. On a VCA it shapes the volume; on a filter, the brightness.",
+   "where": "GATE from MIDI In (or a sequencer); ENV into a VCA's CV for volume, or into a filter's CUTOFF for brightness. Use one envelope for each.",
+   "try": [
+    "A long ATTACK for a swelling pad.",
+    "SUSTAIN 0, DECAY short: a pluck.",
+    "A long RELEASE: notes ring on after you let go."
+   ],
+   "see": [
+    "vca/in/cv",
+    "signal/gate",
+    "signal/mod"
+   ],
+   "knobs": {
+    "attack": {
+     "what": "How long the envelope takes to rise from 0 to full when the gate opens (1 ms to 10 s).",
+     "why": "Short attacks are percussive (plucks, basses, drums); long ones fade in (pads, strings, swells). A couple of milliseconds removes clicks without softening the start.",
+     "try": [
+      "Turn it up to a second on a VCA's envelope and play chords: a string swell."
+     ]
+    },
+    "decay": {
+     "what": "How long it takes to fall from full to the SUSTAIN level (1 ms to 10 s).",
+     "why": "The 'shape' after the hit: a short decay to a low sustain is a pluck or a bass blip; on a filter envelope it's how fast the brightness goes."
+    },
+    "sustain": {
+     "what": "The level the envelope holds at while the gate stays open, 0 to 1. It's a level, not a time.",
+     "does": "After the decay it waits here until you let go. At 0 the sound dies away even while you hold the key; at 1 the decay does nothing.",
+     "why": "Organs and pads sustain; plucks, pianos and drums don't. This knob chooses which."
+    },
+    "release": {
+     "what": "How long the envelope takes to fall to 0 after the gate closes (1 ms to 10 s).",
+     "why": "Short: notes stop when you let go (tight basses). Long: notes ring on and overlap (pads, bells). Too short can click."
+    }
+   },
+   "inputs": {
+    "gate": {
+     "what": "What starts and ends the envelope: opening it starts the attack, closing it starts the release.",
+     "why": "The envelope needs to know when each note starts and stops. Unplugged, it never runs.",
+     "where": "From MIDI In's GATE (your playing), or a Sequencer's or Clock's gate."
+    },
+    "retrig": {
+     "what": "Retrigger: a trigger here starts the attack again, while the gate is still held.",
+     "why": "Rhythmic pulses on a held note: a clock or an LFO's square here makes a held chord stutter in time.",
+     "where": "From a Clock's 1/8 or 1/16, or an LFO's square."
+    }
+   },
+   "outputs": {
+    "env": {
+     "what": "The envelope, 0 to 1.",
+     "why": "This is the shape you plug into whatever should follow it.",
+     "where": "Into a VCA's CV (volume), a filter's CUTOFF (brightness), an oscillator's FM (pitch drops)."
+    },
+    "inverted": {
+     "what": "The envelope upside down: 1 minus ENV, so it falls when ENV rises.",
+     "why": "For things that should go the other way on each note: a filter that closes then opens, a sound that ducks as another comes in."
+    }
+   }
+  },
+  "lfo": {
+   "what": "A low-frequency oscillator: an oscillator too slow to hear (0.02 to 50 times a second), used to move other things.",
+   "does": "It makes a repeating wave, triangle, sine, saws, square or random, which you plug into a knob's input to move that knob up and down for you. OUT swings -1 to +1; 0..1 swings from 0 to 1.",
+   "why": "Repeating movement: vibrato (pitch), wah (filter), tremolo (volume), swirling pulse width, random burbles. It's the second main source of movement after envelopes.",
+   "where": "OUT into the input you want to move: an oscillator's FM, a filter's CUTOFF, PWM. The amount knob next to that input sets how much.",
+   "try": [
+    "OUT into an oscillator's FM, that oscillator's FM knob at 0.03, RATE 5 Hz: vibrato (lesson 5).",
+    "WAVE Random into a filter's CUTOFF: burbling computer sounds."
+   ],
+   "see": [
+    "signal/mod",
+    "oscillator/in/fm",
+    "ladder/in/cutoff"
+   ],
+   "knobs": {
+    "rate": {
+     "what": "How fast it moves: from once every 50 seconds to 50 times a second.",
+     "why": "Slow rates (0.1 to 1 Hz) make sweeps and drifts; around 5 Hz is vibrato; fast rates get rough and buzzy, moving towards audio.",
+     "try": [
+      "Into a VCA for tremolo and turn RATE up from 1 Hz to 30 Hz: from a pulse to a growl."
+     ]
+    },
+    "wave": {
+     "what": "The shape of the movement.",
+     "does": "Triangle and Sine go smoothly up and down; Saw up ramps up and drops; Saw down drops and ramps; Square jumps between two values; Random jumps to a new random value each cycle; Smooth glides between random values.",
+     "why": "The shape is the character: a sine is a gentle vibrato, a square a trill, a saw a repeating swoop, Random the classic 'computer' sound."
+    },
+    "rate_amount": {
+     "what": "How far the RATE input speeds the LFO up or slows it down, in octaves.",
+     "why": "So the speed itself can move: an envelope making the vibrato speed up as a note holds, the mod wheel controlling speed."
+    }
+   },
+   "inputs": {
+    "rate": {
+     "what": "Rate modulation: a signal that speeds the LFO up or slows it down, scaled by RATE MOD.",
+     "why": "A wobble whose speed changes: from an envelope, the mod wheel, or another LFO."
+    },
+    "reset": {
+     "what": "A trigger here restarts the LFO from the start of its cycle.",
+     "why": "Without it, each note catches the LFO wherever it happens to be. Reset on MIDI In's GATE and every note starts its wobble the same way. Reset on a Clock and it's in time with the music.",
+     "where": "From MIDI In's GATE, or a Clock's BAR or BEAT."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "The wave, swinging between -1 and +1.",
+     "why": "Moves things up and down around where their knob is: pitch either side of the note, cutoff either side of the knob.",
+     "where": "Into an oscillator's FM (vibrato), a filter's CUTOFF (wah), PWM."
+    },
+    "unipolar": {
+     "what": "The same wave, from 0 to 1.",
+     "why": "For things that should only go one way from their knob: a VCA (a tremolo that dips but never goes negative).",
+     "where": "Into a VCA's CV for tremolo."
+    }
+   }
+  },
+  "sample_hold": {
+   "what": "Sample & Hold: on each trigger it takes the value of its input at that instant and holds it until the next trigger.",
+   "does": "Whatever comes in, smooth or noisy, comes out as a staircase of steps, one per trigger. With nothing plugged into IN, it samples its own noise: random steps.",
+   "why": "Random but in time: the bubbling, stepped 'computer' sound into a filter, random notes into an oscillator, or a smooth LFO turned into steps.",
+   "where": "TRIGGER from a Clock or an LFO's square; OUT into a filter's CUTOFF or an oscillator's FM.",
+   "try": [
+    "Leave IN empty, a Clock's 1/16 into TRIGGER, OUT into a filter's CUTOFF with RESONANCE up.",
+    "Then put a Slew after it: the steps become glides."
+   ],
+   "see": [
+    "clock",
+    "slew",
+    "noise"
+   ],
+   "inputs": {
+    "in": {
+     "what": "What to sample. Empty, it samples its own noise.",
+     "why": "Noise gives random steps; an LFO gives steps that follow its shape (a staircase up and down); any signal is frozen at each trigger."
+    },
+    "trigger": {
+     "what": "Each rising edge takes a new sample.",
+     "why": "It sets how often it changes. Unplugged, OUT never changes.",
+     "where": "From a Clock (in time) or an LFO's square (free running)."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "The held value: the input as it was at the last trigger.",
+     "why": "A stepped signal to move other things.",
+     "where": "Into a filter's CUTOFF, an oscillator's FM (random melodies), or through a Slew."
+    }
+   }
+  },
+  "slew": {
+   "what": "A smoother: when its input jumps, its output glides there instead, taking a time you set.",
+   "does": "RISE sets how long it takes to climb to a higher value, FALL to sink to a lower one. Signals that already move slowly pass through almost unchanged.",
+   "why": "Glide (portamento): notes that slide into each other instead of jumping. It also rounds off steps from a sequencer or Sample & Hold.",
+   "where": "Between MIDI In's (or a Sequencer's) PITCH and an oscillator's PITCH.",
+   "try": [
+    "Put it in the pitch cable, set VOICES to 1, RISE and FALL to 0.1 s and play legato.",
+    "RISE short and FALL long: notes snap up and slide down."
+   ],
+   "see": [
+    "signal/pitch",
+    "sample_hold"
+   ],
+   "knobs": {
+    "rise": {
+     "what": "How long it takes to climb to a higher value (0.5 ms to 5 s).",
+     "why": "For pitch: how long a glide up takes. Different from FALL, so up and down can feel different."
+    },
+    "fall": {
+     "what": "How long it takes to sink to a lower value (0.5 ms to 5 s).",
+     "why": "For pitch: how long a glide down takes. On an envelope or gate it softens the drop, like a release."
+    }
+   },
+   "inputs": {
+    "in": {
+     "what": "The signal to smooth: anything that jumps.",
+     "why": "Whatever you want to glide instead of jump.",
+     "where": "From MIDI In's PITCH, a Sequencer's PITCH, or a Sample & Hold."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "The input with its jumps turned into glides.",
+     "why": "The smoothed signal is what goes on to the oscillator (or wherever the jumpy one was going): that's where the glide is heard.",
+     "where": "Into an oscillator's PITCH (glide), or wherever the jumpy signal was going."
+    }
+   }
+  },
+  "vca": {
+   "what": "A voltage-controlled amplifier: a volume control that another signal turns.",
+   "does": "Its OUT is its IN times a gain from 0 (silent) to 1 (full). The gain is LEVEL plus the CV input scaled by the CV knob. With LEVEL at 0 it's closed until something opens it.",
+   "why": "An oscillator never stops on its own. The VCA is what lets the sound through when a note plays and shuts it when it ends; an envelope on its CV shapes that. It also does tremolo, velocity and any other change of level.",
+   "where": "After the oscillator or filter, before the Output. An envelope (or MIDI In's GATE) into CV.",
+   "try": [
+    "Pull the cable out of CV: silence. Turn LEVEL up: the sound drones with no keys.",
+    "An LFO's 0..1 into CV: tremolo."
+   ],
+   "see": [
+    "envelope",
+    "signal/mod"
+   ],
+   "knobs": {
+    "level": {
+     "what": "How open the VCA is before any CV: 0 is shut, 1 is fully open.",
+     "does": "It's added to the CV input. At 0, only the CV opens it; turned up, the sound comes through all the time and the CV adds on top.",
+     "why": "0 for notes that start and stop. Higher for a drone, or to let a tremolo dip from full volume rather than from silence."
+    },
+    "cv_amount": {
+     "what": "How far the CV input opens it.",
+     "why": "Turn it down to make the envelope or LFO do less: a quieter note, a shallower tremolo."
+    },
+    "response": {
+     "what": "How the gain follows the CV: Linear, or Exponential.",
+     "does": "Linear: half the CV is half the volume. Exponential: the quiet end is much quieter, so fades sound smoother and more natural to the ear, and plucks snappier.",
+     "why": "Our ears hear loudness in ratios, not steps: exponential fades sound even; linear ones seem to hang then drop."
+    }
+   },
+   "inputs": {
+    "in": {
+     "what": "The signal to turn up and down.",
+     "why": "Usually the sound (an oscillator or filter), but it can be any signal: put an LFO through a VCA and the CV sets how much LFO gets through.",
+     "where": "From an oscillator, a filter, a mixer."
+    },
+    "cv": {
+     "what": "What opens the VCA: added to LEVEL, scaled by the CV knob, from 0 (shut) to 1 (open).",
+     "why": "This is where the note's shape comes in.",
+     "where": "From an envelope (notes), MIDI In's GATE (plain on/off), an LFO's 0..1 (tremolo), MIDI In's VELOCITY or MOD WHEEL."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "IN times the gain: silent when closed.",
+     "why": "The sound now starts and stops (or swells, or trembles) with the CV: this is what goes on to be heard.",
+     "where": "Into the Output, an effect, or wherever the signal was going."
+    }
+   }
+  },
+  "mixer": {
+   "what": "Adds up to four signals into one, each at its own level.",
+   "does": "OUT is IN 1 times knob 1, plus IN 2 times knob 2, and so on. It doesn't care what the signals are: sounds or modulations.",
+   "why": "Most inputs take one cable. The Mixer lets several things share one: two oscillators into one filter, an envelope and an LFO into one CUTOFF, noise added to a tone.",
+   "where": "Before a filter (mixing oscillators), or before any input that needs more than one source.",
+   "try": [
+    "Two oscillators, one an octave down, into 1 and 2: balance them with the knobs.",
+    "Add a little noise on 3 for breath."
+   ],
+   "see": [
+    "oscillator",
+    "attenuverter"
+   ],
+   "knobs": {
+    "level#": {
+     "what": "Input #'s level, 0 to 1.",
+     "why": "Balances input # against the others. Several loud inputs add up: turn them down if the result distorts."
+    }
+   },
+   "inputs": {
+    "in#": {
+     "what": "A signal to mix in, at level #.",
+     "why": "Any signal: a sound, an envelope, an LFO."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "The four inputs, each at its level, added together.",
+     "why": "One cable carrying everything mixed, for an input that only takes one.",
+     "where": "Into a filter's IN, a VCA's IN, or any input that wants all of them."
+    }
+   }
+  },
+  "attenuverter": {
+   "what": "Two signal adjusters, A and B: each scales a signal (smaller, off, or upside down) and shifts it up or down.",
+   "does": "OUT A is IN A times SCALE A, plus OFFSET A. SCALE goes from -1 (upside down) through 0 (nothing) to +1 (unchanged). With nothing plugged in, OUT is just the OFFSET: a steady value.",
+   "why": "Modulation rarely comes at the right size: this makes an LFO smaller, turns an envelope upside down so a filter closes instead of opening, or makes a fixed value to hold a pitch or a VCA open.",
+   "where": "In the middle of a modulation cable: LFO → A → filter's CUTOFF.",
+   "try": [
+    "Put it between an envelope and a filter's CUTOFF and turn SCALE A negative: notes start dark and open as they fade.",
+    "Unplugged, OFFSET A into an oscillator's PITCH: a fixed note to tune by."
+   ],
+   "see": [
+    "signal/mod",
+    "mixer"
+   ],
+   "knobs": {
+    "scale_a": {
+     "what": "What IN A is multiplied by: -1 to +1.",
+     "does": "+1 passes it unchanged, 0.5 halves it, 0 removes it, negative turns it upside down.",
+     "why": "To set how much a modulation does, or flip its direction."
+    },
+    "offset_a": {
+     "what": "A steady value, -2 to +2, added to A.",
+     "why": "Shifts a signal up or down: an LFO that swings 0 to 2 instead of -1 to 1. Unplugged, it's a fixed value of its own."
+    },
+    "scale_b": {
+     "what": "What IN B is multiplied by: -1 to +1.",
+     "why": "The same as SCALE A, for the second channel."
+    },
+    "offset_b": {
+     "what": "A steady value, -2 to +2, added to B.",
+     "why": "The same as OFFSET A, for the second channel."
+    }
+   },
+   "inputs": {
+    "a": {
+     "what": "The signal for channel A.",
+     "why": "Whatever needs to be made smaller, flipped or shifted."
+    },
+    "b": {
+     "what": "The signal for channel B.",
+     "why": "A second, independent channel."
+    }
+   },
+   "outputs": {
+    "out_a": {
+     "what": "IN A times SCALE A, plus OFFSET A.",
+     "why": "The modulation at the size and direction you want, ready for the input it's meant to move.",
+     "where": "Into whatever IN A was meant to move."
+    },
+    "out_b": {
+     "what": "IN B times SCALE B, plus OFFSET B.",
+     "why": "The second channel's result, ready for its input.",
+     "where": "Into whatever IN B was meant to move."
+    }
+   }
+  },
+  "ring_mod": {
+   "what": "A ring modulator: it multiplies two signals together.",
+   "does": "Multiplying two tones gives their sum and difference frequencies instead of the originals: a 300 Hz and a 400 Hz make 100 Hz and 700 Hz. The result is rarely in tune with either, which is the point. MIX blends between A alone and the product.",
+   "why": "Bells, robot voices, metallic and clangorous tones that a filter can't make. With an LFO on B instead, it's a deep tremolo that flips the wave's sign.",
+   "where": "Two oscillators into A and B, then on to a VCA as usual.",
+   "try": [
+    "Two oscillators into A and B, tune one with TUNE: hear the tone go from sweet to clanging.",
+    "A voice on A, an LFO at 8 Hz on B."
+   ],
+   "see": [
+    "oscillator/in/lin_fm",
+    "vca"
+   ],
+   "knobs": {
+    "mix": {
+     "what": "How much of the ring modulation you hear: 0 is just A, 1 is all product.",
+     "why": "A little adds a metallic shimmer to A; all of it is the full effect."
+    }
+   },
+   "inputs": {
+    "a": {
+     "what": "The first signal: usually the voice being changed.",
+     "why": "MIX at 0 passes just this, so it's the 'dry' sound."
+    },
+    "b": {
+     "what": "The second signal, multiplied with A.",
+     "why": "Another oscillator for bells and clangs; an LFO for tremolo."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "A times B (blended with A by MIX).",
+     "why": "The new, metallic tone: on to a VCA so it starts and stops with the notes.",
+     "where": "Into a VCA, a filter, or the Output."
+    }
+   }
+  }
+ }
+}

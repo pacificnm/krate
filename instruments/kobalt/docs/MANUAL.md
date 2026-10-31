@@ -116,7 +116,7 @@ The left of the function deck. **Play mode** chooses what your keys do:
 | **RATE** | Steps per beat for the arpeggiator and the sequencer: **1/8**, **1/16**, **1/8T**, **1/16T** (triplets). Each note lasts half a step. |
 | **REST** | While loading: a rest in the current step, and on to the next. |
 | **TIE** | While loading: the note before goes on through this step. |
-| **LEGATO** | While loading: the step just loaded runs straight into the next note, with no gap (press again to undo). With TRIGGER on Gate the envelope goes on, and with portamento on Auto the pitch glides: the classic sliding bass line. |
+| **LEGATO** | While loading: the step just loaded runs straight into the next note, with no gap (press again to undo). With TRIGGER on Gate the envelope goes on, and with portamento on Auto the pitch glides: the classic sliding bass part. |
 | **CLEAR** | Empties the current pattern (16 rests). |
 | **GEN** | In SEQ mode: writes a new random pattern into the current one, at its length. The notes come from the keys you hold (hold a few, then press GEN), else from the pattern's own notes, else a C minor pentatonic bass scale; RANGE spreads them over 1–3 octaves. Some notes tie on and some slide legato into the next. Each press makes a different one: keep pressing until one grabs you, then edit it step by step. |
 | **DENSITY** | For GEN: how many steps play, 0–100 % (the first step always does); the rest are rests. Low makes sparse, funky lines; high, busy ones. |
@@ -200,7 +200,7 @@ The **mod wheel** adds LFO vibrato (see LEVER). The **sustain pedal** holds the 
 Start from an Init patch (an empty one in banks 3–8) or from the nearest factory sound.
 
 - **Deep bass**: RANGE 16'; SAW half, SUB up with SUB TYPE 1 Oct or 2 Oct; FREQ low, RES a little, ENV up with D short and S low; A 0.
-- **Sliding bass line**: SAW only, RANGE 16'; RES high, FREQ low, ENV up, D short, S 0; TRIGGER Gate; portamento MODE Auto, TIME short. In SEQ, mark a few steps LEGATO: those notes slide and don't pluck again.
+- **Sliding bass part**: SAW only, RANGE 16'; RES high, FREQ low, ENV up, D short, S 0; TRIGGER Gate; portamento MODE Auto, TIME short. In SEQ, mark a few steps LEGATO: those notes slide and don't pluck again.
 - **Lead**: SAW and PULSE together; FREQ middle, RES a little; S high; portamento Auto; LEVER up and use the mod wheel for vibrato; DELAY on 1/8. with some FEEDBACK.
 - **PWM strings**: PULSE only, PULSE WIDTH up, PWM SOURCE LFO, RATE slow; A and R long; REVERB up.
 - **Hi-hat**: NOISE only; FREQ high, KYBD 0; A 0, D short, S 0, R short.

@@ -9,7 +9,7 @@ import Krate
 // the rack (modules and their cables, scrolling), the scope, the help bar.
 // Wiring: click a jack, then another (an output and an input); clicking a
 // plugged input lifts its cable to plug it somewhere else; Esc or a click on
-// the empty rack lets go.
+// the empty rack lets go. Right-clicking anything opens its explanation.
 ApplicationWindow {
     id: root
 
@@ -34,6 +34,13 @@ ApplicationWindow {
             delete p[slot]
         panels = p
     }
+    // Right-click on a top-bar button: its explanation.
+    component ExplainTap: TapHandler {
+        property string path
+        acceptedButtons: Qt.RightButton
+        onTapped: explainPanel.show(path)
+    }
+
     function jackAt(slot, output, jack) {
         const item = panels[slot]
         if (!item)
@@ -81,6 +88,7 @@ ApplicationWindow {
             font.pixelSize: 26
             font.weight: Font.Black
             font.letterSpacing: 6
+            ExplainTap { path: "app/explain" }
         }
         Row {
             x: 210
@@ -94,16 +102,18 @@ ApplicationWindow {
                 faceText: "+ ADD MODULE"
                 text: "Add a module to the rack"
                 onClicked: browser.open()
+                ExplainTap { path: "app/add" }
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "VOICES"
+                ExplainTap { path: "app/voices" }
                 color: "#DAD5CB"
                 font.family: Theme.labelFont
                 font.pixelSize: 12
                 font.bold: true
             }
-            PanelButton { width: 28; height: 30; dark: true; faceText: "◂"; text: "Fewer voices"; onClicked: Konnekt.voices = Konnekt.voices - 1 }
+            PanelButton { width: 28; height: 30; dark: true; faceText: "◂"; text: "Fewer voices"; onClicked: Konnekt.voices = Konnekt.voices - 1; ExplainTap { path: "app/voices" } }
             Text {
                 width: 22
                 horizontalAlignment: Text.AlignHCenter
@@ -114,7 +124,7 @@ ApplicationWindow {
                 font.pixelSize: 20
                 font.bold: true
             }
-            PanelButton { width: 28; height: 30; dark: true; faceText: "▸"; text: "More voices"; onClicked: Konnekt.voices = Konnekt.voices + 1 }
+            PanelButton { width: 28; height: 30; dark: true; faceText: "▸"; text: "More voices"; onClicked: Konnekt.voices = Konnekt.voices + 1; ExplainTap { path: "app/voices" } }
             Row { // a light per note held
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 3
@@ -139,6 +149,7 @@ ApplicationWindow {
                 hasLed: true
                 ledOn: Konnekt.learning
                 onClicked: Konnekt.learning = !Konnekt.learning
+                ExplainTap { path: "app/learn" }
             }
             PanelButton {
                 width: 100
@@ -147,6 +158,7 @@ ApplicationWindow {
                 faceText: "PATCHES"
                 text: "Save the rack as a patch, or load one"
                 onClicked: patchesPopup.open()
+                ExplainTap { path: "app/patches" }
             }
             PanelButton {
                 width: 100
@@ -157,6 +169,7 @@ ApplicationWindow {
                 hasLed: true
                 ledOn: Konnekt.lesson >= 0
                 onClicked: lessonsPopup.open()
+                ExplainTap { path: "app/lessons" }
             }
             PanelButton {
                 width: 70
@@ -165,6 +178,7 @@ ApplicationWindow {
                 faceText: "HELP"
                 text: "Konnekt's manual"
                 onClicked: manual.open()
+                ExplainTap { path: "app/help" }
             }
             PanelButton {
                 id: newButton
@@ -181,6 +195,7 @@ ApplicationWindow {
                     Konnekt.clearPatch()
                 }
                 Timer { id: confirmTimer; interval: 3000; onTriggered: newButton.confirming = false }
+                ExplainTap { path: "app/new" }
             }
         }
         Column {
@@ -281,6 +296,7 @@ ApplicationWindow {
                     y: modelData.y
                     onJackClicked: (s, o, j) => root.jackClicked(s, o, j)
                     onJackScope: (s, j) => Konnekt.scope(s, j)
+                    onExplain: p => explainPanel.show(p)
                     onMoved: {
                         x = Math.max(0, Math.round(x / 8) * 8)
                         y = Math.max(0, Math.round(y / 8) * 8)
@@ -356,6 +372,7 @@ ApplicationWindow {
         anchors.right: parent.right
         anchors.bottom: helpBar.top
         anchors.margins: 14
+        anchors.rightMargin: explainPanel.visible ? explainPanel.width + 14 : 14
         width: 420
         height: 200
         radius: 6
@@ -458,7 +475,7 @@ ApplicationWindow {
             text: root.pending ? "Holding a cable from " + (root.pending.output ? "an output" : "an input")
                                  + ": click " + (root.pending.output ? "an input" : "an output") + " to plug it in (Esc, or click the rack, to let go)."
                 : Konnekt.help !== "" ? Konnekt.help
-                : "Point at anything to learn what it does. Click a jack, then another, to connect them. Right-click an output to see it on the scope."
+                : "Point at anything for a line about it; right-click it for the whole story. Click a jack, then another, to connect them."
             color: "#DAD5CB"
             font.family: Theme.labelFont
             font.pixelSize: 13
@@ -517,7 +534,11 @@ ApplicationWindow {
                                     Konnekt.scope(slot, 0)
                                 browser.close()
                             }
-                            HoverHandler { onHoveredChanged: if (hovered) Konnekt.help = parent.modelData.name + ": " + parent.modelData.help }
+                            HoverHandler { onHoveredChanged: if (hovered) Konnekt.help = parent.modelData.name + ": " + parent.modelData.help + "  (Right-click: read about it first.)" }
+                            TapHandler {
+                                acceptedButtons: Qt.RightButton
+                                onTapped: { explainPanel.show("t/" + parent.modelData.type); browser.close() }
+                            }
                         }
                     }
                 }
@@ -680,6 +701,16 @@ ApplicationWindow {
         }
     }
 
+    // ---- Explanations: right-click anything
+    ExplainPanel {
+        id: explainPanel
+        anchors.right: parent.right
+        anchors.top: topBar.bottom
+        anchors.bottom: helpBar.top
+        z: 35
+        onShowScope: (s, j) => Konnekt.scope(s, j)
+    }
+
     ManualView {
         id: manual
         title: "Konnekt"
@@ -691,6 +722,7 @@ ApplicationWindow {
         onActivated: {
             root.pending = null
             Konnekt.learning = false
+            explainPanel.close()
         }
     }
 }

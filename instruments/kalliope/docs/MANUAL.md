@@ -81,7 +81,7 @@ Moves the oscillators' pitch and pulse width.
 
 | Control | What it does |
 | --- | --- |
-| **FREQ** | A gentle high-pass filter before the VCF: at 0 it's off; turned up (20 Hz–1 kHz) it removes bass. Use it to thin pads and strings so they sit above a bass line. |
+| **FREQ** | A gentle high-pass filter before the VCF: at 0 it's off; turned up (20 Hz–1 kHz) it removes bass. Use it to thin pads and strings so they sit above a bass part. |
 
 ## VCF
 

@@ -5,7 +5,7 @@ Konnekt is a modular synthesizer: instead of a fixed synth with its parts alread
 ## Quick start
 
 1. **Play.** Konnekt opens with a small patch: MIDI In → Oscillator → VCA (opened by an Envelope) → Output. Play your keyboard.
-2. **Point at things.** Hover over any module, knob or jack: the bar at the bottom says what it does and what to try.
+2. **Point at things, right-click them.** Hover over any module, knob or jack: the bar at the bottom says what it is in a line. Right-click it for the whole story: what it is, how it works, why you'd want it, where it goes, what to try (see [Explanations](#explanations)).
 3. **Do the lessons.** **LESSONS** loads patches that build a synth up a module at a time, each with what to listen for and what to try. Start with lesson 1.
 4. **Add a module.** **+ ADD MODULE**, pick one: it appears in view. Drag it by its header.
 5. **Wire.** Click a jack, then another: an output and an input. The cable follows the modules when you drag them.
@@ -50,8 +50,20 @@ With **1 voice** Konnekt is a monophonic synth: the newest key plays, and lettin
 ## Seeing signals
 
 - **The strip under each output** shows its last 1.5 seconds: watch an envelope rise and fall, an LFO wave, a gate open and close. For several voices it shows the voice of the newest note.
-- **Right-click an output** to watch it on the **scope** (bottom right): the actual waveform, with 5 ms, 20 ms or 80 ms across. **✕** closes it.
+- **Right-click an output** to watch it on the **scope** (bottom right): the actual waveform, with 5 ms, 20 ms or 80 ms across. **✕** closes it. (The right-click also opens the output's explanation.)
 - **The Scope module** is a scope on the rack: plug anything into it (its THRU passes the signal on) and click its screen.
+
+## Explanations
+
+**Right-click** anything to read about it in the panel on the right: a knob or button, an input or output jack, a module's header, a button in the top bar (or the KONNEKT name, for this), or a module in **+ ADD MODULE** before you add it.
+
+Each explanation has:
+
+- **What it is**, **How it works**, **Why you need it**, **Where it goes** (in a patch) and **Try this**.
+- **What it's doing now** on your rack: a knob's value, range and default and which input it works with, its MIDI Learn link; an input's signal and what's plugged into it (or what it reads with nothing plugged in); an output's signal and every input its cables go to. These follow the rack as you play and turn knobs.
+- **Links**: a module's knobs, inputs and outputs, the module a part is on, the signal a jack carries, related modules. Click one to read it; **◂** goes back; **✕** or Esc closes the panel.
+
+For an output, **SHOW ON SCOPE** puts it on the scope. While **LEARN** is on, right-clicking a knob forgets its MIDI link instead.
 
 ## Modules
 
@@ -126,7 +138,7 @@ All three have CUTOFF, RESONANCE, CV (how far the CUTOFF input moves it, in octa
 5. **LFOs**: vibrato and wah.
 6. **Two oscillators**: detune, octaves, sync.
 7. **FM**: bells and metal.
-8. **A sequenced bass line**: a clock, a sequencer, glide.
+8. **A sequenced bass part**: a clock, a sequencer, glide.
 9. **Noise and percussion**: drums with no oscillator.
 10. **Effects**: chorus, delay and reverb in stereo.
 
@@ -146,3 +158,4 @@ All three have CUTOFF, RESONANCE, CV (how far the CUTOFF input moves it, in octa
 - **Too loud or harsh:** turn the Output's VOLUME down; several voices add up.
 - **Clicks at the start of notes:** a little ATTACK on the envelope.
 - **Learn by taking apart:** load a lesson, then unplug one cable at a time and hear what each did.
+- **What's this for?** Right-click it.

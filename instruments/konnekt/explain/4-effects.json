@@ -1,0 +1,325 @@
+{
+ "modules": {
+  "drive": {
+   "what": "Distortion: it squashes the loud parts of a sound, and with FOLD wraps them back over themselves.",
+   "does": "DRIVE turns the sound up into a soft clipper that rounds off its peaks: warmth at first, then crunch, then fuzz. FOLD takes peaks that go too far and folds them back down, which adds many new harmonics. LEVEL sets how loud it comes out. It runs per voice, so chords don't turn to mush.",
+   "why": "Rounding off a wave adds harmonics: a dull sound gets presence, a sine gets body, a bass gets bite. Folding is a sound of its own: metallic, vocal, aggressive.",
+   "where": "After an oscillator (to give a filter more to work on) or after the filter (for grit on the final sound), before the VCA.",
+   "try": [
+    "A sine through it: turn DRIVE up and watch the scope as it squares off.",
+    "Then FOLD up slowly on a triangle: listen to it get brassy and harsh."
+   ],
+   "see": [
+    "crusher",
+    "ladder/knob/drive"
+   ],
+   "knobs": {
+    "drive": {
+     "what": "How hard the sound is pushed into the clipper.",
+     "why": "Low: subtle warmth. Middle: crunch. High: fuzz, and everything evens out in loudness."
+    },
+    "fold": {
+     "what": "How much the loudest parts are folded back over themselves.",
+     "why": "Wavefolding makes bright, shifting harmonics; moved by an envelope or LFO, it sweeps like a filter, but upwards in brightness instead of down."
+    },
+    "level": {
+     "what": "The output level, 0 to 1.",
+     "why": "Driving harder gets louder: bring it back down here so the rest of the patch isn't overloaded."
+    }
+   },
+   "inputs": {
+    "in": {
+     "what": "The sound to distort.",
+     "why": "Whatever you want to warm up or dirty up: a thin sound gains harmonics, a busy one gets grit.",
+     "where": "From an oscillator or a filter."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "The distorted sound.",
+     "why": "The sound with its new harmonics: after a filter it's the final grit; before one, more for the filter to shape.",
+     "where": "Into a filter, a VCA, or the Output."
+    }
+   }
+  },
+  "crusher": {
+   "what": "Digital damage: it lowers the bit depth and the sample rate of a sound, like the earliest digital samplers and game consoles.",
+   "does": "BITS rounds each sample to fewer levels (16 bits is 65,536 levels, 2 bits only 4): grit, then a buzzing square. RATE holds each sample for longer, as if the sound were recorded at a fraction of the rate: high frequencies fold back down as whining, out-of-tune tones (aliasing).",
+   "why": "Lo-fi, crunchy, broken textures that analog gear can't make: chiptune, industrial, crushed drums.",
+   "where": "After an oscillator or a filter, before the VCA. It runs per voice.",
+   "try": [
+    "BITS to 4 on a sine: hear the steps.",
+    "RATE to 1/8 on a high note: the alias whine.",
+    "Watch both on the scope at 5 ms."
+   ],
+   "see": [
+    "drive"
+   ],
+   "knobs": {
+    "bits": {
+     "what": "How many bits each sample keeps: Off (untouched), then 16 down to 2.",
+     "does": "Fewer bits, fewer levels, coarser steps. Each bit removed halves the number of levels.",
+     "why": "Down to about 8 it's grain and hiss; below that the steps become a sound of their own."
+    },
+    "rate": {
+     "what": "How long each sample is held: every sample (1), or 1/2 down to 1/32 of them.",
+     "does": "Holding samples makes a staircase wave and lowers the effective sample rate, so frequencies above half that rate fold back as unrelated tones.",
+     "why": "The whining, ringing sound of a cheap sampler; strongest on high, bright sounds."
+    }
+   },
+   "inputs": {
+    "in": {
+     "what": "The sound to crush.",
+     "why": "Bright sounds with lots of high harmonics crush most audibly; a pure sine shows the steps most clearly.",
+     "where": "From an oscillator, noise or a filter."
+    }
+   },
+   "outputs": {
+    "out": {
+     "what": "The crushed sound.",
+     "why": "The damaged sound: a filter after it can tame the harshest parts.",
+     "where": "Into a filter (to tame the harshness), a VCA, or the Output."
+    }
+   }
+  },
+  "chorus": {
+   "what": "An effect that thickens a sound with copies of it that waver slightly in time, spread across left and right.",
+   "does": "Each copy is delayed by a few milliseconds and the delay drifts slowly, which pitches it up and down a tiny bit. Mixed with the original, it sounds like several instruments playing together. The two sides move differently, which makes it stereo.",
+   "why": "A single oscillator sounds thin and centered; a chorus makes it wide and lush. It's the classic sound of string machines and polysynth pads.",
+   "where": "Near the end: after the VCA, its LEFT and RIGHT into the Output's (or into a Delay or Reverb first). It runs once, on all voices mixed.",
+   "try": [
+    "A pulse wave pad through it: switch between I, II and Ensemble.",
+    "Compare the sound with its RIGHT unplugged from the Output."
+   ],
+   "see": [
+    "delay",
+    "reverb",
+    "output"
+   ],
+   "knobs": {
+    "mode": {
+     "what": "Which chorus: I, II or Ensemble.",
+     "does": "I is slow and gentle; II faster and deeper; Ensemble uses more copies, slower and deeper: the lushest.",
+     "why": "I for subtle width, II for an obvious wobble, Ensemble for strings and big pads."
+    }
+   },
+   "inputs": {
+    "in": {
+     "what": "The sound to thicken. The voices are mixed here.",
+     "why": "The chorus runs once on everything that comes in, so put it after the VCA: the finished sound, all voices.",
+     "where": "From a VCA's OUT."
+    }
+   },
+   "outputs": {
+    "left": {
+     "what": "The left side of the result.",
+     "why": "With RIGHT, the two sides of the widened sound. Use both for stereo.",
+     "where": "Into the Output's LEFT (or an effect's LEFT)."
+    },
+    "right": {
+     "what": "The right side of the result.",
+     "why": "The two sides differ: that difference is the stereo width.",
+     "where": "Into the Output's RIGHT (or an effect's RIGHT)."
+    }
+   }
+  },
+  "delay": {
+   "what": "An echo effect: it plays the sound back after a delay, again and again, bouncing between left and right.",
+   "does": "TIME is how long until the first echo. FEEDBACK sends each echo back in to make the next, quieter one, so it sets how many you hear. Each echo is a little darker than the last, like a tape delay. MIX sets how loud the echoes are against the original.",
+   "why": "Space and rhythm: a short delay doubles a sound, a long one repeats phrases, and echoes in time with the music make simple lines sound busy.",
+   "where": "Near the end, after the VCA (and a chorus); its LEFT and RIGHT into the Output (or a Reverb).",
+   "try": [
+    "TIME 375 ms (a dotted eighth at 120 BPM) and play short notes.",
+    "FEEDBACK high and turn TIME while it echoes: the pitch warps."
+   ],
+   "see": [
+    "reverb",
+    "chorus"
+   ],
+   "knobs": {
+    "time": {
+     "what": "How long until each echo: 10 ms to 2 s.",
+     "why": "Under 50 ms it thickens (doubling); 100 to 500 ms gives rhythmic echoes; long times repeat whole phrases."
+    },
+    "feedback": {
+     "what": "How much of each echo is fed back to make the next (0 to 0.9).",
+     "why": "0: one echo. Higher: a long trail. It never reaches 1, so the echoes always die away eventually."
+    },
+    "mix": {
+     "what": "How loud the echoes are against the original sound.",
+     "why": "Low for a sense of space, high for an obvious echo effect."
+    }
+   },
+   "inputs": {
+    "left": {
+     "what": "The sound in (the voices are mixed here). For mono, plug only this.",
+     "why": "The echoes are made from this: put it near the end so they repeat the finished sound.",
+     "where": "From a VCA's OUT, or a Chorus's LEFT."
+    },
+    "right": {
+     "what": "The right side, for a stereo sound. Empty, it takes the left's.",
+     "why": "So a stereo effect before it (a Chorus) stays stereo.",
+     "where": "From a Chorus's RIGHT."
+    }
+   },
+   "outputs": {
+    "left": {
+     "what": "The left side: the sound with its effect.",
+     "why": "The sound with its effect: what goes on to be heard.",
+     "where": "Into the Output's LEFT, or the next effect's LEFT."
+    },
+    "right": {
+     "what": "The right side: the sound with its effect.",
+     "why": "Effects sound wider in stereo: plug this into the Output's RIGHT.",
+     "where": "Into the Output's RIGHT, or the next effect's RIGHT."
+    }
+   }
+  },
+  "reverb": {
+   "like": "delay",
+   "what": "An effect that puts the sound in a space: the thousands of reflections of a room, a hall or a cathedral, blended into a smooth tail.",
+   "does": "The sound is sent through a network of short, interwoven delays that blur into a wash. SIZE sets the space, from a small room (0.4 s of tail) to a vast hall (8 s); MIX how much of it you hear.",
+   "why": "A dry synth sounds like it's in a box. A little reverb puts it in a room; a lot turns notes into ambient washes and pads.",
+   "where": "Last in the chain, after any delay; its LEFT and RIGHT into the Output.",
+   "try": [
+    "A short pluck (envelope with no sustain) through it, SIZE high: each note blooms.",
+    "MIX all the way: only the space, like a distant echo."
+   ],
+   "see": [
+    "delay",
+    "output"
+   ],
+   "knobs": {
+    "size": {
+     "what": "How big the space is: a small room (0.4 s) to a huge hall (8 s).",
+     "why": "Small sizes add body without blur; large sizes make long tails that smear notes together."
+    },
+    "mix": {
+     "what": "How much of the reverb you hear against the original sound.",
+     "why": "Low keeps the sound clear and close; high pushes it far away."
+    }
+   }
+  },
+  "clock": {
+   "what": "A metronome made of gates: it ticks in time at a tempo you set.",
+   "does": "Four outputs tick at different rates: once a bar (4 beats), once a beat, every eighth note, every sixteenth. Each tick is a short gate.",
+   "why": "Timing for a patch that plays by itself: it drives a sequencer, retriggers envelopes, clocks a Sample & Hold, resets an LFO in time.",
+   "where": "1/16 (or 1/8) into a Sequencer's CLOCK, BAR into its RESET.",
+   "try": [
+    "BEAT into an envelope's GATE with a short decay, into a VCA on noise: a ticking hat.",
+    "Then move the cable to 1/8 and 1/16."
+   ],
+   "see": [
+    "sequencer",
+    "signal/gate"
+   ],
+   "knobs": {
+    "tempo": {
+     "what": "The speed, in beats per minute: 40 to 240.",
+     "why": "Everything clocked from it follows: change this and the whole pattern speeds up or slows down."
+    },
+    "run": {
+     "what": "Starts and stops the clock.",
+     "why": "Stopping it freezes everything that follows it: the sequencer holds its step."
+    }
+   },
+   "inputs": {
+    "reset": {
+     "what": "A trigger here starts the clock again from the top of the bar.",
+     "why": "To line it up with something else."
+    }
+   },
+   "outputs": {
+    "bar": {
+     "what": "A tick at the start of every bar (every 4 beats).",
+     "why": "Keeps things lined up with the start of each bar, so patterns don't drift against each other.",
+     "where": "Into a Sequencer's RESET to keep its pattern in line with the bar."
+    },
+    "beat": {
+     "what": "A tick on every beat (quarter note).",
+     "why": "The pulse of the music: one tick per beat.",
+     "where": "Into an envelope for a pulse on each beat; into an LFO's RESET."
+    },
+    "eighth": {
+     "what": "A tick on every eighth note: two per beat.",
+     "why": "Twice the beat: a busier pulse for faster patterns or hats.",
+     "where": "Into a Sequencer's CLOCK for a slower line."
+    },
+    "sixteenth": {
+     "what": "A tick on every sixteenth note: four per beat.",
+     "why": "The usual step rate for bass parts and sequences.",
+     "where": "Into a Sequencer's CLOCK."
+    }
+   }
+  },
+  "sequencer": {
+   "what": "An eight-step sequencer: a short pattern of notes that plays itself, one step on each clock tick.",
+   "does": "Each tick on CLOCK moves to the next step and sends out that step's note on PITCH and opens GATE (if the step is on). After LENGTH steps it starts again. TRANSPOSE adds a pitch to every step, so the pattern can be played from a key.",
+   "why": "Repeating lines are the backbone of electronic music: bass parts, arpeggios, riffs. A sequencer plays them for you while your hands are on the knobs.",
+   "where": "CLOCK from a Clock's 1/16; PITCH into an oscillator (through a Slew for glides); GATE into an envelope. Set VOICES to 1.",
+   "try": [
+    "Load lesson 8 and change a step's note while it plays.",
+    "Turn a step off for a rest; set LENGTH to 5 or 7 for an odd loop against the bar.",
+    "Hold a key: the pattern moves to it."
+   ],
+   "see": [
+    "clock",
+    "slew",
+    "signal/pitch"
+   ],
+   "knobs": {
+    "pitch#": {
+     "what": "Step #'s note, in semitones from the root (-12 to +12).",
+     "does": "0 is the root (the key you hold, or middle C); 12 an octave up, 7 a fifth, 3 a minor third.",
+     "why": "These eight knobs are the melody."
+    },
+    "gate#": {
+     "what": "Whether step # plays: On, or Off for a rest.",
+     "why": "Rests make rhythm: a line with gaps grooves more than eight even notes."
+    },
+    "length": {
+     "what": "How many steps the pattern has before it starts again (1 to 8).",
+     "why": "Shorter patterns, or odd lengths like 5 and 7, shift against the bar and make a line that keeps changing."
+    },
+    "gate_length": {
+     "what": "How long the gate stays open in each step, from 5% to the whole step.",
+     "why": "Short is staccato and bouncy; long is smooth. At the whole step, notes tie into each other (and with a Slew, glide)."
+    }
+   },
+   "inputs": {
+    "clock": {
+     "what": "Each rising tick moves the sequencer to its next step.",
+     "why": "Without a clock it never moves.",
+     "where": "From a Clock's 1/16 or 1/8, or an LFO's square for a free tempo."
+    },
+    "reset": {
+     "what": "A trigger here sends it back to step 1.",
+     "why": "Keeps the pattern lined up with the bar.",
+     "where": "From a Clock's BAR."
+    },
+    "transpose": {
+     "what": "A pitch added to every step.",
+     "why": "Plug MIDI In's PITCH here and the pattern follows the key you hold.",
+     "where": "From MIDI In's PITCH."
+    }
+   },
+   "outputs": {
+    "pitch": {
+     "what": "The current step's note (plus TRANSPOSE), 1 per octave.",
+     "why": "This is the melody: it plays the oscillators the way MIDI In's PITCH does when you play.",
+     "where": "Into an oscillator's PITCH, or a Slew first for glide, and a filter's KEY."
+    },
+    "gate": {
+     "what": "Open for part of each step that's on (GATE knob), shut on rests.",
+     "why": "The rhythm: it starts and stops the envelopes, so notes and rests come out as you set them.",
+     "where": "Into an envelope's GATE."
+    },
+    "step": {
+     "what": "Which step is playing, as a staircase from 0 (step 1) to 1 (the last step).",
+     "why": "A rising ramp in time with the pattern: use it to move something else step by step, like a filter's CUTOFF or a VCA's CV (a pattern that swells as it goes).",
+     "where": "Into a filter's CUTOFF for a pattern that brightens as it goes."
+    }
+   }
+  }
+ }
+}

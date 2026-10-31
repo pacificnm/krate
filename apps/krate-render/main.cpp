@@ -7,7 +7,7 @@
 // reference render). Kalliope holds a chord on MIDI channel 2 with its
 // arpeggiator on (Up & Down, 2 octaves, 1/16), so it plays in time; Krimson
 // holds one on channel 3 (slot A, Sync-Lead-like) with slot A's arpeggiator
-// on (Up, 1 octave, 1/8); Kobalt plays a 16-step bass line from its own
+// on (Up, 1 octave, 1/8); Kobalt plays a 16-step bass part from its own
 // sequencer on channel 7, some steps legato (they slide, with Portamento Auto);
 // Klang plays its starter kit's pattern A (sounds it makes itself) on channel 11.
 //

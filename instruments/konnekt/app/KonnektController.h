@@ -12,6 +12,7 @@
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
+#include "konnekt/app/Explainer.h"
 #include "konnekt/dsp/Engine.h"
 
 class QQmlEngine;
@@ -92,6 +93,12 @@ public:
     Q_INVOKABLE QVariantList scopeSamples(int count) const;          // the last `count` samples
     Q_INVOKABLE int scopeSlot() const { return m_scopeSlot; }
 
+    // --- Explanations (right-click): the card for a path (app/Explainer.h).
+    Q_INVOKABLE QVariantMap explain(const QString &path) const;
+    // Where their texts are: the app's resources (tests: the source folder).
+    void setExplainDir(const QString &dir) { m_explainer.load(dir); }
+    const konnekt::Explainer &explainer() const { return m_explainer; }
+
     // --- MIDI Learn: while learning, a knob clicked waits for a controller's knob.
     Q_INVOKABLE void armLearn(int slot, int knob);
     Q_INVOKABLE int learnedCc(int slot, int knob) const; // -1: none
@@ -163,4 +170,5 @@ private:
     QString m_lessonsDir = QStringLiteral(":/qt/qml/Konnekt/lessons");
     int m_lesson = -1;
     QString m_lessonTitle, m_lessonText;
+    konnekt::Explainer m_explainer;
 };
