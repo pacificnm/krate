@@ -33,6 +33,7 @@ int Rack::addDevice(IInstrument &instrument, int midiChannel)
         d.eq[std::size_t(b)].store(ChannelEq::kFlat[std::size_t(b)], std::memory_order_relaxed);
     d.left.assign(m_maxFrames, 0.0f);
     d.right.assign(m_maxFrames, 0.0f);
+    d.raw.assign(m_maxFrames, 0.0f);
     if (midiChannel >= 0 && midiChannel < kChannels)
         m_channelDevice[std::size_t(midiChannel)].store(std::int8_t(m_count), std::memory_order_relaxed);
     return m_count++;
@@ -55,6 +56,22 @@ void Rack::setFocus(int device) noexcept
 {
     if (device >= 0 && device < m_count)
         m_focus.store(device, std::memory_order_relaxed);
+}
+
+void Rack::setInputSource(int device, int source) noexcept
+{
+    if (device < 0 || device >= m_count)
+        return;
+    // Not itself, nor another device that takes inputs (no loops).
+    if (source == device || source < -1 || source >= m_count || (source >= 0 && takesInput(source)))
+        source = -1;
+    m_devices[std::size_t(device)].inputSource.store(source, std::memory_order_relaxed);
+}
+
+int Rack::inputSource(int device) const noexcept
+{
+    return device >= 0 && device < m_count ? m_devices[std::size_t(device)].inputSource.load(std::memory_order_relaxed)
+                                           : -1;
 }
 
 void Rack::setChannelDevice(int channel, int device) noexcept
@@ -424,74 +441,18 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
     for (auto &bus : m_bus)
         std::fill_n(bus.data(), frames, 0.0f);
 
-    for (int i = 0; i < m_count; ++i) {
-        Device &d = m_devices[std::size_t(i)];
-        float *const outputs[2] = {d.left.data(), d.right.data()};
-        // Its inputs: the rack's, in order; any beyond them are silent.
-        const float *inputs[kInputs + 6];
-        const int inputCount = std::min(d.instrument->inputChannels(), int(std::size(inputs)));
-        for (int c = 0; c < inputCount; ++c)
-            inputs[c] = block.inputs && c < kInputs ? block.inputs[c] + offset : m_silence.data();
-        d.instrument->process(AudioBlock{outputs, frames, d.midi.data(), d.midiCount,
-                                         block.transport ? &transport : nullptr, inputCount > 0 ? inputs : nullptr});
-
-        if (block.deviceOutputs) { // the device's own output, before the mixer
-            std::copy_n(d.left.data(), frames, block.deviceOutputs[2 * i] + offset);
-            std::copy_n(d.right.data(), frames, block.deviceOutputs[2 * i + 1] + offset);
+    // The devices fed by another device's output go after the others.
+    std::uint32_t feeds = 0, fed = 0;
+    for (int i = 0; i < m_count; ++i)
+        if (const int source = m_devices[std::size_t(i)].inputSource.load(std::memory_order_relaxed);
+            source >= 0 && m_devices[std::size_t(i)].instrument->inputChannels() > 0) {
+            feeds |= 1u << source;
+            fed |= 1u << i;
         }
-
-        // The strip's EQ (nothing at all while it's flat).
-        ChannelEq::Settings eq;
-        for (int b = 0; b < ChannelEq::Count; ++b)
-            eq[std::size_t(b)] = d.eq[std::size_t(b)].load(std::memory_order_relaxed);
-        d.eqDsp.process(eq, d.left.data(), d.right.data(), frames);
-
-        // Fader: level x balance pan; muted (or not soloed while something is) = 0.
-        const bool audible = anySolo ? d.solo.load(std::memory_order_relaxed) : !d.mute.load(std::memory_order_relaxed);
-        const float level = audible ? d.level.load(std::memory_order_relaxed) : 0.0f;
-        const float pan = d.pan.load(std::memory_order_relaxed);
-        const float targetL = level * (pan <= 0.0f ? 1.0f : 1.0f - pan);
-        const float targetR = level * (pan >= 0.0f ? 1.0f : 1.0f + pan);
-
-        if (!m_primed) { // start where the faders are, no fade from unity
-            d.gainL = targetL;
-            d.gainR = targetR;
-        }
-        // Ramp gains across the chunk so fader moves don't click.
-        const float stepL = (targetL - d.gainL) / float(frames);
-        const float stepR = (targetR - d.gainR) / float(frames);
-        // Effect sends, after the fader and pan (ramped too).
-        std::array<float, EffectCount> sendStep{};
-        bool sending = false;
-        for (int e = 0; e < EffectCount; ++e) {
-            const float target = d.sends[std::size_t(e)].load(std::memory_order_relaxed);
-            if (!m_primed)
-                d.sendGain[std::size_t(e)] = target;
-            sendStep[std::size_t(e)] = (target - d.sendGain[std::size_t(e)]) / float(frames);
-            sending = sending || target > 0.0f || d.sendGain[std::size_t(e)] > 0.0f;
-        }
-        float peak = 0.0f;
-        for (std::uint32_t s = 0; s < frames; ++s) {
-            d.gainL += stepL;
-            d.gainR += stepR;
-            const float l = d.left[s] * d.gainL;
-            const float r = d.right[s] * d.gainR;
-            block.masterL[offset + s] += l;
-            block.masterR[offset + s] += r;
-            if (sending)
-                for (int e = 0; e < EffectCount; ++e) {
-                    float &g = d.sendGain[std::size_t(e)];
-                    g += sendStep[std::size_t(e)];
-                    m_bus[std::size_t(2 * e)][s] += l * g;
-                    m_bus[std::size_t(2 * e + 1)][s] += r * g;
-                }
-            peak = std::max(peak, std::max(std::fabs(l), std::fabs(r)));
-        }
-        d.gainL = targetL;
-        d.gainR = targetR;
-        if (peak > d.peak.load(std::memory_order_relaxed))
-            d.peak.store(peak, std::memory_order_relaxed);
-    }
+    for (int pass = 0; pass < 2; ++pass)
+        for (int i = 0; i < m_count; ++i)
+            if (bool((fed >> i) & 1u) == (pass == 1))
+                processDevice(i, block, offset, frames, transport, anySolo, (feeds >> i) & 1u);
 
     // The effects: each bus through its effect, only the effect's sound into the master.
     processEffects(block, offset, frames);
@@ -510,6 +471,85 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
     m_masterGain = masterTarget;
     float *const master[2] = {block.masterL + offset, block.masterR + offset};
     m_master.process(master, 2, frames);
+}
+
+void Rack::processDevice(int i, const RackBlock &block, std::uint32_t offset, std::uint32_t frames,
+                         const TransportState &transport, bool anySolo, bool feedsAnother) noexcept
+{
+    Device &d = m_devices[std::size_t(i)];
+    float *const outputs[2] = {d.left.data(), d.right.data()};
+    // Its inputs: the rack's, in order (any beyond them are silent), or another
+    // device's output, summed to mono, on every input.
+    const float *inputs[kInputs + 6];
+    const int inputCount = std::min(d.instrument->inputChannels(), int(std::size(inputs)));
+    const int source = d.inputSource.load(std::memory_order_relaxed);
+    for (int c = 0; c < inputCount; ++c)
+        inputs[c] = source >= 0 ? m_devices[std::size_t(source)].raw.data()
+                    : block.inputs && c < kInputs ? block.inputs[c] + offset
+                                                 : m_silence.data();
+    d.instrument->process(AudioBlock{outputs, frames, d.midi.data(), d.midiCount,
+                                     block.transport ? &transport : nullptr, inputCount > 0 ? inputs : nullptr});
+
+    if (feedsAnother) // a device takes its sound as its input
+        for (std::uint32_t s = 0; s < frames; ++s)
+            d.raw[s] = 0.5f * (d.left[s] + d.right[s]);
+
+    if (block.deviceOutputs) { // the device's own output, before the mixer
+        std::copy_n(d.left.data(), frames, block.deviceOutputs[2 * i] + offset);
+        std::copy_n(d.right.data(), frames, block.deviceOutputs[2 * i + 1] + offset);
+    }
+
+    // The strip's EQ (nothing at all while it's flat).
+    ChannelEq::Settings eq;
+    for (int b = 0; b < ChannelEq::Count; ++b)
+        eq[std::size_t(b)] = d.eq[std::size_t(b)].load(std::memory_order_relaxed);
+    d.eqDsp.process(eq, d.left.data(), d.right.data(), frames);
+
+    // Fader: level x balance pan; muted (or not soloed while something is) = 0.
+    const bool audible = anySolo ? d.solo.load(std::memory_order_relaxed) : !d.mute.load(std::memory_order_relaxed);
+    const float level = audible ? d.level.load(std::memory_order_relaxed) : 0.0f;
+    const float pan = d.pan.load(std::memory_order_relaxed);
+    const float targetL = level * (pan <= 0.0f ? 1.0f : 1.0f - pan);
+    const float targetR = level * (pan >= 0.0f ? 1.0f : 1.0f + pan);
+
+    if (!m_primed) { // start where the faders are, no fade from unity
+        d.gainL = targetL;
+        d.gainR = targetR;
+    }
+    // Ramp gains across the chunk so fader moves don't click.
+    const float stepL = (targetL - d.gainL) / float(frames);
+    const float stepR = (targetR - d.gainR) / float(frames);
+    // Effect sends, after the fader and pan (ramped too).
+    std::array<float, EffectCount> sendStep{};
+    bool sending = false;
+    for (int e = 0; e < EffectCount; ++e) {
+        const float target = d.sends[std::size_t(e)].load(std::memory_order_relaxed);
+        if (!m_primed)
+            d.sendGain[std::size_t(e)] = target;
+        sendStep[std::size_t(e)] = (target - d.sendGain[std::size_t(e)]) / float(frames);
+        sending = sending || target > 0.0f || d.sendGain[std::size_t(e)] > 0.0f;
+    }
+    float peak = 0.0f;
+    for (std::uint32_t s = 0; s < frames; ++s) {
+        d.gainL += stepL;
+        d.gainR += stepR;
+        const float l = d.left[s] * d.gainL;
+        const float r = d.right[s] * d.gainR;
+        block.masterL[offset + s] += l;
+        block.masterR[offset + s] += r;
+        if (sending)
+            for (int e = 0; e < EffectCount; ++e) {
+                float &g = d.sendGain[std::size_t(e)];
+                g += sendStep[std::size_t(e)];
+                m_bus[std::size_t(2 * e)][s] += l * g;
+                m_bus[std::size_t(2 * e + 1)][s] += r * g;
+            }
+        peak = std::max(peak, std::max(std::fabs(l), std::fabs(r)));
+    }
+    d.gainL = targetL;
+    d.gainR = targetR;
+    if (peak > d.peak.load(std::memory_order_relaxed))
+        d.peak.store(peak, std::memory_order_relaxed);
 }
 
 void Rack::processEffects(const RackBlock &block, std::uint32_t offset, std::uint32_t frames) noexcept

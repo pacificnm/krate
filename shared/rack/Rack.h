@@ -140,6 +140,18 @@ public:
     // channel (kAnyChannel), goes to the focused device whatever device holds
     // the channel; -1 = off (channel routing only). Notes end on the device
     // they started on, so switching focus with a key down leaves nothing hanging.
+    // Where a device with audio inputs (the guitar amp) takes them from: the
+    // rack's inputs (-1, the audio interface) or another device's own output,
+    // before its EQ and fader (mute that strip to hear only the amp), summed to
+    // mono on every input. A device fed by another is processed after the
+    // others, so any device can feed it in the same block.
+    void setInputSource(int device, int source) noexcept;
+    int inputSource(int device) const noexcept;
+    bool takesInput(int device) const noexcept
+    {
+        return device >= 0 && device < m_count && m_devices[std::size_t(device)].instrument->inputChannels() > 0;
+    }
+
     void setKeysChannel(int channel) noexcept { m_keysChannel.store(channel, std::memory_order_relaxed); }
     int keysChannel() const noexcept { return m_keysChannel.load(std::memory_order_relaxed); }
     int channelDevice(int channel) const noexcept;
@@ -193,6 +205,8 @@ private:
         IInstrument *instrument = nullptr;
         std::vector<float> left;
         std::vector<float> right;
+        std::vector<float> raw; // its output summed to mono before EQ and fader, while it feeds another device
+        std::atomic<int> inputSource{-1}; // -1: the rack's inputs; else a device
         std::array<MidiEvent, kMaxEventsPerDevice> midi{};
         std::uint32_t midiCount = 0;
 
@@ -215,6 +229,8 @@ private:
 
     void processChunk(const RackBlock &block, std::uint32_t offset, std::uint32_t frames, std::uint32_t &nextEvent,
                       std::uint32_t &nextDeviceEvent) noexcept;
+    void processDevice(int i, const RackBlock &block, std::uint32_t offset, std::uint32_t frames,
+                       const TransportState &transport, bool anySolo, bool feedsAnother) noexcept;
     void route(MidiEvent event) noexcept;
     void processEffects(const RackBlock &block, std::uint32_t offset, std::uint32_t frames) noexcept;
     bool runAction(int action) noexcept;

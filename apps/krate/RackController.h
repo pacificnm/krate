@@ -130,6 +130,16 @@ public:
     Q_INVOKABLE int midiChannelCount(int device) const; // how many it has (Krimson: 4)
     Q_INVOKABLE void setMidiChannel(int device, int channel); // just this one (or none)
     Q_INVOKABLE void restoreMidiChannels(int device);  // its registry defaults
+    // Audio input of a device that takes one (the guitar amp): the audio
+    // interface (-1) or another instrument's own output (its index), so a
+    // synth or the backing track can play through the amp.
+    Q_INVOKABLE bool takesInput(int device) const;
+    Q_INVOKABLE int inputSource(int device) const;
+    Q_INVOKABLE void setInputSource(int device, int source);
+    Q_INVOKABLE void stepInputSource(int device, int delta); // the next (or previous) source, round
+    Q_INVOKABLE QString inputSourceName(int device) const;   // "INPUT", or the instrument's name
+    QString inputSourceId(int device) const;                 // "" = the interface (sessions, songs)
+    void setInputSourceId(int device, const QString &id);
 
     // The instruments' own RUN / STOP (set before the panels load); PLAY switches them all on.
     void setRunControl(RackRunControl *run) { m_run = run; }

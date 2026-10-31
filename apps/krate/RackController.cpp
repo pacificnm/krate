@@ -454,6 +454,61 @@ void RackController::setMidiChannel(int device, int channel)
     emit mixerChanged(); // the session saves it
 }
 
+bool RackController::takesInput(int device) const
+{
+    return m_rack.takesInput(device);
+}
+
+int RackController::inputSource(int device) const
+{
+    return m_rack.inputSource(device);
+}
+
+void RackController::setInputSource(int device, int source)
+{
+    if (!takesInput(device) || source == inputSource(device))
+        return;
+    m_rack.setInputSource(device, source);
+    ++m_mixerRevision;
+    emit mixerChanged(); // the session saves it
+}
+
+void RackController::stepInputSource(int device, int delta)
+{
+    if (!takesInput(device))
+        return;
+    // The interface, then every instrument that can feed it (not itself, nor another with inputs).
+    QList<int> sources{-1};
+    for (int d = 0; d < m_strips.size(); ++d)
+        if (d != device && !takesInput(d))
+            sources << d;
+    const int at = std::max(0, int(sources.indexOf(inputSource(device))));
+    const int n = int(sources.size());
+    setInputSource(device, sources.at(((at + delta) % n + n) % n));
+}
+
+QString RackController::inputSourceName(int device) const
+{
+    const int source = inputSource(device);
+    return source < 0 ? QStringLiteral("INPUT") : m_names.value(source);
+}
+
+QString RackController::inputSourceId(int device) const
+{
+    const int source = inputSource(device);
+    return source < 0 || source >= m_entries.size() ? QString() : m_entries[source].id;
+}
+
+void RackController::setInputSourceId(int device, const QString &id)
+{
+    int source = -1;
+    for (qsizetype i = 0; i < m_entries.size(); ++i)
+        if (m_entries[i].id == id)
+            source = int(i);
+    if (takesInput(device))
+        setInputSource(device, source);
+}
+
 void RackController::setSolo(int device, bool solo)
 {
     if (device < 0 || device >= m_strips.size())
@@ -487,7 +542,8 @@ QJsonObject RackController::mixerState() const
                                               {QStringLiteral("mute"), m_strips[i].mute},
                                               {QStringLiteral("solo"), m_strips[i].solo},
                                               {QStringLiteral("eq"), eqJson(int(i))},
-                                              {QStringLiteral("sends"), QJsonArray{m_strips[i].sends[0], m_strips[i].sends[1]}}};
+                                              {QStringLiteral("sends"), QJsonArray{m_strips[i].sends[0], m_strips[i].sends[1]}},
+                                              {QStringLiteral("input"), inputSourceId(int(i))}};
     return QJsonObject{{QStringLiteral("strips"), strips},
                        {QStringLiteral("master"), m_masterFader},
                        {QStringLiteral("effects"), effectsJson()}};
@@ -508,6 +564,7 @@ void RackController::setMixerState(const QJsonObject &state)
         const QJsonArray sends = s.value(u"sends").toArray();
         for (int e = 0; e < 2; ++e)
             setSend(int(i), e, sends.at(e).toDouble(0.0)); // none saved: no sends
+        setInputSourceId(int(i), s.value(u"input").toString()); // none saved: the interface
     }
     if (state.contains(u"master"))
         setFader(-1, state.value(u"master").toDouble(kUnityFader));

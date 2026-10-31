@@ -74,6 +74,7 @@ void RackSession::load()
                 m_controller.setSend(i, e, sends.at(e).toDouble(0.0));
             m_controller.setMute(i, d.value(u"mute").toBool(false));
             m_controller.setSolo(i, d.value(u"solo").toBool(false));
+            m_controller.setInputSourceId(i, d.value(u"input").toString()); // "" or none: the interface
             // Channel routing: notes on these channels (1..16) go to the instrument;
             // none = focus only. "channels" (a list, since Krimson's four slots);
             // older sessions have one "channel".
@@ -153,6 +154,7 @@ void RackSession::save()
                                      {QStringLiteral("mute"), m_controller.mute(i)},
                                      {QStringLiteral("solo"), m_controller.solo(i)},
                                      {QStringLiteral("channels"), channels},
+                                     {QStringLiteral("input"), m_controller.inputSourceId(i)},
                                  });
     }
     const QJsonObject json{

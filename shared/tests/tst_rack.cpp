@@ -755,6 +755,40 @@ private slots:
         QCOMPARE(amp.inputSamples.back(), std::make_pair(0.0f, 0.0f));
     }
 
+    // An amp fed by another device: that device's own output (before its EQ and
+    // fader: muted, it still feeds the amp), summed to mono on every input, in the
+    // same block, whichever comes first in the rack; back to the rack's inputs.
+    void inputFromAnotherDevice()
+    {
+        FakeDevice amp(kParamsA, 0.0f), synth(kParamsB, 0.5f), backing(kParamsB, 0.25f);
+        amp.inputs = 2;
+        Rack rack(64);
+        const int ampIndex = rack.addDevice(amp);
+        const int synthIndex = rack.addDevice(synth);
+        const int backingIndex = rack.addDevice(backing); // after the amp
+        rack.prepare(48000.0);
+        QVERIFY(rack.takesInput(ampIndex));
+        QVERIFY(!rack.takesInput(synthIndex));
+
+        rack.setInputSource(ampIndex, synthIndex);
+        rack.setMute(synthIndex, true);
+        rack.setLevel(synthIndex, 0.1f);
+        QCOMPARE(rack.inputSource(ampIndex), synthIndex);
+        run(rack, 64);
+        QCOMPARE(amp.inputSamples.back(), std::make_pair(0.5f, 0.5f));
+        QCOMPARE(amp.inputSamples[amp.inputSamples.size() - 2], std::make_pair(0.5f, 0.5f));
+
+        rack.setInputSource(ampIndex, backingIndex); // later in the rack: still this block's
+        run(rack, 64);
+        QCOMPARE(amp.inputSamples.back(), std::make_pair(0.25f, 0.25f));
+
+        rack.setInputSource(ampIndex, ampIndex); // itself: no, the rack's inputs
+        QCOMPARE(rack.inputSource(ampIndex), -1);
+        rack.setInputSource(synthIndex, backingIndex); // a device without inputs: kept, unused
+        run(rack, 64);
+        QCOMPARE(amp.inputSamples.back(), std::make_pair(0.0f, 0.0f)); // no rack inputs: silence
+    }
+
     void deviceLimit()
     {
         std::vector<std::unique_ptr<FakeDevice>> devices;

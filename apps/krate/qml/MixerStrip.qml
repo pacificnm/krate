@@ -325,6 +325,44 @@ Item {
         font.bold: false
     }
 
+    // Audio input (the guitar amp): INPUT (the audio interface) or another
+    // instrument's own output. Click: next; right-click or wheel down: previous.
+    Rectangle {
+        id: inputBox
+        readonly property bool shown: strip.rev >= 0 && !strip.isMaster && Rack.takesInput(strip.device)
+        function step(delta) { Rack.stepInputSource(strip.device, delta) }
+
+        visible: shown
+        x: strip.width - width - 6
+        y: strip.height - 25 // where the MIDI channel is on the others: the amp plays no notes
+        width: 50
+        height: 19
+        radius: 3
+        color: strip.rev >= 0 && shown && Rack.inputSource(strip.device) >= 0 ? Theme.labelOrange : "#2A2B2E"
+        border.color: Theme.deckLine
+
+        Accessible.role: Accessible.Button
+        Accessible.name: strip.name + " audio input: " + (shown ? Rack.inputSourceName(strip.device) : "")
+
+        Text {
+            anchors.centerIn: parent
+            width: parent.width - 4
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+            text: strip.rev >= 0 && inputBox.shown ? Rack.inputSourceName(strip.device) : ""
+            color: Theme.inkInverse
+            font.family: Theme.labelFont
+            font.pixelSize: 10
+            font.bold: true
+        }
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: mouse => inputBox.step(mouse.button === Qt.RightButton ? -1 : 1)
+            onWheel: wheel => inputBox.step(wheel.angleDelta.y > 0 ? 1 : -1)
+        }
+    }
+
     // MIDI channel: FOCUS (keys reach it when it has focus) or 1-16 (always).
     // Click: next; right-click or wheel down: previous; double-click: the
     // instrument's own defaults (Krimson: 3-6).
@@ -334,7 +372,7 @@ Item {
         readonly property int count: strip.rev >= 0 && !strip.isMaster ? Rack.midiChannelCount(strip.device) : 0
         function step(delta) { Rack.setMidiChannel(strip.device, (channel + delta + 17) % 17) }
 
-        visible: !strip.isMaster
+        visible: !strip.isMaster && !inputBox.shown
         x: strip.width - width - 6
         y: strip.height - 25
         width: 50
