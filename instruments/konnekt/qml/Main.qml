@@ -305,6 +305,8 @@ ApplicationWindow {
                     type: modelData.type
                     x: modelData.x
                     y: modelData.y
+                    onScreen: x + width > flick.contentX && x < flick.contentX + flick.width
+                              && y + height > flick.contentY && y < flick.contentY + flick.height
                     onJackClicked: (s, o, j) => root.jackClicked(s, o, j)
                     onJackScope: (s, j) => Konnekt.scope(s, j)
                     onExplain: p => explainPanel.show(p)

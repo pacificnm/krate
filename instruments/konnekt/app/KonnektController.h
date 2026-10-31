@@ -44,9 +44,9 @@ class KonnektController : public QObject
     // text (the sheet) until it's closed or something else is loaded.
     Q_PROPERTY(QStringList patchNames READ patchNames NOTIFY patchesChanged)
     Q_PROPERTY(QString patchName READ patchName NOTIFY patchesChanged)   // the one loaded or saved last, "" = none
-    Q_PROPERTY(QVariantList lessons READ lessons NOTIFY patchesChanged) // [{index, title}]
+    Q_PROPERTY(QVariantList lessons READ lessons NOTIFY sheetsChanged) // [{index, title}], read once
     Q_PROPERTY(int lesson READ lesson NOTIFY patchesChanged)            // the lesson loaded, -1 = none
-    Q_PROPERTY(QVariantList presets READ presets NOTIFY patchesChanged) // [{index, title, category}]
+    Q_PROPERTY(QVariantList presets READ presets NOTIFY sheetsChanged) // [{index, title, category}], read once
     Q_PROPERTY(int preset READ preset NOTIFY patchesChanged)            // the preset loaded, -1 = none
     Q_PROPERTY(QString sheetTitle READ sheetTitle NOTIFY patchesChanged) // the lesson's or preset's
     Q_PROPERTY(QString sheetText READ sheetText NOTIFY patchesChanged)
@@ -130,11 +130,12 @@ public:
     QString sheetText() const { return m_sheetText; }
     Q_INVOKABLE void closeSheet(); // the text goes; the patch stays
     // Where the lessons and presets are: the app's resources (tests: the source folders).
-    void setLessonsDir(const QString &dir) { m_lessonsDir = dir; emit patchesChanged(); }
-    void setPresetsDir(const QString &dir) { m_presetsDir = dir; emit patchesChanged(); }
+    void setLessonsDir(const QString &dir);
+    void setPresetsDir(const QString &dir);
 
 signals:
     void patchesChanged();
+    void sheetsChanged(); // the lesson and preset lists (only when their folders are set)
     void changed();
     void modulesChanged();
     void knobsChanged();
@@ -158,6 +159,7 @@ private:
     bool loadSheet(const QString &dir, int index, int *loaded);
     void poll();
     const konnekt::Module *module(int slot) const;
+    void takeOut(int slot);
 
     static inline KonnektController *s_instance = nullptr;
 
@@ -179,6 +181,7 @@ private:
     QString m_patchName;
     QString m_lessonsDir = QStringLiteral(":/qt/qml/Konnekt/lessons");
     QString m_presetsDir = QStringLiteral(":/qt/qml/Konnekt/presets");
+    QVariantList m_lessons, m_presets;
     int m_lesson = -1, m_preset = -1;
     QString m_sheetTitle, m_sheetText;
     konnekt::Explainer m_explainer;

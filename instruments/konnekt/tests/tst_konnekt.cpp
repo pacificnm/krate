@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include <QFile>
+#include <QSignalSpy>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTemporaryDir>
@@ -214,6 +215,34 @@ private slots:
                 tail = std::max({tail, std::fabs(l[s]), std::fabs(r[s])});
             QVERIFY2(tail < 0.01f, qPrintable(c.sheetTitle() + QStringLiteral(" still sounds ") + QString::number(tail)));
         }
+    }
+
+    // Loading stays cheap for the screen: the lesson and preset lists are read
+    // once (loading one doesn't announce them again: the window rebuilt all 84
+    // preset buttons on every load), and clearing a rack updates it once, not
+    // once per module.
+    void loadingDoesNotRebuildTheScreen()
+    {
+        QTemporaryDir dir;
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        KonnektController c(engine, dir.path(), nullptr);
+        c.setPresetsDir(QStringLiteral(KONNEKT_PRESETS));
+        c.setLessonsDir(QStringLiteral(KONNEKT_LESSONS));
+        QSignalSpy sheets(&c, &KonnektController::sheetsChanged);
+        QSignalSpy modules(&c, &KonnektController::modulesChanged);
+        QVERIFY(c.loadPreset(int(c.presets().size()) - 1));
+        QVERIFY(c.loadLesson(0));
+        QVERIFY(c.loadPreset(0));
+        QCOMPARE(sheets.count(), 0);
+        QCOMPARE(c.presets().size(), 84);
+        QVERIFY(c.modules().size() > 5);
+        modules.clear();
+        c.clearPatch();
+        QCOMPARE(modules.count(), 1);
+        QCOMPARE(c.modules().size(), 0);
+        c.clearPatch(); // already empty: nothing to say
+        QCOMPARE(modules.count(), 1);
     }
 
     // Every module, knob and jack has its explanation; every link leads somewhere.

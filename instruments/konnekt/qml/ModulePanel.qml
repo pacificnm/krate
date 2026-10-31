@@ -13,6 +13,7 @@ Item {
 
     required property int slot
     required property string type
+    property bool onScreen: true // the rack says; traces and the scope only redraw when seen
     readonly property var info: Konnekt.moduleInfo(type)
 
     signal jackClicked(int slot, bool output, int jack)
@@ -133,45 +134,53 @@ Item {
                     font.pixelSize: 10
                     font.bold: true
                 }
-                Rectangle { // a two-position control: click to switch
-                    visible: knobCell.toggle
-                    x: (parent.width - width) / 2
+                // A two-position control is a button, anything else a knob: only
+                // the one shown is made (a big rack holds hundreds of these).
+                Loader {
+                    active: knobCell.toggle
+                    x: (parent.width - 46) / 2
                     y: 20
-                    width: 46
-                    height: 28
-                    radius: 4
-                    color: knobCell.position > 0.5 ? "#F2B632" : "#33363C"
-                    border.color: "#08090A"
-                    Text {
-                        anchors.centerIn: parent
-                        text: Konnekt.knobText(panel.slot, knobCell.index, knobCell.position)
-                        color: knobCell.position > 0.5 ? "#111" : "#DAD5CB"
-                        font.family: Theme.labelFont
-                        font.pixelSize: 10
-                        font.bold: true
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: Konnekt.setKnob(panel.slot, knobCell.index, knobCell.position > 0.5 ? 0 : 1)
+                    sourceComponent: Rectangle { // click to switch
+                        width: 46
+                        height: 28
+                        radius: 4
+                        color: knobCell.position > 0.5 ? "#F2B632" : "#33363C"
+                        border.color: "#08090A"
+                        Text {
+                            anchors.centerIn: parent
+                            text: Konnekt.knobText(panel.slot, knobCell.index, knobCell.position)
+                            color: knobCell.position > 0.5 ? "#111" : "#DAD5CB"
+                            font.family: Theme.labelFont
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: Konnekt.setKnob(panel.slot, knobCell.index, knobCell.position > 0.5 ? 0 : 1)
+                        }
                     }
                 }
-                Knob {
+                Loader {
                     id: knob
-                    visible: !knobCell.toggle
-                    x: (parent.width - width) / 2
+                    active: !knobCell.toggle
+                    x: (parent.width - 38) / 2
                     y: 15
                     width: 38
                     height: 38
-                    name: knobCell.modelData.name
-                    detents: knobCell.modelData.detents
-                    value: knobCell.position
-                    defaultValue: Konnekt.knobDefault(panel.slot, knobCell.index)
-                    displayText: Konnekt.knobText(panel.slot, knobCell.index, value)
-                    onMoved: v => Konnekt.setKnob(panel.slot, knobCell.index, v)
-                    capColor: "#33363C"
-                    capShadeColor: "#15161A"
-                    capBorderColor: "#08090A"
-                    pointerColor: "#F2B632"
+                    sourceComponent: Knob {
+                        width: 38
+                        height: 38
+                        name: knobCell.modelData.name
+                        detents: knobCell.modelData.detents
+                        value: knobCell.position
+                        defaultValue: Konnekt.knobDefault(panel.slot, knobCell.index)
+                        displayText: Konnekt.knobText(panel.slot, knobCell.index, value)
+                        onMoved: v => Konnekt.setKnob(panel.slot, knobCell.index, v)
+                        capColor: "#33363C"
+                        capShadeColor: "#15161A"
+                        capBorderColor: "#08090A"
+                        pointerColor: "#F2B632"
+                    }
                 }
                 Text {
                     visible: !knobCell.toggle || knobCell.cc >= 0
@@ -329,7 +338,7 @@ Item {
                 width: parent.width - 8
                 height: 18
                 readonly property int frame: Konnekt.frame
-                onFrameChanged: requestPaint()
+                onFrameChanged: if (panel.onScreen) requestPaint()
                 onPaint: {
                     const ctx = getContext("2d")
                     ctx.reset()
@@ -385,7 +394,7 @@ Item {
             anchors.fill: parent
             anchors.margins: 4
             readonly property int frame: Konnekt.frame
-            onFrameChanged: if (panel.isScope && Konnekt.scopeSlot() === panel.slot) requestPaint()
+            onFrameChanged: if (panel.isScope && panel.onScreen && Konnekt.scopeSlot() === panel.slot) requestPaint()
             onPaint: {
                 const ctx = getContext("2d")
                 ctx.reset()

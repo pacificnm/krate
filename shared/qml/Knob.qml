@@ -1,10 +1,12 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Shapes
 
 // Rotary control: dark ribbed skirt, silver cap, black pointer.
 // Only the rib and pointer layers rotate, so lighting stays fixed and nothing
-// is re-tessellated while turning. Vertical drag: dragRange px = full travel,
+// is re-tessellated while turning. The ribs are one shape (not 32 items) and
+// the value bubble is made only while dragging: racks hold hundreds of knobs. Vertical drag: dragRange px = full travel,
 // Shift = fine, wheel = small step, double-click = default.
 //
 // The knob never assigns its own value: it emits moved(v) and the owner writes
@@ -75,25 +77,26 @@ Item {
         }
     }
 
-    Item { // ribs
+    Shape { // ribs: 32 short radial strokes
         anchors.fill: parent
         rotation: knob.angle
 
-        Repeater {
-            model: 32
-
-            Rectangle {
-                id: rib
-                required property int index
-                x: knob.width / 2 - 1
-                y: 2
-                width: 2
-                height: knob.width * 0.11
-                color: Theme.knobRib
-                transform: Rotation {
-                    origin.x: 1
-                    origin.y: knob.height / 2 - 2
-                    angle: rib.index * 360 / 32
+        ShapePath {
+            strokeColor: Theme.knobRib
+            strokeWidth: 2
+            fillColor: "transparent"
+            capStyle: ShapePath.FlatCap
+            PathMultiline {
+                paths: {
+                    const cx = knob.width / 2, cy = knob.height / 2
+                    const outer = knob.height / 2 - 2, inner = outer - knob.width * 0.11
+                    const lines = []
+                    for (let i = 0; i < 32; ++i) {
+                        const a = i * 2 * Math.PI / 32
+                        lines.push([Qt.point(cx + outer * Math.sin(a), cy - outer * Math.cos(a)),
+                                    Qt.point(cx + inner * Math.sin(a), cy - inner * Math.cos(a))])
+                    }
+                    return lines
                 }
             }
         }
@@ -136,24 +139,26 @@ Item {
         border.width: 2
     }
 
-    Rectangle { // value bubble
-        visible: knobMouse.pressed && knob.displayText !== ""
+    Loader { // value bubble, while dragging
+        active: knobMouse.pressed && knob.displayText !== ""
         anchors.horizontalCenter: parent.horizontalCenter
         y: -height - 6
         z: 10
-        width: bubbleText.implicitWidth + 16
-        height: bubbleText.implicitHeight + 8
-        radius: 4
-        color: Theme.band
+        sourceComponent: Rectangle {
+            width: bubbleText.implicitWidth + 16
+            height: bubbleText.implicitHeight + 8
+            radius: 4
+            color: Theme.band
 
-        Text {
-            id: bubbleText
-            anchors.centerIn: parent
-            text: knob.displayText
-            color: Theme.inkInverse
-            font.family: Theme.labelFont
-            font.pixelSize: 14
-            font.bold: true
+            Text {
+                id: bubbleText
+                anchors.centerIn: parent
+                text: knob.displayText
+                color: Theme.inkInverse
+                font.family: Theme.labelFont
+                font.pixelSize: 14
+                font.bold: true
+            }
         }
     }
 

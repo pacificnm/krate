@@ -71,6 +71,8 @@ KonnektController::KonnektController(Engine &engine, const QString &dataDir, QOb
     }
 
     m_explainer.load(QStringLiteral(":/qt/qml/Konnekt/explain"));
+    m_lessons = sheets(m_lessonsDir); // they don't change while the app runs
+    m_presets = sheets(m_presetsDir);
 
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(kSaveDelayMs);
@@ -167,6 +169,16 @@ void KonnektController::removeModule(int slot)
 {
     if (!module(slot))
         return;
+    takeOut(slot);
+    ++m_moduleRevision;
+    emit modulesChanged();
+    structureChanged();
+}
+
+// Takes a module and its cables off the rack and out of the engine, without
+// telling the screen (the caller does, once).
+void KonnektController::takeOut(int slot)
+{
     std::erase_if(m_cables, [slot](const Cable &c) { return c.fromSlot == slot || c.toSlot == slot; });
     m_engine.removeModule(slot);
     m_engine.forgetSlot(slot);
@@ -174,9 +186,6 @@ void KonnektController::removeModule(int slot)
     m_slots[std::size_t(slot)] = {};
     if (m_scopeSlot == slot)
         scope(-1, -1);
-    ++m_moduleRevision;
-    emit modulesChanged();
-    structureChanged();
 }
 
 void KonnektController::moveModule(int slot, qreal x, qreal y)
@@ -223,10 +232,18 @@ QVariantMap KonnektController::moduleInfo(const QString &type) const
 
 void KonnektController::clearPatch()
 {
+    bool any = false;
     for (int s = 0; s < kMaxModules; ++s)
-        if (module(s))
-            removeModule(s);
+        if (module(s)) {
+            takeOut(s);
+            any = true;
+        }
     m_nextColor = 0;
+    if (!any)
+        return;
+    ++m_moduleRevision; // once: one module at a time rebuilt the rack for each
+    emit modulesChanged();
+    structureChanged();
 }
 
 // --- Knobs ---------------------------------------------------------------------------------
@@ -538,9 +555,23 @@ bool KonnektController::loadSheet(const QString &dir, int index, int *loaded)
     return true;
 }
 
-QVariantList KonnektController::lessons() const { return sheets(m_lessonsDir); }
+QVariantList KonnektController::lessons() const { return m_lessons; }
 bool KonnektController::loadLesson(int index) { return loadSheet(m_lessonsDir, index, &m_lesson); }
-QVariantList KonnektController::presets() const { return sheets(m_presetsDir); }
+QVariantList KonnektController::presets() const { return m_presets; }
+
+void KonnektController::setLessonsDir(const QString &dir)
+{
+    m_lessonsDir = dir;
+    m_lessons = sheets(dir);
+    emit sheetsChanged();
+}
+
+void KonnektController::setPresetsDir(const QString &dir)
+{
+    m_presetsDir = dir;
+    m_presets = sheets(dir);
+    emit sheetsChanged();
+}
 bool KonnektController::loadPreset(int index) { return loadSheet(m_presetsDir, index, &m_preset); }
 
 void KonnektController::closeSheet()
