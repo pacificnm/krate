@@ -121,6 +121,22 @@ private slots:
         QCOMPARE(value(t, "vco2_wave"), 0.0); // sine
     }
 
+    // One oscillator heard through its saw and its pulse: both of Kalliope's
+    // oscillators, at the same pitch, mixed as they were.
+    void twoWavesOfOneOscillator()
+    {
+        const Translation t = translate(byTitle(QStringLiteral("Big Beat Wobble")), SendTarget::Kalliope);
+        QCOMPARE(value(t, "vco1_wave"), 1.0 / 3.0); // saw
+        QCOMPARE(value(t, "vco2_wave"), 2.0 / 3.0); // pulse
+        QCOMPARE(value(t, "vco1_range"), 0.0);      // 16'
+        QCOMPARE(value(t, "vco2_range"), 0.25);     // 16'
+        QVERIFY(std::fabs(value(t, "vco2_fine") - 0.5) < 1e-6);
+        QVERIFY(std::fabs(value(t, "mix") - 0.6 / 1.3) < 1e-6);
+        const Translation k = translate(byTitle(QStringLiteral("Big Beat Wobble")), SendTarget::Krimson);
+        QCOMPARE(value(k, "osc2_wave"), 2.0 / 3.0); // pulse
+        QCOMPARE(value(k, "osc2_semi"), 0.5);      // the same pitch
+    }
+
     // Ring mod and sync come across to Krimson; a sequencer is reported lost.
     void krimsonRingAndLosses()
     {

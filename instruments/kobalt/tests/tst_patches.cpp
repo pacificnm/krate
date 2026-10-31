@@ -6,8 +6,11 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QDir>
+#include <QJsonDocument>
 #include <QTemporaryDir>
 
+#include "app/PresetInbox.h"
 #include "kobalt/app/KobaltInstrument.h"
 #include "kobalt/app/PatchFile.h"
 #include "kobalt/dsp/Params.h"
@@ -73,6 +76,33 @@ private slots:
         QCOMPARE(repaired.patches[0].values.value(QStringLiteral("cutoff")), initPatch().values.value(QStringLiteral("cutoff")));
         QVERIFY(!repaired.patches[0].values.contains(QStringLiteral("nonsense")));
         QCOMPARE(repaired.patches[1], initPatch());
+    }
+
+    // Presets sent from another app (Konnekt) through the inbox: taken at
+    // start, and as they arrive while running; stored, selected, saved.
+    void sentPresetsArrive()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const QString bank = dir.filePath("data/patches.json");
+        QDir().mkpath(dir.filePath("data"));
+        QVERIFY(krate::PresetInbox::send(bank, {20, QStringLiteral("From Konnekt"), {{QStringLiteral("cutoff"), 0.123}, {QStringLiteral("nonsense"), 0.5}}, QStringLiteral("konnekt")}));
+        {
+            const auto instance = registryEntry().create(context);
+            auto &k = static_cast<Instance &>(*instance);
+            QCOMPARE(k.patches.name(), QStringLiteral("From Konnekt"));
+            QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(0.123f));
+            QVERIFY(QDir(krate::PresetInbox::dirFor(bank)).entryList(QDir::Files).isEmpty());
+            // While running: it arrives by itself.
+            QVERIFY(krate::PresetInbox::send(bank, {21, QStringLiteral("Second"), {{QStringLiteral("cutoff"), 0.9}}, QStringLiteral("konnekt")}));
+            QTRY_COMPARE(k.patches.name(), QStringLiteral("Second"));
+            QCOMPARE(k.controller.value(QStringLiteral("cutoff")), double(0.9f));
+        }
+        QFile f(bank);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        const QJsonArray list = QJsonDocument::fromJson(f.readAll()).object().value(u"patches").toArray();
+        QCOMPARE(list[20].toObject().value(u"name").toString(), QStringLiteral("From Konnekt"));
+        QCOMPARE(list[21].toObject().value(u"name").toString(), QStringLiteral("Second"));
     }
 
     void selectEditWriteManual()

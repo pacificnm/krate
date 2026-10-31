@@ -591,6 +591,15 @@ ApplicationWindow {
                     onClicked: if (Konnekt.savePatch(nameField.text)) patchesPopup.close()
                 }
             }
+            PanelButton {
+                width: 310
+                height: 32
+                dark: true
+                faceText: "SEND TO AN INSTRUMENT…"
+                text: "Make the rack a preset of Kalliope, Kobalt or Krimson"
+                onClicked: { patchesPopup.close(); sendPopup.open() }
+                ExplainTap { path: "app/send" }
+            }
             Text {
                 text: Konnekt.patchNames.length > 0 ? "YOUR PATCHES  (click to load)" : "No saved patches yet."
                 color: "#F2B632"
@@ -800,6 +809,13 @@ ApplicationWindow {
         anchors.bottom: helpBar.top
         z: 35
         onShowScope: (s, j) => Konnekt.scope(s, j)
+    }
+
+    SendPopup {
+        id: sendPopup
+        // A name to start from: the patch's, the preset's, or the lesson's.
+        defaultName: (Konnekt.patchName !== "" ? Konnekt.patchName
+                      : Konnekt.sheetTitle !== "" ? Konnekt.sheetTitle.replace(/^[0-9]+ · /, "") : "Konnekt").slice(0, 16)
     }
 
     ManualView {

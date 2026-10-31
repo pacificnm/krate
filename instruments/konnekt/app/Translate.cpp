@@ -424,6 +424,31 @@ std::vector<const Osc *> ordered(const Voice &v)
     });
     return out;
 }
+// For a synth with two oscillators: one Konnekt oscillator heard through two of
+// its outputs (a saw and a pulse mixed) becomes two at the same pitch, when the
+// synth has one free; otherwise each oscillator's loudest wave is used. The
+// returned list owns the split copies.
+std::vector<Osc> splitWaves(const std::vector<const Osc *> &oscs, Out &o)
+{
+    std::vector<Osc> out;
+    for (const Osc *x : oscs)
+        out.push_back(*x);
+    if (out.size() == 1 && out[0].waves.size() > 1) {
+        Osc second = out[0];
+        auto loudest = std::max_element(out[0].waves.begin(), out[0].waves.end(), [](const auto &a, const auto &b) { return a.second < b.second; });
+        const QString keep = loudest->first;
+        second.waves.erase(keep);
+        out[0].waves = {{keep, loudest->second}};
+        second.waves = {*std::max_element(second.waves.begin(), second.waves.end(), [](const auto &a, const auto &b) { return a.second < b.second; })};
+        second.pitch = out[0].pitch; // the same oscillator: the same modulation
+        second.syncTo = -1;
+        second.linFmFrom = -1;
+        o.exact(QStringLiteral("Its %1 and %2 mixed → both oscillators at the same pitch").arg(keep, second.waves.begin()->first));
+        out.push_back(second);
+    }
+    return out;
+}
+
 double level(const Osc *o)
 {
     double l = 0;
@@ -518,7 +543,10 @@ const char *kLfoWaves[] = {"Triangle", "Sine", "Saw up", "Saw down", "Square", "
 
 void kalliope(const Graph &g, const Voice &v, Out &o)
 {
-    const auto oscs = ordered(v);
+    const std::vector<Osc> split = splitWaves(ordered(v), o);
+    std::vector<const Osc *> oscs;
+    for (const Osc &x : split)
+        oscs.push_back(&x);
     const Osc *a = !oscs.empty() ? oscs[0] : nullptr;
     const Osc *b = oscs.size() > 1 ? oscs[1] : nullptr;
     if (oscs.size() > 2)
@@ -830,7 +858,10 @@ void kobalt(const Graph &g, const Voice &v, Out &o)
 
 void krimson(const Graph &g, const Voice &v, Out &o)
 {
-    const auto oscs = ordered(v);
+    const std::vector<Osc> split = splitWaves(ordered(v), o);
+    std::vector<const Osc *> oscs;
+    for (const Osc &x : split)
+        oscs.push_back(&x);
     const Osc *a = !oscs.empty() ? oscs[0] : nullptr;
     const Osc *b = oscs.size() > 1 ? oscs[1] : nullptr;
     if (oscs.size() > 2)

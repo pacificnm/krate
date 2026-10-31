@@ -104,6 +104,20 @@
     "app/new"
    ]
   },
+  "send": {
+   "title": "SEND TO AN INSTRUMENT",
+   "what": "Turns the patch on the rack into a preset of one of Krate's synths: Kalliope, Kobalt or Krimson.",
+   "does": "Those synths have a fixed shape (oscillators, a filter, envelopes, an LFO, effects), so the patch is read for that shape and each part set on the synth as closely as it allows. You see what comes across, what had to change and what the synth can't do, for each synth, best fit first. Pick a slot (it shows what's there now), name it, SEND. If the synth (or Krate) is open, the preset arrives straight away and is selected; if not, it arrives the next time it starts.",
+   "why": "Design a voice here, where you can see and change every connection, then play it from the synth: in the Krate rack, in songs, with its arpeggiator or sequencer.",
+   "try": [
+    "Load a preset, send it to its best fit, open the synth and play it.",
+    "Compare the report for each synth: it says what each one can and can't do."
+   ],
+   "see": [
+    "app/patches",
+    "app/presets"
+   ]
+  },
   "lessons": {
    "title": "LESSONS",
    "what": "Ten patches that build a synth up a module at a time, each with what to listen for and what to try.",

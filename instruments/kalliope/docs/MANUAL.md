@@ -165,6 +165,8 @@ The left of the function deck. **Play Mode** chooses what your keys do:
 
 **Factory patches**: bank 1: 11 Brass, 12 Strings, 13 Soft Pad, 14 Bass, 15 Sync Lead, 16 Bells, 17 Unison Lead, 18 Sweep Bass; bank 2: 21 Organ, 22 Pluck, 23 Tremolo Keys, 24 Noise Sweep, 25 Arp Pluck (arpeggio on), 26 Detuned Saws, 27 Sub Bass, 28 Low Wobble. Banks 3–8 start empty (Init) for your own sounds.
 
+**Patches from Konnekt**: Konnekt's **SEND TO AN INSTRUMENT** turns a modular patch into one of these patches (Konnekt's manual says how it's fitted). It arrives in the slot chosen there, replacing what was in it, and is selected so you can play it: straight away if Kalliope is open (standalone or in Krate), or the next time it starts. Sent patches wait in `~/.local/share/kalliope/inbox` until then.
+
 ## Effects
 
 After the voices, in this order: chorus, delay, reverb.

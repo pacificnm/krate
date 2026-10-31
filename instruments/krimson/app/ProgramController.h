@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
+#include "app/PresetInbox.h"
 #include "krimson/app/ProgramFile.h"
 
 class QQmlEngine;
@@ -75,6 +76,7 @@ private:
     void updateEdited();
     void poll();
     void notify();
+    void takeInbox(); // programs sent from another app (Konnekt): stored, the newest into the edited slot
 
     static inline ProgramController *s_instance = nullptr;
 
@@ -90,4 +92,5 @@ private:
     int m_revision = 0;
     QTimer m_pollTimer;
     QTimer m_saveTimer;
+    krate::PresetInbox m_inbox;
 };

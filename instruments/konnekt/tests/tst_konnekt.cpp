@@ -1,11 +1,13 @@
 #include <QtTest>
 
+#include <QDir>
 #include <QFile>
 #include <QSignalSpy>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QTemporaryDir>
 
+#include "app/JsonFile.h"
 #include "konnekt/app/KonnektController.h"
 #include "konnekt/dsp/Modules.h"
 #include "konnekt/dsp/PatchSpec.h"
@@ -243,6 +245,49 @@ private slots:
         QCOMPARE(c.modules().size(), 0);
         c.clearPatch(); // already empty: nothing to say
         QCOMPARE(modules.count(), 1);
+    }
+
+    // Send to an instrument: the names in its bank, a free slot, the best fit
+    // first, and the preset dropped in its inbox.
+    void sendToAnInstrument()
+    {
+        QTemporaryDir dir, instruments;
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        KonnektController c(engine, dir.path(), nullptr); // MIDI In -> Oscillator -> VCA (Envelope) -> Output
+        c.setInstrumentsDir(instruments.path());
+
+        // No bank yet: names unknown, the first user slot suggested.
+        QCOMPARE(c.instrumentSlots(0).size(), 64);
+        QVERIFY(c.instrumentSlots(0)[0].isEmpty());
+        QCOMPARE(c.suggestedSlot(0), 16);
+        // A bank: its names; the first Init from bank 3 on.
+        QJsonArray patches;
+        for (int i = 0; i < 64; ++i)
+            patches << QJsonObject{{QStringLiteral("name"), i < 18 ? QStringLiteral("Taken %1").arg(i) : QStringLiteral("Init")}, {QStringLiteral("params"), QJsonObject{}}};
+        QDir().mkpath(instruments.filePath(QStringLiteral("kalliope")));
+        QVERIFY(krate::files::writeJsonFile(instruments.filePath(QStringLiteral("kalliope/patches.json")),
+                                            QJsonObject{{QStringLiteral("version"), 1}, {QStringLiteral("patches"), patches}}));
+        QCOMPARE(c.instrumentSlots(0)[3], QStringLiteral("Taken 3"));
+        QCOMPARE(c.suggestedSlot(0), 18);
+
+        const QVariantList targets = c.sendTargets();
+        QCOMPARE(targets.size(), 3);
+        QVERIFY(targets[0].toMap().value(QStringLiteral("score")).toInt() >= targets[2].toMap().value(QStringLiteral("score")).toInt());
+        QVERIFY(c.sendPreview(1).value(QStringLiteral("exact")).toStringList().size() > 0);
+
+        QVERIFY(c.sendTo(0, 18, QStringLiteral("  My First Patch From Konnekt ")));
+        const QStringList sent = QDir(instruments.filePath(QStringLiteral("kalliope/inbox"))).entryList({QStringLiteral("*.json")}, QDir::Files);
+        QCOMPARE(sent.size(), 1);
+        QFile f(instruments.filePath(QStringLiteral("kalliope/inbox/")) + sent[0]);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        const QJsonObject json = QJsonDocument::fromJson(f.readAll()).object();
+        QCOMPARE(json.value(u"slot").toInt(), 18);
+        QCOMPARE(json.value(u"name").toString(), QStringLiteral("My First Patch F")); // 16 characters
+        QCOMPARE(json.value(u"params").toObject().value(u"vco1_wave").toDouble(), 1.0 / 3.0); // the saw
+        QVERIFY(!c.sendTo(0, 64, QStringLiteral("x")));
+        QVERIFY(c.sendTo(2, 60, QStringLiteral("For Krimson"))); // its folder made as needed
+        QCOMPARE(QDir(instruments.filePath(QStringLiteral("krimson/inbox"))).entryList({QStringLiteral("*.json")}, QDir::Files).size(), 1);
     }
 
     // Every module, knob and jack has its explanation; every link leads somewhere.

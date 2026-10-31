@@ -6,6 +6,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include "kalliope/app/PatchFile.h"
+#include "app/PresetInbox.h"
 
 class QQmlEngine;
 class QJSEngine;
@@ -66,6 +67,7 @@ private:
     void updateEdited();
     void poll();
     void selectionChanged(); // notify, and save in 2 s
+    void takeInbox();        // presets sent from another app (Konnekt): stored, the newest selected
 
     static inline PatchController *s_instance = nullptr;
 
@@ -78,4 +80,5 @@ private:
     bool m_edited = false;
     QTimer m_pollTimer;
     QTimer m_saveTimer;
+    krate::PresetInbox m_inbox;
 };

@@ -222,6 +222,8 @@ Only knobs morph: waves, filter type, switches and lists don't. **Ideas**: cutof
 
 **Performances** keep all four slots at once (their sounds, channels, zones, which are lit, the split): 8 of them. **PERF ◂ n ▸** chooses one (a dot after the number means it's empty), **LOAD** recalls it, **SAVE** writes the current setup into it. Use them for a whole song's setup: a split bass and lead, or four layered parts.
 
+**Programs from Konnekt**: Konnekt's **SEND TO AN INSTRUMENT** turns a modular patch into one of these programs (Konnekt's manual says how it's fitted). It arrives in the program chosen there, replacing what was in it, and is loaded into the slot you're editing so you can play it: straight away if Krimson is open (standalone or in Krate), or the next time it starts. Sent programs wait in `~/.local/share/krimson/inbox` until then. OCTAVE isn't part of a program: if the report says so, set it on the panel.
+
 ## MIDI and MIDI Learn
 
 - **Channels**: each slot listens to its own channel (3–6 by default); any other channel plays the lit slots.

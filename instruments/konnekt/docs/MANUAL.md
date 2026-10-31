@@ -162,6 +162,26 @@ The ones with a Clock (Body Music Bass, Acid Squelch, Octave Pulse Bass, Pop Plu
 
 **PATCHES** in the top bar: type a name and **SAVE** (the same name replaces it); click a name to load it (the rack is replaced: save first); **✕** deletes one. The name of the patch loaded or saved last shows at the top right. Patches are files in `~/.local/share/konnekt/patches`; a patch keeps its modules, where they are, every knob, the cables, the voices and its MIDI Learn links. **NEW** (press twice) empties the rack.
 
+## Send to an instrument
+
+**PATCHES** → **SEND TO AN INSTRUMENT…** turns the rack into a preset of one of Krate's synths: **Kalliope**, **Kobalt** or **Krimson**. Design a voice here, where every connection can be seen and changed, then play it from the synth: in the rack, in songs, with its arpeggiator or sequencer.
+
+The synths have a fixed shape and Konnekt doesn't, so the patch is read for that shape: the sound's path back from the Output (the oscillators and their waves, levels, tuning, sync, FM and pulse width; noise; ring mod; the filter and what moves its cutoff; the VCA's envelope; tremolo; glide; voices; chorus, delay and reverb) and each part is set on the synth as closely as it allows.
+
+- **The synths** are listed best fit first, each with how much of the patch comes across. Click one to see its report: what **comes across** as it is, what is **changed to fit** (a delay time becomes the nearest tempo division, an OTA filter becomes Kalliope's ladder...) and what it **can't** do (a sequencer, a crusher, a third oscillator...).
+- **The slots**: the synth's 64, with what's in each now (empty ones dimmed). A free one is chosen to start with; click another to replace it.
+- **The name** (16 letters) and **SEND**.
+
+If the synth is open (on its own or in Krate) the preset arrives at once and is selected; if not, it arrives the next time it starts. Nothing is changed in Konnekt.
+
+What each synth is good for:
+
+| Synth | Takes well | Can't |
+| --- | --- | --- |
+| **Kalliope** (16 voices) | Two oscillators (one can be noise), sync, FM (CROSS MOD), the ladder filter with its own envelope, separate filter and amp envelopes, an LFO on pitch, filter, PWM and volume, chorus | Glide, ring mod, a pitch sweep up |
+| **Kobalt** (one voice) | One oscillator's saw and pulse, a sub an octave or two down, noise, the OTA filter, glide, an LFO on pitch, filter and PWM | A second oscillator, sync, FM, separate filter and amp envelopes, chorus, drive |
+| **Krimson** (16 voices) | Two oscillators with semitone tuning, sync, FM, ring mod, five filter types (band- and high-pass too), filter and amp envelopes, a pitch envelope, two LFOs, glide, chorus, drive | The first oscillator's octave (set Krimson's OCTAVE), a third oscillator |
+
 ## MIDI and MIDI Learn
 
 - Konnekt listens to every MIDI controller connected: notes with velocity, pitch bend, mod wheel (CC 1), sustain (CC 64), aftertouch; CC 123 stops every note.

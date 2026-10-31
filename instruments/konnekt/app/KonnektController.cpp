@@ -5,12 +5,15 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJSEngine>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QLoggingCategory>
 
 #include "app/JsonFile.h"
+#include "app/PresetInbox.h"
+#include "konnekt/app/Translate.h"
 #include "konnekt/dsp/Modules.h"
 #include "konnekt/dsp/PatchSpec.h"
 
@@ -42,6 +45,7 @@ KonnektController::KonnektController(Engine &engine, const QString &dataDir, QOb
     , m_engine(engine)
     , m_path(dataDir + QStringLiteral("/current.json"))
     , m_patchesDir(dataDir + QStringLiteral("/patches"))
+    , m_instrumentsDir(QFileInfo(dataDir).absolutePath())
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
@@ -578,6 +582,77 @@ void KonnektController::closeSheet()
 {
     m_lesson = m_preset = -1;
     emit patchesChanged();
+}
+
+// --- Send to an instrument -------------------------------------------------------------------
+
+namespace {
+constexpr SendTarget kTargets[] = {SendTarget::Kalliope, SendTarget::Kobalt, SendTarget::Krimson};
+SendTarget targetAt(int i) { return kTargets[std::clamp(i, 0, 2)]; }
+QString bankFileName(SendTarget t) { return t == SendTarget::Krimson ? QStringLiteral("programs.json") : QStringLiteral("patches.json"); }
+} // namespace
+
+QVariantList KonnektController::sendTargets() const
+{
+    const QJsonObject patch = toJson();
+    QVariantList out;
+    for (int i = 0; i < 3; ++i)
+        out << QVariantMap{{QStringLiteral("target"), i},
+                           {QStringLiteral("name"), targetName(kTargets[i])},
+                           {QStringLiteral("score"), translate(patch, kTargets[i]).score}};
+    std::stable_sort(out.begin(), out.end(), [](const QVariant &a, const QVariant &b) {
+        return a.toMap().value(QStringLiteral("score")).toInt() > b.toMap().value(QStringLiteral("score")).toInt();
+    });
+    return out;
+}
+
+QVariantMap KonnektController::sendPreview(int target) const
+{
+    const Translation t = translate(toJson(), targetAt(target));
+    return {{QStringLiteral("score"), t.score}, {QStringLiteral("exact"), t.exact},
+            {QStringLiteral("approx"), t.approx}, {QStringLiteral("lost"), t.lost}};
+}
+
+QStringList KonnektController::instrumentSlots(int target) const
+{
+    const SendTarget t = targetAt(target);
+    const QJsonObject bank = readJson(m_instrumentsDir + u'/' + targetId(t) + u'/' + bankFileName(t));
+    const QJsonArray list = bank.value(t == SendTarget::Krimson ? u"programs" : u"patches").toArray();
+    QStringList names;
+    for (int i = 0; i < 64; ++i)
+        names << (i < list.size() ? list[i].toObject().value(u"name").toString() : QString());
+    return names;
+}
+
+int KonnektController::suggestedSlot(int target) const
+{
+    const QStringList names = instrumentSlots(target);
+    const bool known = std::any_of(names.begin(), names.end(), [](const QString &n) { return !n.isEmpty(); });
+    // Kalliope and Kobalt: banks 3-8 start empty ("Init"); Krimson's are all
+    // factory sounds, so its last bank.
+    const int from = targetAt(target) == SendTarget::Krimson ? 56 : 16;
+    if (known)
+        for (int i = from; i < 64; ++i)
+            if (names[i] == u"Init" || names[i].isEmpty())
+                return i;
+    return from;
+}
+
+bool KonnektController::sendTo(int target, int slot, const QString &name)
+{
+    if (slot < 0 || slot >= 64)
+        return false;
+    const SendTarget t = targetAt(target);
+    const Translation tr = translate(toJson(), t);
+    krate::PresetInbox::Preset preset{slot, name.trimmed().left(16), {}, QStringLiteral("konnekt")};
+    for (const auto &[key, value] : tr.params)
+        preset.values.insert(key, value);
+    const QString bankFile = m_instrumentsDir + u'/' + targetId(t) + u'/' + bankFileName(t);
+    QDir().mkpath(QFileInfo(bankFile).absolutePath());
+    const bool ok = krate::PresetInbox::send(bankFile, preset);
+    if (!ok)
+        qCWarning(lcKonnekt) << "could not send to" << targetName(t);
+    return ok;
 }
 
 QJsonObject KonnektController::toJson() const

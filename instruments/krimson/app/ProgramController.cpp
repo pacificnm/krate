@@ -42,6 +42,7 @@ ProgramController::ProgramController(KrimsonController &panel, SlotController &s
     , m_engine(engine)
     , m_programsPath(programsPath)
     , m_performancesPath(performancesPath)
+    , m_inbox(programsPath)
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
@@ -71,6 +72,31 @@ ProgramController::ProgramController(KrimsonController &panel, SlotController &s
     m_pollTimer.setInterval(30);
     connect(&m_pollTimer, &QTimer::timeout, this, &ProgramController::poll);
     m_pollTimer.start();
+
+    connect(&m_inbox, &krate::PresetInbox::arrived, this, &ProgramController::takeInbox);
+    takeInbox(); // what arrived while the app was closed
+}
+
+void ProgramController::takeInbox()
+{
+    int last = -1;
+    for (const krate::PresetInbox::Preset &sent : m_inbox.take()) {
+        if (sent.slot >= kProgramCount)
+            continue;
+        Program program = initProgram(); // every slot key at its default, then what was sent
+        program.name = sent.name.trimmed().left(16);
+        if (program.name.isEmpty() || program.name == u"Init")
+            program.name = QStringLiteral("Sent"); // a plain "Init" is refilled with the factory sound
+        for (auto it = program.values.begin(); it != program.values.end(); ++it)
+            if (const auto v = sent.values.find(it.key()); v != sent.values.end())
+                it.value() = *v;
+        m_bank.programs[std::size_t(sent.slot)] = program;
+        last = sent.slot;
+    }
+    if (last < 0)
+        return;
+    select(last); // into the edited slot: hear it
+    save();
 }
 
 ProgramController::~ProgramController()

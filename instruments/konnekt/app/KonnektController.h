@@ -97,6 +97,17 @@ public:
     Q_INVOKABLE QVariantList scopeSamples(int count) const;          // the last `count` samples
     Q_INVOKABLE int scopeSlot() const { return m_scopeSlot; }
 
+    // --- Send to an instrument (app/Translate.h): the patch as a Kalliope, Kobalt
+    // or Krimson preset, through that instrument's inbox. Targets: 0 Kalliope,
+    // 1 Kobalt, 2 Krimson.
+    Q_INVOKABLE QVariantList sendTargets() const;              // [{target, name, score}], best first
+    Q_INVOKABLE QVariantMap sendPreview(int target) const;     // {score, exact, approx, lost}
+    Q_INVOKABLE QStringList instrumentSlots(int target) const; // the 64 names there now ("" unknown)
+    Q_INVOKABLE int suggestedSlot(int target) const;           // the first free one
+    Q_INVOKABLE bool sendTo(int target, int slot, const QString &name);
+    // Where the instruments keep their data (tests: a folder of their own).
+    void setInstrumentsDir(const QString &dir) { m_instrumentsDir = dir; }
+
     // --- Explanations (right-click): the card for a path (app/Explainer.h).
     Q_INVOKABLE QVariantMap explain(const QString &path) const;
     // Where their texts are: the app's resources (tests: the source folder).
@@ -182,6 +193,7 @@ private:
     QString m_lessonsDir = QStringLiteral(":/qt/qml/Konnekt/lessons");
     QString m_presetsDir = QStringLiteral(":/qt/qml/Konnekt/presets");
     QVariantList m_lessons, m_presets;
+    QString m_instrumentsDir; // ~/.local/share: kalliope/, kobalt/, krimson/
     int m_lesson = -1, m_preset = -1;
     QString m_sheetTitle, m_sheetText;
     konnekt::Explainer m_explainer;

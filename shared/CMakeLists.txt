@@ -108,6 +108,8 @@ add_library(krate_app STATIC
     app/MidiMapFile.cpp
     app/PanelFile.h
     app/PanelFile.cpp
+    app/PresetInbox.h
+    app/PresetInbox.cpp
     app/ScreenshotHook.h
     app/ScreenshotHook.cpp
 )

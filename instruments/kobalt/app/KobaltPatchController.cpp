@@ -23,6 +23,7 @@ KobaltPatchController::KobaltPatchController(KobaltController &panel, kobalt::En
     , m_panel(panel)
     , m_engine(engine)
     , m_filePath(filePath)
+    , m_inbox(filePath)
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
@@ -55,6 +56,31 @@ KobaltPatchController::KobaltPatchController(KobaltController &panel, kobalt::En
     m_pollTimer.setInterval(30);
     connect(&m_pollTimer, &QTimer::timeout, this, &KobaltPatchController::poll);
     m_pollTimer.start();
+
+    connect(&m_inbox, &krate::PresetInbox::arrived, this, &KobaltPatchController::takeInbox);
+    takeInbox(); // what arrived while the app was closed
+}
+
+void KobaltPatchController::takeInbox()
+{
+    int last = -1;
+    for (const krate::PresetInbox::Preset &sent : m_inbox.take()) {
+        if (sent.slot >= kPatchCount)
+            continue;
+        Patch patch = initPatch(); // every key at its default, then what was sent
+        patch.name = sent.name.trimmed().left(16);
+        if (patch.name.isEmpty())
+            patch.name = QStringLiteral("Sent");
+        for (auto it = patch.values.begin(); it != patch.values.end(); ++it)
+            if (const auto v = sent.values.find(it.key()); v != sent.values.end())
+                it.value() = *v;
+        m_bank.patches[std::size_t(sent.slot)] = patch;
+        last = sent.slot;
+    }
+    if (last < 0)
+        return;
+    select(last); // hear it
+    save();
 }
 
 KobaltPatchController::~KobaltPatchController()

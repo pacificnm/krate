@@ -150,6 +150,8 @@ How far the pitch bend wheel and the mod wheel move things.
 
 **Factory patches**: bank 1: 11 Sub Bass, 12 Glide Lead, 13 PWM Lead, 14 Squelch Bass, 15 Pluck, 16 LFO Gate, 17 Noise Hat, 18 Zap Tom; bank 2: 21 Wobble Bass, 22 Siren, 23 Hollow Square, 24 Arp Blip (arpeggio on), 25 Random Bleeps, 26 Gate Organ, 27 Brass Lead, 28 Bend Lead. Banks 3–8 start empty (Init) for your own sounds.
 
+**Patches from Konnekt**: Konnekt's **SEND TO AN INSTRUMENT** turns a modular patch into one of these patches (Konnekt's manual says how it's fitted). It arrives in the slot chosen there, replacing what was in it, and is selected so you can play it: straight away if Kobalt is open (standalone or in Krate), or the next time it starts. Sent patches wait in `~/.local/share/kobalt/inbox` until then.
+
 ## Effects
 
 After the voice: delay, then reverb.
