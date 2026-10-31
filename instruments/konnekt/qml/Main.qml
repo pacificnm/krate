@@ -1,0 +1,498 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Shapes
+import Krate
+
+// The Konnekt window: the top bar (add a module, voices, learn, new, audio),
+// the rack (modules and their cables, scrolling), the scope, the help bar.
+// Wiring: click a jack, then another (an output and an input); clicking a
+// plugged input lifts its cable to plug it somewhere else; Esc or a click on
+// the empty rack lets go.
+ApplicationWindow {
+    id: root
+
+    width: 1500
+    height: 920
+    minimumWidth: 900
+    minimumHeight: 600
+    visible: true
+    title: "Konnekt"
+    color: "#141518"
+
+    property var panels: ({})   // slot -> its ModulePanel
+    property var pending: null  // the jack clicked first: {slot, output, jack}
+    property point mouse: Qt.point(0, 0)
+    readonly property var cableColors: ["#E8C547", "#E85A4F", "#4FB0E8", "#7ED957", "#E87FD0", "#F2994A", "#9B8CF2", "#E8E8E8"]
+
+    function register(slot, item) {
+        const p = Object.assign({}, panels)
+        if (item)
+            p[slot] = item
+        else
+            delete p[slot]
+        panels = p
+    }
+    function jackAt(slot, output, jack) {
+        const item = panels[slot]
+        if (!item)
+            return null
+        const pt = item.jackPoint(output, jack)
+        return Qt.point(item.x + pt.x, item.y + pt.y)
+    }
+    function jackClicked(slot, output, jack) {
+        if (!pending) {
+            if (!output) {
+                const c = Konnekt.cableInto(slot, jack)
+                if (c.fromSlot !== undefined) { // lift the cable: its other end stays in your hand
+                    Konnekt.unplug(slot, jack)
+                    pending = { slot: c.fromSlot, output: true, jack: c.fromJack }
+                    return
+                }
+            }
+            pending = { slot: slot, output: output, jack: jack }
+            return
+        }
+        if (pending.output !== output) {
+            const out = output ? { slot: slot, jack: jack } : pending
+            const inp = output ? pending : { slot: slot, jack: jack }
+            Konnekt.plug(out.slot, out.jack, inp.slot, inp.jack)
+            pending = null
+        } else {
+            pending = { slot: slot, output: output, jack: jack }
+        }
+    }
+
+    // ---- Top bar
+    Rectangle {
+        id: topBar
+        width: parent.width
+        height: 54
+        color: "#1F2125"
+        z: 20
+
+        Text {
+            x: 18
+            anchors.verticalCenter: parent.verticalCenter
+            text: "KONNEKT"
+            color: "#F2B632"
+            font.family: Theme.labelFont
+            font.pixelSize: 26
+            font.weight: Font.Black
+            font.letterSpacing: 6
+        }
+        Row {
+            x: 210
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 10
+
+            PanelButton {
+                width: 130
+                height: 34
+                dark: true
+                faceText: "+ ADD MODULE"
+                text: "Add a module to the rack"
+                onClicked: browser.open()
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "VOICES"
+                color: "#DAD5CB"
+                font.family: Theme.labelFont
+                font.pixelSize: 12
+                font.bold: true
+            }
+            PanelButton { width: 28; height: 30; dark: true; faceText: "◂"; text: "Fewer voices"; onClicked: Konnekt.voices = Konnekt.voices - 1 }
+            Text {
+                width: 22
+                horizontalAlignment: Text.AlignHCenter
+                anchors.verticalCenter: parent.verticalCenter
+                text: Konnekt.voices
+                color: "#F2B632"
+                font.family: "monospace"
+                font.pixelSize: 20
+                font.bold: true
+            }
+            PanelButton { width: 28; height: 30; dark: true; faceText: "▸"; text: "More voices"; onClicked: Konnekt.voices = Konnekt.voices + 1 }
+            Row { // a light per note held
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 3
+                Repeater {
+                    model: Konnekt.voices
+                    Rectangle {
+                        required property int index
+                        width: 8
+                        height: 8
+                        radius: 4
+                        color: index < Konnekt.notesHeld ? "#7ED957" : "#33363C"
+                    }
+                }
+            }
+            Item { width: 16; height: 1 }
+            PanelButton {
+                width: 80
+                height: 34
+                dark: true
+                faceText: "LEARN"
+                text: "MIDI Learn: click a knob, then move a knob on your controller"
+                hasLed: true
+                ledOn: Konnekt.learning
+                onClicked: Konnekt.learning = !Konnekt.learning
+            }
+            PanelButton {
+                id: newButton
+                property bool confirming: false
+                width: 110
+                height: 34
+                dark: true
+                faceText: confirming ? "CLEAR ALL?" : "NEW"
+                text: "Start an empty rack"
+                tint: confirming ? "#B8302A" : "transparent"
+                onClicked: {
+                    if (!confirming) { confirming = true; confirmTimer.restart(); return }
+                    confirming = false
+                    Konnekt.clearPatch()
+                }
+                Timer { id: confirmTimer; interval: 3000; onTriggered: newButton.confirming = false }
+            }
+        }
+        Column {
+            anchors.right: parent.right
+            anchors.rightMargin: 18
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 4
+            Text {
+                width: 260
+                horizontalAlignment: Text.AlignRight
+                elide: Text.ElideRight
+                text: Host.audioStatus
+                color: Host.audioConnected ? "#9A968E" : Theme.ledOn
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+            }
+            Rectangle {
+                width: 260
+                height: 6
+                radius: 2
+                color: "#33363C"
+                Rectangle {
+                    width: parent.width * Host.outputLevel
+                    height: parent.height
+                    radius: 2
+                    color: "#7ED957"
+                }
+            }
+        }
+    }
+
+    // ---- The rack
+    Flickable {
+        id: flick
+        y: topBar.height
+        width: parent.width
+        height: parent.height - topBar.height - helpBar.height
+        contentWidth: 5200
+        contentHeight: 3200
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: false // dragging moves modules; the scroll bars and the wheel move the view
+        ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AlwaysOn }
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
+
+        WheelHandler {
+            onWheel: event => {
+                const dx = event.modifiers & Qt.ShiftModifier ? event.angleDelta.y : event.angleDelta.x
+                const dy = event.modifiers & Qt.ShiftModifier ? 0 : event.angleDelta.y
+                flick.contentX = Math.max(0, Math.min(flick.contentWidth - flick.width, flick.contentX - dx))
+                flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, flick.contentY - dy))
+            }
+        }
+
+        Item {
+            id: rack
+            width: flick.contentWidth
+            height: flick.contentHeight
+
+            Rectangle { // background: click it to let go of a cable
+                anchors.fill: parent
+                color: "#17181B"
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.pending = null
+                }
+            }
+            Repeater { // a faint grid
+                model: Math.ceil(rack.width / 64)
+                Rectangle {
+                    required property int index
+                    x: index * 64
+                    width: 1
+                    height: rack.height
+                    color: "#1D1F23"
+                }
+            }
+
+            Repeater {
+                model: Konnekt.moduleRevision >= 0 ? Konnekt.modules() : []
+
+                ModulePanel {
+                    required property var modelData
+                    slot: modelData.slot
+                    type: modelData.type
+                    x: modelData.x
+                    y: modelData.y
+                    onJackClicked: (s, o, j) => root.jackClicked(s, o, j)
+                    onJackScope: (s, j) => Konnekt.scope(s, j)
+                    onMoved: {
+                        x = Math.max(0, Math.round(x / 8) * 8)
+                        y = Math.max(0, Math.round(y / 8) * 8)
+                        Konnekt.moveModule(slot, x, y)
+                    }
+                    Component.onCompleted: root.register(slot, this)
+                    Component.onDestruction: root.register(slot, null)
+                }
+            }
+
+            // The cables, over the modules (they don't take clicks).
+            Repeater {
+                model: Konnekt.revision >= 0 ? Konnekt.cables() : []
+
+                Shape {
+                    id: cable
+                    required property var modelData
+                    readonly property point a: root.panels[modelData.fromSlot] ? root.jackAt(modelData.fromSlot, true, modelData.fromJack) : Qt.point(0, 0)
+                    readonly property point b: root.panels[modelData.toSlot] ? root.jackAt(modelData.toSlot, false, modelData.toJack) : Qt.point(0, 0)
+                    readonly property real sag: 30 + 0.25 * Math.hypot(b.x - a.x, b.y - a.y)
+                    visible: root.panels[modelData.fromSlot] !== undefined && root.panels[modelData.toSlot] !== undefined
+                    anchors.fill: parent
+                    z: 10
+                    preferredRendererType: Shape.CurveRenderer
+                    opacity: 0.85
+
+                    ShapePath {
+                        strokeColor: root.cableColors[cable.modelData.color % root.cableColors.length]
+                        strokeWidth: 5
+                        fillColor: "transparent"
+                        capStyle: ShapePath.RoundCap
+                        startX: cable.a.x
+                        startY: cable.a.y
+                        PathCubic {
+                            x: cable.b.x
+                            y: cable.b.y
+                            control1X: cable.a.x
+                            control1Y: cable.a.y + cable.sag
+                            control2X: cable.b.x
+                            control2Y: cable.b.y + cable.sag
+                        }
+                    }
+                }
+            }
+            // The cable in your hand, to the mouse.
+            Shape {
+                id: holding
+                readonly property point a: root.pending ? root.jackAt(root.pending.slot, root.pending.output, root.pending.jack) : Qt.point(0, 0)
+                visible: root.pending !== null
+                anchors.fill: parent
+                z: 11
+                preferredRendererType: Shape.CurveRenderer
+                ShapePath {
+                    strokeColor: "#F2B632"
+                    strokeWidth: 3
+                    strokeStyle: ShapePath.DashLine
+                    fillColor: "transparent"
+                    startX: holding.a.x
+                    startY: holding.a.y
+                    PathLine { x: root.mouse.x; y: root.mouse.y }
+                }
+            }
+            HoverHandler {
+                onPointChanged: root.mouse = point.position
+            }
+        }
+    }
+
+    // ---- The scope: right-click an output to watch it here.
+    Rectangle {
+        id: scopeView
+        visible: Konnekt.scopeName !== "" && !Konnekt.scopeName.startsWith("Scope ·")
+        anchors.right: parent.right
+        anchors.bottom: helpBar.top
+        anchors.margins: 14
+        width: 420
+        height: 200
+        radius: 6
+        color: "#081008"
+        border.color: "#2A3A2A"
+        border.width: 2
+        z: 30
+
+        Text {
+            x: 10
+            y: 6
+            text: "SCOPE  ·  " + Konnekt.scopeName
+            color: "#6FE86F"
+            font.family: Theme.labelFont
+            font.pixelSize: 11
+            font.bold: true
+        }
+        Text {
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            y: 4
+            text: "✕"
+            color: "#6FE86F"
+            font.pixelSize: 14
+            MouseArea { anchors.fill: parent; anchors.margins: -4; onClicked: Konnekt.scope(-1, -1) }
+        }
+        Row {
+            anchors.right: parent.right
+            anchors.rightMargin: 34
+            y: 4
+            spacing: 4
+            Repeater {
+                model: [{ name: "5 ms", n: 240 }, { name: "20 ms", n: 960 }, { name: "80 ms", n: 3840 }]
+                Text {
+                    required property var modelData
+                    text: modelData.name
+                    color: scopeCanvas.span === modelData.n ? "#6FE86F" : "#3A6A3A"
+                    font.family: Theme.labelFont
+                    font.pixelSize: 11
+                    MouseArea { anchors.fill: parent; onClicked: scopeCanvas.span = parent.modelData.n }
+                }
+            }
+        }
+        Canvas {
+            id: scopeCanvas
+            property int span: 960
+            x: 8
+            y: 24
+            width: parent.width - 16
+            height: parent.height - 32
+            readonly property int frame: Konnekt.frame
+            onFrameChanged: if (scopeView.visible) requestPaint()
+            onPaint: {
+                const ctx = getContext("2d")
+                ctx.reset()
+                ctx.strokeStyle = "#1E3A1E"
+                for (let k = 1; k < 4; ++k) {
+                    ctx.beginPath(); ctx.moveTo(0, k * height / 4); ctx.lineTo(width, k * height / 4); ctx.stroke()
+                }
+                const n = span
+                const s = Konnekt.scopeSamples(n * 2)
+                let lo = -1, hi = 1
+                for (let i = 0; i < s.length; ++i) { lo = Math.min(lo, s[i]); hi = Math.max(hi, s[i]) }
+                let start = 0 // a rising crossing of the middle: a steady picture
+                const mid = (lo + hi) / 2
+                for (let i = 1; i < n; ++i)
+                    if (s[i - 1] < mid && s[i] >= mid) { start = i; break }
+                ctx.strokeStyle = "#6FE86F"
+                ctx.lineWidth = 1.5
+                ctx.beginPath()
+                for (let i = 0; i < n; ++i) {
+                    const px = i * width / (n - 1)
+                    const py = height - (s[start + i] - lo) / (hi - lo) * height
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py)
+                }
+                ctx.stroke()
+                ctx.fillStyle = "#3A6A3A"
+                ctx.font = "10px sans-serif"
+                ctx.fillText(hi.toFixed(2), 2, 10)
+                ctx.fillText(lo.toFixed(2), 2, height - 2)
+            }
+        }
+    }
+
+    // ---- The help bar
+    Rectangle {
+        id: helpBar
+        anchors.bottom: parent.bottom
+        width: parent.width
+        height: 46
+        color: "#1F2125"
+        z: 20
+        Text {
+            x: 18
+            width: parent.width - 36
+            anchors.verticalCenter: parent.verticalCenter
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
+            elide: Text.ElideRight
+            text: root.pending ? "Holding a cable from " + (root.pending.output ? "an output" : "an input")
+                                 + ": click " + (root.pending.output ? "an input" : "an output") + " to plug it in (Esc, or click the rack, to let go)."
+                : Konnekt.help !== "" ? Konnekt.help
+                : "Point at anything to learn what it does. Click a jack, then another, to connect them. Right-click an output to see it on the scope."
+            color: "#DAD5CB"
+            font.family: Theme.labelFont
+            font.pixelSize: 13
+        }
+    }
+
+    // ---- Adding a module
+    Popup {
+        id: browser
+        x: 200
+        y: topBar.height + 4
+        width: Math.min(root.width - 220, 1100)
+        padding: 14
+        modal: true
+        background: Rectangle { radius: 8; color: "#23252A"; border.color: "#3A3D44" }
+
+        readonly property var categories: {
+            const seen = []
+            for (const m of Konnekt.moduleTypes)
+                if (seen.indexOf(m.category) < 0)
+                    seen.push(m.category)
+            return seen
+        }
+        property int added: 0
+
+        Flow {
+            width: parent.width
+            spacing: 16
+            Repeater {
+                model: browser.categories
+                Column {
+                    id: category
+                    required property string modelData
+                    spacing: 6
+                    Text {
+                        text: category.modelData.toUpperCase()
+                        color: "#F2B632"
+                        font.family: Theme.labelFont
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+                    Repeater {
+                        model: Konnekt.moduleTypes.filter(m => m.category === category.modelData)
+                        PanelButton {
+                            required property var modelData
+                            width: 170
+                            height: 30
+                            dark: true
+                            faceText: modelData.name
+                            text: modelData.help
+                            onClicked: {
+                                // In view, a little further along each time so they don't stack.
+                                const step = 24 * (browser.added++ % 10)
+                                const slot = Konnekt.addModule(modelData.type, flick.contentX + 40 + step, flick.contentY + 30 + step)
+                                if (modelData.type === "scope" && slot >= 0)
+                                    Konnekt.scope(slot, 0)
+                                browser.close()
+                            }
+                            HoverHandler { onHoveredChanged: if (hovered) Konnekt.help = parent.modelData.name + ": " + parent.modelData.help }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Esc"
+        onActivated: {
+            root.pending = null
+            Konnekt.learning = false
+        }
+    }
+}

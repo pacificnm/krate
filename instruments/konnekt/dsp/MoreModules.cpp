@@ -511,7 +511,7 @@ private:
 const ModuleInfo kSequencer{"sequencer", "Sequencer", "Sequencing",
                             "Eight steps, each a note and on or off, played one per clock tick: a bass line or a riff "
                             "that plays itself. Its PITCH and GATE replace MIDI In's.",
-                            false, 6, kSeqKnobs, kSeqInputs, kSeqOutputs, []() -> Module * { return new Sequencer; }};
+                            false, 8, kSeqKnobs, kSeqInputs, kSeqOutputs, []() -> Module * { return new Sequencer; }};
 
 // --- Stereo effects --------------------------------------------------------------------------
 

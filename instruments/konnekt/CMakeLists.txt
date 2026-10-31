@@ -23,6 +23,23 @@ add_executable(konnekt-render tools/render_main.cpp)
 target_link_libraries(konnekt-render PRIVATE konnekt_dsp)
 target_compile_options(konnekt-render PRIVATE ${KONNEKT_WARNINGS})
 
+# --- konnekt_ui: QML module "Konnekt": the controller and the window
+qt_add_library(konnekt_ui STATIC)
+qt_add_qml_module(konnekt_ui
+    URI Konnekt
+    VERSION 1.0
+    IMPORTS Krate
+    SOURCES
+        app/KonnektController.h
+        app/KonnektController.cpp
+    QML_FILES
+        qml/Main.qml
+        qml/ModulePanel.qml
+)
+target_include_directories(konnekt_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
+target_link_libraries(konnekt_ui PUBLIC konnekt_dsp krate_host krate_app krate_qml Qt6::Quick Qt6::QuickControls2)
+target_compile_options(konnekt_ui PRIVATE -Wall -Wextra -Wpedantic)
+
 # --- Tests
 foreach(test tst_engine tst_modules)
     add_executable(konnekt_${test} tests/${test}.cpp)
@@ -30,3 +47,10 @@ foreach(test tst_engine tst_modules)
     target_link_libraries(konnekt_${test} PRIVATE konnekt_dsp krate_testing Qt6::Test)
     add_test(NAME konnekt_${test} COMMAND konnekt_${test})
 endforeach()
+
+# The app's controller (its sources compiled in: no QML plugin).
+add_executable(konnekt_tst_konnekt tests/tst_konnekt.cpp app/KonnektController.h app/KonnektController.cpp)
+target_include_directories(konnekt_tst_konnekt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_compile_options(konnekt_tst_konnekt PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(konnekt_tst_konnekt PRIVATE konnekt_dsp krate_app Qt6::Qml Qt6::Test)
+add_test(NAME konnekt_tst_konnekt COMMAND konnekt_tst_konnekt)
