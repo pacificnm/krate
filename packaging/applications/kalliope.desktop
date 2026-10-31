@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Kalliope
+GenericName=Polyphonic Synthesizer
+Comment=A two-oscillator polyphonic synth with an arpeggiator and step sequencer
+Exec=pw-jack kalliope
+Icon=kalliope
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Music;
+Keywords=polysynth;synthesizer;pad;arpeggiator;
+StartupNotify=true
+StartupWMClass=kalliope

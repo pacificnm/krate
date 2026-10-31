@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Kessel
+GenericName=Drum Machine
+Comment=An analog-style drum machine with a pattern sequencer and sample voices
+Exec=pw-jack kessel
+Icon=kessel
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Music;
+Keywords=drum;machine;beat;rhythm;
+StartupNotify=true
+StartupWMClass=kessel

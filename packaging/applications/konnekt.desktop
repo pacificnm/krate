@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Konnekt
+GenericName=Modular Synthesizer
+Comment=Build synths from modules with virtual cables; lessons, presets, and explanations of every part
+Exec=pw-jack konnekt
+Icon=konnekt
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Music;
+Keywords=modular;patch;cables;synthesizer;learn;
+StartupNotify=true
+StartupWMClass=konnekt

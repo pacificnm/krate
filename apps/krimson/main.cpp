@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     // style while the app is constructed.
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     QGuiApplication::setApplicationName(QStringLiteral("krimson"));
+    QGuiApplication::setDesktopFileName(QStringLiteral("krimson")); // its menu entry and icon (packaging/)
     QGuiApplication::setApplicationVersion(QStringLiteral(PROJECT_VERSION_STRING));
 
     const krate::InstrumentEntry entry = krimson::registryEntry();

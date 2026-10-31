@@ -28,6 +28,15 @@ apps/<name>        thin executables
 docs/              suite-level docs
 ```
 
+## Install (Debian, as a .deb)
+
+```sh
+packaging/build-deb.sh                  # builds dist/krate_<version>_amd64.deb (release build, tests run)
+sudo apt install ./dist/krate_*.deb     # installs all the apps, with what they need
+```
+
+Each app then has its own menu entry and icon (KDE: *Multimedia*): **Krate** for the whole rack, or Korrode, Kessel, Kalliope, Krimson, Kobalt, Klang and Konnekt on their own. They start through `pw-jack`, so they play through PipeWire. Your sounds, songs and settings stay in `~/.local/share` and `~/.config`; `sudo apt remove krate` leaves them. See [packaging/README.md](packaging/README.md).
+
 ## Build
 
 Debian 13 / KDE Plasma on PipeWire; Qt 6.8, CMake ≥ 3.24, C++20.

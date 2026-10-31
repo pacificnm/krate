@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Korrode
+GenericName=Acid Bass Synthesizer
+Comment=A one-voice acid bass synth with a diode-ladder filter and a pattern sequencer
+Exec=pw-jack korrode
+Icon=korrode
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Music;
+Keywords=acid;bass;synthesizer;sequencer;
+StartupNotify=true
+StartupWMClass=korrode

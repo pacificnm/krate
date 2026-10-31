@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     // style while the app is constructed.
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     QGuiApplication::setApplicationName(QStringLiteral("kalliope"));
+    QGuiApplication::setDesktopFileName(QStringLiteral("kalliope")); // its menu entry and icon (packaging/)
     QGuiApplication::setApplicationVersion(QStringLiteral(PROJECT_VERSION_STRING));
 
     const krate::InstrumentEntry entry = kalliope::registryEntry();

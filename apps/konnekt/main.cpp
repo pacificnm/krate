@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     // app exists: the desktop's platform theme sets its own while it's built).
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     QGuiApplication::setApplicationName(QStringLiteral("konnekt"));
+    QGuiApplication::setDesktopFileName(QStringLiteral("konnekt")); // its menu entry and icon (packaging/)
     QGuiApplication::setApplicationVersion(QStringLiteral(PROJECT_VERSION_STRING));
 
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation); // ~/.local/share/konnekt

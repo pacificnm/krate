@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Krate
+GenericName=Synth Rack and Song Player
+Comment=All the Krate instruments in one rack: play them together, sequence them, play songs through them
+Exec=pw-jack krate
+Icon=krate
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Music;
+Keywords=rack;synthesizer;sequencer;song;drums;bass;music;
+StartupNotify=true
+StartupWMClass=krate

@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     // style while the app is constructed.
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     QGuiApplication::setApplicationName(QStringLiteral("krate"));
+    QGuiApplication::setDesktopFileName(QStringLiteral("krate")); // its menu entry and icon (packaging/)
     QGuiApplication::setApplicationVersion(QStringLiteral(PROJECT_VERSION_STRING));
 
     // The instruments in this rack: one registry line each

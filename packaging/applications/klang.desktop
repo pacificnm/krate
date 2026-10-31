@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Klang
+GenericName=Sampler and Looper
+Comment=Load WAV or MP3 files onto pads, slice and mangle them, play them in patterns
+Exec=pw-jack klang
+Icon=klang
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Music;
+Keywords=sampler;loop;slice;wav;mp3;
+StartupNotify=true
+StartupWMClass=klang

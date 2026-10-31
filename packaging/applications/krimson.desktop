@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Krimson
+GenericName=Multitimbral Virtual-Analog Synth
+Comment=Four sounds at once: leads, basses, pads, with programs and performances
+Exec=pw-jack krimson
+Icon=krimson
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Music;
+Keywords=synthesizer;lead;multitimbral;
+StartupNotify=true
+StartupWMClass=krimson

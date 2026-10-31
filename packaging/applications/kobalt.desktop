@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Kobalt
+GenericName=Monophonic Synthesizer
+Comment=A one-oscillator monosynth with sub-oscillator, portamento, arpeggiator and sequencer
+Exec=pw-jack kobalt
+Icon=kobalt
+Terminal=false
+Categories=AudioVideo;Audio;Midi;Music;
+Keywords=monosynth;bass;lead;synthesizer;
+StartupNotify=true
+StartupWMClass=kobalt
