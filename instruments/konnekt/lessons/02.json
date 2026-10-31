@@ -1,7 +1,7 @@
 {
  "version": 1,
  "title": "Notes that start and stop",
- "text": "A VCA is a volume control something else turns. An Envelope makes a shape each time a key goes down (MIDI In's GATE): it rises (ATTACK), falls a little (DECAY), holds (SUSTAIN), and fades when you let go (RELEASE). The envelope into the VCA's CV opens it for each note. Try: a long ATTACK for a swell; SUSTAIN at 0 and a short DECAY for a pluck; a long RELEASE. Play chords: each note gets its own voice (VOICES at the top).",
+ "text": "In lesson 1 the gate switched the VCA straight on and off: every note starts and stops abruptly, with a click. An Envelope shapes it instead. It makes a shape each time a key goes down (MIDI In's GATE): it rises (ATTACK), falls a little (DECAY), holds (SUSTAIN), and fades when you let go (RELEASE). The envelope into the VCA's CV opens it for each note. Try: a long ATTACK for a swell; SUSTAIN at 0 and a short DECAY for a pluck; a long RELEASE. Play chords: each note gets its own voice (VOICES at the top).",
  "voices": 4,
  "modules": [
   {

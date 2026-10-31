@@ -146,6 +146,18 @@ private slots:
             QVERIFY2(peak < 2.0f, qPrintable(c.lessonTitle() + u' ' + QString::number(peak)));
             const krate::MidiEvent offs[] = {{0, 3, {0x80, 48, 0}}, {0, 3, {0x80, 55, 0}}};
             krate::processStereo(engine, l.data(), r.data(), 48000, offs, 2);
+            // Keys up: the ones that aren't clocked go quiet (after their release and echoes).
+            bool clocked = false;
+            for (const QJsonValue m : json.value(u"modules").toArray())
+                clocked = clocked || m.toObject().value(u"type").toString() == u"clock";
+            if (clocked)
+                continue;
+            for (int s = 0; s < 3; ++s)
+                krate::processStereo(engine, l.data(), r.data(), 48000);
+            float tail = 0.0f;
+            for (float s : l)
+                tail = std::max(tail, std::fabs(s));
+            QVERIFY2(tail < 0.01f, qPrintable(c.lessonTitle() + QStringLiteral(" still sounds ") + QString::number(tail)));
         }
     }
 

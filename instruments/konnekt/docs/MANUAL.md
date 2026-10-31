@@ -119,7 +119,7 @@ All three have CUTOFF, RESONANCE, CV (how far the CUTOFF input moves it, in octa
 
 **LESSONS** in the top bar. Each loads a patch (replacing the rack: save yours first) and opens its explanation (bottom left), with **◂ ▸** to go through them and **✕** to close the text (the patch stays).
 
-1. **A tone**: an oscillator straight out. The waves.
+1. **A tone**: an oscillator, through a VCA your keys open. The waves.
 2. **Notes that start and stop**: an envelope and a VCA.
 3. **The filter**: cutoff and resonance.
 4. **A filter envelope**: the movement that makes synths sound alive.
