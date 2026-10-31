@@ -102,6 +102,9 @@ int main(int argc, char *argv[])
         context.dataDir = QDir(data).filePath(entry.id);
         instances.push_back(entry.create(context));
         const int device = rack.addDevice(instances.back()->instrument(), entry.defaultMidiChannel);
+        if (device < 0) // a device left out would be silent with nothing said (the backing track was, at 9 devices)
+            qFatal("krate: the rack holds at most %d devices; %s doesn't fit", krate::Rack::kMaxDevices,
+                   qPrintable(entry.name));
         for (int channel : entry.extraMidiChannels)
             rack.setChannelDevice(channel, device);
         ids.push_back(entry.id.toStdString());

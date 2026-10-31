@@ -47,7 +47,7 @@ struct RackBlock
 class Rack
 {
 public:
-    static constexpr int kMaxDevices = 8;
+    static constexpr int kMaxDevices = 16;
     static constexpr int kChannels = 16;
     static constexpr int kInputs = 2;           // audio inputs, given to every device that has inputs
     static constexpr int kAnyChannel = 16;      // CC map row matching any channel
