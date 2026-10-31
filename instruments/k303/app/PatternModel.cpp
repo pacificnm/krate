@@ -115,11 +115,36 @@ QHash<int, QByteArray> PatternModel::roleNames() const
     };
 }
 
+QString PatternModel::name() const
+{
+    return QChar(u'A' + bank()) + QString::number(number() + 1);
+}
+
+void PatternModel::pressBank(int bank)
+{
+    if (bank < 0 || bank >= k303::persistence::kBanks)
+        return;
+    m_pendingBank = m_pendingBank == bank ? -1 : bank; // again: never mind
+    emit indexChanged();
+}
+
+void PatternModel::pressNumber(int number)
+{
+    if (number < 0 || number >= k303::persistence::kPatternsPerBank)
+        return;
+    const int bank = m_pendingBank >= 0 ? m_pendingBank : this->bank();
+    m_pendingBank = -1;
+    if (bank * k303::persistence::kPatternsPerBank + number == m_bank.current)
+        emit indexChanged(); // the bank stops blinking
+    setPatternIndex(bank * k303::persistence::kPatternsPerBank + number);
+}
+
 void PatternModel::setPatternIndex(int index)
 {
     index = std::clamp(index, 0, k303::persistence::kPatternCount - 1);
     if (index == m_bank.current)
         return;
+    m_pendingBank = -1;
     beginResetModel();
     m_bank.current = index;
     endResetModel();

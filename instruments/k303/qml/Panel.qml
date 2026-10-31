@@ -38,7 +38,7 @@ Item {
             break
         default:
             if (event.key >= Qt.Key_1 && event.key <= Qt.Key_8)
-                Pattern.index = event.key - Qt.Key_1
+                Pattern.pressNumber(event.key - Qt.Key_1)
             else
                 return
         }
@@ -216,7 +216,7 @@ Item {
     }
 
     PanelLabel { // audio status: rate, buffer, xruns, or AUDIO OFFLINE
-        x: 30
+        x: 52
         y: 306
         text: Host.audioStatus
         color: Host.audioConnected ? Theme.ink : Theme.ledOn
@@ -224,19 +224,53 @@ Item {
     }
 
     Led { // beat indicator
-        x: 32
-        y: 226
-        width: 40
-        height: 26
+        x: 30
+        y: 304
+        width: 14
+        height: 14
         radius: 3
         on: Host.audioConnected && Synth.beat // lit for the first step of each beat, at any Scale
     }
 
-    Grid {
-        x: 96
-        y: 222
-        columns: 4
-        spacing: 10
+    // Patterns: 8 banks (A-H) of 8. A BANK blinks until a number is pressed.
+    property bool bankBlink: false
+    Timer {
+        interval: 250
+        repeat: true
+        running: Pattern.pendingBank >= 0
+        onTriggered: panel.bankBlink = !panel.bankBlink
+        onRunningChanged: panel.bankBlink = false
+    }
+    Row {
+        x: 30
+        y: 214
+        spacing: 4
+
+        Repeater {
+            model: 8
+
+            PanelButton {
+                id: bankButton
+                required property int index
+                width: 28
+                height: 30
+                faceText: String.fromCharCode(65 + index)
+                text: "Bank " + faceText
+                dark: Pattern.pendingBank === index ? panel.bankBlink : Pattern.pendingBank < 0 && Pattern.bank === index
+                onClicked: Pattern.pressBank(index)
+
+                LearnOverlay {
+                    anchors.fill: parent
+                    paramKey: "bank" + (bankButton.index + 1)
+                    round: false
+                }
+            }
+        }
+    }
+    Row {
+        x: 30
+        y: 254
+        spacing: 4
 
         Repeater {
             model: 8
@@ -244,12 +278,12 @@ Item {
             PanelButton {
                 id: patternButton
                 required property int index
-                width: 34
+                width: 28
                 height: 30
                 faceText: index + 1
                 text: "Pattern " + (index + 1)
-                dark: Pattern.index === index
-                onClicked: Pattern.index = index
+                dark: Pattern.pendingBank < 0 && Pattern.number === index
+                onClicked: Pattern.pressNumber(index)
 
                 LearnOverlay {
                     anchors.fill: parent
@@ -372,8 +406,8 @@ Item {
         x: 752
         y: 170
         width: 352
-        text: "Pattern " + (Pattern.index + 1)
-        onUp: Pattern.index = Math.min(7, Pattern.index + 1)
+        text: "Pattern " + Pattern.name + (Pattern.pendingBank >= 0 ? "  (bank " + String.fromCharCode(65 + Pattern.pendingBank) + "?)" : "")
+        onUp: Pattern.index = Math.min(63, Pattern.index + 1)
         onDown: Pattern.index = Math.max(0, Pattern.index - 1)
     }
     PanelLabel { x: 752; y: 222; text: "LENGTH" }

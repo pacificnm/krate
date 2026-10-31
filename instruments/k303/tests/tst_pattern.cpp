@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSignalSpy>
@@ -186,13 +187,13 @@ private slots:
     void unknownKeysIgnoredAndValuesClamped()
     {
         writeFile(m_path, R"({
-            "version": 1, "current": 42, "futureFeature": true,
+            "version": 1, "current": 420, "futureFeature": true,
             "patterns": [ { "length": 40, "swing": 3,
                             "steps": [ { "note": 99, "octave": -5, "accent": true, "gate": "tie", "colour": "red" } ] } ]
         })");
         kp::PatternBank bank;
         QCOMPARE(kp::loadPatterns(m_path, &bank), kp::LoadResult::Loaded);
-        QCOMPARE(bank.current, 7);
+        QCOMPARE(bank.current, kp::kPatternCount - 1);
         QCOMPARE(int(bank.patterns[0].length), 16);
         QCOMPARE(bank.patterns[0].steps[0], (Step{12, -1, true, false, Gate::Tie}));
         QCOMPARE(int(bank.patterns[0].steps[1].gate), int(Gate::Rest)); // missing steps are rests
@@ -328,6 +329,50 @@ private slots:
             QCOMPARE(back.patterns[i].length, bank.patterns[i].length);
             QVERIFY(back.patterns[i].steps == bank.patterns[i].steps);
         }
+    }
+
+    // 64 patterns in 8 banks: a BANK waits for a number; a file of 8 loads as bank A, and all 64 save.
+    void banks()
+    {
+        {
+            Engine engine;
+            PatternModel model(engine, m_path, nullptr);
+            QCOMPARE(model.name(), QStringLiteral("A1"));
+            model.pressBank(2);
+            QCOMPARE(model.pendingBank(), 2);
+            QCOMPARE(model.patternIndex(), 0); // not yet
+            model.pressNumber(4);
+            QCOMPARE(model.patternIndex(), 2 * 8 + 4);
+            QCOMPARE(model.name(), QStringLiteral("C5"));
+            QCOMPARE(model.pendingBank(), -1);
+            model.pressNumber(7); // no bank waiting: the current bank
+            QCOMPARE(model.name(), QStringLiteral("C8"));
+            model.pressBank(5);
+            model.pressBank(5); // again: never mind
+            QCOMPARE(model.pendingBank(), -1);
+            model.setPatternIndex(63);
+            QCOMPARE(model.name(), QStringLiteral("H8"));
+            model.setSelectedStep(0);
+            model.setNote(5);
+            model.setPatternIndex(100); // clamped
+            QCOMPARE(model.patternIndex(), 63);
+        }
+        // Saved: the H8 note is there next time.
+        kp::PatternBank saved;
+        QCOMPARE(kp::loadPatterns(m_path, &saved), kp::LoadResult::Loaded);
+        QCOMPARE(saved.current, 63);
+        QCOMPARE(saved.patterns[63].steps[0].gate, Gate::Note);
+
+        // A file from before banks (8 patterns): bank A, the rest empty.
+        QJsonObject old = kp::toJson(kp::defaultBank());
+        QJsonArray eight = old.value(u"patterns").toArray();
+        while (eight.size() > 8)
+            eight.removeLast();
+        old.insert(QStringLiteral("patterns"), eight);
+        const kp::PatternBank loaded = kp::fromJson(old);
+        QVERIFY(!kp::isEmpty(loaded.patterns[0]));
+        for (int i = 8; i < kp::kPatternCount; ++i)
+            QVERIFY(kp::isEmpty(loaded.patterns[std::size_t(i)]));
     }
 
     void auditionPlaysOnlyWhenStopped()

@@ -31,7 +31,7 @@ A fixed-size hardware-style panel drawn at **1600 × 692** design pixels and sca
 | Waveform switch | Saw / square | M2 |
 | Tuning, Cut Off Freq, Resonance, Env Mod, Decay, Accent | Sound knobs | M2 |
 | Unmap / Audio / Help | Clear all MIDI mappings / audio status LED, click to reconnect / the manual (`docs/MANUAL.md`, in the shared `ManualView`) | M6, M1, M8 |
-| 1–8 buttons + red block | Pattern select 1–8 (MIDI-learnable); the red block is a beat LED | M5, M4 |
+| A–H and 1–8 buttons, beat light | Bank A–H (blinks until a number is pressed) and pattern 1–8 in it: 64 patterns (all MIDI-learnable); the small light by the status line is the beat LED | M5, M4 |
 | Tempo knob | Sequencer tempo | M4 |
 | Scale selector (1/16, 1/32, 1/16T) | Step length (SEQUENCER.md) | Done |
 | Play Mode selector (Forward, Reverse, Fwd+Rev, Invert, Random) | Step order / pitch inversion (SEQUENCER.md) | Done |
@@ -105,7 +105,7 @@ Labels: bold sans-serif uppercase, 11–15 px; displays: monospace.
 | A, S | Toggle accent / slide on the selected step |
 | N, T, R | Set the selected step to Note / Tie / Rest |
 | L | Toggle MIDI learn (Esc leaves it) |
-| 1–8 | Select pattern |
+| 1–8 | Select pattern 1–8 in the current bank |
 
 ## Accessibility
 

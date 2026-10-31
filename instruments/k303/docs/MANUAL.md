@@ -12,7 +12,7 @@ This manual goes through the panel from the top left to the bottom right. Every 
 4. **Write your own line.** Stop, click a step button (1–16), click a note key, then **ACCENT** or **SLIDE** for that step. Run it again.
 5. **Something new.** **RANDOMIZE** writes a random line into the pattern; keep pressing until one grabs you.
 
-Everything is kept when you quit: the knobs, the 8 patterns and your MIDI mappings.
+Everything is kept when you quit: the knobs, the 64 patterns and your MIDI mappings.
 
 ## How k303 makes sound
 
@@ -74,8 +74,10 @@ Keep DELAY and REVERB low for a bass that sits in a mix; turn them up for a lead
 
 | Control | What it does |
 | --- | --- |
-| **1–8** | Choose one of 8 patterns. The red block next to them flashes on the beat. |
-| **PATTERN** display | The pattern shown; ▲▼ step through them. |
+| **A–H** | Banks of 8 patterns: 64 in all. Press a bank (it blinks), then a number: that pattern plays. Pressing the bank again cancels. While playing, a new pattern starts as one change, so you can line up the next one on the beat. |
+| **1–8** | Choose a pattern in the current bank (or in the blinking one). Keys 1–8 on the computer do the same. |
+| **PATTERN** display | The pattern shown, **A1** to **H8**; ▲▼ step through all 64 in order. |
+| **Beat light** (by the status line) | Flashes on each beat. |
 | **LENGTH** display | How many steps the pattern has, 1–16 (▲▼). Short patterns make odd loops. |
 | **TEMPO** | Standalone only: 40–240 BPM. In the Krate rack, the rack's transport sets the tempo. |
 | **SCALE** | How long a step is: **1/16** (normal), **1/32** (double speed), **1/16T** (triplets). |

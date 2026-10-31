@@ -14,7 +14,7 @@ class QJSEngine;
 
 // QML singleton "Pattern": the 16 steps of the current pattern as a list
 // model, the selected step, and the editing modes. The GUI-side copy of all
-// eight patterns is the source of truth for editing and saving; every change
+// 64 patterns (8 banks of 8) is the source of truth for editing and saving; every change
 // is sent to the audio thread as an Engine command (docs/ARCHITECTURE.md).
 class PatternModel : public QAbstractListModel
 {
@@ -22,7 +22,11 @@ class PatternModel : public QAbstractListModel
     QML_NAMED_ELEMENT(Pattern)
     QML_SINGLETON
 
-    Q_PROPERTY(int index READ patternIndex WRITE setPatternIndex NOTIFY indexChanged) // pattern 0..7
+    Q_PROPERTY(int index READ patternIndex WRITE setPatternIndex NOTIFY indexChanged) // pattern 0..63 (bank * 8 + number)
+    Q_PROPERTY(int bank READ bank NOTIFY indexChanged)              // 0..7 = A..H, of the current pattern
+    Q_PROPERTY(int number READ number NOTIFY indexChanged)          // 0..7, in its bank
+    Q_PROPERTY(int pendingBank READ pendingBank NOTIFY indexChanged) // a BANK pressed, waiting for a number; -1 none
+    Q_PROPERTY(QString name READ name NOTIFY indexChanged)          // "A1" .. "H8"
     Q_PROPERTY(int length READ length WRITE setLength NOTIFY lengthChanged)
     Q_PROPERTY(int selectedStep READ selectedStep WRITE setSelectedStep NOTIFY selectedStepChanged)
 
@@ -63,6 +67,14 @@ public:
     // Not index(): that would hide QAbstractListModel::index(row).
     int patternIndex() const { return m_bank.current; }
     void setPatternIndex(int index);
+    int bank() const { return m_bank.current / k303::persistence::kPatternsPerBank; }
+    int number() const { return m_bank.current % k303::persistence::kPatternsPerBank; }
+    int pendingBank() const { return m_pendingBank; }
+    QString name() const;
+    // A BANK button: it waits (blinking) for a number, so a live change is one change.
+    Q_INVOKABLE void pressBank(int bank);
+    // A pattern button 1..8: that pattern in the waiting bank, else the current one.
+    Q_INVOKABLE void pressNumber(int number);
     int length() const { return current().length; }
     void setLength(int length);
     int selectedStep() const { return m_selected; }
@@ -120,6 +132,7 @@ private:
     k303::Engine &m_engine;
     QString m_filePath;
     k303::persistence::PatternBank m_bank;
+    int m_pendingBank = -1;
     int m_selected = 0;
     bool m_keyboardMode = false;
     bool m_timeMode = false;

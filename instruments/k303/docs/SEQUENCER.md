@@ -110,7 +110,7 @@ Edits while playing apply from the next step boundary that reads that step. No l
 }
 ```
 
-8 patterns. Unknown keys are ignored and values are clamped; a missing or unreadable file loads the defaults: four factory riffs in patterns 1–4 (Demo, Rolling, Twelve — a 12-step loop — and High), the rest empty (all `Rest`). A newer `version` than supported is not overwritten: the app warns and saves to `patterns.json.v1` instead.
+64 patterns, 8 banks (A–H) of 8, in order: A1 … A8, B1 … H8; a file from before banks (8 patterns) loads as bank A, the rest empty. Unknown keys are ignored and values are clamped; a missing or unreadable file loads the defaults: four factory riffs in patterns 1–4 (Demo, Rolling, Twelve — a 12-step loop — and High), the rest empty (all `Rest`). A newer `version` than supported is not overwritten: the app warns and saves to `patterns.json.v1` instead.
 
 Versions: v2 has the same format as v1. Loading a v1 file adds factory riffs 2–4 to its first empty slots (a slot with any note in it is never touched); the next save writes v2, so this happens once.
 

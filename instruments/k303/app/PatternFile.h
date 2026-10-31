@@ -15,7 +15,10 @@ using krate::files::LoadResult;
 // patterns.json (docs/SEQUENCER.md#pattern-storage).
 // v2: same format as v1; loading a v1 file adds the factory riffs added in v2.
 inline constexpr int kPatternFileVersion = 2;
-inline constexpr int kPatternCount = 8;
+// 8 banks (A-H) of 8 patterns. A file from before banks (8 patterns) loads as bank A.
+inline constexpr int kBanks = 8;
+inline constexpr int kPatternsPerBank = 8;
+inline constexpr int kPatternCount = kBanks * kPatternsPerBank;
 
 struct PatternBank
 {

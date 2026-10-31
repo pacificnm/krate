@@ -57,7 +57,7 @@ Inside `krate`, MIDI Learn works the same way from the panels, but learns into t
 }
 ```
 
-- `param` is the stable string id from [DSP.md](DSP.md#parameters), or a button's action key: `pattern1` … `pattern8`, `runstop`. Unknown ids and CC numbers outside 0–127 are skipped.
+- `param` is the stable string id from [DSP.md](DSP.md#parameters), or a button's action key: `pattern1` … `pattern8` (a number in the current bank), `bank1` … `bank8`, `runstop`. Unknown ids and CC numbers outside 0–127 are skipped.
 - Mappings are omni: a CC number maps the same on every channel.
 - `inputPortMatch` is a regular expression matched against JACK port names to auto-connect `midi_in` at startup. Empty = no auto-connect.
 - The CC numbers above are examples, not the LX49's actual defaults.
