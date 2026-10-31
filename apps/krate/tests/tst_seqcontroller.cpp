@@ -19,8 +19,8 @@ class TestSeqController : public QObject
 
     static std::vector<NoteTarget> targets()
     {
-        return {{QStringLiteral("k303"), QStringLiteral("k303"), 0, 0, false},
-                {QStringLiteral("K909"), QStringLiteral("k909"), 1, 9, true},
+        return {{QStringLiteral("Korrode"), QStringLiteral("korrode"), 0, 0, false},
+                {QStringLiteral("Kessel"), QStringLiteral("kessel"), 1, 9, true},
                 {QStringLiteral("Krimson B"), QStringLiteral("krimson:B"), 3, 3, false}};
     }
 
@@ -50,11 +50,11 @@ private slots:
             Sequencer seq;
             SequencerController c(seq, targets(), path);
             c.load();
-            QCOMPARE(c.targetChoices(), (QStringList{"None", "k303", "K909", "Krimson B"}));
+            QCOMPARE(c.targetChoices(), (QStringList{"None", "Korrode", "Kessel", "Krimson B"}));
             c.setTrack(2);
             c.setTarget(2, 3); // Krimson B
             QCOMPARE(c.addNote(48, 64, 24, 90), 0);
-            c.setTarget(5, 2); // K909
+            c.setTarget(5, 2); // Kessel
             QVERIFY(c.tracks()[5].toMap().value(u"drums"_s).toBool());
 
             const auto on = firstOn(seq);
@@ -131,7 +131,7 @@ private slots:
         QCOMPARE(p.tracks[0].notes[0].pitch, std::uint8_t(36));
         QCOMPARE(p.tracks[1].count, std::uint16_t(1));
         QCOMPARE(c.state().bank->patterns[15].tracks[0].count, std::uint16_t(2));
-        QCOMPARE(c.tracks()[0].toMap().value(u"choice"_s).toInt(), 2); // K909
+        QCOMPARE(c.tracks()[0].toMap().value(u"choice"_s).toInt(), 2); // Kessel
         QCOMPARE(c.pattern(), 14);
         QCOMPARE(c.track(), 0);
     }
@@ -214,7 +214,7 @@ private slots:
         Sequencer seq;
         SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
         c.load();
-        c.setTarget(5, 1); // k303
+        c.setTarget(5, 1); // Korrode
         c.setTrack(2);
         c.addNote(0, 40, 24, 100);
         c.addNote(48, 43, 48, 90);

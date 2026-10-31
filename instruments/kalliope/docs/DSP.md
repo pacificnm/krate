@@ -19,7 +19,7 @@ Voices are summed (mono), then the chorus makes stereo, then the delay, then the
 
 ## Oversampling
 
-Each voice runs at **2× the host rate**; the voices are summed at 2× and the sum goes through one half-band FIR decimator (`krate::HalfbandDecimator<31>`, from `shared/dsp/`, the same one k303 uses). Cross mod, sync and the resonant ladder all create content above Nyquist. `shared/dsp/` (header-only `krate_dsp`) also holds `krate::polyBlep`, now used by k303 and K909; both render byte-identically after the move.
+Each voice runs at **2× the host rate**; the voices are summed at 2× and the sum goes through one half-band FIR decimator (`krate::HalfbandDecimator<31>`, from `shared/dsp/`, the same one Korrode uses). Cross mod, sync and the resonant ladder all create content above Nyquist. `shared/dsp/` (header-only `krate_dsp`) also holds `krate::polyBlep`, now used by Korrode and Kessel; both render byte-identically after the move.
 
 ## Building blocks
 

@@ -67,7 +67,7 @@ As Krimson's slots: the parameter table holds Klang's own settings and the **edi
 
 ## Sound engine
 
-- **Samples** are decoded once (not on the audio thread) to 32-bit float at their own rate and handed to the engine by pointer; a pad's swapped-out sample is freed two blocks later (as K909's sample voice).
+- **Samples** are decoded once (not on the audio thread) to 32-bit float at their own rate and handed to the engine by pointer; a pad's swapped-out sample is freed two blocks later (as Kessel's sample voice).
 - **Playback**: a read position in the sample's frames, advanced by (sample rate / host rate) × 2^(tune/12) × the sync ratio, read with 4-point cubic interpolation; reversed regions read backwards from END. Loops wrap within START … END with a 5 ms crossfade at the seam.
 - **Per voice**: the envelope (linear attack, exponential decay), then the filter (`krate::Biquad`-style state-variable, cutoff swept down by the envelope), drive (tanh into a wave folder above 50 %), the bitcrusher (sample-and-hold rate reduction, then quantization), the ring modulator, the gate (if on), level and pan, sends.
 - **Mix**: the dry pads, plus the delay and the reverb returns, then Volume.

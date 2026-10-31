@@ -62,7 +62,7 @@ signals:
     void actionTriggered(const QString &action);
 
 protected:
-    // Not default-constructible: see k303's SynthController.
+    // Not default-constructible: see Korrode's SynthController.
     explicit MidiLearnController(QObject *parent);
 
     // Arm `key` in the backend ("" disarms); false if the key can't be learned.

@@ -26,23 +26,23 @@ pkg_check_modules(JACK REQUIRED IMPORTED_TARGET jack)
 find_package(ZLIB REQUIRED)
 qt_standard_project_setup(REQUIRES 6.8)
 
-# All QML modules land side by side, so tooling (qmllint) finds Krate from K303.
+# All QML modules land side by side, so tooling (qmllint) finds Krate from Korrode.
 set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml)
 
 enable_testing()
 
 add_subdirectory(shared)
-add_subdirectory(instruments/k303)
+add_subdirectory(instruments/korrode)
 add_subdirectory(instruments/klick)
-add_subdirectory(instruments/k909)
+add_subdirectory(instruments/kessel)
 add_subdirectory(instruments/kalliope)
 add_subdirectory(instruments/krimson)
 add_subdirectory(instruments/krunch)
 add_subdirectory(instruments/kobalt)
 add_subdirectory(instruments/klang)
 add_subdirectory(instruments/konnekt)
-add_subdirectory(apps/k303)
-add_subdirectory(apps/k909)
+add_subdirectory(apps/korrode)
+add_subdirectory(apps/kessel)
 add_subdirectory(apps/kalliope)
 add_subdirectory(apps/krimson)
 add_subdirectory(apps/kobalt)

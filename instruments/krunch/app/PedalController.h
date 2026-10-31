@@ -34,7 +34,7 @@ class PedalController : public QObject
     Q_PROPERTY(QVariantList types READ types CONSTANT)
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     PedalController(krunch::Krunch &engine, const QString &filePath, QObject *parent);
     ~PedalController() override;
 

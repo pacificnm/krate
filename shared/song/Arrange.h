@@ -10,7 +10,7 @@
 namespace krate::song {
 
 // A drum-kit note number for an 11-voice kit (kick, rim, snare, clap, low /
-// mid / high tom, closed / open hat, crash, ride: the notes K909 plays), from
+// mid / high tom, closed / open hat, crash, ride: the notes Kessel plays), from
 // any standard drum-kit note: pieces the kit lacks go to the closest voice
 // (china and splash to crash, ride bell to ride, congas and bongos to toms,
 // cowbell, wood block and claves to rim, shakers and tambourine to the closed

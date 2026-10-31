@@ -78,7 +78,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | | `reverb_size` | Reverb Size | decay 0.4–8 s |
 | Keys | `octave` | Octave | −3 … +3 octaves on every key, the LX49's and the on-screen keyboard's (7) *panel* |
 | Master | `volume` | Volume | output level *panel* |
-| | `tempo` | Tempo | 40–240 BPM; drives the standalone transport, unused in the rack (as k303 and K909) *panel* |
+| | `tempo` | Tempo | 40–240 BPM; drives the standalone transport, unused in the rack (as Korrode and Kessel) *panel* |
 
 51 parameters, within `ParamValues`' limit of 64.
 

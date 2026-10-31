@@ -39,7 +39,7 @@ class KrimsonController : public krate::ParamController
     Q_PROPERTY(int morphRevision READ morphRevision NOTIFY morphChanged)
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     KrimsonController(krimson::Engine &engine, const QString &panelFilePath, krate::Transport *transport,
                       QObject *parent);
     ~KrimsonController() override;

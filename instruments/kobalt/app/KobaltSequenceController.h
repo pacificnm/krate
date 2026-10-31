@@ -36,7 +36,7 @@ class KobaltSequenceController : public QObject
     Q_PROPERTY(bool active READ active NOTIFY changed)             // Play Mode is Sequencer
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController). Loads
+    // Not default-constructible on purpose (see Korrode's SynthController). Loads
     // the patterns and hands the current one to the engine, so call it before
     // processing starts.
     KobaltSequenceController(KobaltController &panel, kobalt::Engine &engine, const QString &filePath, QObject *parent);

@@ -33,7 +33,7 @@ public:
 
     struct TrackSetup
     {
-        QString instrument; // a choice key ("k303", "krimson:B"), "" = none
+        QString instrument; // a choice key ("korrode", "krimson:B"), "" = none
         double level = 1.0;
         bool mute = false;
         bool solo = false;

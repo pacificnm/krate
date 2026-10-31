@@ -36,7 +36,7 @@ class KobaltController : public krate::ParamController
     Q_PROPERTY(int notesRevision READ notesRevision NOTIFY notesChanged)
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     KobaltController(kobalt::Engine &engine, const QString &panelFilePath, krate::Transport *transport,
                        QObject *parent);
     ~KobaltController() override;

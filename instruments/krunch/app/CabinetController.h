@@ -40,7 +40,7 @@ class CabinetController : public QObject
 public:
     static constexpr int kChannels = 4;
 
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     CabinetController(krunch::Krunch &engine, const QString &libraryDirectory, const QString &filePath, QObject *parent);
     ~CabinetController() override;
 

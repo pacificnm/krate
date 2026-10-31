@@ -173,7 +173,7 @@ InstrumentEntry entry(const char *id, const char *name, int channel, QList<int> 
     return e;
 }
 
-// A rack like the app's: k303, K909, Kalliope, Krimson (4 slots), Klick.
+// A rack like the app's: Korrode, Kessel, Kalliope, Krimson (4 slots), Klick.
 struct Fixture
 {
     QTemporaryDir dir;
@@ -181,7 +181,7 @@ struct Fixture
     std::vector<std::unique_ptr<FakeInstance>> instances;
     Rack rack;
     Transport transport;
-    QList<InstrumentEntry> entries{entry("k303", "k303", -1), entry("k909", "K909", 9), entry("kalliope", "Kalliope", 1),
+    QList<InstrumentEntry> entries{entry("korrode", "Korrode", -1), entry("kessel", "Kessel", 9), entry("kalliope", "Kalliope", 1),
                                    entry("krimson", "Krimson", 2, {3, 4, 5}), entry("klick", "Klick", -1, {}, false)};
     song::SongPlayer player;
     std::unique_ptr<RackController> rackController;
@@ -223,12 +223,12 @@ private slots:
     void instrumentChoices()
     {
         Fixture f;
-        QCOMPARE(f.song->instrumentChoices(), (QStringList{"—", "k303", "K909", "Kalliope", "Krimson A", "Krimson B",
+        QCOMPARE(f.song->instrumentChoices(), (QStringList{"—", "Korrode", "Kessel", "Kalliope", "Krimson A", "Krimson B",
                                                          "Krimson C", "Krimson D"}));
         QCOMPARE(f.song->choices()[1].device, 1);
-        QVERIFY(f.song->choices()[1].drumMap);   // K909
+        QVERIFY(f.song->choices()[1].drumMap);   // Kessel
         QCOMPARE(f.song->choices()[5].channel, 4); // Krimson C on channel 5
-        QCOMPARE(f.song->choices()[0].channel, 0); // k303 (no channel of its own)
+        QCOMPARE(f.song->choices()[0].channel, 0); // Korrode (no channel of its own)
     }
 
     void opensAMidiFileAndSuggests()
@@ -243,8 +243,8 @@ private slots:
         QCOMPARE(f.song->tracks().size(), 4);
         QCOMPARE(f.track(0).value("choice").toInt(), 0); // the guitar is yours
         QCOMPARE(f.song->myTrack(), 0);
-        QCOMPARE(f.track(1).value("choice").toInt(), f.choice("k303"));
-        QCOMPARE(f.track(2).value("choice").toInt(), f.choice("K909"));
+        QCOMPARE(f.track(1).value("choice").toInt(), f.choice("Korrode"));
+        QCOMPARE(f.track(2).value("choice").toInt(), f.choice("Kessel"));
         QCOMPARE(f.track(3).value("choice").toInt(), f.choice("Kalliope"));
         QCOMPARE(f.player.assignment(2), (song::Assignment{1, 9, true}));
         QCOMPARE(f.player.assignment(0), song::Assignment{});
@@ -543,7 +543,7 @@ private slots:
         c.setLibrary(f.library.get(), &sounds);
 
         f.fakes[0].tone = 0.2f;
-        c.setTarget(0, 1); // k303
+        c.setTarget(0, 1); // Korrode
         c.addNote(0, 40, 24, 100);
         QVERIFY(c.modified());
         QVERIFY(!c.saveSequence()); // none open yet: it needs a name

@@ -132,9 +132,9 @@ private slots:
             id = lib.add({}, write(downloads, "1.mid", "1"), details("A", "B", "C"))->id;
             QCOMPARE(lib.myTrack(id), -1);
             QVERIFY(lib.setup(id).isEmpty());
-            lib.saveSetup(id, 2, {{"k303", 0.5, true, false, true}, {}, {"krimson:B", 1.0, false, true, false}});
+            lib.saveSetup(id, 2, {{"korrode", 0.5, true, false, true}, {}, {"krimson:B", 1.0, false, true, false}});
             QVERIFY(!lib.song(id)->soundsSaved);
-            lib.saveSounds(id, QJsonObject{{"k303", QJsonObject{{"cutoff", 0.3}}}, {"krimson", QJsonObject{{"slots", QJsonArray{1, 2}}}}},
+            lib.saveSounds(id, QJsonObject{{"korrode", QJsonObject{{"cutoff", 0.3}}}, {"krimson", QJsonObject{{"slots", QJsonArray{1, 2}}}}},
                            QJsonObject{{"master", 0.7}});
             lib.setLastSong(id);
         }
@@ -143,18 +143,18 @@ private slots:
         QCOMPARE(lib.myTrack(id), 2);
         const auto setup = lib.setup(id);
         QCOMPARE(setup.size(), 3);
-        QCOMPARE(setup[0].instrument, QStringLiteral("k303"));
+        QCOMPARE(setup[0].instrument, QStringLiteral("korrode"));
         QCOMPARE(setup[0].level, 0.5);
         QVERIFY(setup[0].mute && setup[0].fromMidi);
         QCOMPARE(setup[1].instrument, QString());
         QVERIFY(setup[2].solo);
         QVERIFY(lib.song(id)->soundsSaved);
-        QCOMPARE(lib.sounds(id).value("k303").toObject().value("cutoff").toDouble(), 0.3);
+        QCOMPARE(lib.sounds(id).value("korrode").toObject().value("cutoff").toDouble(), 0.3);
         QCOMPARE(lib.sounds(id).value("krimson").toObject().value("slots").toArray().size(), 2);
         QCOMPARE(lib.mixer(id).value("master").toDouble(), 0.7);
         // Saving again replaces.
-        lib.saveSounds(id, QJsonObject{{"k909", QJsonObject{}}}, {});
-        QCOMPARE(lib.sounds(id).keys(), QStringList{"k909"});
+        lib.saveSounds(id, QJsonObject{{"kessel", QJsonObject{}}}, {});
+        QCOMPARE(lib.sounds(id).keys(), QStringList{"kessel"});
         // Removing a song removes its setup and sounds.
         lib.remove(id);
         QVERIFY(lib.setup(id).isEmpty());
@@ -240,7 +240,7 @@ private slots:
     {
         QTemporaryDir home;
         SongLibrary lib(home.filePath("library"));
-        const QJsonObject data{{"pattern", 3}}, sounds{{"k303", QJsonObject{{"tone", 0.25}}}}, mixer{{"master", 0.7}};
+        const QJsonObject data{{"pattern", 3}}, sounds{{"korrode", QJsonObject{{"tone", 0.25}}}}, mixer{{"master", 0.7}};
         const qint64 b = lib.saveSequence(0, "bravo", data, sounds, mixer);
         const qint64 a = lib.saveSequence(0, "Alpha", {}, {}, {});
         QVERIFY(a > 0 && b > 0 && a != b);

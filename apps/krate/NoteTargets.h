@@ -17,7 +17,7 @@ struct NoteTarget
     QString key;   // "krimson:B" (stable, for saved files)
     int device = -1;
     int channel = 0;
-    bool drumMap = false; // K909: a song's drum notes are mapped to its voices
+    bool drumMap = false; // Kessel: a song's drum notes are mapped to its voices
 };
 
 std::vector<NoteTarget> noteTargets(const QList<krate::InstrumentEntry> &entries);

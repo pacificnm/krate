@@ -35,7 +35,7 @@ class KobaltPatchController : public QObject
     Q_PROPERTY(QString name READ name NOTIFY changed)
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     KobaltPatchController(KobaltController &panel, kobalt::Engine &engine, const QString &filePath, QObject *parent);
     ~KobaltPatchController() override;
 

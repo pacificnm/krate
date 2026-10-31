@@ -16,7 +16,7 @@ private slots:
         SequencerState state;
         state.pattern = 5;
         state.running = false;
-        state.targets[0] = QStringLiteral("k303");
+        state.targets[0] = QStringLiteral("korrode");
         state.targets[3] = QStringLiteral("krimson:B");
         state.mutes[3] = true;
         Pattern &p = state.bank->patterns[5];
@@ -34,7 +34,7 @@ private slots:
         const SequencerState back = sequencerFromJson(sequencerToJson(state));
         QCOMPARE(back.pattern, 5);
         QCOMPARE(back.running, false);
-        QCOMPARE(back.targets[0], QStringLiteral("k303"));
+        QCOMPARE(back.targets[0], QStringLiteral("korrode"));
         QCOMPARE(back.targets[3], QStringLiteral("krimson:B"));
         QCOMPARE(back.targets[1], QString());
         QVERIFY(back.mutes[3] && !back.mutes[0]);

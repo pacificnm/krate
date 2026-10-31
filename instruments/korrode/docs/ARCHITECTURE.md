@@ -1,0 +1,93 @@
+# Architecture
+
+Korrode is two halves joined by lock-free primitives: a Qt GUI that never touches audio, and a realtime JACK callback that never touches Qt. The DSP core in between knows nothing about either.
+
+## Modules
+
+| Module | Kind | Depends on | Responsibility |
+| --- | --- | --- | --- |
+| `krate_core` (`shared/core`) | static lib, C++20 | std only | Shared Krate pieces: `krate::IInstrument`, `AudioBlock`, `MidiEvent`, `TransportState`, `ParamDescriptor`, `Transport`, `StepClock`, `SpscQueue`, `decode()`, `MidiLearnMap`, `MasterStage` |
+| `krate_app`, `krate_qml` (`shared/app`, `shared/qml`) | static libs | Qt | File helpers (JSON, MIDI map, panel), screenshot hook; QML module `Krate` (controls, `Theme`, `MidiLearn`) |
+| `korrode_dsp` | static lib, C++20 | std only | Oscillator, diode ladder, envelopes, voice, sequencer, parameter store, SPSC queue; `Engine` implements `krate::IInstrument`. Pure, allocation-free in `process()` |
+| `krate_host` | static lib | `krate_core`, libjack | Standalone host (`krate::JackHost`): ports from `outputChannels()`, MIDI in, transport, master stage (soft clip + meter). Knows no instrument |
+| `korrode_app` | part of executable | Qt 6 Core/Gui/Qml/Quick, `korrode_dsp`, `krate_host` | QML-facing controllers, persistence, MIDI Learn UI state |
+| `korrode` | executable | all above | `main.cpp`, QML module `Korrode` |
+| `korrode-render` | executable | `korrode_dsp` | Offline: render a pattern to WAV, no JACK |
+| `korrode_tests` | Qt Test | `korrode_dsp`, `korrode_app` | Unit tests |
+
+```
+         GUI thread (Qt event loop)                     JACK realtime thread
+ ┌───────────────────────────────────────┐      ┌─────────────────────────────────┐
+ │ QML panel                             │      │ process(nframes)                │
+ │   │ bindings                          │      │   1. drain GUI→audio queue      │
+ │ SynthController  PatternModel         │      │   2. read params (atomics)      │
+ │ MidiLearnController  Persistence      │      │   3. for each MIDI event/step   │
+ │   │ write              ▲ poll 60 Hz   │      │      boundary: split block,     │
+ │   ▼                    │              │      │      apply event, render slice  │
+ │ ParamStore (atomics) ──┼──────────────┼─────►│   4. publish playhead, CC hits  │
+ │ CcMap (atomics)  ──────┼──────────────┼─────►│   5. write out_L / out_R        │
+ │ SPSC GuiToAudio ───────┼──────────────┼─────►│                                 │
+ │ SPSC AudioToGui ◄──────┴──────────────┼──────│◄── midi_in port (LX49)          │
+ └───────────────────────────────────────┘      └─────────────────────────────────┘
+```
+
+## Threads
+
+| Thread | Owner | May do | Must not do |
+| --- | --- | --- | --- |
+| GUI | Qt | Anything Qt; file I/O; allocate | Touch DSP objects directly |
+| JACK process | libjack | Read/write atomics, push/pop SPSC queues, run DSP | Allocate, lock a mutex, log, call Qt, do I/O, throw |
+| JACK notification | libjack | Set atomic flags (xrun count, sample-rate change, shutdown) | Anything slow |
+
+The realtime rules are enforced by review and by a debug-build check: `RtGuard` sets a thread-local flag in `process()`, and a debug-only `operator new` override asserts if it is called while the flag is set.
+
+Denormals: `process()` enables flush-to-zero and denormals-are-zero (`_MM_SET_FLUSH_ZERO_MODE`, `_MM_SET_DENORMALS_ZERO_MODE`) at the top of every callback.
+
+## Cross-thread communication
+
+Every channel is single-producer / single-consumer and fixed size. Nothing allocates after startup.
+
+| Channel | Direction | Mechanism | Contents |
+| --- | --- | --- | --- |
+| Parameters | GUI → audio, audio → GUI | `ParamStore`: `std::array<std::atomic<float>, ParamCount>`, normalized 0–1 | Knob values. GUI writes on drag; audio writes when a learned CC arrives. Audio smooths values per sample (see [DSP.md](DSP.md)) |
+| Param dirty bits | audio → GUI | `std::atomic<uint64_t>` bitmask | Which params the audio thread changed (from MIDI), so the GUI updates those knobs only |
+| CC map | GUI → audio | `krate::MidiLearnMap`: atomic CC → parameter index, −1 = unmapped | MIDI Learn bindings |
+| Learn arm | GUI → audio | `MidiLearnMap::setLearnTarget` (atomic, −1 = off) | Param waiting for a CC |
+| Commands | GUI → audio | `SpscQueue<Command, 256>` (`Engine::post`), drained at the start of each block | `SetStep`, `SetLength`, `LoadPattern` |
+| Transport | GUI → audio | `krate::Transport` atomics (playing, BPM), advanced by the JACK callback each block and passed in `AudioBlock::transport` | Run/stop, tempo, beat position |
+| Learned CCs | audio → GUI | `krate::MidiLearnMap` queue (`popLearned`), drained by `MidiLearn` at 60 Hz | `{cc, param index}` |
+| Events | audio → GUI | `SpscQueue<EngineEvent, 256>` (`Engine::popEvent`), drained by `Synth` at 60 Hz | `NoteOn{note, velocity}` → `Synth.notePressed` (for step record). Xruns are counted by the JACK client instead |
+| Playhead | audio → GUI | `std::atomic<int8_t> currentStep` (−1 = stopped) | LED playhead |
+
+The GUI polls atomics and drains the events queue from one `QTimer` at 60 Hz. UI timers are fine for *display*; they never drive timing.
+
+Ownership of pattern data: the audio thread owns the playing copy. `PatternModel` on the GUI side keeps a mirror that is the source of truth for editing and saving; every edit updates the mirror and pushes a `Command`. On pattern switch or load, the GUI sends the whole pattern (16 steps fit in one command payload).
+
+## Block processing
+
+`process(nframes)` runs a per-sample loop: `Sequencer::tick()` is called once per sample and returns at most one event, which the voice applies before rendering that sample. MIDI events (M6) are applied at their frame offset in the same loop. This makes both the sequencer and MIDI input sample-accurate without splitting blocks.
+
+## C++ ↔ QML surface
+
+Registered in the `Korrode` QML module with `QML_ELEMENT` / `QML_SINGLETON`:
+
+| Type | Exposes |
+| --- | --- |
+| `Synth` (singleton, `SynthController`) | One `Q_PROPERTY(qreal …)` per parameter (normalized), `playing`, `ownsTransport`, `currentStep`, `beat`, `displayText()`; owns the engine and `panel.json`; given a `krate::Transport` (none in the rack) |
+| `Host` (singleton, shared `krate::HostController`) | `audioConnected`, `audioStatus`, `sampleRate`, `bufferSize`, `xrunCount`, `midiConnected`, `outputLevel`, `connectAudio()`; works over any `krate::AudioHost` (standalone `JackHost`, later the rack's host) |
+| `Pattern` (singleton, `PatternModel`) | `QAbstractListModel` of 16 steps (roles: `note`, `octave`, `accent`, `slide`, `gate`, `active`, `label`); `index` (pattern 0..7), `length`, `selectedStep`, `selected*` properties for the selected step, `keyboardMode`, `timeMode`; invokables: `setNote`, `octaveUp/Down`, `toggleAccent/Slide`, `setGate`, `selectNext/Previous`, `clear`, `auditionOn/Off`, `save` |
+| `MidiLearn` (singleton, `MidiLearnController`) | `active`, `armedParam`, `revision`, `arm(key)`, `mappingFor(key)`, `clear(key)`, `clearAll()`, `actionTriggered(key)` for learnable buttons; instrument-neutral (built from any `krate::IInstrument&`, works by parameter key); owns the GUI copy of the CC map (saved to `midimap.json`) and drains the instrument's `MidiLearnMap` learned queue |
+
+QML holds no audio state and runs no timing logic.
+
+Singleton instances: `main()` builds Korrode through `korrode::registryEntry()` (which creates `Synth` and `Pattern`), then `MidiLearn` and `Host`, all before the QML engine, and the class's static `create(QQmlEngine*, QJSEngine*)` hands QML that instance. The controller must **not** be default-constructible (no `parent = nullptr` default): Qt 6.8 prefers a default constructor over `create()` and would silently build a second instance, which for `Synth` means a second JACK client.
+
+## Startup and shutdown
+
+1. Load `panel.json` (knob positions), `patterns.json` and `midimap.json` (missing or invalid → defaults, warning logged).
+2. Create JACK client `korrode`, register `out_L`, `out_R`, `midi_in`, set callbacks, activate.
+3. Auto-connect outputs to the first two physical playback ports (under PipeWire these are the default sink's, which it lists first); connect `midi_in` to the first capture port whose name matches the configured regex (default `Impact LX49`).
+4. If JACK is unavailable, the UI still starts with an "audio offline" indicator and retries every 2 s.
+5. On quit: stop transport, deactivate and close the client, save patterns and mappings.
+
+Sample-rate change: the notification callback sets a flag; the next `process()` calls `Voice::setSampleRate()` and recomputes samples-per-step. Coefficient tables are sized at startup for up to 192 kHz × 4 oversampling, so this does not allocate.

@@ -50,12 +50,12 @@ public:
 // Each instrument library exports one; the rack lists them in one place.
 struct InstrumentEntry
 {
-    QString id;                  // "k303": client name, config folder, session key
-    QString name;                // "k303" as shown to the user
+    QString id;                  // "korrode": client name, config folder, session key
+    QString name;                // "korrode" as shown to the user
     int defaultMidiChannel = -1; // 0..15 for the rack's channel routing, -1 = focus only
     QList<int> extraMidiChannels; // more channels (0..15) the rack routes to it (Krimson's slots B-D)
     bool playsNotes = true;      // false: a song's tracks can't play it (the metronome, the guitar amp)
-    QString qmlModule;           // QML module holding the panel, e.g. "K303"
+    QString qmlModule;           // QML module holding the panel, e.g. "Korrode"
     QString panelComponent;      // the panel inside it, e.g. "Panel"
     QStringList actions;         // learnable buttons, e.g. "pattern1", "runstop"
     std::function<std::unique_ptr<InstrumentInstance>(const InstrumentContext &)> create;

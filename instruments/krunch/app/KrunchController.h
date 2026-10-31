@@ -29,7 +29,7 @@ class KrunchController : public krate::ParamController
     Q_PROPERTY(bool gateClosed READ gateClosed NOTIFY metersChanged)
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     KrunchController(krunch::Krunch &engine, const QString &panelFilePath, QObject *parent);
     ~KrunchController() override;
 

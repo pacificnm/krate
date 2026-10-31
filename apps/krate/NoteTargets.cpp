@@ -10,7 +10,7 @@ std::vector<NoteTarget> noteTargets(const QList<krate::InstrumentEntry> &entries
         if (!e.playsNotes)
             continue;
         if (e.extraMidiChannels.isEmpty()) {
-            targets.push_back({e.name, e.id, int(i), std::max(0, e.defaultMidiChannel), e.id == u"k909"});
+            targets.push_back({e.name, e.id, int(i), std::max(0, e.defaultMidiChannel), e.id == u"kessel"});
             continue;
         }
         QList<int> channels{e.defaultMidiChannel};

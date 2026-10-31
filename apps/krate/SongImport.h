@@ -28,8 +28,8 @@ std::vector<BarSpan> barSpans(const krate::song::Song &song, const krate::song::
 
 struct Options
 {
-    bool drumMap = false; // map drum-kit notes to K909's voices (unmapped ones are dropped)
-    bool mono = false;    // one note at a time (k303): a chord keeps its top note
+    bool drumMap = false; // map drum-kit notes to Kessel's voices (unmapped ones are dropped)
+    bool mono = false;    // one note at a time (Korrode): a chord keeps its top note
 };
 
 // One pattern's worth.
@@ -45,7 +45,7 @@ struct Report
 {
     int notes = 0;    // copied
     int snapped = 0;  // moved to the grid
-    int dropped = 0;  // drum notes K909 has no voice for
+    int dropped = 0;  // drum notes Kessel has no voice for
     int reduced = 0;  // chord notes left out (mono), or doubles after snapping
     int overflow = 0; // past a pattern track's note limit
 };

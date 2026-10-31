@@ -32,7 +32,7 @@ public:
     using Save = std::function<QJsonObject()>;
     using Load = std::function<void(const QJsonObject &)>;
 
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     // save / load: the instance's whole sound.
     PresetController(const QString &filePath, Save save, Load load, QObject *parent);
     ~PresetController() override;

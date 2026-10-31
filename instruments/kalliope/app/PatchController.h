@@ -35,7 +35,7 @@ class PatchController : public QObject
     Q_PROPERTY(QString name READ name NOTIFY changed)
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     PatchController(KalliopeController &panel, kalliope::Engine &engine, const QString &filePath, QObject *parent);
     ~PatchController() override;
 

@@ -49,7 +49,7 @@ class SequencerController : public QObject
     Q_PROPERTY(QVariantList notes READ notes NOTIFY changed)
     // Per pattern: has notes.
     Q_PROPERTY(QVariantList patternsUsed READ patternsUsed NOTIFY changed)
-    // For a drum track (K909): its voices, top to bottom: {name, note}.
+    // For a drum track (Kessel): its voices, top to bottom: {name, note}.
     Q_PROPERTY(QVariantList drumLanes READ drumLanes CONSTANT)
     Q_PROPERTY(bool hasClipboard READ hasClipboard NOTIFY changed)
     // Saved sequences in the library (docs/SEQUENCER.md#saved-sequences): the

@@ -12,7 +12,7 @@
 namespace krate::files {
 
 // An instrument's saved MIDI mappings (midimap.json; format in
-// instruments/k303/docs/MIDI.md#mapping-file).
+// instruments/korrode/docs/MIDI.md#mapping-file).
 inline constexpr int kMidiMapFileVersion = 1;
 
 struct MidiMap

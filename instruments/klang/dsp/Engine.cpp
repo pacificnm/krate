@@ -12,7 +12,7 @@ namespace {
 constexpr double kVolumeSmoothingSeconds = 0.01;
 // Samples come mastered near full scale and the pads add up: -10 dB puts a
 // busy pattern of them level with the other instruments (measured: the starter
-// patterns at -18 dB RMS, as a k303 line).
+// patterns at -18 dB RMS, as a Korrode line).
 constexpr double kOutputTrim = 0.3162;
 constexpr int kCcAllSoundOff = 120;
 constexpr int kCcAllNotesOff = 123;

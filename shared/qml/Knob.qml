@@ -22,8 +22,8 @@ Item {
     property real dragRange: 200
     property string displayText: ""     // shown in a bubble while dragging
 
-    // Style: k303's silver cap and black pointer by default; instruments may
-    // restyle (K909: black cap, orange pointer).
+    // Style: Korrode's silver cap and black pointer by default; instruments may
+    // restyle (Kessel: black cap, orange pointer).
     property color capColor: Theme.knobCap
     property color capShadeColor: Theme.knobCapShade
     property color capBorderColor: "#6A6C70"

@@ -4,7 +4,7 @@ Realtime-safe throughout, as every Krate instrument. Values here are design star
 
 ## Reuse
 
-Kalliope's building blocks moved to `shared/dsp/` in C1 (Kalliope, k303 and the rack renders byte-identical): the band-limited `krate::Oscillator` (`dsp/BlepOscillator.h`: every jump corrected with a band-limited step, sync included), `krate::Envelope` and `krate::Lfo` (which gained Triangle and Soft random). Kalliope's `Chorus` and `Delay` followed in C6 (`dsp/Effects.h`), with the new `Reverb`. Krimson adds what the target synth has and Kalliope doesn't: ring mod, a multi-mode filter with drive, the mod envelope, the second LFO, morph and the reverb.
+Kalliope's building blocks moved to `shared/dsp/` in C1 (Kalliope, Korrode and the rack renders byte-identical): the band-limited `krate::Oscillator` (`dsp/BlepOscillator.h`: every jump corrected with a band-limited step, sync included), `krate::Envelope` and `krate::Lfo` (which gained Triangle and Soft random). Kalliope's `Chorus` and `Delay` followed in C6 (`dsp/Effects.h`), with the new `Reverb`. Krimson adds what the target synth has and Kalliope doesn't: ring mod, a multi-mode filter with drive, the mod envelope, the second LFO, morph and the reverb.
 
 ## Voice (runs at 2× and is decimated, as Kalliope)
 

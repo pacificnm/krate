@@ -9,7 +9,7 @@
 #include "seq/Pattern.h"
 
 // The rack sequencer's file, ~/.local/share/krate/sequencer.json
-// (docs/SEQUENCER.md): the bank, each track's target (by key: "k303",
+// (docs/SEQUENCER.md): the bank, each track's target (by key: "korrode",
 // "krimson:B"; "" = none) and mute, RUN, CHAIN, RANGE (from, to: 1-based in
 // the file), the chosen pattern and the
 // chain ([pattern, repeats], 0-based pattern). Notes are [start, length,

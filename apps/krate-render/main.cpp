@@ -1,5 +1,5 @@
-// krate-render: render the Krate rack offline to a WAV file. k303 and Klick
-// (K909 with --k909, Kalliope with --kalliope, Krimson with --krimson, Kobalt
+// krate-render: render the Krate rack offline to a WAV file. Korrode and Klick
+// (Kessel with --kessel, Kalliope with --kalliope, Krimson with --krimson, Kobalt
 // with --kobalt, Klang with --klang) play
 // together on one transport,
 // through the rack's mixer and master stage, exactly as the rack app runs them.
@@ -12,8 +12,8 @@
 // Klang plays its starter kit's pattern A (sounds it makes itself) on channel 11.
 //
 //   krate-render [--out file.wav] [--bars N] [--tempo BPM] [--rate HZ]
-//                [--k303 LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]
-//                [--k909 LEVEL] [--k909-pattern N] [--kalliope LEVEL] [--krimson LEVEL]
+//                [--korrode LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]
+//                [--kessel LEVEL] [--kessel-pattern N] [--kalliope LEVEL] [--krimson LEVEL]
 //                [--kobalt LEVEL] [--klang LEVEL]
 //
 // Song mode (docs/SONG_PLAYER.md) plays a .gp tab file or a .mid file through
@@ -22,9 +22,9 @@
 //   krate-render --song FILE [--out file.wav] [--assign TRACK:INSTRUMENT[:SLOT]]...
 //                [--start-bar N] [--bars N] [--speed X] [--click] [--rate HZ]
 //
-// INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D), kobalt or none. Without
-// --assign, tracks are assigned by what they look like: drums to K909, the
-// first bass to k303, keys and others to Kalliope and Krimson's slots, guitars
+// INSTRUMENT is Korrode, Kessel, kalliope, krimson (SLOT A-D), kobalt or none. Without
+// --assign, tracks are assigned by what they look like: drums to Kessel, the
+// first bass to Korrode, keys and others to Kalliope and Krimson's slots, guitars
 // left out (they're for you to play).
 
 #include <algorithm>
@@ -41,7 +41,7 @@
 #include "core/Transport.h"
 #include "dsp/Engine.h"
 #include "dsp/Klick.h"
-#include "k909/dsp/Engine.h"
+#include "kessel/dsp/Engine.h"
 #include "kalliope/dsp/Engine.h"
 #include "kobalt/dsp/Engine.h"
 #include "klang/dsp/Engine.h"
@@ -60,12 +60,12 @@ void usage()
 {
     std::fprintf(stderr,
                  "usage: krate-render [--out file.wav] [--bars N] [--tempo BPM] [--rate HZ]\n"
-                 "                    [--k303 LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]\n"
-                 "                    [--k909 LEVEL] [--k909-pattern 0..3] [--kalliope LEVEL]\n"
+                 "                    [--korrode LEVEL] [--klick LEVEL] [--mute-klick] [--solo-klick]\n"
+                 "                    [--kessel LEVEL] [--kessel-pattern 0..3] [--kalliope LEVEL]\n"
                  "                    [--krimson LEVEL] [--kobalt LEVEL] [--klang LEVEL]\n"
                  "       krate-render --song FILE.gp|FILE.mid [--out file.wav] [--assign TRACK:INSTRUMENT[:SLOT]]...\n"
                  "                    [--start-bar N] [--bars N] [--speed 0.25..2] [--click] [--rate HZ]\n"
-                 "  LEVEL is mixer gain, 1 = unity; INSTRUMENT is k303, k909, kalliope, krimson (SLOT A-D), kobalt or none\n");
+                 "  LEVEL is mixer gain, 1 = unity; INSTRUMENT is korrode, kessel, kalliope, krimson (SLOT A-D), kobalt or none\n");
 }
 
 // --- Song mode ------------------------------------------------------------------
@@ -111,17 +111,17 @@ int renderSong(const SongOptions &o)
 
     // The rack: every instrument, sequencers quiet so only the song plays them.
     constexpr std::uint32_t kBlock = 64;
-    k303::Engine bass;
+    korrode::Engine bass;
     klick::Klick metronome;
-    k909::Engine drums;
+    kessel::Engine drums;
     kalliope::Engine poly;
     krimson::Engine lead;
     kobalt::Engine mono;
     bass.setSequencerEnabled(false);
-    drums.setPattern(k909::Pattern{});
+    drums.setPattern(kessel::Pattern{});
     mono.setSequencerEnabled(false);
     krate::Rack rack(kBlock);
-    enum Device { K303, Klick, K909, Kalliope, Krimson, Kobalt };
+    enum Device { Korrode, Klick, Kessel, Kalliope, Krimson, Kobalt };
     rack.addDevice(bass, 0);
     rack.addDevice(metronome);
     rack.addDevice(drums, 9);
@@ -130,17 +130,17 @@ int renderSong(const SongOptions &o)
     rack.addDevice(mono, 6);
     rack.prepare(o.rate);
     rack.setMute(Klick, !o.click);
-    rack.setLevel(K909, 0.8f);
+    rack.setLevel(Kessel, 0.8f);
 
     // Assignments.
     s::SongPlayer player;
     const int trackCount = int(std::min<std::size_t>(song->tracks.size(), s::SongPlayer::kMaxTracks));
     std::vector<std::string> names(std::size_t(trackCount), "none");
     const auto assign = [&](int t, const std::string &instrument, int slot) {
-        if (instrument == "k303")
-            player.setAssignment(t, {K303, 0});
-        else if (instrument == "k909")
-            player.setAssignment(t, {K909, 9, true});
+        if (instrument == "korrode")
+            player.setAssignment(t, {Korrode, 0});
+        else if (instrument == "kessel")
+            player.setAssignment(t, {Kessel, 9, true});
         else if (instrument == "kalliope")
             player.setAssignment(t, {Kalliope, 1});
         else if (instrument == "krimson")
@@ -157,9 +157,9 @@ int renderSong(const SongOptions &o)
         for (int t = 0; t < trackCount; ++t) {
             const s::Suggestion &g = suggested[std::size_t(t)];
             if (g.kind == s::Suggestion::Kind::Drums)
-                assign(t, "k909", 0);
+                assign(t, "kessel", 0);
             else if (g.kind == s::Suggestion::Kind::Bass)
-                assign(t, "k303", 0);
+                assign(t, "korrode", 0);
             else if (g.kind == s::Suggestion::Kind::Poly && g.part < 5)
                 assign(t, g.part == 0 ? "kalliope" : "krimson", g.part - 1);
         }
@@ -262,12 +262,12 @@ int main(int argc, char **argv)
     int bars = 4;
     double bpm = 120.0;
     int rate = 48000;
-    float k303Level = 1.0f;
+    float korrodeLevel = 1.0f;
     float klickLevel = 0.7f;
     bool muteKlick = false;
     bool soloKlick = false;
-    float k909Level = -1.0f; // < 0: K909 not in the rack
-    int k909Pattern = 0;
+    float kesselLevel = -1.0f; // < 0: Kessel not in the rack
+    int kesselPattern = 0;
     float kalliopeLevel = -1.0f; // < 0: Kalliope not in the rack
     float krimsonLevel = -1.0f;  // < 0: Krimson not in the rack
     float kobaltLevel = -1.0f;   // < 0: Kobalt not in the rack
@@ -280,12 +280,12 @@ int main(int argc, char **argv)
         else if (arg == "--bars" && hasValue) bars = std::atoi(argv[++i]);
         else if (arg == "--tempo" && hasValue) bpm = std::atof(argv[++i]);
         else if (arg == "--rate" && hasValue) rate = std::atoi(argv[++i]);
-        else if (arg == "--k303" && hasValue) k303Level = float(std::atof(argv[++i]));
+        else if (arg == "--korrode" && hasValue) korrodeLevel = float(std::atof(argv[++i]));
         else if (arg == "--klick" && hasValue) klickLevel = float(std::atof(argv[++i]));
         else if (arg == "--mute-klick") muteKlick = true;
         else if (arg == "--solo-klick") soloKlick = true;
-        else if (arg == "--k909" && hasValue) k909Level = float(std::atof(argv[++i]));
-        else if (arg == "--k909-pattern" && hasValue) k909Pattern = std::atoi(argv[++i]);
+        else if (arg == "--kessel" && hasValue) kesselLevel = float(std::atof(argv[++i]));
+        else if (arg == "--kessel-pattern" && hasValue) kesselPattern = std::atoi(argv[++i]);
         else if (arg == "--kalliope" && hasValue) kalliopeLevel = float(std::atof(argv[++i]));
         else if (arg == "--krimson" && hasValue) krimsonLevel = float(std::atof(argv[++i]));
         else if (arg == "--kobalt" && hasValue) kobaltLevel = float(std::atof(argv[++i]));
@@ -295,16 +295,16 @@ int main(int argc, char **argv)
             return 2;
         }
     }
-    if (bars < 1 || rate < 8000 || bpm < 20.0 || bpm > 400.0 || k909Pattern < 0
-        || k909Pattern >= k909::kFactoryPatternCount) {
+    if (bars < 1 || rate < 8000 || bpm < 20.0 || bpm > 400.0 || kesselPattern < 0
+        || kesselPattern >= kessel::kFactoryPatternCount) {
         usage();
         return 2;
     }
 
     constexpr std::uint32_t kBlock = 64;
-    k303::Engine bass;
+    korrode::Engine bass;
     klick::Klick metronome;
-    k909::Engine drums;
+    kessel::Engine drums;
     kalliope::Engine poly;
     krimson::Engine lead;
     kobalt::Engine mono;
@@ -314,8 +314,8 @@ int main(int argc, char **argv)
     const int bassIndex = rack.addDevice(bass, /*midiChannel*/ 0);
     const int klickIndex = rack.addDevice(metronome);
     int drumsIndex = -1;
-    if (k909Level >= 0.0f) {
-        drums.setPattern(k909::factoryPattern(k909Pattern));
+    if (kesselLevel >= 0.0f) {
+        drums.setPattern(kessel::factoryPattern(kesselPattern));
         drumsIndex = rack.addDevice(drums, /*midiChannel*/ 9);
     }
     int polyIndex = -1;
@@ -392,7 +392,7 @@ int main(int argc, char **argv)
     if (leadIndex >= 0)
         rack.setLevel(leadIndex, krimsonLevel);
     if (drumsIndex >= 0)
-        rack.setLevel(drumsIndex, k909Level);
+        rack.setLevel(drumsIndex, kesselLevel);
     if (polyIndex >= 0)
         rack.setLevel(polyIndex, kalliopeLevel);
     // Kalliope's chord: C minor seventh, held from the first block on channel 2.
@@ -405,7 +405,7 @@ int main(int argc, char **argv)
         firstBlock.insert(firstBlock.end(), chord, chord + 4);
     if (leadIndex >= 0)
         firstBlock.insert(firstBlock.end(), leadChord, leadChord + 3);
-    rack.setLevel(bassIndex, k303Level);
+    rack.setLevel(bassIndex, korrodeLevel);
     rack.setLevel(klickIndex, klickLevel);
     rack.setMute(klickIndex, muteKlick);
     rack.setSolo(klickIndex, soloKlick);
@@ -442,8 +442,8 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "krate-render: could not write %s\n", out.c_str());
         return 1;
     }
-    std::printf("wrote %s: k303 + Klick%s%s%s%s%s through the rack, %d bars at %.0f BPM, %.1f s\n", out.c_str(),
-                k909Level >= 0.0f ? " + K909" : "", kalliopeLevel >= 0.0f ? " + Kalliope" : "",
+    std::printf("wrote %s: korrode + Klick%s%s%s%s%s through the rack, %d bars at %.0f BPM, %.1f s\n", out.c_str(),
+                kesselLevel >= 0.0f ? " + Kessel" : "", kalliopeLevel >= 0.0f ? " + Kalliope" : "",
                 krimsonLevel >= 0.0f ? " + Krimson" : "", kobaltLevel >= 0.0f ? " + Kobalt" : "", klangLevel >= 0.0f ? " + Klang" : "", bars, bpm,
                 double(frames) / rate);
     return 0;

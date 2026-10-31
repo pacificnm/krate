@@ -72,7 +72,7 @@ public:
     // The instrument's CC map and MIDI Learn state, if it supports MIDI Learn.
     virtual MidiLearnMap *midiLearnMap() noexcept { return nullptr; }
 
-    // Any thread. An instrument with its own pattern sequencer (k303, K909,
+    // Any thread. An instrument with its own pattern sequencer (Korrode, Kessel,
     // Kalliope's step sequencer) runs it while the transport plays, unless:
     // - it's switched off (its own RUN/STOP in the rack: on by default); switched
     //   on while the transport plays, it joins on the next bar;

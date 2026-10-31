@@ -30,7 +30,7 @@ class SlotController : public QObject
     Q_PROPERTY(int splitNote READ splitNote WRITE setSplitNote NOTIFY changed) // -1 = no split
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController). Loads
+    // Not default-constructible on purpose (see Korrode's SynthController). Loads
     // slots.json into the engine: construct it before processing starts.
     SlotController(KrimsonController &panel, krimson::Engine &engine, const QString &filePath, QObject *parent);
     ~SlotController() override;

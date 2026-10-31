@@ -485,8 +485,8 @@ void SongController::suggest()
     const auto suggested = s::suggestInstruments(*m_song, score);
     for (std::size_t t = 0; t < m_tracks.size() && t < suggested.size(); ++t) {
         switch (suggested[t].kind) {
-        case s::Suggestion::Kind::Drums: m_tracks[t].choice = choiceOf(QStringLiteral("k909")); break;
-        case s::Suggestion::Kind::Bass: m_tracks[t].choice = choiceOf(QStringLiteral("k303")); break;
+        case s::Suggestion::Kind::Drums: m_tracks[t].choice = choiceOf(QStringLiteral("kessel")); break;
+        case s::Suggestion::Kind::Bass: m_tracks[t].choice = choiceOf(QStringLiteral("korrode")); break;
         case s::Suggestion::Kind::Poly:
             m_tracks[t].choice = suggested[t].part < poly.size() ? choiceOf(poly[suggested[t].part]) : 0;
             break;
@@ -640,7 +640,7 @@ QString SongController::copyToSequencer(int track, int from, int to, int pattern
     const NoteTarget *target = choice > 0 && choice <= int(m_choices.size()) ? &m_choices[std::size_t(choice - 1)] : nullptr;
     songimport::Options options;
     options.drumMap = target && target->drumMap;
-    options.mono = target && (target->key == u"k303" || target->key == u"kobalt"); // the monosynths
+    options.mono = target && (target->key == u"korrode" || target->key == u"kobalt"); // the monosynths
     const auto spans = songimport::barSpans(*m_song, score(), from, to);
     const songimport::Result r = songimport::convert(*m_song, track, spans, options);
     if (r.chunks.empty())
@@ -671,7 +671,7 @@ QString SongController::copyToSequencer(int track, int from, int to, int pattern
                                       .arg(target->label)
                                 : QStringLiteral("%1 doubled notes merged").arg(r.report.reduced));
     if (r.report.dropped)
-        fitted << QStringLiteral("%1 drum notes K909 has no voice for").arg(r.report.dropped);
+        fitted << QStringLiteral("%1 drum notes Kessel has no voice for").arg(r.report.dropped);
     if (r.report.overflow)
         fitted << QStringLiteral("%1 notes over a pattern's limit").arg(r.report.overflow);
     if (written < int(r.chunks.size()))

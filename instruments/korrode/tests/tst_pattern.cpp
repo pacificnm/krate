@@ -1,0 +1,437 @@
+#include <QtTest>
+
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSignalSpy>
+#include <QTemporaryDir>
+
+#include <vector>
+
+#include "app/PatternModel.h"
+#include "app/PanelFile.h"
+#include "app/PatternFile.h"
+#include "dsp/Engine.h"
+#include "TestHost.h"
+
+using namespace korrode;
+namespace kp = korrode::persistence;
+namespace kf = krate::files;
+
+namespace {
+
+// Let the engine drain its command queue.
+void pump(Engine &engine)
+{
+    std::vector<float> l(64), r(64);
+    krate::processStereo(engine, l.data(), r.data(), 64);
+}
+
+void writeFile(const QString &path, const QByteArray &bytes)
+{
+    QFile f(path);
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write(bytes);
+}
+
+} // namespace
+
+class TestPattern : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void init()
+    {
+        QVERIFY(m_dir.isValid());
+        m_path = m_dir.filePath(QStringLiteral("patterns-%1.json").arg(++m_counter));
+    }
+
+    void defaultsWhenNoFile()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        QCOMPARE(model.patternIndex(), 0);
+        QCOMPARE(model.length(), 16);
+        QCOMPARE(model.rowCount(), 16);
+        pump(engine);
+        QVERIFY(engine.sequencer().pattern().steps == demoPattern().steps); // sent on startup
+    }
+
+    void editsReachTheEngine()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        model.setPatternIndex(5); // empty pattern: all rests
+        model.setSelectedStep(3);
+        QCOMPARE(model.selectedNote(), -1);
+
+        QSignalSpy changed(&model, &QAbstractItemModel::dataChanged);
+        model.setNote(5);   // a rest becomes a note
+        model.octaveUp();
+        model.toggleAccent();
+        model.toggleSlide();
+        QCOMPARE(changed.count(), 4);
+        QCOMPARE(model.selectedNote(), 5);
+        QCOMPARE(model.data(model.index(3), PatternModel::LabelRole).toString(), QStringLiteral("F↑")); // octave up
+
+        pump(engine);
+        const Step &s = engine.sequencer().pattern().steps[3];
+        QCOMPARE(s, (Step{5, 1, true, true, Gate::Note}));
+
+        model.octaveUp(); // already at +1: no change, nothing sent
+        QCOMPARE(changed.count(), 4);
+    }
+
+    void gatesAndClear()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        model.setSelectedStep(0);
+        model.setGate(1);
+        QCOMPARE(model.selectedGate(), 1);
+        QCOMPARE(model.data(model.index(0), PatternModel::LabelRole).toString(), QStringLiteral("–"));
+        model.setGate(2);
+        QCOMPARE(model.selectedNote(), -1);
+
+        model.clear();
+        pump(engine);
+        for (const auto &step : engine.sequencer().pattern().steps)
+            QCOMPARE(int(step.gate), int(Gate::Rest));
+        QCOMPARE(model.length(), 16); // length kept
+    }
+
+    void lengthAndActiveSteps()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        model.setLength(4);
+        model.setLength(99); // clamped
+        QCOMPARE(model.length(), 16);
+        model.setLength(4);
+        QVERIFY(model.data(model.index(3), PatternModel::ActiveRole).toBool());
+        QVERIFY(!model.data(model.index(4), PatternModel::ActiveRole).toBool());
+        pump(engine);
+        QCOMPARE(int(engine.sequencer().pattern().length), 4);
+
+        model.setSelectedStep(3);
+        model.selectNext(); // wraps within the length
+        QCOMPARE(model.selectedStep(), 0);
+        model.selectPrevious();
+        QCOMPARE(model.selectedStep(), 3);
+    }
+
+    void switchingPatternsLoadsThem()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        model.setSelectedStep(0);
+        model.setNote(7);          // edit pattern 1
+        model.setPatternIndex(4);  // switch to an empty one
+        pump(engine);
+        QCOMPARE(int(engine.sequencer().pattern().steps[0].gate), int(Gate::Rest));
+        model.setPatternIndex(0);
+        pump(engine);
+        QCOMPARE(int(engine.sequencer().pattern().steps[0].note), 7);
+    }
+
+    void saveAndReload()
+    {
+        {
+            Engine engine;
+            PatternModel model(engine, m_path, nullptr);
+            model.setPatternIndex(5);
+            model.setSelectedStep(9);
+            model.setNote(11);
+            model.setLength(12);
+            model.save();
+        }
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        QCOMPARE(model.patternIndex(), 5);
+        QCOMPARE(model.length(), 12);
+        model.setSelectedStep(9);
+        QCOMPARE(model.selectedNote(), 11);
+    }
+
+    void savesShortlyAfterAnEdit()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        QVERIFY(!QFile::exists(m_path));
+        model.toggleAccent();
+        QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(m_path), 4000);
+    }
+
+    void savesOnDestruction()
+    {
+        {
+            Engine engine;
+            PatternModel model(engine, m_path, nullptr);
+            model.setLength(3);
+        }
+        kp::PatternBank bank;
+        QCOMPARE(kp::loadPatterns(m_path, &bank), kp::LoadResult::Loaded);
+        QCOMPARE(int(bank.patterns[0].length), 3);
+    }
+
+    void invalidFileFallsBackToDefaults()
+    {
+        writeFile(m_path, "{ not json");
+        kp::PatternBank bank;
+        QCOMPARE(kp::loadPatterns(m_path, &bank), kp::LoadResult::Invalid);
+        QVERIFY(bank.patterns[0].steps == demoPattern().steps);
+    }
+
+    void unknownKeysIgnoredAndValuesClamped()
+    {
+        writeFile(m_path, R"({
+            "version": 1, "current": 420, "futureFeature": true,
+            "patterns": [ { "length": 40, "swing": 3,
+                            "steps": [ { "note": 99, "octave": -5, "accent": true, "gate": "tie", "colour": "red" } ] } ]
+        })");
+        kp::PatternBank bank;
+        QCOMPARE(kp::loadPatterns(m_path, &bank), kp::LoadResult::Loaded);
+        QCOMPARE(bank.current, kp::kPatternCount - 1);
+        QCOMPARE(int(bank.patterns[0].length), 16);
+        QCOMPARE(bank.patterns[0].steps[0], (Step{12, -1, true, false, Gate::Tie}));
+        QCOMPARE(int(bank.patterns[0].steps[1].gate), int(Gate::Rest)); // missing steps are rests
+        // Missing patterns are empty (slots 1..3 get the v2 factory riffs: this is a v1 file).
+        QCOMPARE(int(bank.patterns[5].steps[0].gate), int(Gate::Rest));
+    }
+
+    void newerVersionIsNotOverwritten()
+    {
+        const QByteArray newer = R"({ "version": 99, "patterns": [] })";
+        writeFile(m_path, newer);
+        {
+            Engine engine;
+            PatternModel model(engine, m_path, nullptr);
+            model.toggleAccent();
+            model.save();
+        }
+        QFile original(m_path);
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        QCOMPARE(original.readAll(), newer);
+        QVERIFY(QFile::exists(m_path + QStringLiteral(".v1")));
+    }
+
+    void newInstallHasFourFactoryRiffs()
+    {
+        const kp::PatternBank bank = kp::defaultBank();
+        for (int i = 0; i < kFactoryPatternCount; ++i)
+            QVERIFY(bank.patterns[i].steps == factoryPattern(i).steps);
+        for (int i = kFactoryPatternCount; i < kp::kPatternCount; ++i)
+            QVERIFY(kp::isEmpty(bank.patterns[i]));
+        for (int i = 0; i < kFactoryPatternCount; ++i) {
+            QVERIFY(!kp::isEmpty(factoryPattern(i)));
+            for (const auto &s : factoryPattern(i).steps) {
+                QVERIFY(s.note <= 12);
+                QVERIFY(s.octave >= -1 && s.octave <= 1);
+            }
+        }
+    }
+
+    // A v1 file gains riffs 1..3 in its first empty slots; user patterns are kept.
+    void upgradeFromV1FillsEmptySlotsOnly()
+    {
+        kp::PatternBank v1 = kp::defaultBank();
+        for (int i = 1; i < kp::kPatternCount; ++i)
+            v1.patterns[i] = kp::fromJson({}).patterns[i]; // empty
+        v1.patterns[1].steps[0] = Step{9, 0, false, false, Gate::Note}; // the user's own pattern
+        QJsonObject json = kp::toJson(v1);
+        json[QStringLiteral("version")] = 1;
+        writeFile(m_path, QJsonDocument(json).toJson());
+
+        kp::PatternBank bank;
+        QCOMPARE(kp::loadPatterns(m_path, &bank), kp::LoadResult::Loaded);
+        QVERIFY(bank.patterns[0].steps == factoryPattern(0).steps);
+        QCOMPARE(int(bank.patterns[1].steps[0].note), 9); // untouched
+        QVERIFY(bank.patterns[2].steps == factoryPattern(1).steps);
+        QVERIFY(bank.patterns[3].steps == factoryPattern(2).steps);
+        QVERIFY(bank.patterns[4].steps == factoryPattern(3).steps);
+        QVERIFY(kp::isEmpty(bank.patterns[5]));
+
+        // Saved files are v2, so the upgrade runs only once.
+        QVERIFY(kp::savePatterns(m_path, bank));
+        QFile f(m_path);
+        QVERIFY(f.open(QIODevice::ReadOnly));
+        QCOMPARE(QJsonDocument::fromJson(f.readAll()).object().value(u"version").toInt(), 2);
+    }
+
+    void randomizeMakesAValidRiff()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        model.setPatternIndex(6); // empty
+        model.setLength(12);
+        model.randomize();
+        QCOMPARE(model.length(), 12); // kept
+        pump(engine);
+        const Pattern &p = engine.sequencer().pattern();
+        QCOMPARE(int(p.steps[0].gate), int(Gate::Note));
+        int notes = 0;
+        for (const auto &s : p.steps) {
+            QVERIFY(s.note <= 12);
+            QVERIFY(s.octave >= -1 && s.octave <= 1);
+            notes += s.gate == Gate::Note;
+        }
+        QVERIFY(notes >= 4);
+
+        // Two rolls differ (16 steps of random choices: a collision is vanishingly unlikely).
+        const auto first = p.steps;
+        model.randomize();
+        pump(engine);
+        QVERIFY(engine.sequencer().pattern().steps != first);
+    }
+
+    void labelsShowOctave()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        model.setPatternIndex(7);
+        model.setSelectedStep(0);
+        model.setNote(3);
+        QCOMPARE(model.data(model.index(0), PatternModel::LabelRole).toString(), QStringLiteral("D#"));
+        model.octaveUp();
+        QCOMPARE(model.data(model.index(0), PatternModel::LabelRole).toString(), QStringLiteral("D#↑"));
+        model.octaveDown();
+        model.octaveDown();
+        QCOMPARE(model.data(model.index(0), PatternModel::LabelRole).toString(), QStringLiteral("D#↓"));
+    }
+
+    void panelRoundTrip()
+    {
+        kf::PanelValues values = kf::defaultPanel(kParams);
+        values[std::size_t(ParamId::Cutoff)] = 0.25f;
+        values[std::size_t(ParamId::PlayMode)] = 1.0f;
+        QVERIFY(kf::savePanel(m_path, kParams, values));
+        kf::PanelValues back;
+        QCOMPARE(kf::loadPanel(m_path, kParams, &back), kp::LoadResult::Loaded);
+        QVERIFY(back == values);
+
+        writeFile(m_path, R"({ "version": 1, "params": { "cutoff": 7, "warp": 0.5 } })");
+        QCOMPARE(kf::loadPanel(m_path, kParams, &back), kp::LoadResult::Loaded);
+        QCOMPARE(back[std::size_t(ParamId::Cutoff)], 1.0f);  // clamped
+        QCOMPARE(back[std::size_t(ParamId::Volume)], paramDescriptor(ParamId::Volume).defaultValue); // missing: default
+    }
+
+    void jsonRoundTrip()
+    {
+        kp::PatternBank bank = kp::defaultBank();
+        bank.current = 4;
+        bank.patterns[4].length = 9;
+        bank.patterns[4].steps[8] = Step{3, -1, false, true, Gate::Note};
+        const kp::PatternBank back = kp::fromJson(kp::toJson(bank));
+        QCOMPARE(back.current, 4);
+        for (int i = 0; i < kp::kPatternCount; ++i) {
+            QCOMPARE(back.patterns[i].length, bank.patterns[i].length);
+            QVERIFY(back.patterns[i].steps == bank.patterns[i].steps);
+        }
+    }
+
+    // 64 patterns in 8 banks: a BANK waits for a number; a file of 8 loads as bank A, and all 64 save.
+    void banks()
+    {
+        {
+            Engine engine;
+            PatternModel model(engine, m_path, nullptr);
+            QCOMPARE(model.name(), QStringLiteral("A1"));
+            model.pressBank(2);
+            QCOMPARE(model.pendingBank(), 2);
+            QCOMPARE(model.patternIndex(), 0); // not yet
+            model.pressNumber(4);
+            QCOMPARE(model.patternIndex(), 2 * 8 + 4);
+            QCOMPARE(model.name(), QStringLiteral("C5"));
+            QCOMPARE(model.pendingBank(), -1);
+            model.pressNumber(7); // no bank waiting: the current bank
+            QCOMPARE(model.name(), QStringLiteral("C8"));
+            model.pressBank(5);
+            model.pressBank(5); // again: never mind
+            QCOMPARE(model.pendingBank(), -1);
+            model.setPatternIndex(63);
+            QCOMPARE(model.name(), QStringLiteral("H8"));
+            model.setSelectedStep(0);
+            model.setNote(5);
+            model.setPatternIndex(100); // clamped
+            QCOMPARE(model.patternIndex(), 63);
+        }
+        // Saved: the H8 note is there next time.
+        kp::PatternBank saved;
+        QCOMPARE(kp::loadPatterns(m_path, &saved), kp::LoadResult::Loaded);
+        QCOMPARE(saved.current, 63);
+        QCOMPARE(saved.patterns[63].steps[0].gate, Gate::Note);
+
+        // A file from before banks (8 patterns): bank A, the rest empty.
+        QJsonObject old = kp::toJson(kp::defaultBank());
+        QJsonArray eight = old.value(u"patterns").toArray();
+        while (eight.size() > 8)
+            eight.removeLast();
+        old.insert(QStringLiteral("patterns"), eight);
+        const kp::PatternBank loaded = kp::fromJson(old);
+        QVERIFY(!kp::isEmpty(loaded.patterns[0]));
+        for (int i = 8; i < kp::kPatternCount; ++i)
+            QVERIFY(kp::isEmpty(loaded.patterns[std::size_t(i)]));
+    }
+
+    // RANDOMIZE fills about DENSITY of the steps: 0 only the first, 100 % every one.
+    void randomizeFollowsDensity()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        const auto playing = [&] {
+            int n = 0;
+            for (int i = 0; i < 16; ++i)
+                n += model.data(model.index(i), PatternModel::GateRole).toInt() != 2 ? 1 : 0; // not a rest
+            return n;
+        };
+        engine.setParam(int(korrode::ParamId::Density), 0.0f);
+        model.randomize();
+        QCOMPARE(playing(), 1);
+        engine.setParam(int(korrode::ParamId::Density), 1.0f);
+        model.randomize();
+        QCOMPARE(playing(), 16);
+        engine.setParam(int(korrode::ParamId::Density), 0.5f);
+        int total = 0;
+        for (int k = 0; k < 40; ++k) {
+            model.randomize();
+            total += playing();
+        }
+        const double share = (total / 40.0 - 1.0) / 15.0; // the 15 steps after the first
+        QVERIFY2(std::abs(share - 0.5) < 0.1, qPrintable(QString::number(share)));
+    }
+
+    void auditionPlaysOnlyWhenStopped()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        pump(engine);
+        engine.takePeak();
+        model.auditionOn(0);
+        std::vector<float> l(4800), r(4800);
+        krate::processStereo(engine, l.data(), r.data(), 4800);
+        QVERIFY(engine.takePeak() > 0.01f);
+        model.auditionOff();
+        krate::processStereo(engine, l.data(), r.data(), 4800); // 100 ms: release is ~9 ms
+        engine.takePeak();                        // discard the release itself
+        krate::processStereo(engine, l.data(), r.data(), 480);
+        QVERIFY(engine.takePeak() < 0.001f);
+
+        // While the sequencer runs, live notes are ignored (no restart of the voice).
+        TestHost host(engine);
+        host.play();
+        host.run(64);
+        model.auditionOn(0);
+        host.run(64);
+        QVERIFY(engine.sequencer().running());
+    }
+
+private:
+    QTemporaryDir m_dir;
+    QString m_path;
+    int m_counter = 0;
+};
+
+QTEST_GUILESS_MAIN(TestPattern)
+#include "tst_pattern.moc"

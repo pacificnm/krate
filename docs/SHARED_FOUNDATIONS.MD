@@ -4,20 +4,20 @@
 
 | Phase | Deliverable |
 | --- | --- |
-| 1 | **k303**: acid bass synth with step sequencer (exists; refactor to this doc, see [Refactor plan](#refactor-plan-for-k303)) |
-| 2 | **K909**: multi-voice drum synth with a track × step sequencer |
+| 1 | **korrode**: acid bass synth with step sequencer (exists; refactor to this doc, see [Refactor plan](#refactor-plan-for-korrode)) |
+| 2 | **Kessel**: multi-voice drum synth with a track × step sequencer |
 | 3 | **Kalliope**: polyphonic analog-style synth, keyboard-played, optional arpeggiator |
 | 4 | **Krate rack**: one app hosting every instrument: transport bar, mixer, per-channel MIDI routing, one session file |
 | 5+ | More instruments, each added as a library the rack picks up (see [Adding instruments](#adding-instruments)) |
 
-Names: the suite and rack are **Krate**; the instruments are **k303**, **K909** and **Kalliope**. Docs, code and commits never name the original hardware that inspired an instrument, or its maker.
+Names: the suite and rack are **Krate**; the instruments are **korrode**, **Kessel** and **Kalliope**. Docs, code and commits never name the original hardware that inspired an instrument, or its maker.
 
 ## Principles
 
 1. **The realtime instrument is pure.** Each instrument's DSP core implements `IInstrument`: a `process()` that reads only its inputs (audio buffers, MIDI events, transport state, its own parameters and command queue) and writes only its outputs. No Qt, no JACK, no globals, no allocation, locks or I/O. The same object runs under a standalone host, a rack, an offline renderer or (later) a plugin wrapper.
 2. **Saved state lives outside the realtime path.** Each instrument has a non-realtime controller layer (Qt) that owns the editable state (patterns, MIDI map, knob positions) and does all serialization. It sends changes to the core as commands. The core never touches files. *(Changed from an earlier draft, which put `serialize()` on the engine: file and JSON work cannot run on the audio thread.)*
 3. **Time comes from a transport, not from each instrument.** Tempo, play/stop and song position are supplied to `process()` every block. A standalone app creates its own transport; the rack supplies one shared transport to all devices. Sequencers derive their steps from it.
-4. **MIDI is delivered with the audio block, timestamped.** Hosts read MIDI in the audio callback and pass each block's events, with frame offsets, to `process()`. Events apply at their exact sample. No MIDI thread, no queue between MIDI and audio. *(Changed from an earlier draft, which had a MIDI thread feeding a lock-free queue: that adds latency and loses sample accuracy; see k303 DECISIONS D1.)*
+4. **MIDI is delivered with the audio block, timestamped.** Hosts read MIDI in the audio callback and pass each block's events, with frame offsets, to `process()`. Events apply at their exact sample. No MIDI thread, no queue between MIDI and audio. *(Changed from an earlier draft, which had a MIDI thread feeding a lock-free queue: that adds latency and loses sample accuracy; see korrode DECISIONS D1.)*
 5. **One audio client per process.** Standalone, each instrument app owns its JACK/PipeWire client. In the rack, the rack owns the single client and calls each device's `process()` with its own output buffers, and exposes a stereo output pair per device plus the master pair. Because devices never talk to JACK themselves, this is a host swap, not a device change.
 6. **Shared code is shared, not copied.** Everything instrument-neutral (interfaces, queues, MIDI, learn, parameter system, host, UI components) lives in one shared library that all apps link.
 
@@ -36,7 +36,7 @@ struct ParamDescriptor {
     std::string (*format)(float normalized);  // "1.25 kHz", "Fwd+Rev": GUI thread only
 };
 
-class ParamStore;  // lock-free normalized values + "changed by audio" bits (as in k303 today)
+class ParamStore;  // lock-free normalized values + "changed by audio" bits (as in korrode today)
 ```
 
 Values crossing any boundary are normalized 0..1. Conversion to engine units stays inside each instrument.
@@ -95,7 +95,7 @@ public:
 
 As built in R2 (`shared/core/Instrument.h`): parameters are reached by index rather than through a shared `ParamStore` type, so the interface does not depend on any instrument's parameter enum; `ParamStore` stays an implementation detail. A `processStereo()` helper wraps two buffers into an `AudioBlock` for stereo hosts and tests.
 
-Instrument-specific data (k303 patterns, K909 drum tracks, Kalliope programs) does not go through this interface. Each instrument has its own command queue (GUI → audio) and event queue (audio → GUI) between its controller and its core, as k303 already does with `Engine::post()` and `popEvent()`.
+Instrument-specific data (korrode patterns, Kessel drum tracks, Kalliope programs) does not go through this interface. Each instrument has its own command queue (GUI → audio) and event queue (audio → GUI) between its controller and its core, as korrode already does with `Engine::post()` and `popEvent()`.
 
 Output level: each instrument keeps its output bounded (no hard overs) but does not heavy-limit. The rack's mixer owns the master limiter. In standalone mode, the host adds the same master limiter.
 
@@ -148,25 +148,25 @@ shared/
                           PianoKeyboard, Led, LcdField, PanelLabel, LearnOverlay, Theme
   tests/     tst_queue; TestHost.h (drives any IInstrument with a Transport)
 instruments/
-  k303/      dsp/ (k303_dsp: Engine : IInstrument), app/ + qml/ (k303_ui: QML module "K303"),
-             tools/ (k303-render), tests/, docs/, README.md
+  korrode/      dsp/ (korrode_dsp: Engine : IInstrument), app/ + qml/ (korrode_ui: QML module "Korrode"),
+             tools/ (korrode-render), tests/, docs/, README.md
   klick/     dsp/ (klick_dsp: metronome, IInstrument), tests/, README.md
-  k909/      dsp/ (k909_dsp), app/ + qml/ (k909_ui: QML module "K909"), tools/ (k909-render), tests/, docs/
+  kessel/      dsp/ (kessel_dsp), app/ + qml/ (kessel_ui: QML module "Kessel"), tools/ (kessel-render), tests/, docs/
   kalliope/  dsp/ (kalliope_dsp), app/ + qml/ (kalliope_ui: QML module "Kalliope"), tools/ (kalliope-render), tests/, docs/
   krimson/   dsp/ (krimson_dsp), app/ + qml/ (krimson_ui: QML module "Krimson"), tools/ (krimson-render), tests/, docs/
-             (K909, Kalliope and Krimson are included as "k909/...", "kalliope/...", "krimson/...": instruments share file names)
+             (Kessel, Kalliope and Krimson are included as "kessel/...", "kalliope/...", "krimson/...": instruments share file names)
   kalliope/  ...
 apps/
-  k303/      main.cpp: JackHost + the K303 and Krate modules
-  k909/, kalliope/
+  korrode/      main.cpp: JackHost + the Korrode and Krate modules
+  kessel/, kalliope/
   krate/     main.cpp: RackHost + all instrument modules + rack UI (binary: krate)
-  krate-render/  main.cpp: the rack (k303 + Klick, K909 with --k909, Kalliope with --kalliope, Krimson with --krimson, Kobalt with --kobalt, Klang with --klang) rendered offline to WAV
+  krate-render/  main.cpp: the rack (korrode + Klick, Kessel with --kessel, Kalliope with --kalliope, Krimson with --krimson, Kobalt with --kobalt, Klang with --klang) rendered offline to WAV
 docs/        suite-level docs (this file); each instrument keeps its own docs/
 ```
 
 Each instrument builds as **libraries plus a static QML module**, and each app is a thin `main.cpp` that links the modules' plugins (`Q_IMPORT_QML_PLUGIN`). The rack will link every instrument's libraries and show their panels inside its own window. Binaries land in `build/bin/`, QML modules in `build/qml/`.
 
-QML singletons: k303 uses singletons (`Synth`, `Pattern`, `MidiLearn`). That works in the rack because each instrument has its own QML module, giving one instance per instrument type. **Decided: the rack holds at most one of each instrument**, so singletons stay. (Allowing two copies of one instrument later would mean replacing the singletons with per-panel controller objects.)
+QML singletons: korrode uses singletons (`Synth`, `Pattern`, `MidiLearn`). That works in the rack because each instrument has its own QML module, giving one instance per instrument type. **Decided: the rack holds at most one of each instrument**, so singletons stay. (Allowing two copies of one instrument later would mean replacing the singletons with per-panel controller objects.)
 
 ## The rack layer
 
@@ -221,7 +221,7 @@ It was a plain `tanh` until it was measured on a live take: `tanh` bends everyth
 
 The rack has two audio inputs, `in_1` and `in_2`: an audio interface's two inputs, for a guitar. Each is fed by one capture port chosen under **AUDIO** in the transport bar (saved in `rack.json` as `"audioInputs"`, reconnected whenever that device appears). Every device with `inputChannels() > 0` gets both, re-based per chunk like its MIDI; inputs it asks for beyond the rack's are silent, and hosts without inputs (`krate-render`, tests) give it none (`inputs == nullptr`). The same popup picks the playback device the master goes to (`"outputDevice"`; by default the first hardware outputs), sets the buffer size asked of the server (`"bufferSize"` in `rack.json`; `jack_set_buffer_size`, which PipeWire honours while Krate runs) and shows the delay from input to speakers, the capture plus playback latency the server reports.
 
-**An instrument through the amp.** A device with audio inputs (Krunch) can take them from another instrument instead of the interface: the **input box** at the bottom of its mixer strip (where the others show their MIDI channel) reads **INPUT** (the interface) or the instrument feeding it; click for the next, right-click or wheel for the previous. The source's own output is taken before its EQ and fader, summed to mono on every input (so Krunch's INPUT 1 and 2 both carry it): mute the source's strip to hear only the amp, or leave it up to blend the dry sound in. A device fed by another is processed after the others, so any instrument can feed it in the same block, the backing track included; one with inputs can't feed another (no loops). Saved per device as `"input"` (the source's id, `""` = the interface) in `rack.json` and in each song's mixer. Measured with the real engines: k303 at −18.3 dB RMS comes out of Krunch's default channel at −18.9 dB.
+**An instrument through the amp.** A device with audio inputs (Krunch) can take them from another instrument instead of the interface: the **input box** at the bottom of its mixer strip (where the others show their MIDI channel) reads **INPUT** (the interface) or the instrument feeding it; click for the next, right-click or wheel for the previous. The source's own output is taken before its EQ and fader, summed to mono on every input (so Krunch's INPUT 1 and 2 both carry it): mute the source's strip to hear only the amp, or leave it up to blend the dry sound in. A device fed by another is processed after the others, so any instrument can feed it in the same block, the backing track included; one with inputs can't feed another (no loops). Saved per device as `"input"` (the source's id, `""` = the interface) in `rack.json` and in each song's mixer. Measured with the real engines: korrode at −18.3 dB RMS comes out of Krunch's default channel at −18.9 dB.
 
 ### MIDI routing
 
@@ -230,7 +230,7 @@ Decided: **per-channel routing plus a focus**, so one controller can play one in
 | Message | Goes to |
 | --- | --- |
 | Notes on the keyboard's channel (**KEYS → Keys play focus on**: any channel by default, or one channel; saved as `"keysChannel"` in `rack.json`, 16 = any, -1 = off) | The focused device, whatever device holds the channel: pick an instrument (its tab, Tab, a learned focus button) and the keys play it |
-| Notes on a channel assigned to a device | That device (defaults: ch 10 → K909, ch 2 → Kalliope, ch 3–6 → Krimson's slots A–D, ch 7 → Kobalt, ch 11 → Klang; k303 and Klick have none) |
+| Notes on a channel assigned to a device | That device (defaults: ch 10 → Kessel, ch 2 → Kalliope, ch 3–6 → Krimson's slots A–D, ch 7 → Kobalt, ch 11 → Klang; korrode and Klick have none) |
 | Notes on an unassigned channel | The focused device |
 | A note-off | The device its note-on went to, so switching focus (or channels) with a key down leaves nothing hanging |
 | CC with a **fixed** mapping | The mapped device and parameter, whatever has focus |
@@ -239,7 +239,7 @@ Decided: **per-channel routing plus a focus**, so one controller can play one in
 
 Rack-level MIDI map (in `rack.json`): entries keyed by **(channel, CC)** → (device, parameter key) for fixed mappings, or → parameter key for follow-focus mappings; channel can be "any". Learning in the rack: arm a control on any device panel, move a hardware knob; the rack records the channel too, so the same CC number on different channels can drive different instruments.
 
-Focus switching from the controller: a rack action that is MIDI-learnable like a parameter. Learn "focus k303", "focus K909", "focus next" etc. to a button's CC or note, or use Program Change n → device n. The Nektar's buttons and its preset/program features can send these; the exact messages are checked on the hardware when the rack is built.
+Focus switching from the controller: a rack action that is MIDI-learnable like a parameter. Learn "focus korrode", "focus Kessel", "focus next" etc. to a button's CC or note, or use Program Change n → device n. The Nektar's buttons and its preset/program features can send these; the exact messages are checked on the hardware when the rack is built.
 
 Standalone apps keep their own `midimap.json` as today (one device, so no channel or focus logic).
 
@@ -247,15 +247,15 @@ Standalone apps keep their own `midimap.json` as today (one device, so no channe
 
 Decided: the target setup is **one Nektar Impact LX49 mk3** driving every instrument.
 
-- A button (or several) on the LX49 switches focus: "focus k303", "focus K909", "focus Kalliope", "focus next". Whichever message the button sends (CC, note or Program Change) works, because focus actions are learned like parameters. The panel shows which instrument has focus.
-- Keys and follow-focus knobs drive the focused instrument; fixed knobs (for example K909's level, or tempo) ignore focus.
-- If the LX49's pads can send on their own channel, per-channel routing lets pads play K909 (e.g. channel 10) while the keys play the focused instrument. To be checked on the hardware.
-- Each mixer strip has a **MIDI channel selector** (FOCUS or CH 1–16; click for the next, right-click or wheel for the previous), saved in `rack.json` as a list per device. A device can hold several channels: Krimson's registry entry adds `extraMidiChannels` (4–6) to its default 3, and its strip reads **CH 3+3**; picking a channel leaves it just that one, double-click restores the defaults. A channel belongs to one device: giving it to another takes it. With one keyboard, leave the instruments the keys should play on FOCUS: an instrument holding the keyboard's channel gets the keys whatever has focus. (Found on the hardware: k303 used to default to channel 1, the LX49's, so the keys never reached Kalliope; k303 now defaults to FOCUS.)
+- A button (or several) on the LX49 switches focus: "focus korrode", "focus Kessel", "focus Kalliope", "focus next". Whichever message the button sends (CC, note or Program Change) works, because focus actions are learned like parameters. The panel shows which instrument has focus.
+- Keys and follow-focus knobs drive the focused instrument; fixed knobs (for example Kessel's level, or tempo) ignore focus.
+- If the LX49's pads can send on their own channel, per-channel routing lets pads play Kessel (e.g. channel 10) while the keys play the focused instrument. To be checked on the hardware.
+- Each mixer strip has a **MIDI channel selector** (FOCUS or CH 1–16; click for the next, right-click or wheel for the previous), saved in `rack.json` as a list per device. A device can hold several channels: Krimson's registry entry adds `extraMidiChannels` (4–6) to its default 3, and its strip reads **CH 3+3**; picking a channel leaves it just that one, double-click restores the defaults. A channel belongs to one device: giving it to another takes it. With one keyboard, leave the instruments the keys should play on FOCUS: an instrument holding the keyboard's channel gets the keys whatever has focus. (Found on the hardware: korrode used to default to channel 1, the LX49's, so the keys never reached Kalliope; korrode now defaults to FOCUS.)
 - Hardware notes (2026-10-28): the LX49 mk3 is class-compliant on Linux (USB ID `2467:201a`) and has **two MIDI ports**: `MIDI1` (keys, knobs, faders, pads) and `MIDI2` (control and transport buttons). Hosts connect every port matching the device name, so both arrive. The control buttons send CCs on channel 16 via MIDI2 (one sends CC 47, value 127 on press and 0 on release); everything the user wanted (focus switching, pattern buttons, play/stop, knobs) maps through rack MIDI Learn with no code changes (K6).
 
 #### Who resolves CCs
 
-Decided: **in the rack, Krate resolves mapped CCs itself** and sets the target instrument's parameter directly. Instruments receive notes and any CCs the rack has not mapped. Each instrument's own `MidiLearnMap` is used standalone only. This is what lets one knob drive K909 while another drives k303, whatever has focus.
+Decided: **in the rack, Krate resolves mapped CCs itself** and sets the target instrument's parameter directly. Instruments receive notes and any CCs the rack has not mapped. Each instrument's own `MidiLearnMap` is used standalone only. This is what lets one knob drive Kessel while another drives korrode, whatever has focus.
 
 #### Rack additions to the shared interfaces
 
@@ -278,13 +278,13 @@ An instrument's manual is a Markdown file in its QML module (`RESOURCES docs/MAN
 
 The suite will grow beyond three, so the rack must not hard-code its devices.
 
-- Each instrument library exports one registration entry: id (`k303`), display name, a factory for its core and controller, its QML module and panel component, its default MIDI channel, and the size of its panel.
+- Each instrument library exports one registration entry: id (`korrode`), display name, a factory for its core and controller, its QML module and panel component, its default MIDI channel, and the size of its panel.
 - `apps/krate` lists the instruments it links in one place (a compile-time registry). Adding an instrument = adding its library and one registry line; no rack code changes.
 - Everything the rack does (routing, mixer strips, learn, session save, outputs) works from the registry and each device's `parameters()`, never from instrument-specific types.
 
 ## Instrument notes
 
-| | k303 | K909 | Kalliope |
+| | korrode | Kessel | Kalliope |
 | --- | --- | --- | --- |
 | Voices | 1, mono, legato/slide | One per drum sound, fixed | N, voice allocation and stealing |
 | Sequencer | Step: note/octave/accent/slide/gate | Tracks × steps: trigger/accent (flam, per-step params later) | None; optional arpeggiator driven by the transport |
@@ -292,22 +292,22 @@ The suite will grow beyond three, so the rack must not hard-code its devices.
 | Outputs | Stereo | Stereo; per-voice outputs optional later | Stereo |
 | Keys | Play the voice (stopped) | Trigger sounds (mapped notes) | Play polyphonically |
 
-`StepClock` is the timing and step-order part of k303's `Sequencer`, extracted and shared; each instrument keeps its own step data and step rules.
+`StepClock` is the timing and step-order part of korrode's `Sequencer`, extracted and shared; each instrument keeps its own step data and step rules.
 
-## Refactor plan for k303
+## Refactor plan for korrode
 
-Each step keeps every test green and k303 behaving the same; commit after each.
+Each step keeps every test green and korrode behaving the same; commit after each.
 
 | # | Step | Done when |
 | --- | --- | --- |
 | R1 ✅ | **Parameter descriptors.** Replace the `ParamId`-only table with `ParamDescriptor` (add detents and `format`); move display text from `SynthController` into the core | `Synth.displayText` reads `format`; tests cover every parameter's text |
-| R2 ✅ | **`IInstrument` and `AudioBlock`.** `Engine` implements it; `k303-render` and tests drive it through the interface | Renderer output identical before and after (sample compare) |
-| R3 ✅ | **Transport.** Add `TransportState` and a `Transport`; Tempo and run/stop move out of the instrument into the transport; extract `StepClock` from `Sequencer` and drive it from beat position | Existing timing tests pass against the transport; the Tempo knob still works (it drives the standalone transport). Result: renders byte-identical; Tempo stays in k303's parameter table so the knob, `panel.json` and MIDI Learn keep working, but the engine ignores it and the standalone app forwards it to its transport |
+| R2 ✅ | **`IInstrument` and `AudioBlock`.** `Engine` implements it; `korrode-render` and tests drive it through the interface | Renderer output identical before and after (sample compare) |
+| R3 ✅ | **Transport.** Add `TransportState` and a `Transport`; Tempo and run/stop move out of the instrument into the transport; extract `StepClock` from `Sequencer` and drive it from beat position | Existing timing tests pass against the transport; the Tempo knob still works (it drives the standalone transport). Result: renders byte-identical; Tempo stays in korrode's parameter table so the knob, `panel.json` and MIDI Learn keep working, but the engine ignores it and the standalone app forwards it to its transport |
 | R4 ✅ | **Generic MIDI.** Extract `MidiEvent` decoding and `MidiLearnMap` into shared core; make `MidiLearnController` and `LearnOverlay` work from descriptor keys | `tst_midi` passes unchanged plus tests for the shared pieces |
-| R5 ✅ | **Host decoupling.** `JackHost` takes an `IInstrument&` and a transport, and owns the master stage; no k303 types in the host | Host compiles without any k303 header. Result: `krate::JackHost` + `krate::MasterStage` (soft clip + meter, [Master stage](#master-stage); the engine no longer clips); `krate_core` and `krate_host` libraries; verified by compiling `core/` + `host/` alone; renders byte-identical |
-| R6 ✅ | **Repo layout.** Move to `shared/`, `instruments/k303/`, `apps/k303/`; shared QML components become their own module | Clean build from scratch; the k303 app and all tests run as before |
+| R5 ✅ | **Host decoupling.** `JackHost` takes an `IInstrument&` and a transport, and owns the master stage; no korrode types in the host | Host compiles without any korrode header. Result: `krate::JackHost` + `krate::MasterStage` (soft clip + meter, [Master stage](#master-stage); the engine no longer clips); `krate_core` and `krate_host` libraries; verified by compiling `core/` + `host/` alone; renders byte-identical |
+| R6 ✅ | **Repo layout.** Move to `shared/`, `instruments/korrode/`, `apps/korrode/`; shared QML components become their own module | Clean build from scratch; the korrode app and all tests run as before |
 
-**The refactor is complete.** Starting K909 means adding `instruments/k909/` and `apps/k909/` and nothing in `shared/` should need to change except genuinely new shared pieces.
+**The refactor is complete.** Starting Kessel means adding `instruments/kessel/` and `apps/kessel/` and nothing in `shared/` should need to change except genuinely new shared pieces.
 
 ## Rack build plan
 
@@ -316,18 +316,18 @@ Each step ends with something runnable and tested; commit after each. Instrument
 | # | Step | Done when |
 | --- | --- | --- |
 | K1 ✅ | **Rack core** (`shared/rack`, no Qt, no JACK): `krate::Rack` owns the device list, per-device buffers, the shared transport, MIDI routing (channel map + focus), the rack CC map (fixed and follow-focus, resolved via `setParamFromHost`), focus actions, and the mixer (level, pan, mute, solo) into the master stage. Adds `setParamFromHost` to `IInstrument` | Offline tests with fake instruments: routing by channel and focus, focus switching from a learned message, fixed vs follow-focus CCs, mixer math, two devices locked to one transport. Result: `shared/rack` (`krate::Rack`, library `krate_rack`), `tst_rack` (19 tests); a learned button doesn't fire on the press that teaches it; Program Change *n* focuses device *n* (can be turned off); blocks longer than the rack's buffers are split with MIDI and beat re-based |
-| K2 ✅ | **Klick**: a tiny metronome instrument in `instruments/klick` (beat clicks, accented bar, level) | Second real device in the rack; locks to the transport; also serves as the click track for k303's timing check. Result: `instruments/klick` (`tst_klick`), shared `krate::ParamValues<N>` and `tools/WavFile.h`, and `apps/krate-render` (k303 + Klick through a real `krate::Rack` to WAV). Verified: with Klick muted the rack render is byte-identical to standalone k303; clicks land on k303's beats to the sample. The mixer now starts at its fader settings instead of ramping from unity |
-| K3 ✅ | **Controller split and registry.** Instrument controllers stop owning a host or transport: k303's `Synth` gets its transport and audio status from whoever hosts it. Each instrument library exports a registry entry (id, name, factory, panel, default MIDI channel) | Standalone k303 unchanged: renders byte-identical, app behaves the same. Result: `krate::Transport` (renamed from `StandaloneTransport`; the rack shares one), `krate::AudioHost` interface (JackHost implements it), QML singleton **`Host`** (`krate::HostController`: audio status, reconnect, MIDI auto-connect, master meter), `krate::InstrumentEntry` / `InstrumentInstance` / `InstrumentContext` (`shared/app/InstrumentRegistry.h`, with `triggerAction` for learnable buttons); k303's `Synth` keeps only k303 concerns and is given a transport (none in the rack: it hides Tempo and RUN/STOP); the standalone app builds k303 through `k303::registryEntry()`; `tst_instance` |
-| K4 ✅ | **RackHost and the `krate` app.** One JACK client: a stereo pair per device plus master, MIDI in. Window: transport bar, device panels (tabs or stack, focus indicator), mixer strip. Panels hide their own Tempo and RUN/STOP | `./build/bin/krate` plays k303 (and Klick) in time from the transport bar; mixer and per-device ports work. Result: `JackHost` now runs a `JackProcessor` (`InstrumentProcessor` for standalone apps, `RackProcessor` for the rack; standalone renders unchanged); ports `krate:master_L/R` (to the speakers), `krate:<id>_L/R` per device, `krate:midi_in`; shared `krate::ParamController` (QML base for instrument knobs; Klick's panel uses it); Klick's QML module and registry entry; `apps/krate` (`Rack` singleton: devices, focus, transport, mixer, meters; window: transport bar, tabs = focus, panel scaled to fit, mixer strips). Interim until K5: instruments use their standalone files; MIDI Learn on k303's own map. Verified in the app: Program Change 1 focuses Klick; a channel-1 note plays k303 regardless of focus |
+| K2 ✅ | **Klick**: a tiny metronome instrument in `instruments/klick` (beat clicks, accented bar, level) | Second real device in the rack; locks to the transport; also serves as the click track for korrode's timing check. Result: `instruments/klick` (`tst_klick`), shared `krate::ParamValues<N>` and `tools/WavFile.h`, and `apps/krate-render` (korrode + Klick through a real `krate::Rack` to WAV). Verified: with Klick muted the rack render is byte-identical to standalone korrode; clicks land on korrode's beats to the sample. The mixer now starts at its fader settings instead of ramping from unity |
+| K3 ✅ | **Controller split and registry.** Instrument controllers stop owning a host or transport: korrode's `Synth` gets its transport and audio status from whoever hosts it. Each instrument library exports a registry entry (id, name, factory, panel, default MIDI channel) | Standalone korrode unchanged: renders byte-identical, app behaves the same. Result: `krate::Transport` (renamed from `StandaloneTransport`; the rack shares one), `krate::AudioHost` interface (JackHost implements it), QML singleton **`Host`** (`krate::HostController`: audio status, reconnect, MIDI auto-connect, master meter), `krate::InstrumentEntry` / `InstrumentInstance` / `InstrumentContext` (`shared/app/InstrumentRegistry.h`, with `triggerAction` for learnable buttons); korrode's `Synth` keeps only korrode concerns and is given a transport (none in the rack: it hides Tempo and RUN/STOP); the standalone app builds korrode through `korrode::registryEntry()`; `tst_instance` |
+| K4 ✅ | **RackHost and the `krate` app.** One JACK client: a stereo pair per device plus master, MIDI in. Window: transport bar, device panels (tabs or stack, focus indicator), mixer strip. Panels hide their own Tempo and RUN/STOP | `./build/bin/krate` plays korrode (and Klick) in time from the transport bar; mixer and per-device ports work. Result: `JackHost` now runs a `JackProcessor` (`InstrumentProcessor` for standalone apps, `RackProcessor` for the rack; standalone renders unchanged); ports `krate:master_L/R` (to the speakers), `krate:<id>_L/R` per device, `krate:midi_in`; shared `krate::ParamController` (QML base for instrument knobs; Klick's panel uses it); Klick's QML module and registry entry; `apps/krate` (`Rack` singleton: devices, focus, transport, mixer, meters; window: transport bar, tabs = focus, panel scaled to fit, mixer strips). Interim until K5: instruments use their standalone files; MIDI Learn on korrode's own map. Verified in the app: Program Change 1 focuses Klick; a channel-1 note plays korrode regardless of focus |
 | K5 ✅ | **Rack MIDI learn and session.** Learn fixed and follow-focus knobs and focus actions; `rack.json` saves transport, mixer, routing, MIDI map, focus, device choice and each device's state | A restart restores everything. Result: rack mappings can also be **actions** (rack play/stop, any instrument's buttons) from CCs or notes; `MidiLearn` is now a base with `InstrumentMidiLearn` (standalone, `midimap.json`) and `RackMidiLearn` (rack: panel keys mean the focused instrument; fixed or follow-focus via FOLLOW; rack keys `rack:playstop`, `rack:focus:<n>`, `rack:next`, `rack:previous` (later `rack:mixer`); badges like "CC 47 ch16"); `rack.json` (`~/.config/krate/`) saves tempo, focus, MIDI device, mixer, channel routing and mappings by instrument id and key. Instrument knobs and patterns stay in each instrument's own folder (shared with its standalone app). `tst_racklearn`; verified in the app with a saved session driving focus and pattern buttons |
-| K6 ✅ | **Hardware check with the LX49**: focus buttons, pads channel, knobs | Notes recorded here; any message types the LX49 sends that we don't handle are fixed. Result: on real hardware, every LX49 control the user wanted mapped (focus switching, k303 pattern buttons, play/stop, knobs) learned and worked through rack MIDI Learn; no unhandled message types turned up, so no code changes were needed |
+| K6 ✅ | **Hardware check with the LX49**: focus buttons, pads channel, knobs | Notes recorded here; any message types the LX49 sends that we don't handle are fixed. Result: on real hardware, every LX49 control the user wanted mapped (focus switching, korrode pattern buttons, play/stop, knobs) learned and worked through rack MIDI Learn; no unhandled message types turned up, so no code changes were needed |
 
 ## Decisions and open questions
 
 | # | Question | Decision |
 | --- | --- | --- |
-| 1 | Suite and repo name | **Krate** (suite and rack app). Rename the GitHub repo `k303` → `krate` before R6 |
-| 2 | Instrument names | k303, K909, Kalliope |
+| 1 | Suite and repo name | **Krate** (suite and rack app). Rename the GitHub repo `korrode` → `krate` before R6 |
+| 2 | Instrument names | korrode, Kessel, Kalliope |
 | 3 | More than one copy of an instrument in the rack | No: one of each; QML singletons stay |
 | 4 | Rack MIDI routing | Per-channel routing plus focus; fixed and follow-focus CC mappings; focus switching learnable from the controller |
 | 5 | Rack audio outputs | Stereo pair per device plus master |
@@ -336,4 +336,4 @@ Each step ends with something runnable and tested; commit after each. Instrument
 | 8 | Controllers | One LX49; focus switched from a button on it (any learnable CC, note or Program Change); pads on their own channel if the hardware allows |
 | 9 | Who maps CCs in the rack | Krate resolves mapped CCs and calls `setParamFromHost`; instruments get notes and unmapped CCs; instrument learn maps are standalone-only |
 | 10 | MIDI device setting | Host-owned: `rack.json` in the rack, `midimap.json` standalone |
-| 11 | Next build | The Krate rack (K1–K6), before K909 |
+| 11 | Next build | The Krate rack (K1–K6), before Kessel |

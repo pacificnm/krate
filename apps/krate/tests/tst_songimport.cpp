@@ -9,7 +9,7 @@ using namespace songimport;
 
 // Copying a song's bars into the sequencer (docs/SEQUENCER.md, Q3): bars into
 // patterns of up to 16 beats, notes fitted to the grid that moves fewest,
-// drums mapped, k303 kept to one note, repeats taken from the first time through.
+// drums mapped, Korrode kept to one note, repeats taken from the first time through.
 class TestSongImport : public QObject
 {
     Q_OBJECT
@@ -89,7 +89,7 @@ private slots:
         QCOMPARE(r.chunks[0].length, std::uint16_t(15 * kTicksPerBeat));
     }
 
-    // k303: a chord keeps its top note.
+    // Korrode: a chord keeps its top note.
     void monoKeepsTheTop()
     {
         const Song s = song({on(0, 0, 40), on(0, 1, 47), on(0, 2, 52), off(480, 0, 40), off(480, 1, 47), off(480, 2, 52)}, 1920);
@@ -103,7 +103,7 @@ private slots:
         QCOMPARE(poly.chunks[0].notes.size(), std::size_t(3));
     }
 
-    // Drums: mapped to K909's voices; notes it has no voice for are dropped.
+    // Drums: mapped to Kessel's voices; notes it has no voice for are dropped.
     void drumsMapped()
     {
         const Song s = song({on(0, 9, 36), off(60, 9, 36), on(480, 9, 52), off(540, 9, 52), on(960, 9, 29), off(1000, 9, 29)},

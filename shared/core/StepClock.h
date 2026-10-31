@@ -52,7 +52,7 @@ public:
     int nextStep() const noexcept { return m_next < m_length ? m_next : 0; } // already chosen
     int stepsPerBeat() const noexcept { return m_stepsPerBeat; }
     // Steps played since start(): 0 for the first. Its parity is the step's
-    // place in time (on or off the beat), whatever the play order (K909's shuffle).
+    // place in time (on or off the beat), whatever the play order (Kessel's shuffle).
     std::int64_t stepCount() const noexcept { return m_count; }
 
 private:

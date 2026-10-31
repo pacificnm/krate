@@ -21,8 +21,8 @@
 #include "SongController.h"
 #include "app/HostController.h"
 #include "app/InstrumentRegistry.h"
-#include "app/K303Instrument.h"
-#include "k909/app/K909Instrument.h"
+#include "app/KorrodeInstrument.h"
+#include "kessel/app/KesselInstrument.h"
 #include "kalliope/app/KalliopeInstrument.h"
 #include "krimson/app/KrimsonInstrument.h"
 #include "kobalt/app/KobaltInstrument.h"
@@ -42,8 +42,8 @@
 #include "SequencerController.h"
 
 Q_IMPORT_QML_PLUGIN(KratePlugin)
-Q_IMPORT_QML_PLUGIN(K303Plugin)
-Q_IMPORT_QML_PLUGIN(K909Plugin)
+Q_IMPORT_QML_PLUGIN(KorrodePlugin)
+Q_IMPORT_QML_PLUGIN(KesselPlugin)
 Q_IMPORT_QML_PLUGIN(KalliopePlugin)
 Q_IMPORT_QML_PLUGIN(KrimsonPlugin)
 Q_IMPORT_QML_PLUGIN(KobaltPlugin)
@@ -64,8 +64,8 @@ int main(int argc, char *argv[])
     // The instruments in this rack: one registry line each
     // (docs/SHARED_FOUNDATIONS.MD#adding-instruments).
     QList<krate::InstrumentEntry> entries = {
-        k303::registryEntry(),
-        k909::registryEntry(),
+        korrode::registryEntry(),
+        kessel::registryEntry(),
         kalliope::registryEntry(),
         krimson::registryEntry(),
         kobalt::registryEntry(),

@@ -48,8 +48,8 @@ target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(krate PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSION}")
 target_compile_options(krate PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(krate PRIVATE
-    k303_ui k303_uiplugin
-    k909_ui k909_uiplugin
+    korrode_ui korrode_uiplugin
+    kessel_ui kessel_uiplugin
     kalliope_ui kalliope_uiplugin
     krimson_ui krimson_uiplugin
     kobalt_ui kobalt_uiplugin

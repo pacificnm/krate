@@ -15,7 +15,7 @@ class KlickController : public krate::ParamController
     QML_SINGLETON
 
 public:
-    // Not default-constructible on purpose (see k303's SynthController).
+    // Not default-constructible on purpose (see Korrode's SynthController).
     KlickController(krate::IInstrument &instrument, const QString &panelFilePath, QObject *parent);
     ~KlickController() override;
 

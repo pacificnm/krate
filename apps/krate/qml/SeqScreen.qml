@@ -7,7 +7,7 @@ import KrateRack
 
 // The rack sequencer's screen (docs/SEQUENCER.md): RUN, the 16 patterns,
 // length and grid; the 8 tracks (each playing an instrument); a piano roll
-// for the selected track (drum lanes for K909) with a velocity lane.
+// for the selected track (drum lanes for Kessel) with a velocity lane.
 Item {
     id: screen
 

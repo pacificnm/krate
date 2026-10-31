@@ -16,7 +16,7 @@ constexpr int kSaveDelayMs = 1000;
 constexpr int kPollIntervalMs = 30;
 constexpr int kFileVersion = 1;
 
-// K909's voices, top to bottom, each with the note that plays it (k909::Engine::drumForNote).
+// Kessel's voices, top to bottom, each with the note that plays it (Kessel::Engine::drumForNote).
 struct DrumLane
 {
     const char *name;
