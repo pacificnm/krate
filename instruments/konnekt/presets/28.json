@@ -1,0 +1,367 @@
+{
+ "version": 1,
+ "title": "Body Music Groove",
+ "category": "Drums and grooves",
+ "text": "Sound: a complete EBM groove: the galloping sequenced bass with a kick on every beat and hats on the off-beats, ready to play over. It plays by itself; hold a key around C3 to move the bass part's root.\n\nHow it's built: one Clock runs it all. The bass: Clock 1/16 \u2192 Sequencer \u2192 saw into the OTA filter, one short envelope on both the filter and the VCA (a simpler version of Body Music Bass). The kick: a sine with a fast pitch drop on every BEAT. The hats: noise through a high-pass on the off-beats: a second Sequencer stepping on eighths with only the even steps on, so they land between the kicks. A Mixer brings them together.\n\nTweak: TEMPO, the bass steps, the filter's CUTOFF, the drum levels on the mixer.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 122.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "sequencer",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "pitch1": 0,
+    "pitch2": 0,
+    "pitch3": 12,
+    "pitch4": 0,
+    "pitch5": 0,
+    "pitch6": 12,
+    "pitch7": 0,
+    "pitch8": 12,
+    "gate_length": 0.45
+   }
+  },
+  {
+   "slot": 2,
+   "type": "midi_in",
+   "x": 704,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ota_filter",
+   "x": 296,
+   "y": 486,
+   "knobs": {
+    "cutoff": 240.0,
+    "res": 0.45,
+    "cv_amount": 4.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 512,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.1,
+    "sustain": 0.0,
+    "release": 0.06
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 728,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "oscillator",
+   "x": 880,
+   "y": 486,
+   "knobs": {
+    "octave": -3.0,
+    "tune": 7.0,
+    "fm_amount": 2.5
+   }
+  },
+  {
+   "slot": 8,
+   "type": "envelope",
+   "x": 1160,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.045,
+    "sustain": 0.0,
+    "release": 0.04
+   }
+  },
+  {
+   "slot": 9,
+   "type": "envelope",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.28,
+    "sustain": 0.0,
+    "release": 0.18
+   }
+  },
+  {
+   "slot": 10,
+   "type": "vca",
+   "x": 232,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 11,
+   "type": "noise",
+   "x": 384,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 12,
+   "type": "svf",
+   "x": 536,
+   "y": 956,
+   "knobs": {
+    "cutoff": 7000.0,
+    "res": 0.15
+   }
+  },
+  {
+   "slot": 13,
+   "type": "envelope",
+   "x": 752,
+   "y": 956,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.05,
+    "sustain": 0.0,
+    "release": 0.04
+   }
+  },
+  {
+   "slot": 14,
+   "type": "vca",
+   "x": 968,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 15,
+   "type": "sequencer",
+   "x": 16,
+   "y": 1426,
+   "knobs": {
+    "gate1": 0,
+    "gate2": 1,
+    "gate3": 0,
+    "gate4": 1,
+    "gate5": 0,
+    "gate6": 1,
+    "gate7": 0,
+    "gate8": 1,
+    "gate_length": 0.3
+   }
+  },
+  {
+   "slot": 16,
+   "type": "mixer",
+   "x": 552,
+   "y": 1426,
+   "knobs": {
+    "level1": 0.75,
+    "level2": 0.85,
+    "level3": 0.3
+   }
+  },
+  {
+   "slot": 17,
+   "type": "output",
+   "x": 704,
+   "y": 1426,
+   "knobs": {
+    "volume": 0.89
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "sixteenth",
+   "to": 1,
+   "in": "clock",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 1,
+   "in": "reset",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "pitch",
+   "to": 1,
+   "in": "transpose",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "saw",
+   "to": 4,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 1,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 4,
+   "in": "cutoff",
+   "color": 6
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 8,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "beat",
+   "to": 9,
+   "in": "gate",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "env",
+   "to": 7,
+   "in": "fm",
+   "color": 3
+  },
+  {
+   "from": 7,
+   "out": "sine",
+   "to": 10,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 9,
+   "out": "env",
+   "to": 10,
+   "in": "cv",
+   "color": 5
+  },
+  {
+   "from": 11,
+   "out": "white",
+   "to": 12,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 12,
+   "out": "high",
+   "to": 14,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 15,
+   "in": "clock",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "bar",
+   "to": 15,
+   "in": "reset",
+   "color": 1
+  },
+  {
+   "from": 15,
+   "out": "gate",
+   "to": 13,
+   "in": "gate",
+   "color": 2
+  },
+  {
+   "from": 13,
+   "out": "env",
+   "to": 14,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 16,
+   "in": "in1",
+   "color": 4
+  },
+  {
+   "from": 10,
+   "out": "out",
+   "to": 16,
+   "in": "in2",
+   "color": 5
+  },
+  {
+   "from": 14,
+   "out": "out",
+   "to": 16,
+   "in": "in3",
+   "color": 6
+  },
+  {
+   "from": 16,
+   "out": "out",
+   "to": 17,
+   "in": "left",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

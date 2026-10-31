@@ -1,8 +1,8 @@
 {
  "version": 1,
- "title": "Noise Riser",
- "category": "Effects",
- "text": "Sound: the rising white-noise sweep that builds tension before a drop in big beat, rave and techno: hold a key and it climbs for eight seconds.\n\nHow it's built: white noise through the State-Variable filter's band-pass; an envelope with an eight-second ATTACK sweeps the CUTOFF up (CV at 6 octaves) while a second, slightly quicker envelope fades the volume in. A Reverb for size.\n\nPlay: hold one key for the build, let go at the drop.\n\nTweak: the sweep envelope's ATTACK (the length of the build), the filter's RESONANCE (more is whistlier), the reverb's MIX.",
+ "title": "Cold Wave Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: the cold, heavy, droning lead of late-70s and early-80s cold wave and new wave: a wall of detuned saws an octave deep, a vibrato creeping in as the note holds.\n\nHow it's built: three oscillators on one note: two saws a few cents apart, a third an octave below. The Ladder filter takes off the top. The vibrato fades in (an LFO through a VCA opened by a slow envelope, into all three FM inputs). A gentle Chorus and a Reverb. One voice.\n\nPlay: slow, stark melodies, long notes.\n\nTweak: the second oscillator's TUNE, the filter's CUTOFF, the vibrato envelope's ATTACK, the octave oscillator's level (mixer 3).",
  "voices": 1,
  "modules": [
   {
@@ -14,136 +14,278 @@
   },
   {
    "slot": 1,
-   "type": "noise",
+   "type": "oscillator",
    "x": 168,
    "y": 16,
-   "knobs": {}
+   "knobs": {
+    "fm_amount": 0.02
+   }
   },
   {
    "slot": 2,
-   "type": "svf",
-   "x": 320,
+   "type": "oscillator",
+   "x": 448,
    "y": 16,
    "knobs": {
-    "cutoff": 200.0,
-    "res": 0.45,
-    "cv_amount": 6.0
+    "tune": 0.12,
+    "fm_amount": 0.02
    }
   },
   {
    "slot": 3,
-   "type": "envelope",
-   "x": 536,
+   "type": "oscillator",
+   "x": 728,
    "y": 16,
    "knobs": {
-    "attack": 8.0,
-    "decay": 0.1,
-    "sustain": 1.0,
-    "release": 0.5
+    "octave": -1.0,
+    "fm_amount": 0.02
    }
   },
   {
    "slot": 4,
-   "type": "envelope",
+   "type": "lfo",
    "x": 16,
    "y": 486,
    "knobs": {
-    "attack": 3.0,
-    "decay": 0.1,
-    "sustain": 1.0,
-    "release": 0.6
+    "rate": 5.5,
+    "wave": 1.0
    }
   },
   {
    "slot": 5,
-   "type": "vca",
+   "type": "envelope",
    "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.6,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 448,
    "y": 486,
    "knobs": {}
   },
   {
-   "slot": 6,
-   "type": "reverb",
-   "x": 384,
+   "slot": 7,
+   "type": "mixer",
+   "x": 600,
    "y": 486,
    "knobs": {
-    "size": 0.7,
-    "mix": 0.35
+    "level1": 0.5,
+    "level2": 0.5,
+    "level3": 0.45
    }
   },
   {
-   "slot": 7,
-   "type": "output",
-   "x": 536,
-   "y": 486,
+   "slot": 8,
+   "type": "ladder",
+   "x": 16,
+   "y": 956,
    "knobs": {
-    "volume": 1.0
+    "cutoff": 1800.0,
+    "res": 0.2
+   }
+  },
+  {
+   "slot": 9,
+   "type": "envelope",
+   "x": 232,
+   "y": 956,
+   "knobs": {
+    "attack": 0.02,
+    "decay": 0.3,
+    "sustain": 0.9,
+    "release": 0.35
+   }
+  },
+  {
+   "slot": 10,
+   "type": "vca",
+   "x": 448,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 11,
+   "type": "chorus",
+   "x": 600,
+   "y": 956,
+   "knobs": {
+    "mode": 0.0
+   }
+  },
+  {
+   "slot": 12,
+   "type": "reverb",
+   "x": 752,
+   "y": 956,
+   "knobs": {
+    "size": 0.55,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 13,
+   "type": "output",
+   "x": 904,
+   "y": 956,
+   "knobs": {
+    "volume": 0.73
    }
   }
  ],
  "cables": [
   {
-   "from": 1,
-   "out": "white",
-   "to": 2,
-   "in": "in",
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
    "color": 0
   },
   {
    "from": 0,
-   "out": "gate",
-   "to": 3,
-   "in": "gate",
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
    "color": 1
   },
   {
-   "from": 3,
-   "out": "env",
-   "to": 2,
-   "in": "cutoff",
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
    "color": 2
   },
   {
-   "from": 2,
-   "out": "band",
-   "to": 5,
-   "in": "in",
+   "from": 1,
+   "out": "saw",
+   "to": 7,
+   "in": "in1",
    "color": 3
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 7,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "saw",
+   "to": 7,
+   "in": "in3",
+   "color": 5
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 10,
+   "in": "in",
+   "color": 7
   },
   {
    "from": 0,
    "out": "gate",
-   "to": 4,
+   "to": 9,
    "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 9,
+   "out": "env",
+   "to": 10,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 10,
+   "out": "out",
+   "to": 11,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 11,
+   "out": "left",
+   "to": 12,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 11,
+   "out": "right",
+   "to": 12,
+   "in": "right",
    "color": 4
   },
   {
-   "from": 4,
-   "out": "env",
-   "to": 5,
-   "in": "cv",
+   "from": 12,
+   "out": "left",
+   "to": 13,
+   "in": "left",
    "color": 5
   },
   {
-   "from": 5,
-   "out": "out",
-   "to": 6,
-   "in": "left",
+   "from": 12,
+   "out": "right",
+   "to": 13,
+   "in": "right",
    "color": 6
   },
   {
-   "from": 6,
-   "out": "left",
-   "to": 7,
-   "in": "left",
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
    "color": 7
   },
   {
-   "from": 6,
-   "out": "right",
-   "to": 7,
-   "in": "right",
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
    "color": 0
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 1,
+   "in": "fm",
+   "color": 2
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 2,
+   "in": "fm",
+   "color": 3
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 3,
+   "in": "fm",
+   "color": 4
   }
  ],
  "midi": []

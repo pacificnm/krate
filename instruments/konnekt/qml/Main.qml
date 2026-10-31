@@ -176,7 +176,7 @@ ApplicationWindow {
                 height: 34
                 dark: true
                 faceText: "PRESETS"
-                text: "Finished sounds to play and take apart: basses, leads, pads, drums, effects"
+                text: "Finished sounds to play and take apart: basses, leads, 80s leads, pads, drums, effects"
                 hasLed: true
                 ledOn: Konnekt.preset >= 0
                 onClicked: presetsPopup.open()

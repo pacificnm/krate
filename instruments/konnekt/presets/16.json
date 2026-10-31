@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Laser Zap",
- "category": "Effects",
- "text": "Sound: the 'pew' zap and laser shot of rave and industrial tracks: a pitch that falls from very high in an instant.\n\nHow it's built: a fast envelope into the oscillator's FM, with FM at 3 octaves: each note starts three octaves up and drops to its pitch in a tenth of a second. A short amp envelope, and a Delay to fire it off into space.\n\nPlay: short stabs, anywhere on the keyboard.\n\nTweak: the pitch envelope's DECAY (slower is a falling bomb), the oscillator's FM, the delay's TIME and FEEDBACK; try the PULSE output.",
- "voices": 4,
+ "title": "Square Glide Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: the bouncy, gliding square-wave lead of 80s film and TV themes: a clean, hollow tone that slides between notes, with a dotted echo behind it.\n\nHow it's built: one oscillator's PULSE (a square), its pitch through a Slew for the glides; the Ladder filter with a little envelope for a soft 'blip' at the start of each note; a Delay. One voice.\n\nPlay: catchy, staccato melodies with octave jumps; play legato where you want a slide.\n\nTweak: the Slew's times, WIDTH (narrower is reedier), the delay's TIME (try a dotted eighth of your tempo), the filter envelope's DECAY.",
+ "voices": 1,
  "modules": [
   {
    "slot": 0,
@@ -14,62 +14,83 @@
   },
   {
    "slot": 1,
-   "type": "oscillator",
+   "type": "slew",
    "x": 168,
    "y": 16,
    "knobs": {
-    "fm_amount": 3.0
+    "rise": 0.07,
+    "fall": 0.07
    }
   },
   {
    "slot": 2,
-   "type": "envelope",
-   "x": 448,
+   "type": "oscillator",
+   "x": 320,
    "y": 16,
    "knobs": {
-    "attack": 0.001,
-    "decay": 0.1,
-    "sustain": 0.0,
-    "release": 0.1
+    "width": 0.5
    }
   },
   {
    "slot": 3,
-   "type": "envelope",
-   "x": 664,
+   "type": "ladder",
+   "x": 600,
    "y": 16,
    "knobs": {
-    "attack": 0.001,
-    "decay": 0.25,
-    "sustain": 0.0,
-    "release": 0.2
+    "cutoff": 2400.0,
+    "res": 0.25,
+    "cv_amount": 1.5
    }
   },
   {
    "slot": 4,
-   "type": "vca",
+   "type": "envelope",
    "x": 16,
    "y": 486,
-   "knobs": {}
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.3,
+    "sustain": 0.3,
+    "release": 0.2
+   }
   },
   {
    "slot": 5,
-   "type": "delay",
-   "x": 168,
+   "type": "envelope",
+   "x": 232,
    "y": 486,
    "knobs": {
-    "time": 0.2,
-    "feedback": 0.45,
-    "mix": 0.3
+    "attack": 0.004,
+    "decay": 0.2,
+    "sustain": 0.85,
+    "release": 0.15
    }
   },
   {
    "slot": 6,
-   "type": "output",
-   "x": 320,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "delay",
+   "x": 600,
    "y": 486,
    "knobs": {
-    "volume": 0.82
+    "time": 0.33,
+    "feedback": 0.35,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 8,
+   "type": "output",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "volume": 0.66
    }
   }
  ],
@@ -78,64 +99,78 @@
    "from": 0,
    "out": "pitch",
    "to": 1,
-   "in": "pitch",
+   "in": "in",
    "color": 0
   },
   {
-   "from": 0,
-   "out": "gate",
+   "from": 1,
+   "out": "out",
    "to": 2,
-   "in": "gate",
+   "in": "pitch",
    "color": 1
   },
   {
    "from": 2,
-   "out": "env",
-   "to": 1,
-   "in": "fm",
-   "color": 2
-  },
-  {
-   "from": 1,
-   "out": "saw",
-   "to": 4,
+   "out": "pulse",
+   "to": 3,
    "in": "in",
-   "color": 3
+   "color": 2
   },
   {
    "from": 0,
    "out": "gate",
-   "to": 3,
+   "to": 4,
    "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "env",
+   "to": 3,
+   "in": "cutoff",
    "color": 4
   },
   {
    "from": 3,
-   "out": "env",
-   "to": 4,
-   "in": "cv",
+   "out": "out",
+   "to": 6,
+   "in": "in",
    "color": 5
   },
   {
-   "from": 4,
-   "out": "out",
+   "from": 0,
+   "out": "gate",
    "to": 5,
-   "in": "left",
+   "in": "gate",
    "color": 6
   },
   {
    "from": 5,
-   "out": "left",
+   "out": "env",
    "to": 6,
-   "in": "left",
+   "in": "cv",
    "color": 7
   },
   {
-   "from": 5,
-   "out": "right",
-   "to": 6,
-   "in": "right",
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
    "color": 0
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 2
   }
  ],
  "midi": []

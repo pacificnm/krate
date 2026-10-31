@@ -1,0 +1,202 @@
+{
+ "version": 1,
+ "title": "Glass Bell Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: the glassy, chiming digital bell of mid-80s FM synthesizers: a bright, crystalline strike that mellows as it rings.\n\nHow it's built: FM synthesis. A modulator sine (an octave and a sixth above the note) shakes the carrier sine's frequency (LIN FM). The modulator goes through its own VCA with a decaying envelope, so the brightness fades as the note rings, the way a struck bell's does. A second envelope shapes the volume; Chorus and Reverb. Six voices.\n\nPlay: melodies and chords, in the middle and upper keys.\n\nTweak: the modulator's TUNE (whole octaves are pure, other values more bell-like or clangy), the carrier's LIN FM (brightness), the brightness envelope's DECAY.",
+ "voices": 6,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0,
+    "tune": 9.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.8,
+    "sustain": 0.15,
+    "release": 0.6
+   }
+  },
+  {
+   "slot": 3,
+   "type": "vca",
+   "x": 664,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "oscillator",
+   "x": 816,
+   "y": 16,
+   "knobs": {
+    "lin_fm_amount": 0.5
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 1.5,
+    "sustain": 0.3,
+    "release": 0.8
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "chorus",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "mode": 0.0
+   }
+  },
+  {
+   "slot": 8,
+   "type": "reverb",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "size": 0.6,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 688,
+   "y": 486,
+   "knobs": {
+    "volume": 0.51
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 4,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "sine",
+   "to": 3,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 3,
+   "in": "cv",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "lin_fm",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "sine",
+   "to": 6,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 5
+  }
+ ],
+ "midi": []
+}

@@ -10,7 +10,7 @@ Konnekt is a modular synthesizer: instead of a fixed synth with its parts alread
 4. **Add a module.** **+ ADD MODULE**, pick one: it appears in view. Drag it by its header.
 5. **Wire.** Click a jack, then another: an output and an input. The cable follows the modules when you drag them.
 6. **Keep it.** **PATCHES**, type a name, **SAVE**.
-7. **Take a finished sound apart.** **PRESETS** loads one of 17 ready-made sounds (basses, leads, pads, drum loops, effects), each with how it's built and what to tweak.
+7. **Take a finished sound apart.** **PRESETS** loads one of 31 ready-made sounds (basses, leads, 80s and synth-pop leads, pads, drum loops, effects), each with how it's built and what to tweak.
 
 The rack as you leave it comes back next time.
 
@@ -145,17 +145,18 @@ All three have CUTOFF, RESONANCE, CV (how far the CUTOFF input moves it, in octa
 
 ## Presets
 
-**PRESETS** in the top bar: 17 finished sounds in the styles of industrial, EBM (body music), acid and big beat, to play and to take apart. Click one to load it (the rack is replaced: save yours first); its text opens at the bottom left (the sound, how it's built, how to play it, what to tweak), with **◂ ▸** to step through them and **✕** to close the text.
+**PRESETS** in the top bar: 31 finished sounds in the styles of industrial, EBM (body music), acid, big beat, 80s synth-pop and new wave, to play and to take apart. Click one to load it (the rack is replaced: save yours first); its text opens at the bottom left (the sound, how it's built, how to play it, what to tweak), with **◂ ▸** to step through them and **✕** to close the text.
 
 | Category | Presets |
 | --- | --- |
 | Bass | **Body Music Bass** (a sequenced EBM pluck), **Acid Squelch** (a resonant, sliding acid line), **Industrial Grind Bass** (distorted, for playing under guitars), **Big Beat Wobble** (an LFO-filtered growl), **Sub Drop** (a sine that drops into each note) |
 | Leads and stabs | **Rave Stab** (chords that hit and fade), **Siren Lead**, **Sync Scream** (a tearing hard-sync lead), **Whirling Rave Lead** (detuned, swirling pulses that swoop up), **Metal Clang** (ring-modulated scrap metal) |
+| 80s and synth-pop leads | **Pop Pluck Riff** (a bright sequenced riff that plays itself), **Pop Pluck Lead** (the same pluck to play), **Breathy Pipe Lead** (a sampled-style pipe with breath and a vibrato that fades in), **Anvil Lead** (a ring-modulated, hammered-metal melody), **Dark Detuned Lead** (two squares out of tune, gliding), **Square Glide Lead** (a bouncy square that slides, with a dotted echo), **Cold Wave Lead** (a wall of detuned saws, an octave deep), **Polysynth Brass** (chords that swell and blare), **Anthem Lead** (bright, big, singalong), **Glass Bell Lead** (FM bells), **Fifths Lead** (two notes a fifth apart in every key), **Talking Lead** (a vowel-like band-pass), **Blip Lead** (tiny echoing blips), **Minor Arp** (a minor arpeggio that plays itself) |
 | Pads and atmospheres | **Industrial Drone**, **Breathy Acid Pad** |
 | Drums and grooves | **Industrial Drum Loop** (kick, crushed snare, hats), **Body Music Groove** (bass, kick and hats together) |
 | Effects | **Computer Burble** (sample & hold on a resonant filter), **Laser Zap**, **Noise Riser** |
 
-The ones with a Clock (Body Music Bass, Acid Squelch, the drums and grooves, Computer Burble) play by themselves; on the sequenced basses, hold a key around C3 and the line plays from it. All are set to about the same loudness.
+The ones with a Clock (Body Music Bass, Acid Squelch, Pop Pluck Riff, Minor Arp, the drums and grooves, Computer Burble) play by themselves; on the sequenced basses, hold a key around C3 and the line plays from it, and on the riff and the arpeggio a key around middle C. A vibrato that fades in (Breathy Pipe Lead, Cold Wave Lead) is an LFO through a VCA that a slow envelope opens: worth taking apart. All are set to about the same loudness.
 
 ## Patches
 
