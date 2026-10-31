@@ -291,11 +291,16 @@ void PatternModel::randomize()
     auto *rng = QRandomGenerator::global();
     const auto chance = [rng](double p) { return rng->generateDouble() < p; };
 
+    // DENSITY: the chance a step plays (the first always does); a playing
+    // step after another is sometimes a tie.
+    const double density = m_engine.param(int(k303::ParamId::Density));
     beginResetModel();
+    bool previous = false;
     for (std::size_t i = 0; i < current().steps.size(); ++i) {
         Step &s = current().steps[i];
-        const double g = rng->generateDouble();
-        s.gate = i == 0 ? Gate::Note : g < 0.12 ? Gate::Rest : g < 0.22 ? Gate::Tie : Gate::Note;
+        const bool plays = i == 0 || chance(density);
+        s.gate = !plays ? Gate::Rest : previous && chance(0.12) ? Gate::Tie : Gate::Note;
+        previous = plays;
         s.note = kScale[rng->bounded(int(std::size(kScale)))];
         // Mostly the middle octave; the root note likes to jump.
         const double o = rng->generateDouble();

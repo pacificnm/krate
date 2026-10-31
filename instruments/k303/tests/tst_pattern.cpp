@@ -375,6 +375,33 @@ private slots:
             QVERIFY(kp::isEmpty(loaded.patterns[std::size_t(i)]));
     }
 
+    // RANDOMIZE fills about DENSITY of the steps: 0 only the first, 100 % every one.
+    void randomizeFollowsDensity()
+    {
+        Engine engine;
+        PatternModel model(engine, m_path, nullptr);
+        const auto playing = [&] {
+            int n = 0;
+            for (int i = 0; i < 16; ++i)
+                n += model.data(model.index(i), PatternModel::GateRole).toInt() != 2 ? 1 : 0; // not a rest
+            return n;
+        };
+        engine.setParam(int(k303::ParamId::Density), 0.0f);
+        model.randomize();
+        QCOMPARE(playing(), 1);
+        engine.setParam(int(k303::ParamId::Density), 1.0f);
+        model.randomize();
+        QCOMPARE(playing(), 16);
+        engine.setParam(int(k303::ParamId::Density), 0.5f);
+        int total = 0;
+        for (int k = 0; k < 40; ++k) {
+            model.randomize();
+            total += playing();
+        }
+        const double share = (total / 40.0 - 1.0) / 15.0; // the 15 steps after the first
+        QVERIFY2(std::abs(share - 0.5) < 0.1, qPrintable(QString::number(share)));
+    }
+
     void auditionPlaysOnlyWhenStopped()
     {
         Engine engine;

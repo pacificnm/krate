@@ -97,7 +97,8 @@ The lower deck edits the pattern step by step.
 | **DOWN**, **UP** | Move the step's note an octave down or up (−1 … +1). The lights under OCTAVE show where it is. |
 | **TIME** | Time mode: the buttons then set the step's length instead: **DOWN** = Note, **UP** = Tie (the step continues the note before it), **ACCENT** = Rest (silence). The labels above the buttons show this. Keys: N, T, R. |
 | **KEYBOARD** | On: the note keys just play the sound (to try notes) instead of editing the step. |
-| **RANDOMIZE** | Replaces the pattern with a random line in C minor pentatonic: the first step always a note, a few rests and ties, about a quarter of the notes accented and a fifth slid. The length is kept. |
+| **RANDOMIZE** | Replaces the pattern with a random line in C minor pentatonic: the first step always a note, as many playing steps as DENSITY says (the rest are rests, and now and then a step ties onto the one before), about a quarter of the notes accented and a fifth slid. The length is kept. |
+| **DENSITY** | For RANDOMIZE: the share of steps that play, 0–100 % (85 % by default). Low makes sparse, syncopated lines with lots of space; high, busy rolling ones. MIDI-learnable, so you can turn it from your controller between presses. |
 | **CLEAR** | Clears the pattern. |
 
 **Ties and slides** are what make acid lines flow: a slide glides into the next note, a tie holds a note across steps, and accents on a few notes make them jump out. Try: a run of sixteenth notes, a slide on every third, accents on the off-beats.

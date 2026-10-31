@@ -726,6 +726,30 @@ Item {
         text: "Randomize pattern"
         onClicked: Pattern.randomize()
     }
+    PanelLabel { centerX: 1504; y: 432; text: "DENSITY"; font.pixelSize: 11 }
+    Knob { // how many steps RANDOMIZE fills
+        id: densityKnob
+        x: 1504 - width / 2
+        y: 448
+        width: 38
+        height: 38
+        name: "Density"
+        value: Synth.revision >= 0 ? Synth.paramByKey("density") : 0
+        defaultValue: Synth.defaultValue("density")
+        displayText: Synth.displayText("density", value)
+        onMoved: v => Synth.setParamByKey("density", v)
+
+        LearnOverlay {
+            anchors.fill: parent
+            paramKey: "density"
+        }
+    }
+    PanelLabel {
+        centerX: 1544
+        y: 460
+        text: densityKnob.displayText
+        font.pixelSize: 11
+    }
 
     PanelButton {
         x: 1432

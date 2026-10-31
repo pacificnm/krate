@@ -33,6 +33,7 @@ enum class ParamId : int {
     ReverbLevel,
     ReverbSize,
     Width,      // of the effects (the dry bass stays centred)
+    Density,    // RANDOMIZE: the share of steps that play (not a sound setting)
     Count
 };
 
@@ -81,6 +82,7 @@ inline constexpr std::array<ParamDescriptor, ParamCount> kParams{{
     {"reverb_level", "Reverb Level", 0.0f, 0, &format::percent},
     {"reverb_size", "Reverb Size", 0.4f, 0, &format::reverbSize},
     {"width",     "Width",        0.5f, 0, &format::percent},
+    {"density",   "Density",      0.85f, 0, &format::percent},
 }};
 
 constexpr const ParamDescriptor &paramDescriptor(ParamId id)
