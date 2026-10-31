@@ -1,0 +1,98 @@
+{
+ "version": 1,
+ "title": "Noise and percussion",
+ "text": "No oscillator: Noise through a filter, opened briefly by a short envelope, makes drums. The Clock retriggers them. A band-pass is a snare's crack; a high-pass a hi-hat. Try: the filter's CUTOFF and RESONANCE (high resonance on noise rings like a tom); the envelope's DECAY; move the clock cable from 1/8 to 1/16; plug the SVF's other outputs in.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "clock",
+   "x": 16,
+   "y": 16,
+   "knobs": {
+    "tempo": 120.0
+   }
+  },
+  {
+   "slot": 1,
+   "type": "noise",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "svf",
+   "x": 320,
+   "y": 16,
+   "knobs": {
+    "cutoff": 2500.0,
+    "res": 0.3
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.08,
+    "sustain": 0.0,
+    "release": 0.05
+   }
+  },
+  {
+   "slot": 4,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 5,
+   "type": "output",
+   "x": 384,
+   "y": 486,
+   "knobs": {}
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "eighth",
+   "to": 3,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "white",
+   "to": 2,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "band",
+   "to": 4,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 4,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "left",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

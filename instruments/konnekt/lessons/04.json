@@ -1,0 +1,129 @@
+{
+ "version": 1,
+ "title": "A filter envelope",
+ "text": "Two envelopes: one opens the VCA (the volume), the other moves the filter's CUTOFF, scaled by the filter's CV knob. Each note now starts bright and closes: that movement is most of what makes a synth sound alive. Try: the filter envelope's DECAY short and SUSTAIN 0 for a pluck or a squelchy bass (RESONANCE up); a slow ATTACK for brass; turn the filter's CV up and down.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "ladder",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "cutoff": 200.0,
+    "res": 0.55,
+    "cv_amount": 5.0
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 664,
+   "y": 16,
+   "knobs": {
+    "attack": 0.002,
+    "decay": 0.25,
+    "sustain": 0.1,
+    "release": 0.2
+   }
+  },
+  {
+   "slot": 4,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "sustain": 0.8
+   }
+  },
+  {
+   "slot": 5,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 6,
+   "type": "output",
+   "x": 384,
+   "y": 486,
+   "knobs": {}
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 3,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 4,
+   "in": "gate",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 2,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 2,
+   "in": "cutoff",
+   "color": 4
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "env",
+   "to": 5,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 6,
+   "in": "left",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

@@ -1,0 +1,137 @@
+{
+ "version": 1,
+ "title": "Two oscillators",
+ "text": "Two oscillators on the same note, mixed: TUNE one a few cents off and they beat against each other: thicker. Put one an octave down for weight. Try: the second oscillator's TUNE at 0.1 st; its OCTAVE at -1; then plug the first oscillator's SAW into the second's SYNC and turn the second's TUNE up: the tearing sync sound (an envelope into its FM sweeps it).",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "tune": 0.1
+   }
+  },
+  {
+   "slot": 3,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "cutoff": 2000.0,
+    "res": 0.2
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "sustain": 0.8
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 600,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "output",
+   "x": 752,
+   "y": 486,
+   "knobs": {}
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 3,
+   "in": "in1",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 3,
+   "in": "in2",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 0
+  }
+ ],
+ "midi": []
+}

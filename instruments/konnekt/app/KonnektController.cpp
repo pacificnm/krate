@@ -3,7 +3,10 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QDir>
+#include <QFile>
 #include <QJSEngine>
+#include <QJsonDocument>
 #include <QJsonArray>
 #include <QLoggingCategory>
 
@@ -39,6 +42,7 @@ KonnektController::KonnektController(Engine &engine, const QString &dataDir, QOb
     : QObject(parent)
     , m_engine(engine)
     , m_path(dataDir + QStringLiteral("/current.json"))
+    , m_patchesDir(dataDir + QStringLiteral("/patches"))
 {
     Q_ASSERT(!s_instance);
     s_instance = this;
@@ -442,6 +446,103 @@ void KonnektController::poll()
 }
 
 // --- JSON ----------------------------------------------------------------------------------------
+
+// --- Saved patches and lessons ---------------------------------------------------------------
+
+namespace {
+// A name that's safe as a file name: no slashes, not empty, not too long.
+QString cleanName(const QString &name)
+{
+    QString n = name.trimmed().left(48);
+    n.replace(u'/', u'-');
+    n.replace(u'\\', u'-');
+    return n == QStringLiteral(".") || n == QStringLiteral("..") ? QString() : n;
+}
+
+QJsonObject readJson(const QString &path)
+{
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+    return QJsonDocument::fromJson(f.readAll()).object();
+}
+} // namespace
+
+QStringList KonnektController::patchNames() const
+{
+    QStringList names;
+    for (const QString &f : QDir(m_patchesDir).entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name | QDir::IgnoreCase))
+        names << f.chopped(5);
+    return names;
+}
+
+bool KonnektController::savePatch(const QString &name)
+{
+    const QString n = cleanName(name);
+    if (n.isEmpty())
+        return false;
+    QDir().mkpath(m_patchesDir);
+    QJsonObject json = toJson();
+    json.insert(QStringLiteral("name"), n);
+    if (!krate::files::writeJsonFile(m_patchesDir + u'/' + n + QStringLiteral(".json"), json))
+        return false;
+    m_patchName = n;
+    emit patchesChanged();
+    return true;
+}
+
+bool KonnektController::loadPatch(const QString &name)
+{
+    const QString n = cleanName(name);
+    if (n.isEmpty() || !fromJson(readJson(m_patchesDir + u'/' + n + QStringLiteral(".json"))))
+        return false;
+    m_patchName = n;
+    m_lesson = -1;
+    emit patchesChanged();
+    return true;
+}
+
+void KonnektController::deletePatch(const QString &name)
+{
+    const QString n = cleanName(name);
+    if (!n.isEmpty() && QFile::remove(m_patchesDir + u'/' + n + QStringLiteral(".json"))) {
+        if (m_patchName == n)
+            m_patchName.clear();
+        emit patchesChanged();
+    }
+}
+
+QVariantList KonnektController::lessons() const
+{
+    QVariantList out;
+    const QStringList files = QDir(m_lessonsDir).entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
+    for (qsizetype i = 0; i < files.size(); ++i)
+        out << QVariantMap{{QStringLiteral("index"), int(i)},
+                           {QStringLiteral("title"), readJson(m_lessonsDir + u'/' + files[i]).value(u"title").toString()}};
+    return out;
+}
+
+bool KonnektController::loadLesson(int index)
+{
+    const QStringList files = QDir(m_lessonsDir).entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name);
+    if (index < 0 || index >= files.size())
+        return false;
+    const QJsonObject json = readJson(m_lessonsDir + u'/' + files[index]);
+    if (!fromJson(json))
+        return false;
+    m_lesson = index;
+    m_lessonTitle = QStringLiteral("%1 · %2").arg(index + 1).arg(json.value(u"title").toString());
+    m_lessonText = json.value(u"text").toString();
+    m_patchName.clear();
+    emit patchesChanged();
+    return true;
+}
+
+void KonnektController::closeLesson()
+{
+    m_lesson = -1;
+    emit patchesChanged();
+}
 
 QJsonObject KonnektController::toJson() const
 {

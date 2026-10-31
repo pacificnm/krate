@@ -1,0 +1,81 @@
+{
+ "version": 1,
+ "title": "Notes that start and stop",
+ "text": "A VCA is a volume control something else turns. An Envelope makes a shape each time a key goes down (MIDI In's GATE): it rises (ATTACK), falls a little (DECAY), holds (SUSTAIN), and fades when you let go (RELEASE). The envelope into the VCA's CV opens it for each note. Try: a long ATTACK for a swell; SUSTAIN at 0 and a short DECAY for a pluck; a long RELEASE. Play chords: each note gets its own voice (VOICES at the top).",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 448,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "vca",
+   "x": 664,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "output",
+   "x": 816,
+   "y": 16,
+   "knobs": {}
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 3,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 3,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "left",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

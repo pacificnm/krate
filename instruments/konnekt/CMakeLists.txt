@@ -35,6 +35,18 @@ qt_add_qml_module(konnekt_ui
     QML_FILES
         qml/Main.qml
         qml/ModulePanel.qml
+    RESOURCES
+        docs/MANUAL.md
+        lessons/01.json
+        lessons/02.json
+        lessons/03.json
+        lessons/04.json
+        lessons/05.json
+        lessons/06.json
+        lessons/07.json
+        lessons/08.json
+        lessons/09.json
+        lessons/10.json
 )
 target_include_directories(konnekt_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
 target_link_libraries(konnekt_ui PUBLIC konnekt_dsp krate_host krate_app krate_qml Qt6::Quick Qt6::QuickControls2)
@@ -52,5 +64,6 @@ endforeach()
 add_executable(konnekt_tst_konnekt tests/tst_konnekt.cpp app/KonnektController.h app/KonnektController.cpp)
 target_include_directories(konnekt_tst_konnekt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(konnekt_tst_konnekt PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(konnekt_tst_konnekt PRIVATE KONNEKT_LESSONS="${CMAKE_CURRENT_SOURCE_DIR}/lessons")
 target_link_libraries(konnekt_tst_konnekt PRIVATE konnekt_dsp krate_app Qt6::Qml Qt6::Test)
 add_test(NAME konnekt_tst_konnekt COMMAND konnekt_tst_konnekt)

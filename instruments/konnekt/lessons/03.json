@@ -1,0 +1,98 @@
+{
+ "version": 1,
+ "title": "The filter",
+ "text": "A low-pass filter takes the brightness off: what's below CUTOFF passes, what's above is cut. RESONANCE adds a peak at the cutoff. Try: sweep CUTOFF while you play; turn RESONANCE up and sweep again (the classic 'wow'); at the top the filter whistles on its own. Plug KEY into MIDI In's PITCH so high notes stay as bright as low ones.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "ladder",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "cutoff": 600.0,
+    "res": 0.4
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 664,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "vca",
+   "x": 880,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 5,
+   "type": "output",
+   "x": 1032,
+   "y": 16,
+   "knobs": {}
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 3,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 2,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 4,
+   "in": "cv",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "left",
+   "color": 5
+  }
+ ],
+ "midi": []
+}

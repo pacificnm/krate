@@ -141,6 +141,32 @@ ApplicationWindow {
                 onClicked: Konnekt.learning = !Konnekt.learning
             }
             PanelButton {
+                width: 100
+                height: 34
+                dark: true
+                faceText: "PATCHES"
+                text: "Save the rack as a patch, or load one"
+                onClicked: patchesPopup.open()
+            }
+            PanelButton {
+                width: 100
+                height: 34
+                dark: true
+                faceText: "LESSONS"
+                text: "Patches that build a synth up a module at a time, with what to try"
+                hasLed: true
+                ledOn: Konnekt.lesson >= 0
+                onClicked: lessonsPopup.open()
+            }
+            PanelButton {
+                width: 70
+                height: 34
+                dark: true
+                faceText: "HELP"
+                text: "Konnekt's manual"
+                onClicked: manual.open()
+            }
+            PanelButton {
                 id: newButton
                 property bool confirming: false
                 width: 110
@@ -162,6 +188,17 @@ ApplicationWindow {
             anchors.rightMargin: 18
             anchors.verticalCenter: parent.verticalCenter
             spacing: 4
+            Text {
+                width: 260
+                horizontalAlignment: Text.AlignRight
+                elide: Text.ElideRight
+                visible: Konnekt.patchName !== ""
+                text: Konnekt.patchName
+                color: "#F2B632"
+                font.family: Theme.labelFont
+                font.pixelSize: 12
+                font.bold: true
+            }
             Text {
                 width: 260
                 horizontalAlignment: Text.AlignRight
@@ -486,6 +523,167 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    // ---- Patches: save the rack by name, load or delete one
+    Popup {
+        id: patchesPopup
+        x: 560
+        y: topBar.height + 4
+        width: 340
+        padding: 14
+        modal: true
+        background: Rectangle { radius: 8; color: "#23252A"; border.color: "#3A3D44" }
+        onOpened: nameField.text = Konnekt.patchName
+
+        Column {
+            width: parent.width
+            spacing: 8
+            Text { text: "SAVE THE RACK AS"; color: "#F2B632"; font.family: Theme.labelFont; font.pixelSize: 12; font.bold: true }
+            Row {
+                spacing: 8
+                TextField {
+                    id: nameField
+                    width: 220
+                    placeholderText: "a name"
+                    onAccepted: if (Konnekt.savePatch(text)) patchesPopup.close()
+                }
+                PanelButton {
+                    width: 80
+                    height: 32
+                    dark: true
+                    faceText: "SAVE"
+                    text: "Save the rack under this name (the same name replaces it)"
+                    onClicked: if (Konnekt.savePatch(nameField.text)) patchesPopup.close()
+                }
+            }
+            Text {
+                text: Konnekt.patchNames.length > 0 ? "YOUR PATCHES  (click to load)" : "No saved patches yet."
+                color: "#F2B632"
+                font.family: Theme.labelFont
+                font.pixelSize: 12
+                font.bold: true
+            }
+            Repeater {
+                model: Konnekt.patchNames
+                Row {
+                    id: patchRow
+                    required property string modelData
+                    spacing: 8
+                    PanelButton {
+                        width: 270
+                        height: 28
+                        dark: true
+                        faceText: patchRow.modelData
+                        text: "Load " + patchRow.modelData + " (the rack as it is now is replaced: save it first)"
+                        onClicked: { Konnekt.loadPatch(patchRow.modelData); patchesPopup.close() }
+                    }
+                    PanelButton {
+                        width: 32
+                        height: 28
+                        dark: true
+                        faceText: "✕"
+                        text: "Delete " + patchRow.modelData
+                        onClicked: Konnekt.deletePatch(patchRow.modelData)
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- Lessons: a list to pick from, and the lesson's text while it's loaded
+    Popup {
+        id: lessonsPopup
+        x: 660
+        y: topBar.height + 4
+        width: 340
+        padding: 14
+        modal: true
+        background: Rectangle { radius: 8; color: "#23252A"; border.color: "#3A3D44" }
+        Column {
+            width: parent.width
+            spacing: 6
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "LESSONS: each loads a patch (replacing the rack: save yours first) and says what to try."
+                color: "#F2B632"
+                font.family: Theme.labelFont
+                font.pixelSize: 12
+                font.bold: true
+            }
+            Repeater {
+                model: Konnekt.lessons
+                PanelButton {
+                    required property var modelData
+                    width: 310
+                    height: 28
+                    dark: true
+                    faceText: (modelData.index + 1) + " · " + modelData.title
+                    text: "Lesson " + (modelData.index + 1) + ": " + modelData.title
+                    onClicked: { Konnekt.loadLesson(modelData.index); lessonsPopup.close() }
+                }
+            }
+        }
+    }
+    Rectangle {
+        id: lessonPanel
+        visible: Konnekt.lesson >= 0
+        anchors.left: parent.left
+        anchors.bottom: helpBar.top
+        anchors.margins: 14
+        width: 480
+        height: 230
+        radius: 6
+        color: "#23252A"
+        border.color: "#F2B632"
+        border.width: 2
+        z: 30
+
+        Text {
+            x: 12
+            y: 8
+            width: parent.width - 120
+            elide: Text.ElideRight
+            text: "LESSON " + Konnekt.lessonTitle
+            color: "#F2B632"
+            font.family: Theme.labelFont
+            font.pixelSize: 13
+            font.bold: true
+        }
+        Row {
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            y: 4
+            spacing: 6
+            PanelButton { width: 28; height: 24; dark: true; faceText: "◂"; text: "The lesson before"; enabled: Konnekt.lesson > 0; onClicked: Konnekt.loadLesson(Konnekt.lesson - 1) }
+            PanelButton { width: 28; height: 24; dark: true; faceText: "▸"; text: "The next lesson"; enabled: Konnekt.lesson + 1 < Konnekt.lessons.length; onClicked: Konnekt.loadLesson(Konnekt.lesson + 1) }
+            PanelButton { width: 28; height: 24; dark: true; faceText: "✕"; text: "Close the lesson (the patch stays)"; onClicked: Konnekt.closeLesson() }
+        }
+        Flickable {
+            x: 12
+            y: 34
+            width: parent.width - 24
+            height: parent.height - 44
+            contentHeight: lessonText.height
+            clip: true
+            Text {
+                id: lessonText
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: Konnekt.lessonText
+                color: "#DAD5CB"
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+                lineHeight: 1.15
+            }
+        }
+    }
+
+    ManualView {
+        id: manual
+        title: "Konnekt"
+        source: "qrc:/qt/qml/Konnekt/docs/MANUAL.md"
     }
 
     Shortcut {

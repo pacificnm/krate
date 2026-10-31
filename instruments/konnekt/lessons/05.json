@@ -1,0 +1,135 @@
+{
+ "version": 1,
+ "title": "LFOs: vibrato and wah",
+ "text": "An LFO is an oscillator too slow to hear: it moves other things. One LFO into the oscillator's FM (scaled by FM) wobbles the pitch: vibrato. Another into the filter's CUTOFF: a wah. Try: the vibrato LFO's RATE around 5 Hz and FM small; the wah LFO slow with the filter's CV up; change WAVE to Square (a trill) or Random (burbles). Reset on MIDI In's GATE makes every note's wobble start the same way.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "lfo",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "rate": 5.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 384,
+   "y": 16,
+   "knobs": {
+    "fm_amount": 0.03
+   }
+  },
+  {
+   "slot": 3,
+   "type": "lfo",
+   "x": 664,
+   "y": 16,
+   "knobs": {
+    "rate": 0.5
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 500.0,
+    "res": 0.5,
+    "cv_amount": 2.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "sustain": 0.9
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "output",
+   "x": 600,
+   "y": 486,
+   "knobs": {}
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "out",
+   "to": 2,
+   "in": "fm",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 4,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "cutoff",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

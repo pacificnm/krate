@@ -1,0 +1,135 @@
+{
+ "version": 1,
+ "title": "FM: bells and metal",
+ "text": "Frequency modulation: one oscillator (the modulator) shakes another's frequency (the carrier) at audio rate. The result isn't vibrato but new tones: bells, glass, metal. Here the modulator's SINE goes into the carrier's LIN FM. Try: the carrier's LIN FM knob from 0 up; the modulator's OCTAVE and TUNE (whole octaves give clean tones, odd tunings clangs); an envelope into a VCA between them makes the brightness fade as the note does.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0,
+    "tune": 7.0
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "lin_fm_amount": 0.3
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 1.5,
+    "sustain": 0.0,
+    "release": 1.2
+   }
+  },
+  {
+   "slot": 4,
+   "type": "vca",
+   "x": 232,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 5,
+   "type": "reverb",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 6,
+   "type": "output",
+   "x": 536,
+   "y": 486,
+   "knobs": {}
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "sine",
+   "to": 2,
+   "in": "lin_fm",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "sine",
+   "to": 4,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 3,
+   "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 4,
+   "in": "cv",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "left",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "left",
+   "to": 6,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "right",
+   "to": 6,
+   "in": "right",
+   "color": 0
+  }
+ ],
+ "midi": []
+}

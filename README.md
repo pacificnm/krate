@@ -13,6 +13,7 @@ A suite of software instruments for Linux, and a rack that plays them together f
 | **Song player**: play along with a song: open a `.gp` tab file and/or a `.mid` file, put its tracks on Krate's instruments, leave your part out ([docs/SONG_PLAYER.md](docs/SONG_PLAYER.md)) | In progress: the Song tab plays songs through the instruments with your part's tab scrolling along; a song library (SQLite) keeps every song by artist and album with its track setup, instrument sounds and mixer; practice tools to come |
 | **Sequencer**: an 8-track pattern sequencer for the whole rack: 16 patterns of up to 4 bars, each track playing one instrument, notes with length and velocity, chords ([docs/SEQUENCER.md](docs/SEQUENCER.md)) | Working: the engine, the Seq screen (piano roll, drum lanes for K909, velocity lane), copying bars from a song on the Song screen, pattern chains, and patterns switched live from a controller |
 | [**Klang**](instruments/klang/README.md): sampler, 16 pads playing your WAV and MP3 files as one-shots, held notes or tempo-locked loops, each with filter, drive, bitcrusher, ring modulator, trance gate, choke groups, delay and reverb sends; slicing; 16 patterns of up to 64 steps with accent, rolls, reverse and pitch per step | Playable, standalone and in the rack (MIDI channel 11), with a starter kit of its own sounds |
+| [**Konnekt**](instruments/konnekt/README.md): a modular synthesizer, its own app: 23 modules from Krate's synths (oscillators, three filters, envelopes, LFOs, VCAs, utilities, effects, clock, sequencer) wired with virtual cables, up to 8 voices; every jack shows its signal live, everything explains itself on hover, ten lessons build a synth up a module at a time | Playable (`konnekt`), from any MIDI keyboard |
 | [**Krunch**](instruments/krunch/README.md): guitar amp, played from your audio interface's input | G0: the input passes straight through, with meters and the delay shown ([roadmap](instruments/krunch/docs/ROADMAP.md)) |
 | **Krate rack**: hosts every instrument; transport bar, mixer, per-channel MIDI routing | Playable: `krate` app (k303 + K909 + Kalliope + Krimson + Kobalt + Klang + Krunch + Klick), rack-wide MIDI Learn, sessions in `~/.config/krate/rack.json` |
 
@@ -46,6 +47,7 @@ pw-jack ./build/bin/kalliope                      # Kalliope on its own
 pw-jack ./build/bin/krimson                       # Krimson on its own
 pw-jack ./build/bin/kobalt                        # Kobalt on its own
 pw-jack ./build/bin/klang                         # Klang on its own
+pw-jack ./build/bin/konnekt                       # Konnekt, the modular (its own app)
 pw-jack ./build/bin/krate                         # the rack: k303 + K909 + Kalliope + Krimson + Kobalt + Klang + Krunch + Klick
 ./build/bin/krate-render --bars 8 --out rack.wav  # the rack, rendered offline (add --k909 0.8 --kalliope 1 --krimson 0.8 --kobalt 0.9 --klang 1 for all seven)
 ```

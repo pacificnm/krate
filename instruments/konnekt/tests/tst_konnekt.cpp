@@ -2,9 +2,12 @@
 
 #include <QFile>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QTemporaryDir>
 
 #include "konnekt/app/KonnektController.h"
+#include "konnekt/dsp/Modules.h"
+#include "konnekt/dsp/PatchSpec.h"
 
 using namespace konnekt;
 
@@ -101,6 +104,69 @@ private slots:
         QCOMPARE(c.knobText(f, 0, 1.0), QStringLiteral("20.00 kHz"));
         c.setVoices(12);
         QCOMPARE(c.voices(), kVoices);
+    }
+
+    // Every lesson loads whole (no unknown module, jack or knob) and sounds.
+    void lessons()
+    {
+        QTemporaryDir dir;
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        engine.setParam(0, 1.0f);
+        KonnektController c(engine, dir.path(), nullptr);
+        c.setLessonsDir(QStringLiteral(KONNEKT_LESSONS));
+        QCOMPARE(c.lessons().size(), 10);
+        for (int i = 0; i < 10; ++i) {
+            QFile f(QStringLiteral(KONNEKT_LESSONS "/%1.json").arg(i + 1, 2, 10, QChar(u'0')));
+            QVERIFY(f.open(QIODevice::ReadOnly));
+            const QJsonObject json = QJsonDocument::fromJson(f.readAll()).object();
+            QVERIFY(c.loadLesson(i));
+            QCOMPARE(c.lesson(), i);
+            QVERIFY(c.lessonText().size() > 100);
+            QCOMPARE(c.modules().size(), json.value(u"modules").toArray().size());
+            QCOMPARE(c.cables().size(), json.value(u"cables").toArray().size());
+            for (const QJsonValue m : json.value(u"modules").toArray()) { // every knob key is a knob
+                const QJsonObject o = m.toObject();
+                const ModuleInfo *info = findModule(o.value(u"type").toString().toStdString());
+                QVERIFY(info);
+                for (const QString &key : o.value(u"knobs").toObject().keys())
+                    QVERIFY2(knobIndex(*info, key.toStdString()) >= 0, qPrintable(key));
+            }
+            // It sounds: a chord held for a second (the clocked ones play by themselves).
+            pump(engine);
+            std::vector<float> l(48000), r(48000);
+            const krate::MidiEvent notes[] = {{0, 3, {0x90, 48, 110}}, {0, 3, {0x90, 55, 110}}};
+            krate::processStereo(engine, l.data(), r.data(), 48000, notes, 2);
+            float peak = 0.0f;
+            for (float s : l) {
+                QVERIFY(std::isfinite(s));
+                peak = std::max(peak, std::fabs(s));
+            }
+            QVERIFY2(peak > 0.02f, qPrintable(c.lessonTitle() + u' ' + QString::number(peak)));
+            QVERIFY2(peak < 2.0f, qPrintable(c.lessonTitle() + u' ' + QString::number(peak)));
+            const krate::MidiEvent offs[] = {{0, 3, {0x80, 48, 0}}, {0, 3, {0x80, 55, 0}}};
+            krate::processStereo(engine, l.data(), r.data(), 48000, offs, 2);
+        }
+    }
+
+    // Patches saved by name: listed, loaded, deleted; names made safe.
+    void savedPatches()
+    {
+        QTemporaryDir dir;
+        Engine engine;
+        engine.prepare(48000.0, 64);
+        KonnektController c(engine, dir.path(), nullptr);
+        QVERIFY(c.savePatch(QStringLiteral("  My/Bass ")));
+        QCOMPARE(c.patchNames(), QStringList{QStringLiteral("My-Bass")});
+        QCOMPARE(c.patchName(), QStringLiteral("My-Bass"));
+        QVERIFY(!c.savePatch(QStringLiteral("   ")));
+        c.clearPatch();
+        QVERIFY(c.loadPatch(QStringLiteral("My-Bass")));
+        QCOMPARE(c.modules().size(), 5);
+        QVERIFY(!c.loadPatch(QStringLiteral("nothing")));
+        c.deletePatch(QStringLiteral("My-Bass"));
+        QVERIFY(c.patchNames().isEmpty());
+        QCOMPARE(c.patchName(), QString());
     }
 
     // Saved and loaded: modules where they were, knobs, cables, voices, MIDI mappings.

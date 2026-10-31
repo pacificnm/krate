@@ -38,6 +38,13 @@ class KonnektController : public QObject
     Q_PROPERTY(bool learning READ learning WRITE setLearning NOTIFY learnChanged)
     Q_PROPERTY(int notesHeld READ notesHeld NOTIFY frameChanged)
     Q_PROPERTY(QString scopeName READ scopeName NOTIFY changed)          // what the scope shows, "" = nothing
+    // Patches saved by name (~/.local/share/konnekt/patches), and the lessons.
+    Q_PROPERTY(QStringList patchNames READ patchNames NOTIFY patchesChanged)
+    Q_PROPERTY(QString patchName READ patchName NOTIFY patchesChanged)   // the one loaded or saved last, "" = none
+    Q_PROPERTY(QVariantList lessons READ lessons NOTIFY patchesChanged) // [{index, title}]
+    Q_PROPERTY(int lesson READ lesson NOTIFY patchesChanged)            // the lesson loaded, -1 = none
+    Q_PROPERTY(QString lessonTitle READ lessonTitle NOTIFY patchesChanged)
+    Q_PROPERTY(QString lessonText READ lessonText NOTIFY patchesChanged)
 
 public:
     KonnektController(konnekt::Engine &engine, const QString &dataDir, QObject *parent);
@@ -96,7 +103,23 @@ public:
     bool fromJson(const QJsonObject &json); // replaces the patch; false if it isn't one
     void save();
 
+    // --- Saved patches and lessons
+    QStringList patchNames() const;
+    QString patchName() const { return m_patchName; }
+    Q_INVOKABLE bool savePatch(const QString &name); // false if the name won't do
+    Q_INVOKABLE bool loadPatch(const QString &name);
+    Q_INVOKABLE void deletePatch(const QString &name);
+    QVariantList lessons() const;
+    int lesson() const { return m_lesson; }
+    QString lessonTitle() const { return m_lessonTitle; }
+    QString lessonText() const { return m_lessonText; }
+    Q_INVOKABLE bool loadLesson(int index);
+    Q_INVOKABLE void closeLesson();
+    // Where the lessons are: the app's resources (tests: the source folder).
+    void setLessonsDir(const QString &dir) { m_lessonsDir = dir; emit patchesChanged(); }
+
 signals:
+    void patchesChanged();
     void changed();
     void modulesChanged();
     void knobsChanged();
@@ -135,4 +158,9 @@ private:
     std::array<float, konnekt::kMaxModules * konnekt::kMaxKnobs> m_seenKnobs{};
     QTimer m_pollTimer;
     QTimer m_saveTimer;
+    QString m_patchesDir;
+    QString m_patchName;
+    QString m_lessonsDir = QStringLiteral(":/qt/qml/Konnekt/lessons");
+    int m_lesson = -1;
+    QString m_lessonTitle, m_lessonText;
 };
