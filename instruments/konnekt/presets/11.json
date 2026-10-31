@@ -1,8 +1,8 @@
 {
  "version": 1,
- "title": "Pop Pluck Riff",
- "category": "80s and synth-pop leads",
- "text": "Sound: the bright, bouncing sequenced riff of early-80s synth-pop: a short, glassy pluck running up and down a chord, echoing behind itself. It plays by itself.\n\nHow it's built: Clock 1/16 \u2192 Sequencer (eight notes of a chord and its octave) \u2192 one oscillator, saw and pulse mixed, through the Ladder filter; a short envelope plucks both the filter and the VCA on every step. A touch of Drive brightens it; a Delay a dotted eighth behind (at this tempo) makes the echoes fall between the notes; a little Reverb. Hold a key around middle C and the riff plays from it.\n\nTweak: the step knobs (it's a melody: change it), the envelope's DECAY, the filter's CUTOFF and RESONANCE, the delay's TIME and FEEDBACK, TEMPO.",
+ "title": "Octave Pulse Bass",
+ "category": "Bass",
+ "text": "Sound: the driving eighth-note octave bass of 80s synth-pop and new wave: low, high, low, high, a hollow pulse wave pumping under the song. It plays by itself.\n\nHow it's built: Clock 1/8 \u2192 Sequencer alternating the root and its octave \u2192 a pulse wave through the Ladder filter; a short envelope plucks filter and VCA. Hold a key around C3 and it plays from it.\n\nTweak: TEMPO, the step knobs (try a fifth, 7, on some), WIDTH, the envelope's DECAY, the filter's CUTOFF.",
  "voices": 1,
  "modules": [
   {
@@ -11,7 +11,7 @@
    "x": 16,
    "y": 16,
    "knobs": {
-    "tempo": 128.0
+    "tempo": 120.0
    }
   },
   {
@@ -22,13 +22,13 @@
    "knobs": {
     "pitch1": 0,
     "pitch2": 12,
-    "pitch3": 7,
-    "pitch4": 0,
-    "pitch5": 10,
-    "pitch6": 7,
-    "pitch7": 12,
-    "pitch8": 3,
-    "gate_length": 0.5
+    "pitch3": 0,
+    "pitch4": 12,
+    "pitch5": 0,
+    "pitch6": 12,
+    "pitch7": 0,
+    "pitch8": 12,
+    "gate_length": 0.6
    }
   },
   {
@@ -44,94 +44,64 @@
    "x": 16,
    "y": 486,
    "knobs": {
-    "width": 0.35
+    "octave": -1.0,
+    "width": 0.3
    }
   },
   {
    "slot": 4,
-   "type": "mixer",
+   "type": "ladder",
    "x": 296,
    "y": 486,
    "knobs": {
-    "level1": 1.0,
-    "level2": 0.8
+    "cutoff": 350.0,
+    "res": 0.3,
+    "cv_amount": 3.5
    }
   },
   {
    "slot": 5,
-   "type": "ladder",
-   "x": 448,
+   "type": "envelope",
+   "x": 512,
    "y": 486,
    "knobs": {
-    "cutoff": 1500.0,
-    "res": 0.3,
-    "cv_amount": 3.0
+    "attack": 0.001,
+    "decay": 0.18,
+    "sustain": 0.2,
+    "release": 0.08
    }
   },
   {
    "slot": 6,
-   "type": "envelope",
-   "x": 664,
-   "y": 486,
-   "knobs": {
-    "attack": 0.001,
-    "decay": 0.2,
-    "sustain": 0.0,
-    "release": 0.1
-   }
-  },
-  {
-   "slot": 7,
    "type": "vca",
-   "x": 880,
+   "x": 728,
    "y": 486,
    "knobs": {}
   },
   {
-   "slot": 8,
+   "slot": 7,
    "type": "drive",
-   "x": 16,
-   "y": 956,
+   "x": 880,
+   "y": 486,
    "knobs": {
     "drive": 0.3,
     "level": 1.0
    }
   },
   {
-   "slot": 9,
-   "type": "delay",
-   "x": 168,
-   "y": 956,
-   "knobs": {
-    "time": 0.35,
-    "feedback": 0.35,
-    "mix": 0.3
-   }
-  },
-  {
-   "slot": 10,
-   "type": "reverb",
-   "x": 320,
-   "y": 956,
-   "knobs": {
-    "size": 0.4,
-    "mix": 0.15
-   }
-  },
-  {
-   "slot": 11,
+   "slot": 8,
    "type": "output",
-   "x": 472,
-   "y": 956,
+   "x": 1032,
+   "y": 486,
    "knobs": {
-    "volume": 1.0
+    "volume": 0.76
    }
   }
  ],
  "cables": [
   {
    "from": 0,
-   "out": "sixteenth",
+   "out": "eighth",
    "to": 1,
    "in": "clock",
    "color": 0
@@ -159,94 +129,52 @@
   },
   {
    "from": 3,
-   "out": "saw",
-   "to": 4,
-   "in": "in1",
-   "color": 4
-  },
-  {
-   "from": 3,
    "out": "pulse",
    "to": 4,
-   "in": "in2",
-   "color": 5
-  },
-  {
-   "from": 4,
-   "out": "out",
-   "to": 5,
    "in": "in",
-   "color": 6
+   "color": 4
   },
   {
    "from": 1,
    "out": "gate",
-   "to": 6,
-   "in": "gate",
-   "color": 7
-  },
-  {
-   "from": 6,
-   "out": "env",
    "to": 5,
-   "in": "cutoff",
-   "color": 0
+   "in": "gate",
+   "color": 5
   },
   {
    "from": 5,
+   "out": "env",
+   "to": 4,
+   "in": "cutoff",
+   "color": 6
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 6,
    "out": "out",
    "to": 7,
    "in": "in",
    "color": 1
   },
   {
-   "from": 6,
-   "out": "env",
-   "to": 7,
-   "in": "cv",
-   "color": 2
-  },
-  {
    "from": 7,
    "out": "out",
    "to": 8,
-   "in": "in",
-   "color": 3
-  },
-  {
-   "from": 8,
-   "out": "out",
-   "to": 9,
    "in": "left",
-   "color": 4
-  },
-  {
-   "from": 9,
-   "out": "left",
-   "to": 10,
-   "in": "left",
-   "color": 5
-  },
-  {
-   "from": 9,
-   "out": "right",
-   "to": 10,
-   "in": "right",
-   "color": 6
-  },
-  {
-   "from": 10,
-   "out": "left",
-   "to": 11,
-   "in": "left",
-   "color": 7
-  },
-  {
-   "from": 10,
-   "out": "right",
-   "to": 11,
-   "in": "right",
-   "color": 0
+   "color": 2
   }
  ],
  "midi": []

@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Blip Lead",
- "category": "80s and synth-pop leads",
- "text": "Sound: tiny, high, percussive blips with echoes ping-ponging away: the 'bink bink' of minimal 80s synth-pop.\n\nHow it's built: a narrow pulse an octave up, a very short envelope on the VCA (70 ms, no sustain), a Delay with lots of feedback bouncing left and right, a touch of Reverb. Four voices.\n\nPlay: two-note figures, sparse rhythmic hits; let the echoes fill the gaps.\n\nTweak: the envelope's DECAY, WIDTH, the delay's TIME and FEEDBACK.",
- "voices": 4,
+ "title": "Screaming Resonance Lead",
+ "category": "Leads and stabs",
+ "text": "Sound: a piercing, whistling, almost feedback-like lead: a filter on the edge of singing by itself, swelling into each note and screaming through distortion and echoes.\n\nHow it's built: a saw into the Ladder filter with RESONANCE almost at the top, so the filter rings a strong pitch of its own; KEY follows the notes so the ring stays in tune; an envelope with a slow ATTACK opens the CUTOFF so each note swells into the scream. Drive, a long Delay, a Reverb. One voice.\n\nPlay: slow, held notes and bends.\n\nTweak: RESONANCE (careful near the top), the filter envelope's ATTACK, DRIVE, the delay's FEEDBACK.",
+ "voices": 1,
  "modules": [
   {
    "slot": 0,
@@ -17,58 +17,88 @@
    "type": "oscillator",
    "x": 168,
    "y": 16,
-   "knobs": {
-    "octave": 1.0,
-    "width": 0.25
-   }
+   "knobs": {}
   },
   {
    "slot": 2,
-   "type": "envelope",
+   "type": "ladder",
    "x": 448,
    "y": 16,
    "knobs": {
-    "attack": 0.001,
-    "decay": 0.07,
-    "sustain": 0.0,
-    "release": 0.06
+    "cutoff": 700.0,
+    "res": 0.93,
+    "cv_amount": 2.0
    }
   },
   {
    "slot": 3,
-   "type": "vca",
+   "type": "envelope",
    "x": 664,
    "y": 16,
-   "knobs": {}
+   "knobs": {
+    "attack": 0.3,
+    "decay": 0.5,
+    "sustain": 0.6,
+    "release": 0.4
+   }
   },
   {
    "slot": 4,
-   "type": "delay",
+   "type": "envelope",
    "x": 16,
    "y": 486,
    "knobs": {
-    "time": 0.18,
-    "feedback": 0.5,
-    "mix": 0.4
+    "attack": 0.02,
+    "decay": 0.3,
+    "sustain": 0.9,
+    "release": 0.4
    }
   },
   {
    "slot": 5,
-   "type": "reverb",
-   "x": 168,
+   "type": "vca",
+   "x": 232,
    "y": 486,
-   "knobs": {
-    "size": 0.4,
-    "mix": 0.15
-   }
+   "knobs": {}
   },
   {
    "slot": 6,
-   "type": "output",
-   "x": 320,
+   "type": "drive",
+   "x": 384,
    "y": 486,
    "knobs": {
-    "volume": 0.81
+    "drive": 0.55,
+    "level": 0.5
+   }
+  },
+  {
+   "slot": 7,
+   "type": "delay",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "time": 0.42,
+    "feedback": 0.55,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 8,
+   "type": "reverb",
+   "x": 688,
+   "y": 486,
+   "knobs": {
+    "size": 0.6,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 840,
+   "y": 486,
+   "knobs": {
+    "volume": 0.82
    }
   }
  ],
@@ -82,59 +112,94 @@
   },
   {
    "from": 1,
-   "out": "pulse",
-   "to": 3,
+   "out": "saw",
+   "to": 2,
    "in": "in",
    "color": 1
   },
   {
    "from": 0,
-   "out": "gate",
+   "out": "pitch",
    "to": 2,
-   "in": "gate",
+   "in": "key",
    "color": 2
   },
   {
-   "from": 2,
-   "out": "env",
+   "from": 0,
+   "out": "gate",
    "to": 3,
-   "in": "cv",
+   "in": "gate",
    "color": 3
   },
   {
    "from": 3,
-   "out": "out",
-   "to": 4,
-   "in": "left",
+   "out": "env",
+   "to": 2,
+   "in": "cutoff",
    "color": 4
   },
   {
-   "from": 4,
-   "out": "left",
+   "from": 2,
+   "out": "out",
    "to": 5,
-   "in": "left",
+   "in": "in",
    "color": 5
   },
   {
-   "from": 4,
-   "out": "right",
-   "to": 5,
-   "in": "right",
+   "from": 0,
+   "out": "gate",
+   "to": 4,
+   "in": "gate",
    "color": 6
   },
   {
-   "from": 5,
-   "out": "left",
-   "to": 6,
-   "in": "left",
+   "from": 4,
+   "out": "env",
+   "to": 5,
+   "in": "cv",
    "color": 7
   },
   {
    "from": 5,
-   "out": "right",
+   "out": "out",
    "to": 6,
-   "in": "right",
+   "in": "in",
    "color": 0
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 5
   }
  ],
  "midi": []

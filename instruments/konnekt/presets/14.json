@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Anvil Lead",
- "category": "80s and synth-pop leads",
- "text": "Sound: a metallic, struck melody: the clanking, hammered-metal lead of 80s industrial synth-pop, still in tune enough to play tunes with.\n\nHow it's built: two sine waves, the second an octave and a bit over a fourth higher, multiplied in a Ring Mod: the sum and difference tones ring like struck metal. MIX keeps some of the first sine, so the note is still heard. A struck envelope (quick decay to a low sustain), a Delay and a Reverb for the warehouse. Four voices.\n\nPlay: short melodic phrases, single notes, repeated hits.\n\nTweak: the second oscillator's TUNE (whole numbers are more in tune, odd values more metallic), the ring mod's MIX, the envelope's DECAY.",
- "voices": 4,
+ "title": "Growl Bass",
+ "category": "Bass",
+ "text": "Sound: a growling, gnarly bass: the filter moving so fast it becomes a snarl rather than a wobble.\n\nHow it's built: a saw through the Ladder filter with RESONANCE up; an LFO at 22 Hz (almost too fast to hear as movement) shakes the CUTOFF, which roughens the tone into a growl; an envelope opens the filter at the start of each note; Drive. One voice.\n\nPlay: long, low notes.\n\nTweak: the LFO's RATE (slower turns the growl into a wobble, faster into a buzz), the filter's CV (how hard it growls), DRIVE.",
+ "voices": 1,
  "modules": [
   {
    "slot": 0,
@@ -17,25 +17,29 @@
    "type": "oscillator",
    "x": 168,
    "y": 16,
-   "knobs": {}
+   "knobs": {
+    "octave": -1.0
+   }
   },
   {
    "slot": 2,
-   "type": "oscillator",
+   "type": "lfo",
    "x": 448,
    "y": 16,
    "knobs": {
-    "octave": 1.0,
-    "tune": 5.3
+    "rate": 22.0,
+    "wave": 0.0
    }
   },
   {
    "slot": 3,
-   "type": "ring_mod",
-   "x": 728,
+   "type": "ladder",
+   "x": 664,
    "y": 16,
    "knobs": {
-    "mix": 0.7
+    "cutoff": 350.0,
+    "res": 0.5,
+    "cv_amount": 1.5
    }
   },
   {
@@ -45,46 +49,57 @@
    "y": 486,
    "knobs": {
     "attack": 0.001,
-    "decay": 0.6,
-    "sustain": 0.2,
-    "release": 0.4
+    "decay": 0.4,
+    "sustain": 0.3,
+    "release": 0.2
    }
   },
   {
    "slot": 5,
-   "type": "vca",
+   "type": "mixer",
    "x": 232,
    "y": 486,
-   "knobs": {}
+   "knobs": {
+    "level1": 1.0,
+    "level2": 0.8
+   }
   },
   {
    "slot": 6,
-   "type": "delay",
+   "type": "envelope",
    "x": 384,
    "y": 486,
    "knobs": {
-    "time": 0.28,
-    "feedback": 0.3,
-    "mix": 0.2
+    "attack": 0.004,
+    "decay": 0.3,
+    "sustain": 1.0,
+    "release": 0.1
    }
   },
   {
    "slot": 7,
-   "type": "reverb",
-   "x": 536,
+   "type": "vca",
+   "x": 600,
    "y": 486,
-   "knobs": {
-    "size": 0.6,
-    "mix": 0.3
-   }
+   "knobs": {}
   },
   {
    "slot": 8,
-   "type": "output",
-   "x": 688,
+   "type": "drive",
+   "x": 752,
    "y": 486,
    "knobs": {
-    "volume": 0.8
+    "drive": 0.5,
+    "level": 0.7
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 904,
+   "y": 486,
+   "knobs": {
+    "volume": 0.67
    }
   }
  ],
@@ -97,81 +112,74 @@
    "color": 0
   },
   {
-   "from": 0,
-   "out": "pitch",
-   "to": 2,
-   "in": "pitch",
+   "from": 1,
+   "out": "saw",
+   "to": 3,
+   "in": "in",
    "color": 1
   },
   {
-   "from": 1,
-   "out": "sine",
-   "to": 3,
-   "in": "a",
-   "color": 2
-  },
-  {
    "from": 2,
-   "out": "sine",
-   "to": 3,
-   "in": "b",
-   "color": 3
-  },
-  {
-   "from": 3,
    "out": "out",
    "to": 5,
-   "in": "in",
-   "color": 4
+   "in": "in1",
+   "color": 2
   },
   {
    "from": 0,
    "out": "gate",
    "to": 4,
    "in": "gate",
-   "color": 5
+   "color": 3
   },
   {
    "from": 4,
    "out": "env",
    "to": 5,
-   "in": "cv",
-   "color": 6
+   "in": "in2",
+   "color": 4
   },
   {
    "from": 5,
    "out": "out",
+   "to": 3,
+   "in": "cutoff",
+   "color": 5
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 0,
+   "out": "gate",
    "to": 6,
-   "in": "left",
+   "in": "gate",
    "color": 7
   },
   {
    "from": 6,
-   "out": "left",
+   "out": "env",
    "to": 7,
-   "in": "left",
+   "in": "cv",
    "color": 0
   },
   {
-   "from": 6,
-   "out": "right",
-   "to": 7,
-   "in": "right",
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "in",
    "color": 1
   },
   {
-   "from": 7,
-   "out": "left",
-   "to": 8,
+   "from": 8,
+   "out": "out",
+   "to": 9,
    "in": "left",
    "color": 2
-  },
-  {
-   "from": 7,
-   "out": "right",
-   "to": 8,
-   "in": "right",
-   "color": 3
   }
  ],
  "midi": []

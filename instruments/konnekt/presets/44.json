@@ -1,0 +1,211 @@
+{
+ "version": 1,
+ "title": "Breathy Acid Pad",
+ "category": "Pads and atmospheres",
+ "text": "Sound: a soft, airy, slowly swirling pad, the hazy backdrop behind acid and trance vocals: chords that fade in with a breath of noise.\n\nHow it's built: a pulse wave whose width is swept by a slow LFO (PWM, the swirl), with a little white noise mixed in (the breath); a gentle Ladder filter; a slow attack and long release; Chorus (Ensemble) and a large Reverb. Six voices.\n\nPlay: slow chords.\n\nTweak: the envelope's ATTACK and RELEASE, the noise level (mixer 2), the LFO's RATE, the filter's CUTOFF.",
+ "voices": 6,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "width": 0.5,
+    "pwm_amount": 0.35
+   }
+  },
+  {
+   "slot": 2,
+   "type": "noise",
+   "x": 448,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "lfo",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "rate": 0.3,
+    "wave": 1.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 816,
+   "y": 16,
+   "knobs": {
+    "level1": 0.7,
+    "level2": 0.08
+   }
+  },
+  {
+   "slot": 5,
+   "type": "ladder",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 1800.0,
+    "res": 0.15
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.8,
+    "decay": 1.0,
+    "sustain": 0.85,
+    "release": 1.8
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "chorus",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "mode": 2.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "reverb",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "size": 0.75,
+    "mix": 0.35
+   }
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 904,
+   "y": 486,
+   "knobs": {
+    "volume": 0.63
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 1,
+   "in": "pwm",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "pulse",
+   "to": 4,
+   "in": "in1",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "white",
+   "to": 4,
+   "in": "in2",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 5,
+   "in": "key",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 5
+  }
+ ],
+ "midi": []
+}

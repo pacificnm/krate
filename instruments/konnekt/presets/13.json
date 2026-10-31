@@ -1,8 +1,8 @@
 {
  "version": 1,
- "title": "Breathy Pipe Lead",
- "category": "80s and synth-pop leads",
- "text": "Sound: a breathy, haunting pipe or pan-flute lead, the kind 80s samplers made famous: a soft tone with air around it, swelling in, a vibrato that arrives as the note holds.\n\nHow it's built: a triangle wave for the tone; white noise through a band-pass filter that follows the note (KEY) for the breath, mixed in underneath; a gentle attack. The vibrato fades in: an LFO goes through a VCA that a slow envelope opens, then into the oscillator's FM. A large Reverb.\n\nPlay: slow, expressive melodies, long notes (let the vibrato come in).\n\nTweak: the breath level (mixer 2), the attack, the vibrato envelope's ATTACK (how long before it starts), the oscillator's FM (how wide).",
+ "title": "Folded Bass",
+ "category": "Bass",
+ "text": "Sound: a bass that starts bright, buzzy and metallic and mellows into a round tone: wavefolding, the 'other' way of making a sound bright.\n\nHow it's built: a triangle wave goes through a VCA opened by an envelope, then into Drive with FOLD up. How loud the signal is going into a wavefolder decides how much it folds: so the envelope, by turning the level up and down, makes the tone bright at the start and soft as it decays. A filter after smooths the very top. One voice.\n\nPlay: punchy notes; hold some to hear them mellow.\n\nTweak: FOLD and DRIVE, the envelope's DECAY and SUSTAIN (they now set the brightness as well as the level), the filter's CUTOFF.",
  "voices": 1,
  "modules": [
   {
@@ -18,101 +18,56 @@
    "x": 168,
    "y": 16,
    "knobs": {
-    "fm_amount": 0.025
+    "octave": -1.0
    }
   },
   {
    "slot": 2,
-   "type": "noise",
+   "type": "envelope",
    "x": 448,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.35,
+    "sustain": 0.25,
+    "release": 0.1
+   }
+  },
+  {
+   "slot": 3,
+   "type": "vca",
+   "x": 664,
    "y": 16,
    "knobs": {}
   },
   {
-   "slot": 3,
-   "type": "svf",
-   "x": 600,
-   "y": 16,
-   "knobs": {
-    "cutoff": 1200.0,
-    "res": 0.45
-   }
-  },
-  {
    "slot": 4,
-   "type": "lfo",
-   "x": 816,
-   "y": 16,
+   "type": "drive",
+   "x": 16,
+   "y": 486,
    "knobs": {
-    "rate": 5.5,
-    "wave": 1.0
+    "drive": 0.4,
+    "fold": 0.8,
+    "level": 0.7
    }
   },
   {
    "slot": 5,
-   "type": "envelope",
-   "x": 16,
+   "type": "ladder",
+   "x": 168,
    "y": 486,
    "knobs": {
-    "attack": 0.6,
-    "decay": 0.1,
-    "sustain": 1.0,
-    "release": 0.3
+    "cutoff": 3000.0,
+    "res": 0.1
    }
   },
   {
    "slot": 6,
-   "type": "vca",
-   "x": 232,
-   "y": 486,
-   "knobs": {}
-  },
-  {
-   "slot": 7,
-   "type": "mixer",
+   "type": "output",
    "x": 384,
    "y": 486,
    "knobs": {
-    "level1": 0.8,
-    "level2": 0.35
-   }
-  },
-  {
-   "slot": 8,
-   "type": "envelope",
-   "x": 536,
-   "y": 486,
-   "knobs": {
-    "attack": 0.08,
-    "decay": 0.2,
-    "sustain": 0.9,
-    "release": 0.3
-   }
-  },
-  {
-   "slot": 9,
-   "type": "vca",
-   "x": 752,
-   "y": 486,
-   "knobs": {}
-  },
-  {
-   "slot": 10,
-   "type": "reverb",
-   "x": 16,
-   "y": 956,
-   "knobs": {
-    "size": 0.7,
-    "mix": 0.35
-   }
-  },
-  {
-   "slot": 11,
-   "type": "output",
-   "x": 168,
-   "y": 956,
-   "knobs": {
-    "volume": 0.77
+    "volume": 0.79
    }
   }
  ],
@@ -125,101 +80,45 @@
    "color": 0
   },
   {
-   "from": 2,
-   "out": "white",
+   "from": 1,
+   "out": "triangle",
    "to": 3,
    "in": "in",
    "color": 1
   },
   {
    "from": 0,
-   "out": "pitch",
-   "to": 3,
-   "in": "key",
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
    "color": 2
   },
   {
-   "from": 1,
-   "out": "triangle",
-   "to": 7,
-   "in": "in1",
+   "from": 2,
+   "out": "env",
+   "to": 3,
+   "in": "cv",
    "color": 3
   },
   {
    "from": 3,
-   "out": "band",
-   "to": 7,
-   "in": "in2",
-   "color": 4
-  },
-  {
-   "from": 7,
    "out": "out",
-   "to": 9,
+   "to": 4,
    "in": "in",
-   "color": 5
-  },
-  {
-   "from": 0,
-   "out": "gate",
-   "to": 8,
-   "in": "gate",
-   "color": 6
-  },
-  {
-   "from": 8,
-   "out": "env",
-   "to": 9,
-   "in": "cv",
-   "color": 7
-  },
-  {
-   "from": 9,
-   "out": "out",
-   "to": 10,
-   "in": "left",
-   "color": 0
-  },
-  {
-   "from": 10,
-   "out": "left",
-   "to": 11,
-   "in": "left",
-   "color": 1
-  },
-  {
-   "from": 10,
-   "out": "right",
-   "to": 11,
-   "in": "right",
-   "color": 2
+   "color": 4
   },
   {
    "from": 4,
    "out": "out",
-   "to": 6,
-   "in": "in",
-   "color": 3
-  },
-  {
-   "from": 0,
-   "out": "gate",
    "to": 5,
-   "in": "gate",
-   "color": 4
-  },
-  {
-   "from": 5,
-   "out": "env",
-   "to": 6,
-   "in": "cv",
+   "in": "in",
    "color": 5
   },
   {
-   "from": 6,
+   "from": 5,
    "out": "out",
-   "to": 1,
-   "in": "fm",
+   "to": 6,
+   "in": "left",
    "color": 6
   }
  ],

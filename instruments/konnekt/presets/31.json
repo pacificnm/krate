@@ -1,8 +1,8 @@
 {
  "version": 1,
- "title": "Noise Riser",
- "category": "Effects",
- "text": "Sound: the rising white-noise sweep that builds tension before a drop in big beat, rave and techno: hold a key and it climbs for eight seconds.\n\nHow it's built: white noise through the State-Variable filter's band-pass; an envelope with an eight-second ATTACK sweeps the CUTOFF up (CV at 6 octaves) while a second, slightly quicker envelope fades the volume in. A Reverb for size.\n\nPlay: hold one key for the build, let go at the drop.\n\nTweak: the sweep envelope's ATTACK (the length of the build), the filter's RESONANCE (more is whistlier), the reverb's MIX.",
+ "title": "Breathy Pipe Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: a breathy, haunting pipe or pan-flute lead, the kind 80s samplers made famous: a soft tone with air around it, swelling in, a vibrato that arrives as the note holds.\n\nHow it's built: a triangle wave for the tone; white noise through a band-pass filter that follows the note (KEY) for the breath, mixed in underneath; a gentle attack. The vibrato fades in: an LFO goes through a VCA that a slow envelope opens, then into the oscillator's FM. A large Reverb.\n\nPlay: slow, expressive melodies, long notes (let the vibrato come in).\n\nTweak: the breath level (mixer 2), the attack, the vibrato envelope's ATTACK (how long before it starts), the oscillator's FM (how wide).",
  "voices": 1,
  "modules": [
   {
@@ -14,136 +14,213 @@
   },
   {
    "slot": 1,
-   "type": "noise",
+   "type": "oscillator",
    "x": 168,
+   "y": 16,
+   "knobs": {
+    "fm_amount": 0.025
+   }
+  },
+  {
+   "slot": 2,
+   "type": "noise",
+   "x": 448,
    "y": 16,
    "knobs": {}
   },
   {
-   "slot": 2,
-   "type": "svf",
-   "x": 320,
-   "y": 16,
-   "knobs": {
-    "cutoff": 200.0,
-    "res": 0.45,
-    "cv_amount": 6.0
-   }
-  },
-  {
    "slot": 3,
-   "type": "envelope",
-   "x": 536,
+   "type": "svf",
+   "x": 600,
    "y": 16,
    "knobs": {
-    "attack": 8.0,
-    "decay": 0.1,
-    "sustain": 1.0,
-    "release": 0.5
+    "cutoff": 1200.0,
+    "res": 0.45
    }
   },
   {
    "slot": 4,
-   "type": "envelope",
-   "x": 16,
-   "y": 486,
+   "type": "lfo",
+   "x": 816,
+   "y": 16,
    "knobs": {
-    "attack": 3.0,
-    "decay": 0.1,
-    "sustain": 1.0,
-    "release": 0.6
+    "rate": 5.5,
+    "wave": 1.0
    }
   },
   {
    "slot": 5,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.6,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 6,
    "type": "vca",
    "x": 232,
    "y": 486,
    "knobs": {}
   },
   {
-   "slot": 6,
-   "type": "reverb",
+   "slot": 7,
+   "type": "mixer",
    "x": 384,
    "y": 486,
+   "knobs": {
+    "level1": 0.8,
+    "level2": 0.35
+   }
+  },
+  {
+   "slot": 8,
+   "type": "envelope",
+   "x": 536,
+   "y": 486,
+   "knobs": {
+    "attack": 0.08,
+    "decay": 0.2,
+    "sustain": 0.9,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 9,
+   "type": "vca",
+   "x": 752,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 10,
+   "type": "reverb",
+   "x": 16,
+   "y": 956,
    "knobs": {
     "size": 0.7,
     "mix": 0.35
    }
   },
   {
-   "slot": 7,
+   "slot": 11,
    "type": "output",
-   "x": 536,
-   "y": 486,
+   "x": 168,
+   "y": 956,
    "knobs": {
-    "volume": 1.0
+    "volume": 0.77
    }
   }
  ],
  "cables": [
   {
-   "from": 1,
-   "out": "white",
-   "to": 2,
-   "in": "in",
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
    "color": 0
+  },
+  {
+   "from": 2,
+   "out": "white",
+   "to": 3,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "key",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "triangle",
+   "to": 7,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "band",
+   "to": 7,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 9,
+   "in": "in",
+   "color": 5
   },
   {
    "from": 0,
    "out": "gate",
-   "to": 3,
+   "to": 8,
    "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 8,
+   "out": "env",
+   "to": 9,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 9,
+   "out": "out",
+   "to": 10,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
    "color": 1
   },
   {
-   "from": 3,
-   "out": "env",
-   "to": 2,
-   "in": "cutoff",
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
    "color": 2
   },
   {
-   "from": 2,
-   "out": "band",
-   "to": 5,
+   "from": 4,
+   "out": "out",
+   "to": 6,
    "in": "in",
    "color": 3
   },
   {
    "from": 0,
    "out": "gate",
-   "to": 4,
+   "to": 5,
    "in": "gate",
    "color": 4
   },
   {
-   "from": 4,
+   "from": 5,
    "out": "env",
-   "to": 5,
+   "to": 6,
    "in": "cv",
    "color": 5
   },
   {
-   "from": 5,
+   "from": 6,
    "out": "out",
-   "to": 6,
-   "in": "left",
+   "to": 1,
+   "in": "fm",
    "color": 6
-  },
-  {
-   "from": 6,
-   "out": "left",
-   "to": 7,
-   "in": "left",
-   "color": 7
-  },
-  {
-   "from": 6,
-   "out": "right",
-   "to": 7,
-   "in": "right",
-   "color": 0
   }
  ],
  "midi": []

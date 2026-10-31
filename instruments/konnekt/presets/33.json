@@ -1,0 +1,211 @@
+{
+ "version": 1,
+ "title": "Dark Detuned Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: a moody, hollow, slightly sour lead of dark 80s synth-pop: two square waves just out of tune with each other, gliding between notes, in a wash of chorus and echo.\n\nHow it's built: two oscillators' PULSE outputs (squares, at 50 %), one tuned a little flat; the pitch goes through a Slew first, so notes glide into each other; a mellow Ladder filter; Chorus, then a Delay. One voice: play legato for the glides.\n\nPlay: slow, minor-key melodies, legato.\n\nTweak: the second oscillator's TUNE (more is sourer), the Slew's RISE and FALL (the glide), the filter's CUTOFF, the chorus MODE.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "slew",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "rise": 0.06,
+    "fall": 0.06
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 320,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "tune": -0.1
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "level1": 0.6,
+    "level2": 0.6
+   }
+  },
+  {
+   "slot": 5,
+   "type": "ladder",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "cutoff": 2200.0,
+    "res": 0.15
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 0.01,
+    "decay": 0.3,
+    "sustain": 0.9,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 600,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "chorus",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "mode": 0.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "delay",
+   "x": 168,
+   "y": 956,
+   "knobs": {
+    "time": 0.45,
+    "feedback": 0.4,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 320,
+   "y": 956,
+   "knobs": {
+    "volume": 0.56
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "out",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "out",
+   "to": 3,
+   "in": "pitch",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "pulse",
+   "to": 4,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "pulse",
+   "to": 4,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 5
+  }
+ ],
+ "midi": []
+}

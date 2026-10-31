@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Rave Stab",
- "category": "Leads and stabs",
- "text": "Sound: the bright, short chord stab of early-90s rave, acid and techno: play a chord and it hits and dies away into a little room.\n\nHow it's built: per voice, two saws a few cents apart and a pulse an octave up, through the Ladder filter; one envelope sweeps the filter shut quickly, another shapes the volume (no sustain: a stab). Then Chorus for width and Reverb for the room. Six voices for chords.\n\nPlay: minor chords and minor sevenths, in rhythm.\n\nTweak: the filter envelope's DECAY (shorter is snappier), the filter's CUTOFF and CV, the reverb's SIZE and MIX.",
- "voices": 6,
+ "title": "Rubber Pluck Bass",
+ "category": "Bass",
+ "text": "Sound: a round, rubbery, plucked bass that 'boings' on every note: the bouncy keyboard bass of EBM and synth-pop, played rather than sequenced.\n\nHow it's built: a saw through the OTA filter (its saturating stages give the rubbery tone) with RESONANCE up; a short envelope snaps the filter open and shut; the VCA's envelope decays to a low sustain so held notes stay but the pluck leads. One voice.\n\nPlay: bouncy, staccato bass parts, octave jumps.\n\nTweak: the filter envelope's DECAY (longer is a slower 'boing'), RESONANCE, the filter's CV.",
+ "voices": 1,
  "modules": [
   {
    "slot": 0,
@@ -17,106 +17,69 @@
    "type": "oscillator",
    "x": 168,
    "y": 16,
-   "knobs": {}
+   "knobs": {
+    "octave": -1.0
+   }
   },
   {
    "slot": 2,
-   "type": "oscillator",
+   "type": "ota_filter",
    "x": 448,
    "y": 16,
    "knobs": {
-    "tune": 0.1
+    "cutoff": 200.0,
+    "res": 0.6,
+    "cv_amount": 4.5
    }
   },
   {
    "slot": 3,
-   "type": "oscillator",
-   "x": 728,
+   "type": "envelope",
+   "x": 664,
    "y": 16,
    "knobs": {
-    "octave": 1.0,
-    "width": 0.35
+    "attack": 0.001,
+    "decay": 0.18,
+    "sustain": 0.0,
+    "release": 0.1
    }
   },
   {
    "slot": 4,
-   "type": "mixer",
+   "type": "envelope",
    "x": 16,
    "y": 486,
    "knobs": {
-    "level1": 0.5,
-    "level2": 0.5,
-    "level3": 0.3
+    "attack": 0.001,
+    "decay": 0.3,
+    "sustain": 0.3,
+    "release": 0.08
    }
   },
   {
    "slot": 5,
-   "type": "ladder",
-   "x": 168,
+   "type": "vca",
+   "x": 232,
    "y": 486,
-   "knobs": {
-    "cutoff": 700.0,
-    "res": 0.25,
-    "cv_amount": 4.0
-   }
+   "knobs": {}
   },
   {
    "slot": 6,
-   "type": "envelope",
+   "type": "drive",
    "x": 384,
    "y": 486,
    "knobs": {
-    "attack": 0.001,
-    "decay": 0.22,
-    "sustain": 0.0,
-    "release": 0.2
+    "drive": 0.3,
+    "level": 1.0
    }
   },
   {
    "slot": 7,
-   "type": "envelope",
-   "x": 600,
+   "type": "output",
+   "x": 536,
    "y": 486,
    "knobs": {
-    "attack": 0.001,
-    "decay": 0.45,
-    "sustain": 0.0,
-    "release": 0.3
-   }
-  },
-  {
-   "slot": 8,
-   "type": "vca",
-   "x": 16,
-   "y": 956,
-   "knobs": {}
-  },
-  {
-   "slot": 9,
-   "type": "chorus",
-   "x": 168,
-   "y": 956,
-   "knobs": {
-    "mode": 1.0
-   }
-  },
-  {
-   "slot": 10,
-   "type": "reverb",
-   "x": 320,
-   "y": 956,
-   "knobs": {
-    "size": 0.55,
-    "mix": 0.25
-   }
-  },
-  {
-   "slot": 11,
-   "type": "output",
-   "x": 472,
-   "y": 956,
-   "knobs": {
-    "volume": 0.89
+    "volume": 0.86
    }
   }
  ],
@@ -129,122 +92,66 @@
    "color": 0
   },
   {
-   "from": 0,
-   "out": "pitch",
+   "from": 1,
+   "out": "saw",
    "to": 2,
-   "in": "pitch",
+   "in": "in",
    "color": 1
   },
   {
    "from": 0,
    "out": "pitch",
-   "to": 3,
-   "in": "pitch",
+   "to": 2,
+   "in": "key",
    "color": 2
-  },
-  {
-   "from": 1,
-   "out": "saw",
-   "to": 4,
-   "in": "in1",
-   "color": 3
-  },
-  {
-   "from": 2,
-   "out": "saw",
-   "to": 4,
-   "in": "in2",
-   "color": 4
-  },
-  {
-   "from": 3,
-   "out": "pulse",
-   "to": 4,
-   "in": "in3",
-   "color": 5
-  },
-  {
-   "from": 4,
-   "out": "out",
-   "to": 5,
-   "in": "in",
-   "color": 6
   },
   {
    "from": 0,
    "out": "gate",
-   "to": 6,
+   "to": 3,
    "in": "gate",
-   "color": 7
+   "color": 3
   },
   {
-   "from": 6,
+   "from": 3,
    "out": "env",
-   "to": 5,
+   "to": 2,
    "in": "cutoff",
-   "color": 0
+   "color": 4
+  },
+  {
+   "from": 2,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 5
   },
   {
    "from": 0,
-   "out": "pitch",
+   "out": "gate",
+   "to": 4,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 4,
+   "out": "env",
    "to": 5,
-   "in": "key",
-   "color": 1
+   "in": "cv",
+   "color": 7
   },
   {
    "from": 5,
    "out": "out",
-   "to": 8,
+   "to": 6,
    "in": "in",
-   "color": 2
-  },
-  {
-   "from": 0,
-   "out": "gate",
-   "to": 7,
-   "in": "gate",
-   "color": 3
-  },
-  {
-   "from": 7,
-   "out": "env",
-   "to": 8,
-   "in": "cv",
-   "color": 4
-  },
-  {
-   "from": 8,
-   "out": "out",
-   "to": 9,
-   "in": "in",
-   "color": 5
-  },
-  {
-   "from": 9,
-   "out": "left",
-   "to": 10,
-   "in": "left",
-   "color": 6
-  },
-  {
-   "from": 9,
-   "out": "right",
-   "to": 10,
-   "in": "right",
-   "color": 7
-  },
-  {
-   "from": 10,
-   "out": "left",
-   "to": 11,
-   "in": "left",
    "color": 0
   },
   {
-   "from": 10,
-   "out": "right",
-   "to": 11,
-   "in": "right",
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
    "color": 1
   }
  ],

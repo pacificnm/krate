@@ -1,0 +1,292 @@
+{
+ "version": 1,
+ "title": "Cold Wave Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: the cold, heavy, droning lead of late-70s and early-80s cold wave and new wave: a wall of detuned saws an octave deep, a vibrato creeping in as the note holds.\n\nHow it's built: three oscillators on one note: two saws a few cents apart, a third an octave below. The Ladder filter takes off the top. The vibrato fades in (an LFO through a VCA opened by a slow envelope, into all three FM inputs). A gentle Chorus and a Reverb. One voice.\n\nPlay: slow, stark melodies, long notes.\n\nTweak: the second oscillator's TUNE, the filter's CUTOFF, the vibrato envelope's ATTACK, the octave oscillator's level (mixer 3).",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "fm_amount": 0.02
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "tune": 0.12,
+    "fm_amount": 0.02
+   }
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "octave": -1.0,
+    "fm_amount": 0.02
+   }
+  },
+  {
+   "slot": 4,
+   "type": "lfo",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "rate": 5.5,
+    "wave": 1.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.6,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "mixer",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "level1": 0.5,
+    "level2": 0.5,
+    "level3": 0.45
+   }
+  },
+  {
+   "slot": 8,
+   "type": "ladder",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "cutoff": 1800.0,
+    "res": 0.2
+   }
+  },
+  {
+   "slot": 9,
+   "type": "envelope",
+   "x": 232,
+   "y": 956,
+   "knobs": {
+    "attack": 0.02,
+    "decay": 0.3,
+    "sustain": 0.9,
+    "release": 0.35
+   }
+  },
+  {
+   "slot": 10,
+   "type": "vca",
+   "x": 448,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 11,
+   "type": "chorus",
+   "x": 600,
+   "y": 956,
+   "knobs": {
+    "mode": 0.0
+   }
+  },
+  {
+   "slot": 12,
+   "type": "reverb",
+   "x": 752,
+   "y": 956,
+   "knobs": {
+    "size": 0.55,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 13,
+   "type": "output",
+   "x": 904,
+   "y": 956,
+   "knobs": {
+    "volume": 0.73
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 7,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 7,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "saw",
+   "to": 7,
+   "in": "in3",
+   "color": 5
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 10,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 9,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 9,
+   "out": "env",
+   "to": 10,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 10,
+   "out": "out",
+   "to": 11,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 11,
+   "out": "left",
+   "to": 12,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 11,
+   "out": "right",
+   "to": 12,
+   "in": "right",
+   "color": 4
+  },
+  {
+   "from": 12,
+   "out": "left",
+   "to": 13,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 12,
+   "out": "right",
+   "to": 13,
+   "in": "right",
+   "color": 6
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 1,
+   "in": "fm",
+   "color": 2
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 2,
+   "in": "fm",
+   "color": 3
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 3,
+   "in": "fm",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

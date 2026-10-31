@@ -1,0 +1,227 @@
+{
+ "version": 1,
+ "title": "Polysynth Brass",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: the big, bright synth brass of 80s pop and rock: chords that swell slightly into each hit, the filter opening with a 'blare', wide with chorus.\n\nHow it's built: two saws a few cents apart through the Ladder filter; the filter envelope has a short ATTACK (60 ms) so the brightness swells in like a brass player's breath, then settles; the VCA's envelope is softer at the start too. Chorus (II) and some Reverb. Six voices.\n\nPlay: chords, punchy and held; brass riffs.\n\nTweak: the filter envelope's ATTACK (slower is more brass-like, shorter more of a stab), its SUSTAIN, the filter's CV.",
+ "voices": 6,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "tune": 0.08
+   }
+  },
+  {
+   "slot": 3,
+   "type": "mixer",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "level1": 0.55,
+    "level2": 0.55
+   }
+  },
+  {
+   "slot": 4,
+   "type": "ladder",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "cutoff": 400.0,
+    "res": 0.1,
+    "cv_amount": 4.5
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.06,
+    "decay": 0.4,
+    "sustain": 0.5,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 448,
+   "y": 486,
+   "knobs": {
+    "attack": 0.03,
+    "decay": 0.3,
+    "sustain": 0.9,
+    "release": 0.25
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 664,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "chorus",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "mode": 1.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "reverb",
+   "x": 168,
+   "y": 956,
+   "knobs": {
+    "size": 0.45,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 320,
+   "y": 956,
+   "knobs": {
+    "volume": 0.63
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 3,
+   "in": "in1",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 3,
+   "in": "in2",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "in",
+   "color": 4
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 4,
+   "in": "key",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 4,
+   "in": "cutoff",
+   "color": 7
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 2
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 5
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 6
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 7
+  }
+ ],
+ "midi": []
+}

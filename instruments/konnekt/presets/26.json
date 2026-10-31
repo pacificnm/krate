@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Breathy Acid Pad",
- "category": "Pads and atmospheres",
- "text": "Sound: a soft, airy, slowly swirling pad, the hazy backdrop behind acid and trance vocals: chords that fade in with a breath of noise.\n\nHow it's built: a pulse wave whose width is swept by a slow LFO (PWM, the swirl), with a little white noise mixed in (the breath); a gentle Ladder filter; a slow attack and long release; Chorus (Ensemble) and a large Reverb. Six voices.\n\nPlay: slow chords.\n\nTweak: the envelope's ATTACK and RELEASE, the noise level (mixer 2), the LFO's RATE, the filter's CUTOFF.",
- "voices": 6,
+ "title": "Trance Gate Stab",
+ "category": "Leads and stabs",
+ "text": "Sound: chords chopped into a rhythmic stutter, sixteen pulses a bar: the gated pad stab of trance and rave. Hold a chord and it pulses in time.\n\nHow it's built: two detuned saws through the Ladder filter into a VCA. The VCA's envelope has no sustain, and a Clock's 1/16 is plugged into its RETRIG: while you hold the keys, each tick starts the envelope again, so the chord pulses. Chorus, Delay and Reverb. Four voices.\n\nPlay: hold chords.\n\nTweak: the clock's TEMPO, which clock output drives RETRIG (1/8 for half as many pulses), the envelope's DECAY (longer pulses blur together), the delay's TIME.",
+ "voices": 4,
  "modules": [
   {
    "slot": 0,
@@ -14,96 +14,105 @@
   },
   {
    "slot": 1,
-   "type": "oscillator",
+   "type": "clock",
    "x": 168,
    "y": 16,
    "knobs": {
-    "width": 0.5,
-    "pwm_amount": 0.35
+    "tempo": 135.0
    }
   },
   {
    "slot": 2,
-   "type": "noise",
-   "x": 448,
+   "type": "oscillator",
+   "x": 320,
    "y": 16,
    "knobs": {}
   },
   {
    "slot": 3,
-   "type": "lfo",
+   "type": "oscillator",
    "x": 600,
    "y": 16,
    "knobs": {
-    "rate": 0.3,
-    "wave": 1.0
+    "tune": 0.12
    }
   },
   {
    "slot": 4,
    "type": "mixer",
-   "x": 816,
-   "y": 16,
+   "x": 16,
+   "y": 486,
    "knobs": {
     "level1": 0.7,
-    "level2": 0.08
+    "level2": 0.7
    }
   },
   {
    "slot": 5,
    "type": "ladder",
-   "x": 16,
+   "x": 168,
    "y": 486,
    "knobs": {
-    "cutoff": 1800.0,
-    "res": 0.15
+    "cutoff": 2000.0,
+    "res": 0.2
    }
   },
   {
    "slot": 6,
    "type": "envelope",
-   "x": 232,
+   "x": 384,
    "y": 486,
    "knobs": {
-    "attack": 0.8,
-    "decay": 1.0,
-    "sustain": 0.85,
-    "release": 1.8
+    "attack": 0.001,
+    "decay": 0.09,
+    "sustain": 0.0,
+    "release": 0.06
    }
   },
   {
    "slot": 7,
    "type": "vca",
-   "x": 448,
+   "x": 600,
    "y": 486,
    "knobs": {}
   },
   {
    "slot": 8,
    "type": "chorus",
-   "x": 600,
-   "y": 486,
+   "x": 16,
+   "y": 956,
    "knobs": {
-    "mode": 2.0
+    "mode": 1.0
    }
   },
   {
    "slot": 9,
-   "type": "reverb",
-   "x": 752,
-   "y": 486,
+   "type": "delay",
+   "x": 168,
+   "y": 956,
    "knobs": {
-    "size": 0.75,
-    "mix": 0.35
+    "time": 0.333,
+    "feedback": 0.3,
+    "mix": 0.2
    }
   },
   {
    "slot": 10,
-   "type": "output",
-   "x": 904,
-   "y": 486,
+   "type": "reverb",
+   "x": 320,
+   "y": 956,
    "knobs": {
-    "volume": 0.63
+    "size": 0.55,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 11,
+   "type": "output",
+   "x": 472,
+   "y": 956,
+   "knobs": {
+    "volume": 0.98
    }
   }
  ],
@@ -111,27 +120,27 @@
   {
    "from": 0,
    "out": "pitch",
-   "to": 1,
+   "to": 2,
    "in": "pitch",
    "color": 0
   },
   {
-   "from": 3,
-   "out": "out",
-   "to": 1,
-   "in": "pwm",
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
    "color": 1
   },
   {
-   "from": 1,
-   "out": "pulse",
+   "from": 2,
+   "out": "saw",
    "to": 4,
    "in": "in1",
    "color": 2
   },
   {
-   "from": 2,
-   "out": "white",
+   "from": 3,
+   "out": "saw",
    "to": 4,
    "in": "in2",
    "color": 3
@@ -144,24 +153,24 @@
    "color": 4
   },
   {
-   "from": 0,
-   "out": "pitch",
-   "to": 5,
-   "in": "key",
-   "color": 5
-  },
-  {
    "from": 5,
    "out": "out",
    "to": 7,
    "in": "in",
-   "color": 6
+   "color": 5
   },
   {
    "from": 0,
    "out": "gate",
    "to": 6,
    "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 1,
+   "out": "sixteenth",
+   "to": 6,
+   "in": "retrig",
    "color": 7
   },
   {
@@ -205,6 +214,20 @@
    "to": 10,
    "in": "right",
    "color": 5
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
+   "color": 6
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 7
   }
  ],
  "midi": []

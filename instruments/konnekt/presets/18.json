@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Polysynth Brass",
- "category": "80s and synth-pop leads",
- "text": "Sound: the big, bright synth brass of 80s pop and rock: chords that swell slightly into each hit, the filter opening with a 'blare', wide with chorus.\n\nHow it's built: two saws a few cents apart through the Ladder filter; the filter envelope has a short ATTACK (60 ms) so the brightness swells in like a brass player's breath, then settles; the VCA's envelope is softer at the start too. Chorus (II) and some Reverb. Six voices.\n\nPlay: chords, punchy and held; brass riffs.\n\nTweak: the filter envelope's ATTACK (slower is more brass-like, shorter more of a stab), its SUSTAIN, the filter's CV.",
- "voices": 6,
+ "title": "Whirling Rave Lead",
+ "category": "Leads and stabs",
+ "text": "Sound: the huge, whirling, slightly sour lead of early-90s hardcore and rave: detuned pulses churning against each other, each note swooping up into place.\n\nHow it's built: two pulse waves, slightly detuned, their widths swept by one slow LFO (PWM) so they swirl. Each note starts an octave low and glides up: the envelope's INVERTED output, flipped upside down by the Attenuverter (SCALE -1), into both oscillators' FM. Chorus (Ensemble) and Reverb make it enormous.\n\nPlay: chords and slow single notes.\n\nTweak: the swoop envelope's ATTACK (the glide's length), the LFO's RATE, the chorus MODE.",
+ "voices": 4,
  "modules": [
   {
    "slot": 0,
@@ -17,7 +17,10 @@
    "type": "oscillator",
    "x": 168,
    "y": 16,
-   "knobs": {}
+   "knobs": {
+    "fm_amount": 1.0,
+    "pwm_amount": 0.3
+   }
   },
   {
    "slot": 2,
@@ -25,87 +28,107 @@
    "x": 448,
    "y": 16,
    "knobs": {
-    "tune": 0.08
+    "tune": -0.15,
+    "fm_amount": 1.0,
+    "pwm_amount": 0.3
    }
   },
   {
    "slot": 3,
-   "type": "mixer",
+   "type": "lfo",
    "x": 728,
    "y": 16,
+   "knobs": {
+    "rate": 0.8,
+    "wave": 1.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.12,
+    "decay": 0.1,
+    "sustain": 1.0,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 5,
+   "type": "attenuverter",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "scale_a": -1.0
+   }
+  },
+  {
+   "slot": 6,
+   "type": "mixer",
+   "x": 384,
+   "y": 486,
    "knobs": {
     "level1": 0.55,
     "level2": 0.55
    }
   },
   {
-   "slot": 4,
-   "type": "ladder",
-   "x": 16,
-   "y": 486,
-   "knobs": {
-    "cutoff": 400.0,
-    "res": 0.1,
-    "cv_amount": 4.5
-   }
-  },
-  {
-   "slot": 5,
-   "type": "envelope",
-   "x": 232,
-   "y": 486,
-   "knobs": {
-    "attack": 0.06,
-    "decay": 0.4,
-    "sustain": 0.5,
-    "release": 0.3
-   }
-  },
-  {
-   "slot": 6,
-   "type": "envelope",
-   "x": 448,
-   "y": 486,
-   "knobs": {
-    "attack": 0.03,
-    "decay": 0.3,
-    "sustain": 0.9,
-    "release": 0.25
-   }
-  },
-  {
    "slot": 7,
-   "type": "vca",
-   "x": 664,
+   "type": "ladder",
+   "x": 536,
    "y": 486,
-   "knobs": {}
+   "knobs": {
+    "cutoff": 2500.0,
+    "res": 0.15
+   }
   },
   {
    "slot": 8,
-   "type": "chorus",
-   "x": 16,
-   "y": 956,
+   "type": "envelope",
+   "x": 752,
+   "y": 486,
    "knobs": {
-    "mode": 1.0
+    "attack": 0.01,
+    "decay": 0.3,
+    "sustain": 0.9,
+    "release": 0.5
    }
   },
   {
    "slot": 9,
-   "type": "reverb",
-   "x": 168,
+   "type": "vca",
+   "x": 16,
    "y": 956,
-   "knobs": {
-    "size": 0.45,
-    "mix": 0.2
-   }
+   "knobs": {}
   },
   {
    "slot": 10,
-   "type": "output",
+   "type": "chorus",
+   "x": 168,
+   "y": 956,
+   "knobs": {
+    "mode": 2.0
+   }
+  },
+  {
+   "slot": 11,
+   "type": "reverb",
    "x": 320,
    "y": 956,
    "knobs": {
-    "volume": 0.63
+    "size": 0.65,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 12,
+   "type": "output",
+   "x": 472,
+   "y": 956,
+   "knobs": {
+    "volume": 0.52
    }
   }
  ],
@@ -125,102 +148,123 @@
    "color": 1
   },
   {
-   "from": 1,
-   "out": "saw",
-   "to": 3,
-   "in": "in1",
+   "from": 3,
+   "out": "out",
+   "to": 1,
+   "in": "pwm",
    "color": 2
-  },
-  {
-   "from": 2,
-   "out": "saw",
-   "to": 3,
-   "in": "in2",
-   "color": 3
   },
   {
    "from": 3,
    "out": "out",
-   "to": 4,
-   "in": "in",
-   "color": 4
-  },
-  {
-   "from": 0,
-   "out": "pitch",
-   "to": 4,
-   "in": "key",
-   "color": 5
+   "to": 2,
+   "in": "pwm",
+   "color": 3
   },
   {
    "from": 0,
    "out": "gate",
-   "to": 5,
+   "to": 4,
    "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "inverted",
+   "to": 5,
+   "in": "a",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "out_a",
+   "to": 1,
+   "in": "fm",
    "color": 6
   },
   {
    "from": 5,
-   "out": "env",
-   "to": 4,
-   "in": "cutoff",
+   "out": "out_a",
+   "to": 2,
+   "in": "fm",
    "color": 7
   },
   {
-   "from": 4,
-   "out": "out",
-   "to": 7,
-   "in": "in",
+   "from": 1,
+   "out": "pulse",
+   "to": 6,
+   "in": "in1",
    "color": 0
   },
   {
-   "from": 0,
-   "out": "gate",
+   "from": 2,
+   "out": "pulse",
    "to": 6,
-   "in": "gate",
+   "in": "in2",
    "color": 1
   },
   {
    "from": 6,
-   "out": "env",
+   "out": "out",
    "to": 7,
-   "in": "cv",
+   "in": "in",
    "color": 2
   },
   {
    "from": 7,
    "out": "out",
-   "to": 8,
+   "to": 9,
    "in": "in",
    "color": 3
   },
   {
-   "from": 8,
-   "out": "left",
-   "to": 9,
-   "in": "left",
+   "from": 0,
+   "out": "gate",
+   "to": 8,
+   "in": "gate",
    "color": 4
   },
   {
    "from": 8,
-   "out": "right",
+   "out": "env",
    "to": 9,
-   "in": "right",
+   "in": "cv",
    "color": 5
   },
   {
    "from": 9,
-   "out": "left",
+   "out": "out",
    "to": 10,
-   "in": "left",
+   "in": "in",
    "color": 6
   },
   {
-   "from": 9,
-   "out": "right",
-   "to": 10,
-   "in": "right",
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
    "color": 7
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 0
+  },
+  {
+   "from": 11,
+   "out": "left",
+   "to": 12,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 11,
+   "out": "right",
+   "to": 12,
+   "in": "right",
+   "color": 2
   }
  ],
  "midi": []

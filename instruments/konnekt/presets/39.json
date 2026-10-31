@@ -1,0 +1,215 @@
+{
+ "version": 1,
+ "title": "Fifths Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: a thick, open lead with two notes in each key, a fifth apart, gliding together: the 'power chord' synth line of 80s rock and new wave.\n\nHow it's built: two saws, the second tuned 7 semitones up (a fifth), both following one Slew for the glide; the Ladder filter with an envelope that opens it a little on each note; a Delay. One voice.\n\nPlay: simple melodies (every note is already a fifth), legato slides.\n\nTweak: the second oscillator's TUNE (5 for a fourth, 12 for an octave), the filter envelope's DECAY and the filter's CV, the Slew's times.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "slew",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "rise": 0.04,
+    "fall": 0.04
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 320,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "tune": 7.0
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "level1": 0.6,
+    "level2": 0.5
+   }
+  },
+  {
+   "slot": 5,
+   "type": "ladder",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "cutoff": 1500.0,
+    "res": 0.3,
+    "cv_amount": 2.0
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 0.002,
+    "decay": 0.3,
+    "sustain": 0.4,
+    "release": 0.2
+   }
+  },
+  {
+   "slot": 7,
+   "type": "envelope",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "attack": 0.004,
+    "decay": 0.3,
+    "sustain": 0.9,
+    "release": 0.25
+   }
+  },
+  {
+   "slot": 8,
+   "type": "vca",
+   "x": 16,
+   "y": 956,
+   "knobs": {}
+  },
+  {
+   "slot": 9,
+   "type": "delay",
+   "x": 168,
+   "y": 956,
+   "knobs": {
+    "time": 0.38,
+    "feedback": 0.3,
+    "mix": 0.22
+   }
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 320,
+   "y": 956,
+   "knobs": {
+    "volume": 0.92
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "out",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 1,
+   "out": "out",
+   "to": 3,
+   "in": "pitch",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 4,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "saw",
+   "to": 4,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 5,
+   "in": "cutoff",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 8,
+   "in": "cv",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 5
+  }
+ ],
+ "midi": []
+}

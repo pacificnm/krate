@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Dark Detuned Lead",
- "category": "80s and synth-pop leads",
- "text": "Sound: a moody, hollow, slightly sour lead of dark 80s synth-pop: two square waves just out of tune with each other, gliding between notes, in a wash of chorus and echo.\n\nHow it's built: two oscillators' PULSE outputs (squares, at 50 %), one tuned a little flat; the pitch goes through a Slew first, so notes glide into each other; a mellow Ladder filter; Chorus, then a Delay. One voice: play legato for the glides.\n\nPlay: slow, minor-key melodies, legato.\n\nTweak: the second oscillator's TUNE (more is sourer), the Slew's RISE and FALL (the glide), the filter's CUTOFF, the chorus MODE.",
- "voices": 1,
+ "title": "Rave Stab",
+ "category": "Leads and stabs",
+ "text": "Sound: the bright, short chord stab of early-90s rave, acid and techno: play a chord and it hits and dies away into a little room.\n\nHow it's built: per voice, two saws a few cents apart and a pulse an octave up, through the Ladder filter; one envelope sweeps the filter shut quickly, another shapes the volume (no sustain: a stab). Then Chorus for width and Reverb for the room. Six voices for chords.\n\nPlay: minor chords and minor sevenths, in rhythm.\n\nTweak: the filter envelope's DECAY (shorter is snappier), the filter's CUTOFF and CV, the reverb's SIZE and MIX.",
+ "voices": 6,
  "modules": [
   {
    "slot": 0,
@@ -14,28 +14,28 @@
   },
   {
    "slot": 1,
-   "type": "slew",
-   "x": 168,
-   "y": 16,
-   "knobs": {
-    "rise": 0.06,
-    "fall": 0.06
-   }
-  },
-  {
-   "slot": 2,
    "type": "oscillator",
-   "x": 320,
+   "x": 168,
    "y": 16,
    "knobs": {}
   },
   {
-   "slot": 3,
+   "slot": 2,
    "type": "oscillator",
-   "x": 600,
+   "x": 448,
    "y": 16,
    "knobs": {
-    "tune": -0.1
+    "tune": 0.1
+   }
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0,
+    "width": 0.35
    }
   },
   {
@@ -44,8 +44,9 @@
    "x": 16,
    "y": 486,
    "knobs": {
-    "level1": 0.6,
-    "level2": 0.6
+    "level1": 0.5,
+    "level2": 0.5,
+    "level3": 0.3
    }
   },
   {
@@ -54,8 +55,9 @@
    "x": 168,
    "y": 486,
    "knobs": {
-    "cutoff": 2200.0,
-    "res": 0.15
+    "cutoff": 700.0,
+    "res": 0.25,
+    "cv_amount": 4.0
    }
   },
   {
@@ -64,46 +66,57 @@
    "x": 384,
    "y": 486,
    "knobs": {
-    "attack": 0.01,
-    "decay": 0.3,
-    "sustain": 0.9,
-    "release": 0.3
+    "attack": 0.001,
+    "decay": 0.22,
+    "sustain": 0.0,
+    "release": 0.2
    }
   },
   {
    "slot": 7,
-   "type": "vca",
+   "type": "envelope",
    "x": 600,
    "y": 486,
-   "knobs": {}
-  },
-  {
-   "slot": 8,
-   "type": "chorus",
-   "x": 16,
-   "y": 956,
    "knobs": {
-    "mode": 0.0
+    "attack": 0.001,
+    "decay": 0.45,
+    "sustain": 0.0,
+    "release": 0.3
    }
   },
   {
+   "slot": 8,
+   "type": "vca",
+   "x": 16,
+   "y": 956,
+   "knobs": {}
+  },
+  {
    "slot": 9,
-   "type": "delay",
+   "type": "chorus",
    "x": 168,
    "y": 956,
    "knobs": {
-    "time": 0.45,
-    "feedback": 0.4,
-    "mix": 0.25
+    "mode": 1.0
    }
   },
   {
    "slot": 10,
-   "type": "output",
+   "type": "reverb",
    "x": 320,
    "y": 956,
    "knobs": {
-    "volume": 0.56
+    "size": 0.55,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 11,
+   "type": "output",
+   "x": 472,
+   "y": 956,
+   "knobs": {
+    "volume": 0.89
    }
   }
  ],
@@ -112,48 +125,48 @@
    "from": 0,
    "out": "pitch",
    "to": 1,
-   "in": "in",
+   "in": "pitch",
    "color": 0
   },
   {
-   "from": 1,
-   "out": "out",
+   "from": 0,
+   "out": "pitch",
    "to": 2,
    "in": "pitch",
    "color": 1
   },
   {
-   "from": 1,
-   "out": "out",
+   "from": 0,
+   "out": "pitch",
    "to": 3,
    "in": "pitch",
    "color": 2
   },
   {
-   "from": 2,
-   "out": "pulse",
+   "from": 1,
+   "out": "saw",
    "to": 4,
    "in": "in1",
    "color": 3
   },
   {
-   "from": 3,
-   "out": "pulse",
+   "from": 2,
+   "out": "saw",
    "to": 4,
    "in": "in2",
    "color": 4
   },
   {
-   "from": 4,
-   "out": "out",
-   "to": 5,
-   "in": "in",
+   "from": 3,
+   "out": "pulse",
+   "to": 4,
+   "in": "in3",
    "color": 5
   },
   {
-   "from": 5,
+   "from": 4,
    "out": "out",
-   "to": 7,
+   "to": 5,
    "in": "in",
    "color": 6
   },
@@ -167,44 +180,72 @@
   {
    "from": 6,
    "out": "env",
-   "to": 7,
-   "in": "cv",
+   "to": 5,
+   "in": "cutoff",
    "color": 0
   },
   {
-   "from": 7,
-   "out": "out",
-   "to": 8,
-   "in": "in",
+   "from": 0,
+   "out": "pitch",
+   "to": 5,
+   "in": "key",
    "color": 1
   },
   {
-   "from": 8,
-   "out": "left",
-   "to": 9,
-   "in": "left",
+   "from": 5,
+   "out": "out",
+   "to": 8,
+   "in": "in",
    "color": 2
   },
   {
-   "from": 8,
-   "out": "right",
-   "to": 9,
-   "in": "right",
+   "from": 0,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
    "color": 3
+  },
+  {
+   "from": 7,
+   "out": "env",
+   "to": 8,
+   "in": "cv",
+   "color": 4
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "in",
+   "color": 5
   },
   {
    "from": 9,
    "out": "left",
    "to": 10,
    "in": "left",
-   "color": 4
+   "color": 6
   },
   {
    "from": 9,
    "out": "right",
    "to": 10,
    "in": "right",
-   "color": 5
+   "color": 7
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 1
   }
  ],
  "midi": []

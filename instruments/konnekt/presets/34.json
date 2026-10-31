@@ -1,0 +1,177 @@
+{
+ "version": 1,
+ "title": "Square Glide Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: the bouncy, gliding square-wave lead of 80s film and TV themes: a clean, hollow tone that slides between notes, with a dotted echo behind it.\n\nHow it's built: one oscillator's PULSE (a square), its pitch through a Slew for the glides; the Ladder filter with a little envelope for a soft 'blip' at the start of each note; a Delay. One voice.\n\nPlay: catchy, staccato melodies with octave jumps; play legato where you want a slide.\n\nTweak: the Slew's times, WIDTH (narrower is reedier), the delay's TIME (try a dotted eighth of your tempo), the filter envelope's DECAY.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "slew",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "rise": 0.07,
+    "fall": 0.07
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 320,
+   "y": 16,
+   "knobs": {
+    "width": 0.5
+   }
+  },
+  {
+   "slot": 3,
+   "type": "ladder",
+   "x": 600,
+   "y": 16,
+   "knobs": {
+    "cutoff": 2400.0,
+    "res": 0.25,
+    "cv_amount": 1.5
+   }
+  },
+  {
+   "slot": 4,
+   "type": "envelope",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.3,
+    "sustain": 0.3,
+    "release": 0.2
+   }
+  },
+  {
+   "slot": 5,
+   "type": "envelope",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "attack": 0.004,
+    "decay": 0.2,
+    "sustain": 0.85,
+    "release": 0.15
+   }
+  },
+  {
+   "slot": 6,
+   "type": "vca",
+   "x": 448,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 7,
+   "type": "delay",
+   "x": 600,
+   "y": 486,
+   "knobs": {
+    "time": 0.33,
+    "feedback": 0.35,
+    "mix": 0.3
+   }
+  },
+  {
+   "slot": 8,
+   "type": "output",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "volume": 0.66
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "in",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "out",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 2,
+   "out": "pulse",
+   "to": 3,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 4,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 4,
+   "out": "env",
+   "to": 3,
+   "in": "cutoff",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 5
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
+   "color": 7
+  },
+  {
+   "from": 6,
+   "out": "out",
+   "to": 7,
+   "in": "left",
+   "color": 0
+  },
+  {
+   "from": 7,
+   "out": "left",
+   "to": 8,
+   "in": "left",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "right",
+   "to": 8,
+   "in": "right",
+   "color": 2
+  }
+ ],
+ "midi": []
+}

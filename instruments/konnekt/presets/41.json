@@ -1,0 +1,141 @@
+{
+ "version": 1,
+ "title": "Blip Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: tiny, high, percussive blips with echoes ping-ponging away: the 'bink bink' of minimal 80s synth-pop.\n\nHow it's built: a narrow pulse an octave up, a very short envelope on the VCA (70 ms, no sustain), a Delay with lots of feedback bouncing left and right, a touch of Reverb. Four voices.\n\nPlay: two-note figures, sparse rhythmic hits; let the echoes fill the gaps.\n\nTweak: the envelope's DECAY, WIDTH, the delay's TIME and FEEDBACK.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0,
+    "width": 0.25
+   }
+  },
+  {
+   "slot": 2,
+   "type": "envelope",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "attack": 0.001,
+    "decay": 0.07,
+    "sustain": 0.0,
+    "release": 0.06
+   }
+  },
+  {
+   "slot": 3,
+   "type": "vca",
+   "x": 664,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 4,
+   "type": "delay",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "time": 0.18,
+    "feedback": 0.5,
+    "mix": 0.4
+   }
+  },
+  {
+   "slot": 5,
+   "type": "reverb",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "size": 0.4,
+    "mix": 0.15
+   }
+  },
+  {
+   "slot": 6,
+   "type": "output",
+   "x": 320,
+   "y": 486,
+   "knobs": {
+    "volume": 0.81
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "pulse",
+   "to": 3,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 2,
+   "in": "gate",
+   "color": 2
+  },
+  {
+   "from": 2,
+   "out": "env",
+   "to": 3,
+   "in": "cv",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 4,
+   "in": "left",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "left",
+   "to": 5,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "right",
+   "to": 5,
+   "in": "right",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "left",
+   "to": 6,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "right",
+   "to": 6,
+   "in": "right",
+   "color": 0
+  }
+ ],
+ "midi": []
+}

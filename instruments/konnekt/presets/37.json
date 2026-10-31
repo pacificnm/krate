@@ -1,0 +1,243 @@
+{
+ "version": 1,
+ "title": "Anthem Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: the bright, soaring, singalong lead of mid-80s synth-pop: big, shiny and wide, a saw layered with a pulse an octave up.\n\nHow it's built: three oscillators: a saw, a second saw tuned a little flat, and a pulse an octave above, through a mostly open Ladder filter; Chorus, a short Delay and a Reverb make it big. Four voices so held notes ring under new ones.\n\nPlay: high, fast, catchy melodies.\n\nTweak: the octave pulse's level (mixer 3) and WIDTH, the filter's CUTOFF, the delay's MIX.",
+ "voices": 4,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "tune": -0.1
+   }
+  },
+  {
+   "slot": 3,
+   "type": "oscillator",
+   "x": 728,
+   "y": 16,
+   "knobs": {
+    "octave": 1.0,
+    "width": 0.4
+   }
+  },
+  {
+   "slot": 4,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "level1": 0.5,
+    "level2": 0.45,
+    "level3": 0.4
+   }
+  },
+  {
+   "slot": 5,
+   "type": "ladder",
+   "x": 168,
+   "y": 486,
+   "knobs": {
+    "cutoff": 4000.0,
+    "res": 0.15
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 0.005,
+    "decay": 0.3,
+    "sustain": 0.85,
+    "release": 0.3
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 600,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "chorus",
+   "x": 16,
+   "y": 956,
+   "knobs": {
+    "mode": 0.0
+   }
+  },
+  {
+   "slot": 9,
+   "type": "delay",
+   "x": 168,
+   "y": 956,
+   "knobs": {
+    "time": 0.25,
+    "feedback": 0.3,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 10,
+   "type": "reverb",
+   "x": 320,
+   "y": 956,
+   "knobs": {
+    "size": 0.5,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 11,
+   "type": "output",
+   "x": 472,
+   "y": 956,
+   "knobs": {
+    "volume": 0.71
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "pitch",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 3,
+   "in": "pitch",
+   "color": 2
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 4,
+   "in": "in1",
+   "color": 3
+  },
+  {
+   "from": 2,
+   "out": "saw",
+   "to": 4,
+   "in": "in2",
+   "color": 4
+  },
+  {
+   "from": 3,
+   "out": "pulse",
+   "to": 4,
+   "in": "in3",
+   "color": 5
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 7,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 4
+  },
+  {
+   "from": 9,
+   "out": "left",
+   "to": 10,
+   "in": "left",
+   "color": 5
+  },
+  {
+   "from": 9,
+   "out": "right",
+   "to": 10,
+   "in": "right",
+   "color": 6
+  },
+  {
+   "from": 10,
+   "out": "left",
+   "to": 11,
+   "in": "left",
+   "color": 7
+  },
+  {
+   "from": 10,
+   "out": "right",
+   "to": 11,
+   "in": "right",
+   "color": 0
+  }
+ ],
+ "midi": []
+}

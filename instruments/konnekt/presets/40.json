@@ -1,0 +1,199 @@
+{
+ "version": 1,
+ "title": "Talking Lead",
+ "category": "80s and synth-pop leads",
+ "text": "Sound: a vocal, 'talking' lead that says 'wow' and 'yah' on every note, with a lazy wobble: the funky, voice-like synth of 80s pop and electro.\n\nHow it's built: a saw through the State-Variable filter's band-pass with RESONANCE up (a narrow band, like a vowel). Its CUTOFF gets a Mixer of two things: an envelope (each note opens 'wow') and a slow LFO (the wobble). One voice, with a Delay.\n\nPlay: rhythmic, funky phrases and held notes.\n\nTweak: the filter's RESONANCE (more is more vocal), the envelope's DECAY, the LFO's RATE and its mixer level, the filter's CUTOFF.",
+ "voices": 1,
+ "modules": [
+  {
+   "slot": 0,
+   "type": "midi_in",
+   "x": 16,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 1,
+   "type": "oscillator",
+   "x": 168,
+   "y": 16,
+   "knobs": {}
+  },
+  {
+   "slot": 2,
+   "type": "svf",
+   "x": 448,
+   "y": 16,
+   "knobs": {
+    "cutoff": 500.0,
+    "res": 0.65,
+    "cv_amount": 2.5
+   }
+  },
+  {
+   "slot": 3,
+   "type": "envelope",
+   "x": 664,
+   "y": 16,
+   "knobs": {
+    "attack": 0.01,
+    "decay": 0.3,
+    "sustain": 0.2,
+    "release": 0.2
+   }
+  },
+  {
+   "slot": 4,
+   "type": "lfo",
+   "x": 16,
+   "y": 486,
+   "knobs": {
+    "rate": 1.5,
+    "wave": 0.0
+   }
+  },
+  {
+   "slot": 5,
+   "type": "mixer",
+   "x": 232,
+   "y": 486,
+   "knobs": {
+    "level1": 1.0,
+    "level2": 0.35
+   }
+  },
+  {
+   "slot": 6,
+   "type": "envelope",
+   "x": 384,
+   "y": 486,
+   "knobs": {
+    "attack": 0.004,
+    "decay": 0.3,
+    "sustain": 0.9,
+    "release": 0.2
+   }
+  },
+  {
+   "slot": 7,
+   "type": "vca",
+   "x": 600,
+   "y": 486,
+   "knobs": {}
+  },
+  {
+   "slot": 8,
+   "type": "delay",
+   "x": 752,
+   "y": 486,
+   "knobs": {
+    "time": 0.3,
+    "feedback": 0.3,
+    "mix": 0.2
+   }
+  },
+  {
+   "slot": 9,
+   "type": "output",
+   "x": 904,
+   "y": 486,
+   "knobs": {
+    "volume": 0.74
+   }
+  }
+ ],
+ "cables": [
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 1,
+   "in": "pitch",
+   "color": 0
+  },
+  {
+   "from": 1,
+   "out": "saw",
+   "to": 2,
+   "in": "in",
+   "color": 1
+  },
+  {
+   "from": 0,
+   "out": "pitch",
+   "to": 2,
+   "in": "key",
+   "color": 2
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 3,
+   "in": "gate",
+   "color": 3
+  },
+  {
+   "from": 3,
+   "out": "env",
+   "to": 5,
+   "in": "in1",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "out",
+   "to": 5,
+   "in": "in2",
+   "color": 5
+  },
+  {
+   "from": 5,
+   "out": "out",
+   "to": 2,
+   "in": "cutoff",
+   "color": 6
+  },
+  {
+   "from": 2,
+   "out": "band",
+   "to": 7,
+   "in": "in",
+   "color": 7
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 6,
+   "in": "gate",
+   "color": 0
+  },
+  {
+   "from": 6,
+   "out": "env",
+   "to": 7,
+   "in": "cv",
+   "color": 1
+  },
+  {
+   "from": 7,
+   "out": "out",
+   "to": 8,
+   "in": "left",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "left",
+   "to": 9,
+   "in": "left",
+   "color": 3
+  },
+  {
+   "from": 8,
+   "out": "right",
+   "to": 9,
+   "in": "right",
+   "color": 4
+  }
+ ],
+ "midi": []
+}

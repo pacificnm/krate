@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Pop Pluck Lead",
- "category": "80s and synth-pop leads",
- "text": "Sound: the same bright synth-pop pluck, for you to play: every note a quick, glassy 'pling' with echoes bouncing left and right.\n\nHow it's built: one oscillator's saw and pulse mixed into the Ladder filter; one envelope flicks the filter open and shut, another plucks the VCA (no sustain, so notes die away even if you hold them). A touch of Drive, a Delay and a little Reverb. Four voices, so notes can ring over each other.\n\nPlay: quick riffs and arpeggios, broken chords, staccato.\n\nTweak: the filter envelope's DECAY (longer is softer), RESONANCE (a little more 'pling'), the delay's TIME.",
- "voices": 4,
+ "title": "Crushed Bass",
+ "category": "Bass",
+ "text": "Sound: a gritty, broken, digital bass: lo-fi crunch and whining aliasing on a low saw, for industrial and breakbeat.\n\nHow it's built: a saw and a pulse through the Ladder filter (with a little envelope), then the Crusher: 6 bits and a quarter of the sample rate, which adds steps and ringing alias tones; Drive on top. One voice.\n\nPlay: low riffs. Higher notes alias more.\n\nTweak: BITS and RATE on the Crusher, the filter's CUTOFF (before the crusher, so a darker input still crushes), DRIVE.",
+ "voices": 1,
  "modules": [
   {
    "slot": 0,
@@ -18,7 +18,7 @@
    "x": 168,
    "y": 16,
    "knobs": {
-    "width": 0.35
+    "octave": -1.0
    }
   },
   {
@@ -27,8 +27,8 @@
    "x": 448,
    "y": 16,
    "knobs": {
-    "level1": 1.0,
-    "level2": 0.8
+    "level1": 0.6,
+    "level2": 0.5
    }
   },
   {
@@ -37,9 +37,9 @@
    "x": 600,
    "y": 16,
    "knobs": {
-    "cutoff": 1800.0,
-    "res": 0.25,
-    "cv_amount": 3.0
+    "cutoff": 900.0,
+    "res": 0.2,
+    "cv_amount": 2.0
    }
   },
   {
@@ -49,8 +49,8 @@
    "y": 486,
    "knobs": {
     "attack": 0.001,
-    "decay": 0.2,
-    "sustain": 0.1,
+    "decay": 0.3,
+    "sustain": 0.3,
     "release": 0.15
    }
   },
@@ -60,10 +60,10 @@
    "x": 232,
    "y": 486,
    "knobs": {
-    "attack": 0.001,
-    "decay": 0.35,
-    "sustain": 0.0,
-    "release": 0.3
+    "attack": 0.002,
+    "decay": 0.3,
+    "sustain": 0.8,
+    "release": 0.08
    }
   },
   {
@@ -75,42 +75,31 @@
   },
   {
    "slot": 7,
-   "type": "drive",
+   "type": "crusher",
    "x": 600,
    "y": 486,
    "knobs": {
-    "drive": 0.25,
-    "level": 1.0
+    "bits": 11.0,
+    "rate": 2.0
    }
   },
   {
    "slot": 8,
-   "type": "delay",
+   "type": "drive",
    "x": 752,
    "y": 486,
    "knobs": {
-    "time": 0.3,
-    "feedback": 0.35,
-    "mix": 0.3
+    "drive": 0.3,
+    "level": 0.8
    }
   },
   {
    "slot": 9,
-   "type": "reverb",
+   "type": "output",
    "x": 904,
    "y": 486,
    "knobs": {
-    "size": 0.4,
-    "mix": 0.15
-   }
-  },
-  {
-   "slot": 10,
-   "type": "output",
-   "x": 1056,
-   "y": 486,
-   "knobs": {
-    "volume": 0.83
+    "volume": 0.91
    }
   }
  ],
@@ -145,87 +134,59 @@
   },
   {
    "from": 0,
-   "out": "pitch",
-   "to": 3,
-   "in": "key",
-   "color": 4
-  },
-  {
-   "from": 0,
    "out": "gate",
    "to": 4,
    "in": "gate",
-   "color": 5
+   "color": 4
   },
   {
    "from": 4,
    "out": "env",
    "to": 3,
    "in": "cutoff",
-   "color": 6
+   "color": 5
   },
   {
    "from": 3,
    "out": "out",
    "to": 6,
    "in": "in",
-   "color": 7
+   "color": 6
   },
   {
    "from": 0,
    "out": "gate",
    "to": 5,
    "in": "gate",
-   "color": 0
+   "color": 7
   },
   {
    "from": 5,
    "out": "env",
    "to": 6,
    "in": "cv",
-   "color": 1
+   "color": 0
   },
   {
    "from": 6,
    "out": "out",
    "to": 7,
    "in": "in",
-   "color": 2
+   "color": 1
   },
   {
    "from": 7,
    "out": "out",
    "to": 8,
+   "in": "in",
+   "color": 2
+  },
+  {
+   "from": 8,
+   "out": "out",
+   "to": 9,
    "in": "left",
    "color": 3
-  },
-  {
-   "from": 8,
-   "out": "left",
-   "to": 9,
-   "in": "left",
-   "color": 4
-  },
-  {
-   "from": 8,
-   "out": "right",
-   "to": 9,
-   "in": "right",
-   "color": 5
-  },
-  {
-   "from": 9,
-   "out": "left",
-   "to": 10,
-   "in": "left",
-   "color": 6
-  },
-  {
-   "from": 9,
-   "out": "right",
-   "to": 10,
-   "in": "right",
-   "color": 7
   }
  ],
  "midi": []

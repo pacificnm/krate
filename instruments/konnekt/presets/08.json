@@ -1,8 +1,8 @@
 {
  "version": 1,
- "title": "Sync Scream",
- "category": "Leads and stabs",
- "text": "Sound: an aggressive, tearing lead for industrial and EBM: the tone rips upward at the start of each note, then settles into a hard, metallic buzz.\n\nHow it's built: two oscillators on the same note; the second is hard-synced to the first (SYNC), so its pitch is locked to the first and what changes is its tone. An envelope into the second's FM sweeps it up and back: that's the rip. Drive for edge, a filter to take the fizz off, a delay.\n\nPlay: single notes, in short phrases.\n\nTweak: the sweep envelope's DECAY, the second oscillator's FM (how far it sweeps) and TUNE, DRIVE.",
+ "title": "FM Slap Bass",
+ "category": "Bass",
+ "text": "Sound: the punchy, twangy digital 'slap' bass of 80s and early-90s pop and dance: a bright, metallic attack on a deep, clean note.\n\nHow it's built: FM synthesis. A sine modulator at the same pitch shakes the carrier sine (LIN FM) through its own VCA, opened by a very fast envelope: so only the first instant of each note is bright and twangy, and then it's a pure sine. A second envelope shapes the volume. One voice.\n\nPlay: funky, syncopated bass parts with octave jumps.\n\nTweak: the twang envelope's DECAY (longer is a 'bwow'), the carrier's LIN FM (how bright the slap), the modulator's OCTAVE.",
  "voices": 1,
  "modules": [
   {
@@ -17,87 +17,75 @@
    "type": "oscillator",
    "x": 168,
    "y": 16,
-   "knobs": {}
+   "knobs": {
+    "octave": -1.0
+   }
   },
   {
    "slot": 2,
-   "type": "oscillator",
+   "type": "envelope",
    "x": 448,
    "y": 16,
    "knobs": {
-    "tune": 5.0,
-    "fm_amount": 1.6
+    "attack": 0.001,
+    "decay": 0.15,
+    "sustain": 0.0,
+    "release": 0.1
    }
   },
   {
    "slot": 3,
-   "type": "envelope",
-   "x": 728,
+   "type": "vca",
+   "x": 664,
    "y": 16,
-   "knobs": {
-    "attack": 0.001,
-    "decay": 0.5,
-    "sustain": 0.15,
-    "release": 0.3
-   }
+   "knobs": {}
   },
   {
    "slot": 4,
-   "type": "drive",
-   "x": 16,
-   "y": 486,
+   "type": "oscillator",
+   "x": 816,
+   "y": 16,
    "knobs": {
-    "drive": 0.5,
-    "level": 0.6
+    "octave": -1.0,
+    "lin_fm_amount": 0.6
    }
   },
   {
    "slot": 5,
-   "type": "ladder",
-   "x": 168,
+   "type": "envelope",
+   "x": 16,
    "y": 486,
    "knobs": {
-    "cutoff": 5000.0,
-    "res": 0.1
+    "attack": 0.001,
+    "decay": 0.6,
+    "sustain": 0.4,
+    "release": 0.1
    }
   },
   {
    "slot": 6,
-   "type": "envelope",
-   "x": 384,
-   "y": 486,
-   "knobs": {
-    "attack": 0.002,
-    "decay": 0.3,
-    "sustain": 0.8,
-    "release": 0.2
-   }
-  },
-  {
-   "slot": 7,
    "type": "vca",
-   "x": 600,
+   "x": 232,
    "y": 486,
    "knobs": {}
   },
   {
-   "slot": 8,
-   "type": "delay",
-   "x": 752,
+   "slot": 7,
+   "type": "drive",
+   "x": 384,
    "y": 486,
    "knobs": {
-    "time": 0.3,
-    "feedback": 0.3,
-    "mix": 0.2
+    "drive": 0.2,
+    "level": 1.0
    }
   },
   {
-   "slot": 9,
+   "slot": 8,
    "type": "output",
-   "x": 904,
+   "x": 536,
    "y": 486,
    "knobs": {
-    "volume": 0.82
+    "volume": 0.59
    }
   }
  ],
@@ -112,64 +100,64 @@
   {
    "from": 0,
    "out": "pitch",
-   "to": 2,
+   "to": 4,
    "in": "pitch",
    "color": 1
   },
   {
    "from": 1,
-   "out": "saw",
-   "to": 2,
-   "in": "sync",
+   "out": "sine",
+   "to": 3,
+   "in": "in",
    "color": 2
   },
   {
    "from": 0,
    "out": "gate",
-   "to": 3,
+   "to": 2,
    "in": "gate",
    "color": 3
   },
   {
-   "from": 3,
+   "from": 2,
    "out": "env",
-   "to": 2,
-   "in": "fm",
+   "to": 3,
+   "in": "cv",
    "color": 4
   },
   {
-   "from": 2,
-   "out": "saw",
+   "from": 3,
+   "out": "out",
    "to": 4,
-   "in": "in",
+   "in": "lin_fm",
    "color": 5
   },
   {
    "from": 4,
-   "out": "out",
-   "to": 5,
+   "out": "sine",
+   "to": 6,
    "in": "in",
    "color": 6
   },
   {
-   "from": 5,
-   "out": "out",
-   "to": 7,
-   "in": "in",
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
    "color": 7
   },
   {
-   "from": 0,
-   "out": "gate",
+   "from": 5,
+   "out": "env",
    "to": 6,
-   "in": "gate",
+   "in": "cv",
    "color": 0
   },
   {
    "from": 6,
-   "out": "env",
+   "out": "out",
    "to": 7,
-   "in": "cv",
+   "in": "in",
    "color": 1
   },
   {
@@ -178,20 +166,6 @@
    "to": 8,
    "in": "left",
    "color": 2
-  },
-  {
-   "from": 8,
-   "out": "left",
-   "to": 9,
-   "in": "left",
-   "color": 3
-  },
-  {
-   "from": 8,
-   "out": "right",
-   "to": 9,
-   "in": "right",
-   "color": 4
   }
  ],
  "midi": []

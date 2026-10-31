@@ -1,9 +1,9 @@
 {
  "version": 1,
- "title": "Glass Bell Lead",
- "category": "80s and synth-pop leads",
- "text": "Sound: the glassy, chiming digital bell of mid-80s FM synthesizers: a bright, crystalline strike that mellows as it rings.\n\nHow it's built: FM synthesis. A modulator sine (an octave and a sixth above the note) shakes the carrier sine's frequency (LIN FM). The modulator goes through its own VCA with a decaying envelope, so the brightness fades as the note rings, the way a struck bell's does. A second envelope shapes the volume; Chorus and Reverb. Six voices.\n\nPlay: melodies and chords, in the middle and upper keys.\n\nTweak: the modulator's TUNE (whole octaves are pure, other values more bell-like or clangy), the carrier's LIN FM (brightness), the brightness envelope's DECAY.",
- "voices": 6,
+ "title": "Industrial Power Stab",
+ "category": "Leads and stabs",
+ "text": "Sound: a heavy, distorted power-chord stab: the crunching synth hits that punctuate industrial rock, a root, its fifth and an octave below, pushed through distortion.\n\nHow it's built: three saws on each key: the note, a fifth up (TUNE 7) and an octave down. Mixed, distorted hard with Drive, then the Ladder filter to take the fizz off; a short envelope makes it a hit; a Reverb. Four voices.\n\nPlay: single keys (each is already a power chord), in rhythm.\n\nTweak: DRIVE, the envelope's DECAY, the filter's CUTOFF, the reverb's SIZE.",
+ "voices": 4,
  "modules": [
   {
    "slot": 0,
@@ -17,84 +17,93 @@
    "type": "oscillator",
    "x": 168,
    "y": 16,
-   "knobs": {
-    "octave": 1.0,
-    "tune": 9.0
-   }
+   "knobs": {}
   },
   {
    "slot": 2,
-   "type": "envelope",
+   "type": "oscillator",
    "x": 448,
    "y": 16,
    "knobs": {
-    "attack": 0.001,
-    "decay": 0.8,
-    "sustain": 0.15,
-    "release": 0.6
+    "tune": 7.0
    }
   },
   {
    "slot": 3,
-   "type": "vca",
-   "x": 664,
+   "type": "oscillator",
+   "x": 728,
    "y": 16,
-   "knobs": {}
+   "knobs": {
+    "octave": -1.0
+   }
   },
   {
    "slot": 4,
-   "type": "oscillator",
-   "x": 816,
-   "y": 16,
+   "type": "mixer",
+   "x": 16,
+   "y": 486,
    "knobs": {
-    "lin_fm_amount": 0.5
+    "level1": 0.5,
+    "level2": 0.45,
+    "level3": 0.5
    }
   },
   {
    "slot": 5,
-   "type": "envelope",
-   "x": 16,
+   "type": "drive",
+   "x": 168,
    "y": 486,
    "knobs": {
-    "attack": 0.001,
-    "decay": 1.5,
-    "sustain": 0.3,
-    "release": 0.8
+    "drive": 0.8,
+    "level": 0.6
    }
   },
   {
    "slot": 6,
-   "type": "vca",
-   "x": 232,
+   "type": "ladder",
+   "x": 320,
    "y": 486,
-   "knobs": {}
+   "knobs": {
+    "cutoff": 2500.0,
+    "res": 0.15
+   }
   },
   {
    "slot": 7,
-   "type": "chorus",
-   "x": 384,
+   "type": "envelope",
+   "x": 536,
    "y": 486,
    "knobs": {
-    "mode": 0.0
+    "attack": 0.001,
+    "decay": 0.4,
+    "sustain": 0.0,
+    "release": 0.2
    }
   },
   {
    "slot": 8,
-   "type": "reverb",
-   "x": 536,
-   "y": 486,
-   "knobs": {
-    "size": 0.6,
-    "mix": 0.3
-   }
+   "type": "vca",
+   "x": 16,
+   "y": 956,
+   "knobs": {}
   },
   {
    "slot": 9,
-   "type": "output",
-   "x": 688,
-   "y": 486,
+   "type": "reverb",
+   "x": 168,
+   "y": 956,
    "knobs": {
-    "volume": 0.51
+    "size": 0.5,
+    "mix": 0.25
+   }
+  },
+  {
+   "slot": 10,
+   "type": "output",
+   "x": 320,
+   "y": 956,
+   "knobs": {
+    "volume": 0.85
    }
   }
  ],
@@ -109,91 +118,91 @@
   {
    "from": 0,
    "out": "pitch",
-   "to": 4,
+   "to": 2,
    "in": "pitch",
    "color": 1
   },
   {
-   "from": 1,
-   "out": "sine",
+   "from": 0,
+   "out": "pitch",
    "to": 3,
-   "in": "in",
+   "in": "pitch",
    "color": 2
   },
   {
-   "from": 0,
-   "out": "gate",
-   "to": 2,
-   "in": "gate",
+   "from": 1,
+   "out": "saw",
+   "to": 4,
+   "in": "in1",
    "color": 3
   },
   {
    "from": 2,
-   "out": "env",
-   "to": 3,
-   "in": "cv",
+   "out": "saw",
+   "to": 4,
+   "in": "in2",
    "color": 4
   },
   {
    "from": 3,
-   "out": "out",
+   "out": "saw",
    "to": 4,
-   "in": "lin_fm",
+   "in": "in3",
    "color": 5
   },
   {
    "from": 4,
-   "out": "sine",
-   "to": 6,
+   "out": "out",
+   "to": 5,
    "in": "in",
    "color": 6
   },
   {
-   "from": 0,
-   "out": "gate",
-   "to": 5,
-   "in": "gate",
-   "color": 7
-  },
-  {
    "from": 5,
-   "out": "env",
+   "out": "out",
    "to": 6,
-   "in": "cv",
-   "color": 0
+   "in": "in",
+   "color": 7
   },
   {
    "from": 6,
    "out": "out",
-   "to": 7,
+   "to": 8,
    "in": "in",
+   "color": 0
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 7,
+   "in": "gate",
    "color": 1
   },
   {
    "from": 7,
-   "out": "left",
+   "out": "env",
    "to": 8,
-   "in": "left",
+   "in": "cv",
    "color": 2
   },
   {
-   "from": 7,
-   "out": "right",
-   "to": 8,
-   "in": "right",
+   "from": 8,
+   "out": "out",
+   "to": 9,
+   "in": "left",
    "color": 3
   },
   {
-   "from": 8,
+   "from": 9,
    "out": "left",
-   "to": 9,
+   "to": 10,
    "in": "left",
    "color": 4
   },
   {
-   "from": 8,
+   "from": 9,
    "out": "right",
-   "to": 9,
+   "to": 10,
    "in": "right",
    "color": 5
   }

@@ -1,8 +1,8 @@
 {
  "version": 1,
- "title": "Talking Lead",
- "category": "80s and synth-pop leads",
- "text": "Sound: a vocal, 'talking' lead that says 'wow' and 'yah' on every note, with a lazy wobble: the funky, voice-like synth of 80s pop and electro.\n\nHow it's built: a saw through the State-Variable filter's band-pass with RESONANCE up (a narrow band, like a vowel). Its CUTOFF gets a Mixer of two things: an envelope (each note opens 'wow') and a slow LFO (the wobble). One voice, with a Delay.\n\nPlay: rhythmic, funky phrases and held notes.\n\nTweak: the filter's RESONANCE (more is more vocal), the envelope's DECAY, the LFO's RATE and its mixer level, the filter's CUTOFF.",
+ "title": "Acid Lead",
+ "category": "Leads and stabs",
+ "text": "Sound: the acid squelch an octave up, as a screaming, sliding lead line: resonant, rubbery, echoing.\n\nHow it's built: a saw with its pitch through a Slew (legato notes slide) into the Ladder filter with RESONANCE high; an envelope squelches the CUTOFF on each note; Drive for grit; a Delay with plenty of feedback. One voice.\n\nPlay: fast lines, overlapping notes for slides; ride the CUTOFF with a knob (LEARN).\n\nTweak: CUTOFF, RESONANCE, the filter's CV and the envelope's DECAY, the delay's FEEDBACK.",
  "voices": 1,
  "modules": [
   {
@@ -14,72 +14,72 @@
   },
   {
    "slot": 1,
-   "type": "oscillator",
+   "type": "slew",
    "x": 168,
+   "y": 16,
+   "knobs": {
+    "rise": 0.04,
+    "fall": 0.04
+   }
+  },
+  {
+   "slot": 2,
+   "type": "oscillator",
+   "x": 320,
    "y": 16,
    "knobs": {}
   },
   {
-   "slot": 2,
-   "type": "svf",
-   "x": 448,
-   "y": 16,
-   "knobs": {
-    "cutoff": 500.0,
-    "res": 0.65,
-    "cv_amount": 2.5
-   }
-  },
-  {
    "slot": 3,
-   "type": "envelope",
-   "x": 664,
+   "type": "ladder",
+   "x": 600,
    "y": 16,
    "knobs": {
-    "attack": 0.01,
-    "decay": 0.3,
-    "sustain": 0.2,
-    "release": 0.2
+    "cutoff": 600.0,
+    "res": 0.8,
+    "cv_amount": 3.5
    }
   },
   {
    "slot": 4,
-   "type": "lfo",
+   "type": "envelope",
    "x": 16,
    "y": 486,
    "knobs": {
-    "rate": 1.5,
-    "wave": 0.0
+    "attack": 0.001,
+    "decay": 0.25,
+    "sustain": 0.2,
+    "release": 0.15
    }
   },
   {
    "slot": 5,
-   "type": "mixer",
+   "type": "envelope",
    "x": 232,
    "y": 486,
    "knobs": {
-    "level1": 1.0,
-    "level2": 0.35
+    "attack": 0.002,
+    "decay": 0.2,
+    "sustain": 1.0,
+    "release": 0.1
    }
   },
   {
    "slot": 6,
-   "type": "envelope",
-   "x": 384,
+   "type": "vca",
+   "x": 448,
    "y": 486,
-   "knobs": {
-    "attack": 0.004,
-    "decay": 0.3,
-    "sustain": 0.9,
-    "release": 0.2
-   }
+   "knobs": {}
   },
   {
    "slot": 7,
-   "type": "vca",
+   "type": "drive",
    "x": 600,
    "y": 486,
-   "knobs": {}
+   "knobs": {
+    "drive": 0.5,
+    "level": 0.6
+   }
   },
   {
    "slot": 8,
@@ -88,8 +88,8 @@
    "y": 486,
    "knobs": {
     "time": 0.3,
-    "feedback": 0.3,
-    "mix": 0.2
+    "feedback": 0.45,
+    "mix": 0.3
    }
   },
   {
@@ -98,7 +98,7 @@
    "x": 904,
    "y": 486,
    "knobs": {
-    "volume": 0.74
+    "volume": 0.69
    }
   }
  ],
@@ -107,70 +107,70 @@
    "from": 0,
    "out": "pitch",
    "to": 1,
-   "in": "pitch",
+   "in": "in",
    "color": 0
   },
   {
    "from": 1,
-   "out": "saw",
+   "out": "out",
    "to": 2,
-   "in": "in",
+   "in": "pitch",
    "color": 1
   },
   {
-   "from": 0,
-   "out": "pitch",
-   "to": 2,
-   "in": "key",
+   "from": 2,
+   "out": "saw",
+   "to": 3,
+   "in": "in",
    "color": 2
   },
   {
    "from": 0,
-   "out": "gate",
+   "out": "pitch",
    "to": 3,
-   "in": "gate",
+   "in": "key",
    "color": 3
-  },
-  {
-   "from": 3,
-   "out": "env",
-   "to": 5,
-   "in": "in1",
-   "color": 4
-  },
-  {
-   "from": 4,
-   "out": "out",
-   "to": 5,
-   "in": "in2",
-   "color": 5
-  },
-  {
-   "from": 5,
-   "out": "out",
-   "to": 2,
-   "in": "cutoff",
-   "color": 6
-  },
-  {
-   "from": 2,
-   "out": "band",
-   "to": 7,
-   "in": "in",
-   "color": 7
   },
   {
    "from": 0,
    "out": "gate",
-   "to": 6,
+   "to": 4,
    "in": "gate",
+   "color": 4
+  },
+  {
+   "from": 4,
+   "out": "env",
+   "to": 3,
+   "in": "cutoff",
+   "color": 5
+  },
+  {
+   "from": 3,
+   "out": "out",
+   "to": 6,
+   "in": "in",
+   "color": 6
+  },
+  {
+   "from": 0,
+   "out": "gate",
+   "to": 5,
+   "in": "gate",
+   "color": 7
+  },
+  {
+   "from": 5,
+   "out": "env",
+   "to": 6,
+   "in": "cv",
    "color": 0
   },
   {
    "from": 6,
-   "out": "env",
+   "out": "out",
    "to": 7,
-   "in": "cv",
+   "in": "in",
    "color": 1
   },
   {
