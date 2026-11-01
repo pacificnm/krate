@@ -19,6 +19,11 @@ import KrateRack
 // click opens a pattern clip's pattern in the Seq screen. MIDI clips edit in
 // whole bars, audio clips in beats (SNAP off: freely). UNDO / REDO (Ctrl+Z,
 // Ctrl+Shift+Z) take back or redo any of it.
+//
+// Automation (D5): + AUTOMATION adds a lane for an instrument's knob, under
+// the tracks; a click on it adds a point, a point drags, a right click
+// removes it. With AUTO on (and SONG), knobs you turn while playing are
+// recorded into their lanes.
 Item {
     id: screen
 
@@ -36,7 +41,7 @@ Item {
     readonly property int stripHeight: 18
     // The lanes fill the screen's height (an audio lane a little taller), within reason.
     readonly property int midiLaneHeight: Math.max(30, Math.min(56, Math.floor(
-        (height - 150 - lanesTop - 24) / (8 + 1.4 * audioLanes.length))))
+        (height - 150 - lanesTop - 24) / (8 + 1.4 * audioLanes.length + autoLanes.length))))
     readonly property int audioLaneHeight: Math.round(midiLaneHeight * 1.4)
     readonly property var trackList: Sequencer.revision >= 0 ? Sequencer.tracks : []
     // The audio tracks in the rack: [{track, device}].
@@ -52,7 +57,10 @@ Item {
     readonly property int bars: Math.min(Arrange.maxBars, Math.max(64, Arrange.endBar + 16,
                                          Math.ceil(Arrange.position / 4) + 16, Arrange.loopTo + 4))
     readonly property real lanesTop: rulerHeight + 2 * stripHeight
+    readonly property var autoLanes: Arrange.revision >= 0 ? Arrange.automationLanes() : []
+    readonly property real autoTop: lanesTop + 8 * midiLaneHeight + audioLanes.length * audioLaneHeight
     readonly property real lanesHeight: 8 * midiLaneHeight + audioLanes.length * audioLaneHeight
+                                        + autoLanes.length * midiLaneHeight
 
     function barAt(x) { return Math.max(0, Math.min(Arrange.maxBars - 1, Math.floor(x / screen.barWidth))) }
     function select(kind, track, index) {
@@ -132,6 +140,16 @@ Item {
             text: "Punch: armed audio tracks record only inside the punch range (SONG mode)"
             onClicked: Arrange.punchOn = !Arrange.punchOn
             Led { x: 12; anchors.verticalCenter: parent.verticalCenter; on: Arrange.punchOn }
+        }
+        PanelButton {
+            width: 92
+            height: 40
+            anchors.verticalCenter: parent.verticalCenter
+            faceText: "    AUTO"
+            text: "Automation: knobs you turn while playing are recorded (SONG mode)"
+            tint: Arrange.writing ? Theme.ledOn : "transparent"
+            onClicked: Arrange.autoWrite = !Arrange.autoWrite
+            Led { x: 12; anchors.verticalCenter: parent.verticalCenter; on: Arrange.autoWrite }
         }
 
         Column {
@@ -273,6 +291,13 @@ Item {
             text: "Snap audio clips to beats"
             tint: screen.snap ? Theme.labelOrange : "transparent"
             onClicked: screen.snap = !screen.snap
+        }
+        PanelButton {
+            width: 130
+            height: 30
+            faceText: "+ AUTOMATION"
+            text: "Add an automation lane for an instrument's knob"
+            onClicked: automationPopup.open()
         }
         Item { width: 12; height: 1 }
         PanelButton {
@@ -450,6 +475,42 @@ Item {
                     text: "Arm Audio " + (audioName.modelData.track + 1) + " for recording"
                     tint: audioName.armed ? Theme.ledOn : "transparent"
                     onClicked: Tracks.setParam(audioName.modelData.track, 0, audioName.armed ? 0 : 1)
+                }
+            }
+        }
+
+        Repeater {
+            model: screen.autoLanes
+            Rectangle {
+                id: autoName
+                required property int index
+                required property var modelData
+                y: screen.autoTop + index * screen.midiLaneHeight
+                width: screen.headerWidth - 4
+                height: screen.midiLaneHeight - 2
+                radius: 3
+                color: "#CFD8CF"
+                border.color: Theme.deckLine
+                Text {
+                    x: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - 44
+                    elide: Text.ElideRight
+                    text: autoName.modelData.deviceName + " · " + autoName.modelData.label
+                    color: Theme.ink
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+                PanelButton {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 30
+                    height: 24
+                    faceText: "✕"
+                    text: "Remove the automation lane " + autoName.modelData.deviceName + " " + autoName.modelData.label
+                    onClicked: Arrange.removeAutomationLane(autoName.index)
                 }
             }
         }
@@ -951,6 +1012,117 @@ Item {
                 }
             }
 
+            // The automation lanes: the line, its points.
+            Repeater {
+                model: screen.autoLanes
+                Rectangle {
+                    id: autoLane
+                    required property int index
+                    required property var modelData
+                    readonly property var points: modelData.points
+                    readonly property real beatWidth: screen.barWidth / 4
+                    property int dragging: -1 // the point being dragged
+                    property real dragBeat: 0
+                    property real dragValue: 0
+                    y: screen.autoTop + index * screen.midiLaneHeight
+                    width: content.width
+                    height: screen.midiLaneHeight - 2
+                    color: index % 2 ? "#C6CEC6" : "#CBD3CB"
+
+                    function xOf(beat) { return beat * beatWidth }
+                    function yOf(value) { return 3 + (1 - value) * (height - 6) }
+                    function valueAt(y) { return Math.max(0, Math.min(1, 1 - (y - 3) / (height - 6))) }
+                    // Quarter beats when SNAP is on.
+                    function beatAt(x) {
+                        const beat = Math.max(0, x / beatWidth)
+                        return screen.snap ? Math.round(beat * 4) / 4 : beat
+                    }
+                    function pointNear(x, y) {
+                        for (let i = 0; i < points.length; ++i)
+                            if (Math.abs(xOf(points[i].beat) - x) <= 6 && Math.abs(yOf(points[i].value) - y) <= 8)
+                                return i
+                        return -1
+                    }
+
+                    Canvas {
+                        id: curve
+                        anchors.fill: parent
+                        onPaint: {
+                            const ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            const pts = autoLane.points.map((p, i) => i === autoLane.dragging
+                                ? { beat: autoLane.dragBeat, value: autoLane.dragValue } : p)
+                            pts.sort((a, b) => a.beat - b.beat)
+                            if (pts.length === 0)
+                                return
+                            ctx.strokeStyle = "#2F6B3A"
+                            ctx.lineWidth = 2
+                            ctx.beginPath()
+                            ctx.moveTo(0, autoLane.yOf(pts[0].value))
+                            for (const p of pts)
+                                ctx.lineTo(autoLane.xOf(p.beat), autoLane.yOf(p.value))
+                            ctx.lineTo(width, autoLane.yOf(pts[pts.length - 1].value))
+                            ctx.stroke()
+                            ctx.fillStyle = "#2F6B3A"
+                            for (const p of pts)
+                                ctx.fillRect(autoLane.xOf(p.beat) - 3, autoLane.yOf(p.value) - 3, 6, 6)
+                        }
+                    }
+                    onPointsChanged: curve.requestPaint()
+                    onBeatWidthChanged: curve.requestPaint()
+                    onHeightChanged: curve.requestPaint()
+                    onWidthChanged: curve.requestPaint()
+
+                    Text { // a dragged point's value, as the knob shows it
+                        visible: autoLane.dragging >= 0
+                        x: autoLane.xOf(autoLane.dragBeat) + 8
+                        y: 2
+                        text: autoLane.dragging >= 0 ? Arrange.valueText(autoLane.index, autoLane.dragValue) : ""
+                        color: Theme.ink
+                        font.family: "monospace"
+                        font.pixelSize: 11
+                        font.bold: true
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        preventStealing: true
+                        onPressed: mouse => {
+                            screen.select("", -1, -1)
+                            const near = autoLane.pointNear(mouse.x, mouse.y)
+                            if (mouse.button === Qt.RightButton || screen.erasing) {
+                                if (near >= 0)
+                                    Arrange.removePoint(autoLane.index, near)
+                                return
+                            }
+                            if (near < 0) {
+                                Arrange.addPoint(autoLane.index, autoLane.beatAt(mouse.x), autoLane.valueAt(mouse.y))
+                                return
+                            }
+                            autoLane.dragging = near
+                            autoLane.dragBeat = autoLane.points[near].beat
+                            autoLane.dragValue = autoLane.points[near].value
+                            curve.requestPaint()
+                        }
+                        onPositionChanged: mouse => {
+                            if (autoLane.dragging < 0)
+                                return
+                            autoLane.dragBeat = autoLane.beatAt(mouse.x)
+                            autoLane.dragValue = autoLane.valueAt(mouse.y)
+                            curve.requestPaint()
+                        }
+                        onReleased: {
+                            if (autoLane.dragging < 0)
+                                return
+                            const point = autoLane.dragging
+                            autoLane.dragging = -1
+                            Arrange.movePoint(autoLane.index, point, autoLane.dragBeat, autoLane.dragValue)
+                            curve.requestPaint()
+                        }
+                    }
+                }
+            }
+
             // The loop and punch ranges over the lanes, where play starts, and the playhead.
             Rectangle {
                 visible: Arrange.songMode && Arrange.loopOn
@@ -998,5 +1170,109 @@ Item {
         opacity: 0.6
         font.family: Theme.labelFont
         font.pixelSize: 13
+    }
+
+    // + AUTOMATION: an instrument, then one of its knobs.
+    Popup {
+        id: automationPopup
+        x: (screen.width - width) / 2
+        y: tools.y + tools.height + 6
+        width: 560
+        height: Math.min(screen.height - y - 16, 520)
+        padding: 16
+        modal: true
+        background: Rectangle { radius: 8; color: Theme.lowerDeck; border.color: Theme.deckLine; border.width: 2 }
+        property int device: -1
+        readonly property var devices: opened ? Arrange.automatableDevices() : []
+        onOpened: device = devices.length > 0 ? devices[0].device : -1
+
+        Row {
+            anchors.fill: parent
+            spacing: 12
+            Column { // the instruments
+                width: 170
+                spacing: 4
+                Text {
+                    text: "INSTRUMENT"
+                    color: Theme.ink
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+                Repeater {
+                    model: automationPopup.devices
+                    Rectangle {
+                        id: deviceRow
+                        required property var modelData
+                        readonly property bool chosen: automationPopup.device === modelData.device
+                        width: 170
+                        height: 28
+                        radius: 3
+                        color: chosen ? Theme.accentUi : Theme.silverLight
+                        border.color: Theme.deckLine
+                        Text {
+                            x: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: deviceRow.modelData.name
+                            color: deviceRow.chosen ? Theme.inkInverse : Theme.ink
+                            font.family: Theme.labelFont
+                            font.pixelSize: 14
+                            font.bold: deviceRow.chosen
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: automationPopup.device = deviceRow.modelData.device
+                        }
+                    }
+                }
+            }
+            Column { // its knobs: a click adds the lane
+                width: parent.width - 182
+                height: parent.height
+                spacing: 4
+                Text {
+                    text: "KNOB: A CLICK ADDS ITS LANE"
+                    color: Theme.ink
+                    font.family: Theme.labelFont
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+                ListView {
+                    id: knobList
+                    width: parent.width
+                    height: parent.height - 24
+                    clip: true
+                    spacing: 2
+                    model: automationPopup.device >= 0 ? Arrange.paramLabels(automationPopup.device) : []
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                    delegate: Rectangle {
+                        id: knobRow
+                        required property int index
+                        required property string modelData
+                        width: knobList.width - 12
+                        height: 26
+                        radius: 3
+                        color: knobMouse.containsMouse ? Theme.silverLight : "transparent"
+                        Text {
+                            x: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: knobRow.modelData
+                            color: Theme.ink
+                            font.family: Theme.labelFont
+                            font.pixelSize: 14
+                        }
+                        MouseArea {
+                            id: knobMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                Arrange.addAutomationLane(automationPopup.device, knobRow.index)
+                                automationPopup.close()
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
