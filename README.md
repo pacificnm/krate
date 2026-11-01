@@ -99,6 +99,10 @@ A guitar amp in the rack, played from your audio interface's input: four channel
 
 The rack also has **Klick**, a metronome on the shared transport.
 
+### Playing with a DAW
+
+Every app follows a DAW that leads tempo over JACK (Qtractor, Ardour...: set it as the JACK *timebase master* and its transport mode to lead). Tempo, play and stop are then the DAW's: the sequencers, arpeggiators and tempo-synced delays play in time with your project, patterns line up on its bars, and PLAY / STOP in any Krate app starts and stops the DAW too. The status line shows `JACK sync 128 BPM` while it follows. Connect the DAW's MIDI tracks to an instrument's `midi_in` and its outputs to audio tracks to record it. Instrument plugins (each instrument on a DAW track) are next.
+
 ## The approach
 
 - **One suite, one foundation.** Everything instrument-neutral lives in `shared/`: the realtime core (no Qt), the JACK host, the transport and step clock, MIDI, effects, the QML controls. Each instrument is the same engine whether it runs as its own app or as a device in the rack, so a sound made standalone is the same in the rack ([docs/SHARED_FOUNDATIONS.MD](docs/SHARED_FOUNDATIONS.MD)).

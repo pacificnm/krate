@@ -67,6 +67,7 @@ public:
     }
 
     float takePeak() noexcept override { return m_rack.takeMasterPeak(); }
+    Transport *transport() noexcept override { return &m_transport; }
 
 private:
     Rack &m_rack;

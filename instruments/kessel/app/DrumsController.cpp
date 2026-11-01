@@ -115,6 +115,12 @@ void DrumsController::poll()
         emit playingPatternChanged();
     }
     // The transport can also be started by a MIDI button, Space, or the rack.
+    // A DAW leading over JACK: the TEMPO knob shows its tempo.
+    if (m_transport)
+        if (const double v = krate::followingTempoValue(*m_transport, kessel::units::tempoBpm(float(value(QStringLiteral("tempo")))),
+                                                        kessel::units::tempoBpm(0.0f), kessel::units::tempoBpm(1.0f));
+            v >= 0.0)
+            setValue(QStringLiteral("tempo"), v);
     if (playing() != m_playing) {
         m_playing = playing();
         emit playingChanged();

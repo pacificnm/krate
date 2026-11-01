@@ -157,6 +157,11 @@ target_link_libraries(krate_qml PUBLIC krate_app krate_core Qt6::Qml Qt6::Quick)
 target_compile_options(krate_qml PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests for the shared pieces
+add_executable(tst_transport tests/tst_transport.cpp)
+target_compile_options(tst_transport PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_transport PRIVATE krate_core Qt6::Test)
+add_test(NAME tst_transport COMMAND tst_transport)
+
 add_executable(tst_queue tests/tst_queue.cpp)
 target_compile_options(tst_queue PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_queue PRIVATE krate_core Qt6::Test)

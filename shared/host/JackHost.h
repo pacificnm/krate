@@ -40,6 +40,7 @@ public:
     bool isOpen() const override { return m_client != nullptr; }
     // True once the server has shut the client down; call close() and retry later.
     bool serverGone() const override { return m_serverGone.load(std::memory_order_relaxed); }
+    double syncBpm() const override { return m_syncBpm.load(std::memory_order_relaxed); }
 
     std::uint32_t sampleRate() const override { return m_sampleRate.load(std::memory_order_relaxed); }
     std::uint32_t bufferSize() const override { return m_bufferSize.load(std::memory_order_relaxed); }
@@ -92,6 +93,7 @@ private:
     std::atomic<std::uint32_t> m_xruns{0};
     std::atomic<bool> m_serverGone{false};
     std::atomic<bool> m_portsChanged{false};
+    std::atomic<double> m_syncBpm{0.0}; // the JACK timebase's tempo while following it, 0 = none
 };
 
 } // namespace krate

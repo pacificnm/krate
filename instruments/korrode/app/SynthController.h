@@ -130,6 +130,7 @@ private:
     int m_currentStep = -1;
     int m_revision = 0;
     bool m_beat = false;
+    bool m_playingSeen = false;
     QString m_panelFilePath;
     QTimer m_saveTimer;
 };

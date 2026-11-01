@@ -212,6 +212,8 @@ int main(int argc, char *argv[])
     krate::installScreenshotHook(engine);
 
     const int result = app.exec();
-    transport.setPlaying(false);
+    if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
+        if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
+        transport.setPlaying(false);
     return result;
 }

@@ -32,6 +32,10 @@ public:
                          const MidiEvent *midi, std::uint32_t midiCount, double sampleRate) noexcept = 0;
 
     virtual float takePeak() noexcept = 0; // master output peak since last call (GUI thread)
+
+    // The transport the host keeps in step with JACK's (a DAW leading tempo,
+    // position and play/stop), or nullptr.
+    virtual Transport *transport() noexcept { return nullptr; }
 };
 
 // A standalone app's processor: advance the transport, run the instrument, then
@@ -70,6 +74,7 @@ public:
     }
 
     float takePeak() noexcept override { return m_master.takePeak(); }
+    Transport *transport() noexcept override { return &m_transport; }
 
 private:
     IInstrument &m_instrument;

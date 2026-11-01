@@ -54,6 +54,13 @@ struct TransportState {
 
 Within a block, beat position advances by `bpm / 60 / sampleRate` per sample. A sequencer's step index is `floor(beat × stepsPerBeat)`; it fires a step when that index changes. Tempo changes stay seamless, all devices stay locked, and an external MIDI clock later is just another transport source.
 
+**Following a DAW (JACK transport).** When a JACK timebase master (a DAW such as Qtractor or Ardour) publishes tempo and position, the host reads them every block (`jack_transport_query`, bars/beats/ticks to quarter notes: `Transport::fromBbt`) and hands them to the transport (`Transport::setExternal`); every app and the rack then follow it with no change to any instrument:
+
+- **Tempo and play/stop are the DAW's.** The panels show it: RUN lights, TEMPO knobs, and `· JACK sync N BPM` on the audio status line.
+- **Position is the song's.** Starting or locating onto a bar line restarts the sequencers there; anywhere else they stop and join at the next bar, as when joining a playing rack (bars are 4 beats).
+- **PLAY / STOP in Krate's apps start and stop JACK's transport** (`Transport::takeRequest`, passed on by the host), so the DAW and every app move together; choosing an arpeggio doesn't start it, and closing an app leaves it playing.
+- **When the DAW stops publishing a tempo,** the transport carries on in its own time from where it was.
+
 ### Audio block and instrument
 
 ```cpp

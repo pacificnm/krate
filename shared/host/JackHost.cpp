@@ -296,7 +296,32 @@ int JackHost::onProcess(jack_nframes_t frames, void *arg)
             out.data[b] = ev.buffer[b];
     }
 
+    // JACK's transport: when a timebase master (a DAW) publishes tempo and
+    // position, the processor's transport follows it (docs/SHARED_FOUNDATIONS.MD#transport).
+    Transport *transport = self->m_processor.transport();
+    if (transport) {
+        jack_position_t pos;
+        const jack_transport_state_t state = jack_transport_query(self->m_client, &pos);
+        if ((pos.valid & JackPositionBBT) && pos.beats_per_minute > 0.0 && pos.beat_type > 0.0f && pos.ticks_per_beat > 0.0) {
+            const Transport::External external =
+                Transport::fromBbt(state == JackTransportRolling, pos.bar, pos.beat, double(pos.tick), pos.ticks_per_beat,
+                                   double(pos.beats_per_bar), double(pos.beat_type), pos.beats_per_minute);
+            transport->setExternal(&external);
+            self->m_syncBpm.store(external.bpm, std::memory_order_relaxed);
+        } else {
+            transport->setExternal(nullptr);
+            self->m_syncBpm.store(0.0, std::memory_order_relaxed);
+        }
+    }
+
     self->m_processor.process(inputs, outputs, frames, events, count, double(rate));
+
+    if (transport) // PLAY / STOP pressed while following: start or stop JACK's transport
+        switch (transport->takeRequest()) {
+        case Transport::Start: jack_transport_start(self->m_client); break;
+        case Transport::Stop: jack_transport_stop(self->m_client); break;
+        case Transport::None: break;
+        }
     return 0;
 }
 

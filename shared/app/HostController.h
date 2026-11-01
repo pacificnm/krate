@@ -129,6 +129,7 @@ private:
     QList<qreal> m_inputLevels;
     int m_requestedBufferSize = 0;
     std::uint32_t m_lastLatency = 0;
+    int m_lastSync = 0;
 };
 
 } // namespace krate

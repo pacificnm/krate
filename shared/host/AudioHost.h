@@ -48,6 +48,8 @@ public:
     virtual bool setBufferSize(std::uint32_t frames) { (void)frames; return false; }
     // Frames from an input to the speakers: capture + playback latency as the server reports them.
     virtual std::uint32_t roundTripFrames() const { return 0; }
+    // While a JACK timebase master (a DAW) leads tempo and play/stop: its tempo; 0 otherwise.
+    virtual double syncBpm() const { return 0.0; }
 };
 
 } // namespace krate

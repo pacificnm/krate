@@ -113,6 +113,12 @@ void KlangController::poll()
         ++m_lights;
         emit lightsChanged();
     }
+    // A DAW leading over JACK: the TEMPO knob shows its tempo.
+    if (m_transport)
+        if (const double v = krate::followingTempoValue(*m_transport, klang::units::tempoBpm(float(value(QStringLiteral("tempo")))),
+                                                        klang::units::tempoBpm(0.0f), klang::units::tempoBpm(1.0f));
+            v >= 0.0)
+            setValue(QStringLiteral("tempo"), v);
     if (playing() != m_playing) {
         m_playing = playing();
         emit playingChanged();

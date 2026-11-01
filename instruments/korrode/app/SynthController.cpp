@@ -145,6 +145,20 @@ void SynthController::poll()
     while (const auto ev = m_engine.popEvent())
         emit notePressed(ev->a, ev->b);
 
+    // Standalone: play and stop from elsewhere (a DAW leading over JACK) light
+    // RUN, and its tempo shows on TEMPO. (In the rack, the rack's run control
+    // says when RUN changes.)
+    if (m_transport) {
+        if (const bool p = m_transport->playing(); p != m_playingSeen) {
+            m_playingSeen = p;
+            emit playingChanged();
+        }
+        if (const double v = krate::followingTempoValue(*m_transport, korrode::units::tempoBpm(float(param(korrode::ParamId::Tempo))),
+                                                        korrode::units::tempoBpm(0.0f), korrode::units::tempoBpm(1.0f));
+            v >= 0.0)
+            setParam(korrode::ParamId::Tempo, v);
+    }
+
     // Values the audio thread changed (MIDI CCs) need the knobs to follow.
     if (const auto changed = m_engine.params().takeChangedByAudio(); changed != 0) {
         if (changed & (std::uint64_t(1) << int(korrode::ParamId::Tempo)))

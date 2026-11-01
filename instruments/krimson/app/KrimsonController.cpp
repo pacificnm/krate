@@ -175,6 +175,12 @@ void KrimsonController::poll()
         ++m_notesRevision;
         emit notesChanged();
     }
+    // A DAW leading over JACK: the TEMPO knob shows its tempo.
+    if (m_transport)
+        if (const double v = krate::followingTempoValue(*m_transport, krimson::units::tempoBpm(float(value(QStringLiteral("tempo")))),
+                                                        krimson::units::tempoBpm(0.0f), krimson::units::tempoBpm(1.0f));
+            v >= 0.0)
+            setValue(QStringLiteral("tempo"), v);
     if (playing() != m_playing) {
         m_playing = playing();
         emit playingChanged();
@@ -200,6 +206,8 @@ void KrimsonController::syncArp()
     m_arpOn = on;
     if (!m_transport)
         return; // in the rack, the rack's transport bar runs the arpeggios
+    if (m_transport->following())
+        return; // a DAW leads play and stop: the arpeggio runs when it plays
     if (on && !m_transport->playing()) {
         setPlaying(true);
         m_arpStartedTransport = true;

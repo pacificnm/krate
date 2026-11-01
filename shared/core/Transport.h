@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <cmath>
 #include <cstdint>
 
 #include "core/Instrument.h"
@@ -15,20 +16,77 @@ namespace krate {
 //
 // Beat position is recomputed from an anchor (re-set at play and at every
 // tempo change) rather than summed per block, so it never drifts.
+//
+// An external transport (JACK's, when a timebase master such as a DAW
+// publishes tempo and position) takes over while present: the host hands it
+// in before each block (setExternal), the state follows it, and play/stop
+// from the GUI become requests the host passes on (takeRequest) so the
+// external transport, and everything following it, starts and stops together.
 class Transport
 {
 public:
-    // GUI thread.
-    void setPlaying(bool playing) noexcept { m_playing.store(playing, std::memory_order_relaxed); }
+    // What the external transport says at the start of a block.
+    struct External
+    {
+        bool rolling = false;
+        double bpm = 120.0; // quarter notes per minute
+        double beat = 0.0;  // quarter notes since the start of the song
+    };
+    enum Request { None = 0, Start = 1, Stop = 2 };
+
+    // An external transport from bars, beats and ticks (JACK's BBT: bar and
+    // beat count from 1, beats are the time signature's, `bpm` counts them);
+    // Krate counts quarter notes.
+    static External fromBbt(bool rolling, int bar, int beat, double tick, double ticksPerBeat, double beatsPerBar,
+                            double beatType, double bpm) noexcept
+    {
+        const double quarter = 4.0 / beatType;
+        External e;
+        e.rolling = rolling;
+        e.bpm = bpm * quarter;
+        e.beat = (double(bar - 1) * beatsPerBar + double(beat - 1) + tick / ticksPerBeat) * quarter;
+        return e;
+    }
+
+    // GUI thread. While following an external transport, play/stop is a
+    // request to it (and the tempo is its, whatever is set here).
+    void setPlaying(bool playing) noexcept
+    {
+        if (m_following.load(std::memory_order_relaxed))
+            m_request.store(playing ? Start : Stop, std::memory_order_relaxed);
+        else
+            m_playing.store(playing, std::memory_order_relaxed);
+    }
+    // True while an external transport leads (tempo, position, play/stop).
+    bool following() const noexcept { return m_following.load(std::memory_order_relaxed); }
     bool playing() const noexcept { return m_playing.load(std::memory_order_relaxed); }
     void setBpm(double bpm) noexcept { m_bpm.store(bpm, std::memory_order_relaxed); }
     double bpm() const noexcept { return m_bpm.load(std::memory_order_relaxed); }
     // Beat position at the start of the last block (for display: beat LEDs, counters).
     double beatPosition() const noexcept { return m_lastBeat.load(std::memory_order_relaxed); }
 
+    // Audio thread, before advance(): the external transport for this block,
+    // or nullptr when there is none (this transport keeps its own time).
+    void setExternal(const External *external) noexcept
+    {
+        m_hasExternal = external != nullptr;
+        if (external)
+            m_external = *external;
+    }
+    // Audio thread (the host): a play/stop pressed while following, to pass on.
+    Request takeRequest() noexcept { return Request(m_request.exchange(None, std::memory_order_relaxed)); }
+
     // Audio thread, once per block: the state for this block, then advance past it.
     TransportState advance(std::uint32_t frames, double sampleRate) noexcept
     {
+        if (m_hasExternal)
+            return follow(frames, sampleRate);
+        if (m_following.load(std::memory_order_relaxed)) {
+            // The external transport went away: carry on from where it was.
+            m_following.store(false, std::memory_order_relaxed);
+            anchor(m_predicted, m_bpm.load(std::memory_order_relaxed), sampleRate);
+        }
+
         TransportState state;
         state.playing = m_playing.load(std::memory_order_relaxed);
         state.bpm = m_bpm.load(std::memory_order_relaxed);
@@ -50,6 +108,40 @@ public:
     }
 
 private:
+    // Following the external transport. Its position is absolute (the song's),
+    // so a start or a jump that lands on a bar line restarts the sequencers
+    // there; anywhere else they stop for this block and join at the next bar,
+    // as they do joining a playing rack (bars are 4 beats).
+    TransportState follow(std::uint32_t frames, double sampleRate) noexcept
+    {
+        const External &e = m_external;
+        m_following.store(true, std::memory_order_relaxed);
+        m_bpm.store(e.bpm, std::memory_order_relaxed);
+        m_playing.store(e.rolling, std::memory_order_relaxed);
+
+        TransportState state;
+        state.bpm = e.bpm;
+        state.playing = e.rolling;
+        const double blockBeats = double(frames) * e.bpm / 60.0 / sampleRate;
+        const bool starting = e.rolling && !m_wasPlaying;
+        const bool jumped = e.rolling && m_wasPlaying && std::fabs(e.beat - m_predicted) > kJumpBeats;
+        if (starting || jumped) {
+            const double inBar = e.beat - std::floor(e.beat / kBeatsPerBar) * kBeatsPerBar;
+            const bool onBar = inBar <= blockBeats || kBeatsPerBar - inBar < 1e-6;
+            if (onBar)
+                state.restarted = true;
+            else if (jumped)
+                state.playing = false; // a gap of one block: then they join at the next bar
+        }
+        if (state.playing)
+            state.beatAtBlockStart = e.beat;
+        m_wasPlaying = state.playing;
+        m_predicted = e.rolling ? e.beat + blockBeats : e.beat;
+        anchor(m_predicted, e.bpm, sampleRate); // for carrying on if it goes away
+        m_lastBeat.store(state.beatAtBlockStart, std::memory_order_relaxed);
+        return state;
+    }
+
     double beatNow() const noexcept
     {
         return m_anchorBeat + double(m_samplesSinceAnchor) * m_anchorBpm / 60.0 / m_anchorRate;
@@ -63,9 +155,14 @@ private:
         m_samplesSinceAnchor = 0;
     }
 
+    static constexpr double kBeatsPerBar = 4.0;
+    static constexpr double kJumpBeats = 0.02; // further than this from where it should be: a locate
+
     std::atomic<bool> m_playing{false};
     std::atomic<double> m_bpm{120.0};
     std::atomic<double> m_lastBeat{0.0};
+    std::atomic<bool> m_following{false};
+    std::atomic<int> m_request{None};
 
     // Audio thread only.
     bool m_wasPlaying = false;
@@ -73,6 +170,21 @@ private:
     double m_anchorBpm = 120.0;
     double m_anchorRate = 48000.0;
     std::uint64_t m_samplesSinceAnchor = 0;
+    bool m_hasExternal = false;
+    External m_external;
+    double m_predicted = 0.0; // where the external beat should be next block
 };
+
+// A standalone panel's TEMPO knob while an external transport leads: the knob
+// value (0..1) that shows its tempo, or -1 when the knob already does (or
+// nothing external leads). `bpmAt0` and `bpmAt1`: the knob's BPM at 0 and 1
+// (a linear knob).
+inline double followingTempoValue(const Transport &transport, double knobBpm, double bpmAt0, double bpmAt1) noexcept
+{
+    if (!transport.following() || std::fabs(transport.bpm() - knobBpm) < 0.25 || bpmAt1 <= bpmAt0)
+        return -1.0;
+    const double v = (transport.bpm() - bpmAt0) / (bpmAt1 - bpmAt0);
+    return v < 0.0 ? 0.0 : v > 1.0 ? 1.0 : v;
+}
 
 } // namespace krate

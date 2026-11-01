@@ -291,16 +291,20 @@ void HostController::poll()
         const int rate = sampleRate();
         const int buffer = bufferSize();
         const std::uint32_t latency = m_host.roundTripFrames();
-        if (xruns != m_lastXruns || rate != m_lastSampleRate || buffer != m_lastBufferSize || latency != m_lastLatency) {
+        const int sync = int(std::lround(m_host.syncBpm())); // following a DAW's tempo: shown
+        if (xruns != m_lastXruns || rate != m_lastSampleRate || buffer != m_lastBufferSize || latency != m_lastLatency
+            || sync != m_lastSync) {
             m_lastLatency = latency;
+            m_lastSync = sync;
             m_lastXruns = xruns;
             m_lastSampleRate = rate;
             m_lastBufferSize = buffer;
-            setAudioStatus(QStringLiteral("%1 kHz · %2 · %3 xruns · %4")
+            setAudioStatus(QStringLiteral("%1 kHz · %2 · %3 xruns · %4%5")
                                .arg(rate / 1000.0, 0, 'g', 3)
                                .arg(buffer)
                                .arg(xruns)
-                               .arg(m_midiConnected ? QStringLiteral("MIDI in") : QStringLiteral("no MIDI")));
+                               .arg(m_midiConnected ? QStringLiteral("MIDI in") : QStringLiteral("no MIDI"),
+                                    sync > 0 ? QStringLiteral(" · JACK sync %1 BPM").arg(sync) : QString()));
         }
     }
 
