@@ -72,7 +72,8 @@ In Krate:
 | --- | --- |
 | A text console | **Ctrl+Alt+F2** (log in there); **Ctrl+Alt+F1** back to Krate. |
 | Over the network | `ssh jaimie@player`. |
-| Krate's log | `journalctl -u krate-kiosk@jaimie` |
+| Krate's log | `journalctl -u krate-kiosk@jaimie`; Krate's own: `~/.local/share/krate/krate.log` |
+| It restarted by itself | A crash: Krate shows a red banner and a report (**AUDIO** → **CRASH REPORTS**; files in `~/.local/share/krate/crashes`). See [CRASHES.md](CRASHES.md). |
 | Stop / start Krate | `sudo systemctl stop krate-kiosk@jaimie`, `start`, `restart` |
 | A new Krate | Copy the new `.deb`, `sudo apt install ./krate_*.deb`, `sudo systemctl restart krate-kiosk@jaimie`. Your sounds, songs and settings stay. |
 | Your sounds | Copy them over (`rsync -a ~/Samples jaimie@player:`), then **Sounds** → **ADD FOLDER**. |

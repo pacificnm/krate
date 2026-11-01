@@ -407,6 +407,28 @@ Rectangle {
                 font.pixelSize: 11
                 wrapMode: Text.WordWrap
             }
+            Row { // what's left of a crash, or of a session that never ended (docs/CRASHES.md)
+                spacing: 10
+                PanelButton {
+                    width: 150
+                    height: 30
+                    faceText: "CRASH REPORTS"
+                    text: "What Krate wrote down when it crashed or didn't end properly"
+                    onClicked: {
+                        audioPopup.close()
+                        Crashes.viewing = true
+                    }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Crashes.reports.length === 0 ? "None: no crashes so far."
+                                                       : Crashes.reports.length + (Crashes.reports.length === 1 ? " report" : " reports")
+                                                         + ", the last " + Crashes.reports[0].when
+                    color: "#55575B"
+                    font.family: Theme.labelFont
+                    font.pixelSize: 11
+                }
+            }
         }
     }
 

@@ -430,6 +430,58 @@ Window {
         }
     }
 
+    // The last session crashed (or never ended): say so, once (docs/CRASHES.md).
+    Rectangle {
+        id: crashBanner
+        x: 16
+        y: panelArea.y
+        z: 50
+        width: root.width - 32
+        height: 46
+        visible: Crashes.newReport !== ""
+        radius: 6
+        color: "#5A1E1A"
+        border.color: Theme.ledOn
+        Text {
+            x: 14
+            width: parent.width - x - 2 * 110 - 30
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Krate started again after the last session went wrong. " + Crashes.newSummary
+            elide: Text.ElideRight
+            color: "#F2E8E6"
+            font.family: Theme.labelFont
+            font.pixelSize: 14
+            font.bold: true
+        }
+        Row {
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 8
+            PanelButton {
+                width: 100
+                height: 30
+                faceText: "VIEW"
+                text: "Read the crash report"
+                onClicked: Crashes.viewing = true
+            }
+            PanelButton {
+                width: 100
+                height: 30
+                faceText: "DISMISS"
+                text: "Hide this (the report is kept: AUDIO, then CRASH REPORTS)"
+                onClicked: Crashes.dismiss()
+            }
+        }
+    }
+
+    CrashReportsPopup {
+        x: 24
+        y: 24
+        width: root.width - 48
+        height: root.height - 48
+    }
+
     Text { // an empty rack
         anchors.centerIn: panelArea
         visible: panelArea.visible && !Rack.present.some((p, i) => p && Rack.panelComponents[i] !== "")

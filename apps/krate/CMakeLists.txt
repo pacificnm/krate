@@ -18,6 +18,8 @@ qt_add_qml_module(krate
         SoundsController.cpp
         InstrumentCopies.h
         InstrumentCopies.cpp
+        CrashReportsController.h
+        CrashReportsController.cpp
         PluginSlots.h
         PluginSlots.cpp
         PluginEditor.h
@@ -67,8 +69,10 @@ qt_add_qml_module(krate
         qml/ArrangeScreen.qml
         qml/PluginPanel.qml
         qml/SoundsScreen.qml
+        qml/CrashReportsPopup.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+set_target_properties(krate PROPERTIES ENABLE_EXPORTS ON) # -rdynamic: function names in crash reports
 target_compile_definitions(krate PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSION}")
 target_compile_options(krate PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(krate PRIVATE

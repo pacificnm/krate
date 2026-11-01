@@ -18,6 +18,7 @@
 #include "AudioTracks.h"
 #include "PluginSlots.h"
 #include "SoundsController.h"
+#include "CrashReportsController.h"
 #include "ExportController.h"
 #include "InstrumentCopies.h"
 #include "BackingInstrument.h"
@@ -26,6 +27,7 @@
 #include "RackRunControl.h"
 #include "RackSession.h"
 #include "SongController.h"
+#include "app/CrashReports.h"
 #include "app/HostController.h"
 #include "app/InstrumentRegistry.h"
 #include "app/KorrodeInstrument.h"
@@ -73,6 +75,11 @@ int main(int argc, char *argv[])
     QGuiApplication::setApplicationName(QStringLiteral("krate"));
     QGuiApplication::setDesktopFileName(QStringLiteral("krate")); // its menu entry and icon (packaging/)
     QGuiApplication::setApplicationVersion(QStringLiteral(PROJECT_VERSION_STRING));
+    // Crash reports (docs/CRASHES.md): this session's log, a crash's call
+    // stack, a report at the next start; SIGTERM quits properly.
+    const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    krate::crash::install(QStringLiteral("krate"), appData);
+    CrashReportsController crashReports(appData, nullptr);
 
     // The instruments in this rack: one registry line each
     // (docs/SHARED_FOUNDATIONS.MD#adding-instruments).
@@ -327,5 +334,6 @@ int main(int argc, char *argv[])
     soundsController.finish(); // no preview playing, no folder being looked through
     if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
         transport.setPlaying(false);
+    krate::crash::endedCleanly();
     return result;
 }

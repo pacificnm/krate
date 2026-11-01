@@ -150,6 +150,8 @@ add_library(krate_app STATIC
     app/PresetInbox.cpp
     app/ScreenshotHook.h
     app/ScreenshotHook.cpp
+    app/CrashReports.h
+    app/CrashReports.cpp
 )
 target_link_libraries(krate_app PUBLIC krate_core Qt6::Core Qt6::Gui Qt6::Quick)
 target_compile_options(krate_app PRIVATE -Wall -Wextra -Wpedantic)
@@ -251,6 +253,17 @@ add_executable(tst_songplayer tests/tst_songplayer.cpp)
 target_compile_options(tst_songplayer PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_songplayer PRIVATE krate_song krate_rack Qt6::Test)
 add_test(NAME tst_songplayer COMMAND tst_songplayer)
+
+# Crash reports: a helper that crashes in different ways, and the reports.
+add_executable(crash_helper tests/crash_helper.cpp)
+target_link_libraries(crash_helper PRIVATE krate_app)
+set_target_properties(crash_helper PROPERTIES ENABLE_EXPORTS ON) # -rdynamic: names in the stack
+add_executable(tst_crash tests/tst_crash.cpp)
+target_compile_options(tst_crash PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(tst_crash PRIVATE CRASH_HELPER="$<TARGET_FILE:crash_helper>")
+target_link_libraries(tst_crash PRIVATE krate_app Qt6::Test)
+add_dependencies(tst_crash crash_helper)
+add_test(NAME tst_crash COMMAND tst_crash)
 
 add_executable(tst_manual tests/tst_manual.cpp app/ManualReader.h app/ManualReader.cpp)
 target_compile_options(tst_manual PRIVATE -Wall -Wextra -Wpedantic)
