@@ -136,6 +136,11 @@ public:
     // The SAMPLE voice's sample (nullptr: none). A playing hit stops at once
     // (declicked): it must never read a sample the caller may then free.
     void setSample(const Sample *sample) noexcept;
+    // A drum's own sample, played instead of its synthesized sound (nullptr:
+    // its synth again): pitched by its Tune (the middle: as recorded), faded
+    // by its Decay (the top: to the end). As setSample, a playing hit stops.
+    // For the SAMPLE voice itself, the same as setSample.
+    void setDrumSample(DrumId drum, const Sample *sample) noexcept;
     // Add `frames` samples of every sounding voice to left/right and its sends
     // to `sends` (none of them cleared).
     void render(float *left, float *right, const Sends &sends, std::uint32_t frames) noexcept;
@@ -143,6 +148,19 @@ public:
     bool anySounding() const noexcept;
 
 private:
+    // A hit playing a sample (the SAMPLE voice's, or a drum's own).
+    struct SamplePlay
+    {
+        double position = 0.0, step = 1.0; // source frames
+        Env amp;
+        bool fade = false;    // Decay below the top: the envelope fades it
+        int fadeIn = 0;       // samples of fade-in left (a start inside the sample)
+        int fadeInLength = 96;
+    };
+    void startSample(std::size_t d, const Sample &sample, const Hit &hit, bool fromStart) noexcept;
+    float sampleTick(std::size_t d) noexcept;
+    void stop(std::size_t d) noexcept; // at once, declicked
+
     float tick(DrumId drum) noexcept;
     double drive(std::size_t d, double x) noexcept; // anti-aliased tanh drive, peak kept
 
@@ -239,13 +257,12 @@ private:
     Noise m_nzNoise{0xC5D6E7F8u};
     double m_nzHz = 1500.0, m_nzSweepOctaves = 2.0;
 
-    // Sample: played from Start at its pitch (Tune), faded by Decay.
+    // Samples: the SAMPLE voice's (played from Start), each drum's own (from
+    // its beginning), what each drum's hit is playing (nullptr: its synth).
     const Sample *m_sample = nullptr;
-    double m_smPosition = 0.0, m_smStep = 1.0; // source frames
-    Env m_smAmp;
-    bool m_smFade = false;     // Decay below the top: the envelope fades it
-    int m_smFadeIn = 0;        // samples of fade-in left (a start inside the sample)
-    int m_smFadeInLength = 96;
+    std::array<const Sample *, DrumCount> m_drumSample{};
+    std::array<const Sample *, DrumCount> m_playing{};
+    std::array<SamplePlay, DrumCount> m_play{};
 
     // Boom: a long sub with a slow pitch drop, saturated.
     Sine m_bmOsc;

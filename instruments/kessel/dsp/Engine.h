@@ -72,6 +72,13 @@ public:
     // block. The caller keeps it alive until blocksProcessed() has moved two
     // past the call that replaced it (docs/DSP.md#sample).
     void setSample(const Sample *sample) noexcept { m_pendingSample.store(sample, std::memory_order_release); }
+    // Any thread: a drum's own sample, played instead of its synthesized sound
+    // (nullptr: its synth), taken at the next block; freed as setSample's.
+    void setDrumSample(int drum, const Sample *sample) noexcept
+    {
+        if (drum >= 0 && drum < DrumCount && drum != int(DrumId::Sm))
+            m_pendingDrumSamples[std::size_t(drum)].store(sample, std::memory_order_release);
+    }
     std::uint64_t blocksProcessed() const noexcept { return m_blocks.load(std::memory_order_acquire); }
 
     // Any thread: the playing step 0..15, or -1 when stopped (step LEDs); the
@@ -126,6 +133,7 @@ private:
     std::atomic<int> m_queuedSlot{-1};
     double m_sampleRate = 48000.0;
     std::atomic<const Sample *> m_pendingSample{nullptr};
+    std::array<std::atomic<const Sample *>, DrumCount> m_pendingDrumSamples{};
     std::atomic<std::uint64_t> m_blocks{0};
 
     // Send effects (docs/DSP.md#mixer-and-effects); buses rendered kChunk frames at a time.

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include <memory>
 #include <vector>
 
@@ -24,6 +26,10 @@ class Engine;
 // working if the originals move); the arrows step through them; the choice is
 // saved in samples.json. Decoding happens here, off the audio thread; a
 // replaced sample is freed once the engine has moved two blocks past it.
+//
+// Any other drum can play a sample of the library too, instead of its
+// synthesized sound (the sound library, docs/SOUNDS.md): kept in
+// samples.json by drum and carried by the kits.
 class SampleController : public QObject
 {
     Q_OBJECT
@@ -34,6 +40,7 @@ class SampleController : public QObject
     Q_PROPERTY(QStringList names READ names NOTIFY changed)   // the library, sorted
     Q_PROPERTY(double seconds READ seconds NOTIFY changed)    // its length as played
     Q_PROPERTY(QString message READ message NOTIFY changed)   // the last import's result
+    Q_PROPERTY(QStringList drumSamples READ drumSamples NOTIFY changed) // per drum (DrumId order): its file, "" = its synth
 
 public:
     // Not default-constructible on purpose (see Korrode's SynthController).
@@ -52,12 +59,21 @@ public:
     Q_INVOKABLE bool select(const QString &name);         // a file in the library; false if it won't load
     Q_INVOKABLE void step(int delta);                     // the arrows
     Q_INVOKABLE void clear();                             // no sample
+    // A drum's own sample: a file in the library ("": its synth again; the
+    // SAMPLE drum: select / clear). false if it won't load.
+    Q_INVOKABLE bool setDrumSample(int drum, const QString &name);
+    Q_INVOKABLE QString drumSample(int drum) const;
+    // A WAV file from anywhere, copied into the library and given to `drum`.
+    Q_INVOKABLE bool assignFile(int drum, const QString &path);
+    QStringList drumSamples() const;
+    static QString drumKey(int drum); // "bd", "sd", ... (files)
 
 signals:
     void changed();
 
 private:
     void rescan();
+    QString copyIn(const QString &path, QString *error); // into the library: its name there, "" if not
     void use(std::unique_ptr<kessel::Sample> sample, const QString &name);
     void freeRetired();
     void saveState() const;
@@ -71,6 +87,8 @@ private:
     QStringList m_names;
     QString m_message;
     std::unique_ptr<kessel::Sample> m_current;
+    std::array<std::unique_ptr<kessel::Sample>, 16> m_drum;
+    std::array<QString, 16> m_drumNames;
     struct Retired
     {
         std::unique_ptr<kessel::Sample> sample;

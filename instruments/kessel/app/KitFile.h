@@ -24,6 +24,11 @@ struct Kit
     QString name;
     QHash<QString, qreal> values;
     QString sample; // the SAMPLE voice's file in the library; "" = the kit leaves the sample as it is
+    // Other drums' own samples by drum key ("bd": a file in the library); only
+    // when hasDrumSamples (older kits leave them as they are): a drum not in
+    // it plays its synth.
+    QHash<QString, QString> drumSamples;
+    bool hasDrumSamples = false;
 
     bool operator==(const Kit &) const = default;
 };

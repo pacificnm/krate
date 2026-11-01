@@ -327,6 +327,9 @@ void Engine::process(const krate::AudioBlock &block) noexcept
     m_sequencer.setShuffle(units::shuffleAmount(m_params.get(int(ParamId::Shuffle))));
     updateMix();
     m_voices.setSample(m_pendingSample.load(std::memory_order_acquire));
+    for (int d = 0; d < DrumCount; ++d)
+        if (d != int(DrumId::Sm))
+            m_voices.setDrumSample(DrumId(d), m_pendingDrumSamples[std::size_t(d)].load(std::memory_order_acquire));
 
     static constexpr krate::TransportState kStopped{};
     const krate::TransportState &transport = block.transport ? *block.transport : kStopped;

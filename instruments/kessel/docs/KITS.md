@@ -25,6 +25,10 @@ The SAMPLE voice plays a WAV file of your own: a hit, a vocal stab, a found soun
 
 Loading **copies** the file into Kessel's sample library, `~/.local/share/kessel/samples/` (a different file with the same name gets a number), so kits keep working if the original moves or is deleted. To remove a sample, delete it from that folder. Any WAV works (16, 24, 32-bit or float, any rate, mono or stereo: stereo is mixed to mono, the bass drum's way); files longer than 30 s are cut; every sample is normalized to the same peak. The sample playing is kept in `samples.json`. Files that aren't WAV (or are silent) are refused, with a message in the SAMPLE display.
 
+### Your samples on any drum
+
+Any drum, not only SAMPLE, can play one of your samples instead of its synthesized sound: pick the sound in Krate's sound library and assign it to the drum (kick, snare, closed hat...). The drum keeps its own knobs: **TUNE** sets the sample's pitch (the middle plays it as recorded, ±24 semitones), **DECAY** fades it (at the top it plays to its end), **LEVEL**, **PAN** and its sends as before, and its place in every pattern. The sample is copied into Kessel's samples folder; each drum's sample is kept in `samples.json`, and **WRITE** stores the drums' samples in the kit (a kit from before this keeps whatever the drums have; a kit written with a drum on its synth puts it back on its synth).
+
 ## Factory kits
 
 | # | Kit | Sound |

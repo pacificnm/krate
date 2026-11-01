@@ -129,6 +129,12 @@ QJsonObject kitsToJson(const KitBank &bank)
         QJsonObject ko{{QStringLiteral("name"), kit.name}, {QStringLiteral("params"), values}};
         if (!kit.sample.isEmpty())
             ko.insert(QStringLiteral("sample"), kit.sample);
+        if (kit.hasDrumSamples) {
+            QJsonObject drums;
+            for (auto it = kit.drumSamples.begin(); it != kit.drumSamples.end(); ++it)
+                drums.insert(it.key(), it.value());
+            ko.insert(QStringLiteral("drumSamples"), drums);
+        }
         kits.append(ko);
     }
     return {
@@ -150,6 +156,13 @@ KitBank kitsFromJson(const QJsonObject &json)
         kit = init;
         kit.name = ko.value(u"name").toString(init.name).left(16);
         kit.sample = ko.value(u"sample").toString();
+        if (const QJsonValue drums = ko.value(u"drumSamples"); drums.isObject()) {
+            kit.hasDrumSamples = true;
+            const QJsonObject o = drums.toObject();
+            for (auto it = o.begin(); it != o.end(); ++it)
+                if (const QString name = it.value().toString(); !name.isEmpty())
+                    kit.drumSamples.insert(it.key(), name);
+        }
         const QJsonObject values = ko.value(u"params").toObject();
         for (auto it = kit.values.begin(); it != kit.values.end(); ++it)
             if (const QJsonValue v = values.value(it.key()); v.isDouble())

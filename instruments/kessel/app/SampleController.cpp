@@ -15,6 +15,9 @@ Q_LOGGING_CATEGORY(lcSamples, "kessel.samples")
 
 namespace {
 constexpr int kStateVersion = 1;
+constexpr const char *kDrumKeys[] = {"bd", "sd", "lt", "mt", "ht", "rs", "cp", "ch",
+                                     "oh", "cr", "rd", "me", "ck", "nz", "bm", "sm"};
+static_assert(std::size(kDrumKeys) == std::size_t(kessel::DrumCount));
 
 std::unique_ptr<kessel::Sample> decode(const QString &path, QString *error)
 {
@@ -54,6 +57,11 @@ SampleController::SampleController(kessel::Engine &engine, const QString &dataDi
         const QString name = json.value(u"current").toString();
         if (!name.isEmpty() && !select(name))
             qCWarning(lcSamples) << "could not load the sample" << name;
+        const QJsonObject drums = json.value(u"drums").toObject();
+        for (int d = 0; d < kessel::DrumCount; ++d)
+            if (const QString n = drums.value(drumKey(d)).toString(); !n.isEmpty() && d != int(kessel::DrumId::Sm)
+                                                                       && !setDrumSample(d, n))
+                qCWarning(lcSamples) << "could not load the sample" << n << "for" << drumKey(d);
     }
     m_freeTimer.setInterval(100);
     connect(&m_freeTimer, &QTimer::timeout, this, &SampleController::freeRetired);
@@ -63,6 +71,8 @@ SampleController::SampleController(kessel::Engine &engine, const QString &dataDi
 SampleController::~SampleController()
 {
     m_engine.setSample(nullptr); // the host has stopped processing by now
+    for (int d = 0; d < kessel::DrumCount; ++d)
+        m_engine.setDrumSample(d, nullptr);
     s_instance = nullptr;
 }
 
@@ -126,27 +136,35 @@ void SampleController::clear()
     use(nullptr, QString());
 }
 
-void SampleController::importUrls(const QList<QUrl> &urls)
+QString SampleController::copyIn(const QString &path, QString *error)
 {
     QDir().mkpath(m_libraryDir);
+    if (!decode(path, error)) // check it plays before copying
+        return {};
+    // Keep the name; a different file of the same name gets a number.
+    const QFileInfo info(path);
+    QString name = info.fileName();
+    for (int n = 2; QFile::exists(m_libraryDir + u'/' + name) && !sameFile(path, m_libraryDir + u'/' + name); ++n)
+        name = QStringLiteral("%1 (%2).%3").arg(info.completeBaseName()).arg(n).arg(info.suffix());
+    const QString target = m_libraryDir + u'/' + name;
+    if (!QFile::exists(target) && !QFile::copy(path, target)) {
+        *error = QStringLiteral("could not copy");
+        return {};
+    }
+    return name;
+}
+
+void SampleController::importUrls(const QList<QUrl> &urls)
+{
     QString last;
     int imported = 0;
     QStringList failed;
     for (const QUrl &url : urls) {
         const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
         QString error;
-        if (!decode(path, &error)) { // check it plays before copying
+        const QString name = copyIn(path, &error);
+        if (name.isEmpty()) {
             failed << QFileInfo(path).fileName() + QStringLiteral(" (") + error + u')';
-            continue;
-        }
-        // Keep the name; a different file of the same name gets a number.
-        const QFileInfo info(path);
-        QString name = info.fileName();
-        for (int n = 2; QFile::exists(m_libraryDir + u'/' + name) && !sameFile(path, m_libraryDir + u'/' + name); ++n)
-            name = QStringLiteral("%1 (%2).%3").arg(info.completeBaseName()).arg(n).arg(info.suffix());
-        const QString target = m_libraryDir + u'/' + name;
-        if (!QFile::exists(target) && !QFile::copy(path, target)) {
-            failed << info.fileName() + QStringLiteral(" (could not copy)");
             continue;
         }
         last = name;
@@ -162,6 +180,73 @@ void SampleController::importUrls(const QList<QUrl> &urls)
     emit changed();
 }
 
+QString SampleController::drumKey(int drum)
+{
+    return drum >= 0 && drum < kessel::DrumCount ? QString::fromLatin1(kDrumKeys[drum]) : QString();
+}
+
+QString SampleController::drumSample(int drum) const
+{
+    if (drum == int(kessel::DrumId::Sm))
+        return m_name;
+    return drum >= 0 && drum < kessel::DrumCount ? m_drumNames[std::size_t(drum)] : QString();
+}
+
+QStringList SampleController::drumSamples() const
+{
+    QStringList list;
+    for (int d = 0; d < kessel::DrumCount; ++d)
+        list << drumSample(d);
+    return list;
+}
+
+bool SampleController::setDrumSample(int drum, const QString &name)
+{
+    if (drum < 0 || drum >= kessel::DrumCount)
+        return false;
+    if (drum == int(kessel::DrumId::Sm)) {
+        if (name.isEmpty()) {
+            clear();
+            return true;
+        }
+        return select(name);
+    }
+    const auto d = std::size_t(drum);
+    if (name == m_drumNames[d] && (name.isEmpty() || m_drum[d]))
+        return true;
+    std::unique_ptr<kessel::Sample> sample;
+    if (!name.isEmpty()) {
+        QString error;
+        sample = decode(m_libraryDir + u'/' + name, &error);
+        if (!sample) {
+            m_message = QStringLiteral("%1: %2").arg(name, error);
+            emit changed();
+            return false;
+        }
+    }
+    m_engine.setDrumSample(drum, sample.get());
+    if (m_drum[d])
+        m_retired.push_back({std::move(m_drum[d]), m_engine.blocksProcessed()});
+    m_drum[d] = std::move(sample);
+    m_drumNames[d] = name;
+    saveState();
+    emit changed();
+    return true;
+}
+
+bool SampleController::assignFile(int drum, const QString &path)
+{
+    QString error;
+    const QString name = copyIn(path, &error);
+    if (name.isEmpty()) {
+        m_message = QStringLiteral("%1: %2").arg(QFileInfo(path).fileName(), error);
+        emit changed();
+        return false;
+    }
+    rescan();
+    return setDrumSample(drum, name);
+}
+
 void SampleController::freeRetired()
 {
     const std::uint64_t now = m_engine.blocksProcessed();
@@ -170,6 +255,11 @@ void SampleController::freeRetired()
 
 void SampleController::saveState() const
 {
+    QJsonObject drums;
+    for (int d = 0; d < kessel::DrumCount; ++d)
+        if (!m_drumNames[std::size_t(d)].isEmpty() && d != int(kessel::DrumId::Sm))
+            drums.insert(drumKey(d), m_drumNames[std::size_t(d)]);
     krate::files::writeJsonFile(m_statePath, QJsonObject{{QStringLiteral("version"), kStateVersion},
-                                                         {QStringLiteral("current"), m_name}});
+                                                         {QStringLiteral("current"), m_name},
+                                                         {QStringLiteral("drums"), drums}});
 }

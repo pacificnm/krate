@@ -93,6 +93,46 @@ class TestVoices : public QObject
     Q_OBJECT
 
 private slots:
+    // A drum's own sample (the sound library, docs/SOUNDS.md): the kick plays
+    // it instead of its synthesized sound, at its pitch with Tune in the
+    // middle, two octaves up with Tune at the top; taken away, the synth again.
+    void drumPlaysASample()
+    {
+        Engine engine;
+        const auto key = [&](std::string_view k) {
+            const auto params = engine.parameters();
+            for (std::size_t i = 0; i < params.size(); ++i)
+                if (params[i].key == k)
+                    return int(i);
+            return -1;
+        };
+        const auto kick = [&] {
+            engine.prepare(kRate, kBlock);
+            return play(engine, {{0, 36, 127}}, 9600); // 0.2 s
+        };
+        const auto hz = [](const std::vector<float> &v) { // first to last rising crossing in 50 ms, while it sounds
+            std::size_t first = 0, last = 0;
+            int crossings = 0;
+            for (std::size_t i = 1; i < std::min<std::size_t>(v.size(), 2400); ++i)
+                if (v[i - 1] < 0.0f && v[i] >= 0.0f) {
+                    first = crossings++ == 0 ? i : first;
+                    last = i;
+                }
+            return crossings > 1 ? (crossings - 1) * kRate / double(last - first) : 0.0;
+        };
+        engine.setParam(key("bd_decay"), 1.0f); // the sample to its end
+        const Render synth = kick();
+        engine.setDrumSample(int(DrumId::Bd), &testSample());
+        const Render sampled = kick();
+        QVERIFY(sampled.left != synth.left);
+        QVERIFY(std::fabs(hz(sampled.left) - 200.0) < 10.0);
+        engine.setParam(key("bd_tune"), 1.0f);
+        QVERIFY(std::fabs(hz(kick().left) - 800.0) < 25.0); // +24 semitones
+        engine.setParam(key("bd_tune"), 0.5f);
+        engine.setDrumSample(int(DrumId::Bd), nullptr);
+        QVERIFY(kick().left == synth.left);
+    }
+
     // prepare() starts it from scratch: the same hits after it sound the very
     // same, noise and all, whatever played before (an export's passes, docs/DAW.md D6).
     void prepareRepeats()

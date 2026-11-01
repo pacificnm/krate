@@ -133,17 +133,40 @@ Voices::Voices() noexcept
     prepare(48000.0);
 }
 
+void Voices::stop(std::size_t d) noexcept
+{
+    if (m_active[d]) { // its last sample fades out as the residual
+        m_residual[d] += double(m_last[d]);
+        m_active[d] = false;
+        m_last[d] = 0.0f;
+    }
+    m_playing[d] = nullptr;
+}
+
 void Voices::setSample(const Sample *sample) noexcept
 {
     if (sample == m_sample)
         return;
     const auto d = std::size_t(DrumId::Sm);
-    if (m_active[d]) { // stop the old one now; its last sample fades out as the residual
-        m_residual[d] += double(m_last[d]);
-        m_active[d] = false;
-        m_last[d] = 0.0f;
-    }
+    if (m_playing[d])
+        stop(d); // the old one, now: the caller may free it
     m_sample = sample;
+}
+
+void Voices::setDrumSample(DrumId drum, const Sample *sample) noexcept
+{
+    if (drum == DrumId::Sm) {
+        setSample(sample);
+        return;
+    }
+    if (drum < DrumId::Bd || drum >= DrumId::Count)
+        return;
+    const auto d = std::size_t(drum);
+    if (sample == m_drumSample[d])
+        return;
+    if (m_playing[d])
+        stop(d);
+    m_drumSample[d] = sample;
 }
 
 void Voices::setMix(DrumId drum, const Mix &mix) noexcept
@@ -179,6 +202,7 @@ void Voices::prepare(double sampleRate) noexcept
     m_rate = sampleRate;
     m_declick = std::exp(-1.0 / (0.001 * sampleRate));
     m_active.fill(false);
+    m_playing.fill(nullptr);
     m_residual.fill(0.0);
     m_last.fill(0.0f);
     // From scratch: the same hits then sound the same (an export's passes).
@@ -223,6 +247,19 @@ void Voices::trigger(DrumId drum, const Hit &hit) noexcept
     m_active[d] = true;
     m_gain[d] = hit.gain * kTrim[d];
     const double rate = m_rate;
+
+    // A sample: the SAMPLE voice always (none: silent), any other drum given its own.
+    m_playing[d] = nullptr;
+    if (const Sample *sample = drum == DrumId::Sm ? m_sample : m_drumSample[d]; drum == DrumId::Sm || sample) {
+        if (!sample || sample->data.size() < 4) {
+            m_active[d] = false;
+            return;
+        }
+        m_gain[d] = hit.gain * kTrim[std::size_t(DrumId::Sm)];
+        m_playing[d] = sample;
+        startSample(d, *sample, hit, drum != DrumId::Sm);
+        return;
+    }
 
     switch (drum) {
     case DrumId::Bd: {
@@ -367,21 +404,8 @@ void Voices::trigger(DrumId drum, const Hit &hit) noexcept
         m_nzFilter.reset();
         break;
     }
-    case DrumId::Sm: {
-        if (!m_sample || m_sample->data.size() < 4) {
-            m_active[d] = false;
-            break;
-        }
-        const double length = double(m_sample->data.size());
-        m_smPosition = std::floor(0.9 * double(hit.extra[0]) * length);
-        m_smStep = m_sample->rate / rate * std::exp2(units::sampleSemitones(hit.tune) / 12.0);
-        const double decay = units::sampleDecaySeconds(hit.decay);
-        m_smFade = decay > 0.0;
-        m_smAmp.start(1.0, m_smFade ? decay : 1.0, rate);
-        m_smFadeInLength = std::max(1, int(0.002 * rate));
-        m_smFadeIn = m_smPosition > 0.0 ? m_smFadeInLength : 0; // a start mid-sample would click
+    case DrumId::Sm: // (a sample: above)
         break;
-    }
     case DrumId::Bm:
         m_bmBase = expMap(hit.tune, 28.0, 65.0);
         m_bmOsc.reset();
@@ -393,8 +417,59 @@ void Voices::trigger(DrumId drum, const Hit &hit) noexcept
     }
 }
 
+void Voices::startSample(std::size_t d, const Sample &sample, const Hit &hit, bool fromStart) noexcept
+{
+    SamplePlay &p = m_play[d];
+    const double length = double(sample.data.size());
+    p.position = fromStart ? 0.0 : std::floor(0.9 * double(hit.extra[0]) * length);
+    p.step = sample.rate / m_rate * std::exp2(units::sampleSemitones(hit.tune) / 12.0);
+    const double decay = units::sampleDecaySeconds(hit.decay);
+    p.fade = decay > 0.0;
+    p.amp.start(1.0, p.fade ? decay : 1.0, m_rate);
+    p.fadeInLength = std::max(1, int(0.002 * m_rate));
+    p.fadeIn = p.position > 0.0 ? p.fadeInLength : 0; // a start mid-sample would click
+}
+
+float Voices::sampleTick(std::size_t d) noexcept
+{
+    SamplePlay &p = m_play[d];
+    const std::vector<float> &data = m_playing[d]->data;
+    const double length = double(data.size());
+    if (p.position >= length - 2.0) {
+        m_active[d] = false;
+        m_playing[d] = nullptr;
+        return 0.0f;
+    }
+    // 4-point (hermite) read between the source's samples.
+    const auto i = std::size_t(p.position);
+    const double t = p.position - double(i);
+    const double xm1 = data[i > 0 ? i - 1 : 0], x0 = data[i], x1 = data[i + 1], x2 = data[i + 2];
+    const double c = 0.5 * (x1 - xm1), v = x0 - x1, w = c + v, a = w + v + 0.5 * (x2 - x0), b = w + a;
+    double out = ((a * t - b) * t + c) * t + x0;
+    // The last 5 ms (of output) fade, so a cut-off file ends without a click.
+    const double fadeOut = 0.005 * m_rate * p.step;
+    if (length - 2.0 - p.position < fadeOut)
+        out *= (length - 2.0 - p.position) / fadeOut;
+    if (p.fadeIn > 0) {
+        out *= 1.0 - double(p.fadeIn) / double(p.fadeInLength);
+        --p.fadeIn;
+    }
+    p.position += p.step;
+    if (p.fade) {
+        const double env = p.amp.next();
+        out *= env;
+        if (env < kSilent) {
+            m_active[d] = false;
+            m_playing[d] = nullptr;
+        }
+    }
+    return float(out);
+}
+
 float Voices::tick(DrumId drum) noexcept
 {
+    if (m_playing[std::size_t(drum)])
+        return sampleTick(std::size_t(drum));
     const double rate = m_rate;
     switch (drum) {
     case DrumId::Bd: {
@@ -526,36 +601,8 @@ float Voices::tick(DrumId drum) noexcept
             m_active[std::size_t(drum)] = false;
         return float(a * std::tanh(1.5 * (f.lp + 0.6 * f.bp)) / std::tanh(1.5));
     }
-    case DrumId::Sm: {
-        const std::vector<float> &data = m_sample->data;
-        const double length = double(data.size());
-        if (m_smPosition >= length - 2.0) {
-            m_active[std::size_t(drum)] = false;
-            return 0.0f;
-        }
-        // 4-point (hermite) read between the source's samples.
-        const auto i = std::size_t(m_smPosition);
-        const double t = m_smPosition - double(i);
-        const double xm1 = data[i > 0 ? i - 1 : 0], x0 = data[i], x1 = data[i + 1], x2 = data[i + 2];
-        const double c = 0.5 * (x1 - xm1), v = x0 - x1, w = c + v, a = w + v + 0.5 * (x2 - x0), b = w + a;
-        double out = ((a * t - b) * t + c) * t + x0;
-        // The last 5 ms (of output) fade, so a cut-off file ends without a click.
-        const double fadeOut = 0.005 * rate * m_smStep;
-        if (length - 2.0 - m_smPosition < fadeOut)
-            out *= (length - 2.0 - m_smPosition) / fadeOut;
-        if (m_smFadeIn > 0) {
-            out *= 1.0 - double(m_smFadeIn) / double(m_smFadeInLength);
-            --m_smFadeIn;
-        }
-        m_smPosition += m_smStep;
-        if (m_smFade) {
-            const double env = m_smAmp.next();
-            out *= env;
-            if (env < kSilent)
-                m_active[std::size_t(drum)] = false;
-        }
-        return float(out);
-    }
+    case DrumId::Sm: // (a sample: sampleTick)
+        return 0.0f;
     case DrumId::Bm: {
         const double hz = m_bmBase * (1.0 + 2.0 * double(m_bmPitch.next()));
         const double body = std::tanh(2.5 * double(m_bmOsc.next(hz, rate))) / std::tanh(2.5);

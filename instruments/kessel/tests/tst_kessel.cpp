@@ -230,6 +230,50 @@ private slots:
         QVERIFY(std::abs(k.samples.seconds() - 2.0) < 0.01);
     }
 
+    // Drums playing their own samples (the sound library, docs/SOUNDS.md): a
+    // file from anywhere copied in and given to the snare; kept in
+    // samples.json; written into a kit, which brings it back; an older kit
+    // (no drum samples) leaves them; a kit without one gives the synth back.
+    void drumSamplesPersistAndFollowKits()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const QString snare = writeTone(dir.filePath("my snare.wav"), 0.3);
+        const int sd = int(kessel::DrumId::Sd), bd = int(kessel::DrumId::Bd);
+        {
+            const auto instance = registryEntry().create(context);
+            auto &k = static_cast<Instance &>(*instance);
+            QVERIFY(!k.samples.assignFile(sd, dir.filePath("missing.wav")));
+            QVERIFY(k.samples.assignFile(sd, snare));
+            QCOMPARE(k.samples.drumSample(sd), QStringLiteral("my snare.wav"));
+            QVERIFY(QFile::exists(dir.filePath("data/samples/my snare.wav")));
+            QCOMPARE(k.samples.drumSamples().size(), 16);
+            QCOMPARE(k.samples.drumSamples()[sd], QStringLiteral("my snare.wav"));
+            QCOMPARE(k.samples.drumSample(bd), QString());
+            k.kits.select(5);
+            k.kits.pressWrite();
+            k.kits.pressWrite(); // kit 6 keeps the snare's sample
+            QVERIFY(k.kits.kitBank().kits[5].hasDrumSamples);
+            QCOMPARE(k.kits.kitBank().kits[5].drumSamples.value("sd"), QStringLiteral("my snare.wav"));
+            k.kits.select(1); // a factory kit, from before drum samples: the snare's stays
+            QCOMPARE(k.samples.drumSample(sd), QStringLiteral("my snare.wav"));
+            QVERIFY(k.samples.setDrumSample(sd, QString())); // the synth again
+            k.kits.select(5);
+            QCOMPARE(k.samples.drumSample(sd), QStringLiteral("my snare.wav"));
+        }
+        // Back from samples.json; then a kit written without it gives the synth back.
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        QCOMPARE(k.samples.drumSample(sd), QStringLiteral("my snare.wav"));
+        QVERIFY(k.samples.setDrumSample(sd, QString()));
+        k.kits.select(3);
+        k.kits.pressWrite();
+        k.kits.pressWrite();
+        QVERIFY(k.samples.setDrumSample(sd, QStringLiteral("my snare.wav")));
+        k.kits.select(3);
+        QCOMPARE(k.samples.drumSample(sd), QString());
+    }
+
     void patternJsonRoundTrip()
     {
         persistence::PatternBank bank = persistence::defaultBank();

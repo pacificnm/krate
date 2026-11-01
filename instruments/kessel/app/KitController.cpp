@@ -91,8 +91,13 @@ void KitController::select(int index)
     m_bank.current = index;
     m_target = index;
     m_panel.setValues(m_bank.kits[std::size_t(index)].values);
-    if (const QString &sample = m_bank.kits[std::size_t(index)].sample; !sample.isEmpty())
-        m_samples.select(sample);
+    const Kit &kit = m_bank.kits[std::size_t(index)];
+    if (!kit.sample.isEmpty())
+        m_samples.select(kit.sample);
+    if (kit.hasDrumSamples) // its drums' own samples (a drum not in it: its synth)
+        for (int d = 0; d < kessel::DrumCount; ++d)
+            if (d != int(kessel::DrumId::Sm))
+                m_samples.setDrumSample(d, kit.drumSamples.value(SampleController::drumKey(d)));
     updateEdited();
     emit changed();
     m_saveTimer.start();
@@ -122,6 +127,11 @@ void KitController::pressWrite()
     for (auto it = kit.values.begin(); it != kit.values.end(); ++it)
         it.value() = m_panel.value(it.key());
     kit.sample = m_samples.name();
+    kit.drumSamples.clear();
+    for (int d = 0; d < kessel::DrumCount; ++d)
+        if (const QString name = m_samples.drumSample(d); !name.isEmpty() && d != int(kessel::DrumId::Sm))
+            kit.drumSamples.insert(SampleController::drumKey(d), name);
+    kit.hasDrumSamples = true;
     if (kit.name == initKit().name)
         kit.name = QStringLiteral("Kit %1").arg(m_target + 1);
     m_bank.current = m_target;
