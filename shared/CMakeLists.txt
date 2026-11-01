@@ -52,6 +52,21 @@ target_link_libraries(krate_host PUBLIC krate_core PkgConfig::JACK)
 target_compile_options(krate_host PRIVATE ${KRATE_WARNINGS})
 
 # --- krate_rack: the rack's realtime core; no Qt, no JACK
+# --- krate_rec: recording audio tracks (docs/DAW.md, D2): the ring buffer,
+# the WAV writer, the audio track, the disk thread. No Qt.
+add_library(krate_rec STATIC
+    rec/AudioRing.h
+    rec/AudioTrack.h
+    rec/AudioTrack.cpp
+    rec/Recorder.h
+    rec/Recorder.cpp
+    rec/WavWriter.h
+    rec/WavWriter.cpp
+)
+target_include_directories(krate_rec PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(krate_rec PUBLIC krate_core)
+target_compile_options(krate_rec PRIVATE ${KRATE_WARNINGS})
+
 add_library(krate_rack STATIC
     rack/Rack.h
     rack/Rack.cpp
@@ -157,6 +172,11 @@ target_link_libraries(krate_qml PUBLIC krate_app krate_core Qt6::Qml Qt6::Quick)
 target_compile_options(krate_qml PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests for the shared pieces
+add_executable(tst_recording tests/tst_recording.cpp)
+target_compile_options(tst_recording PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_recording PRIVATE krate_rec krate_dsp Qt6::Test)
+add_test(NAME tst_recording COMMAND tst_recording)
+
 add_executable(tst_transport tests/tst_transport.cpp)
 target_compile_options(tst_transport PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_transport PRIVATE krate_core Qt6::Test)
