@@ -21,6 +21,11 @@ Conflicts=getty@tty1.service
 After=getty@tty1.service
 ConditionPathExists=/dev/tty0
 Before=graphical.target
+# If it keeps failing (5 starts in a minute), give up and give the console its
+# login prompt back, rather than holding the screen and keyboard.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+OnFailure=getty@tty1.service
 
 [Service]
 Type=simple
