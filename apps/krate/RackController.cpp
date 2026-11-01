@@ -43,6 +43,8 @@ RackController::RackController(krate::Rack &rack, krate::Transport &transport,
             rack.setFocusable(int(m_modules.size() - 1), false);
         m_strips.append(Strip{});
         m_meters.append(0.0);
+        if (!e.inRackByDefault) // added from + when wanted (an audio track)
+            rack.setPresent(int(m_modules.size() - 1), false);
     }
     m_focus = m_rack.focus();
     applyEffects(); // the returns' defaults
@@ -114,6 +116,22 @@ void RackController::setPresent(int device, bool present)
     emit presenceChanged();
 }
 
+QStringList RackController::presentIds() const
+{
+    QStringList ids;
+    for (int d = 0; d < deviceCount(); ++d)
+        if (isPresent(d) && removable(d))
+            ids << m_entries[d].id;
+    return ids;
+}
+
+void RackController::setPresentIds(const QStringList &ids)
+{
+    for (int d = 0; d < deviceCount(); ++d)
+        if (removable(d))
+            setPresent(d, ids.contains(m_entries[d].id));
+}
+
 QStringList RackController::absentIds() const
 {
     QStringList ids;
@@ -127,7 +145,7 @@ void RackController::setAbsentIds(const QStringList &ids)
 {
     for (int d = 0; d < deviceCount(); ++d)
         if (removable(d))
-            setPresent(d, !ids.contains(m_entries[d].id));
+            setPresent(d, !ids.contains(m_entries[d].id) && m_entries[d].inRackByDefault);
 }
 
 int RackController::stepFocus(int step) const

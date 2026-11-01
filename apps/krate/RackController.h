@@ -83,8 +83,10 @@ public:
     // Add (true) or remove one. Removing the focused one moves focus on; its
     // sound, mixer strip and MIDI Learn links are kept for when it comes back.
     Q_INVOKABLE void setPresent(int device, bool present);
-    QStringList absentIds() const;            // for the session
-    void setAbsentIds(const QStringList &ids); // every other one in the rack
+    QStringList presentIds() const;             // for the session: the ones in the rack
+    void setPresentIds(const QStringList &ids);  // every other one out
+    QStringList absentIds() const;
+    void setAbsentIds(const QStringList &ids);   // every other one as by default (older sessions)
 
     int focus() const { return m_focus; }
     void setFocus(int device);

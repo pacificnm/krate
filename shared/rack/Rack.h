@@ -47,7 +47,7 @@ struct RackBlock
 class Rack
 {
 public:
-    static constexpr int kMaxDevices = 16;
+    static constexpr int kMaxDevices = 32; // the feed masks are 32-bit
     static constexpr int kChannels = 16;
     static constexpr int kInputs = 2;           // audio inputs, given to every device that has inputs
     static constexpr int kAnyChannel = 16;      // CC map row matching any channel
@@ -212,6 +212,7 @@ private:
         std::vector<float> left;
         std::vector<float> right;
         std::vector<float> raw; // its output summed to mono before EQ and fader, while it feeds another device
+        std::vector<float> rawL, rawR; // and as it is, for a device that takes it in stereo
         std::atomic<int> inputSource{-1}; // -1: the rack's inputs; else a device
         std::array<MidiEvent, kMaxEventsPerDevice> midi{};
         std::uint32_t midiCount = 0;

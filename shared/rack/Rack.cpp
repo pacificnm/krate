@@ -34,6 +34,8 @@ int Rack::addDevice(IInstrument &instrument, int midiChannel)
     d.left.assign(m_maxFrames, 0.0f);
     d.right.assign(m_maxFrames, 0.0f);
     d.raw.assign(m_maxFrames, 0.0f);
+    d.rawL.assign(m_maxFrames, 0.0f);
+    d.rawR.assign(m_maxFrames, 0.0f);
     if (midiChannel >= 0 && midiChannel < kChannels)
         m_channelDevice[std::size_t(midiChannel)].store(std::int8_t(m_count), std::memory_order_relaxed);
     return m_count++;
@@ -513,16 +515,26 @@ void Rack::processDevice(int i, const RackBlock &block, std::uint32_t offset, st
     const int inputCount = std::min(d.instrument->inputChannels(), int(std::size(inputs)));
     const int source = d.inputSource.load(std::memory_order_relaxed);
     const bool fromDevice = source >= 0 && present(source); // a source not in the rack: silence
+    const bool stereo = d.instrument->stereoInput();
+    const auto fed = [&](int c) -> const float * { // another device's output: in stereo, or summed
+        const Device &s = m_devices[std::size_t(source)];
+        if (!stereo)
+            return s.raw.data();
+        return c == 0 ? s.rawL.data() : c == 1 ? s.rawR.data() : m_silence.data();
+    };
     for (int c = 0; c < inputCount; ++c)
-        inputs[c] = source >= 0 ? (fromDevice ? m_devices[std::size_t(source)].raw.data() : m_silence.data())
+        inputs[c] = source >= 0 ? (fromDevice ? fed(c) : m_silence.data())
                     : block.inputs && c < kInputs ? block.inputs[c] + offset
                                                  : m_silence.data();
     d.instrument->process(AudioBlock{outputs, frames, d.midi.data(), d.midiCount,
                                      block.transport ? &transport : nullptr, inputCount > 0 ? inputs : nullptr});
 
-    if (feedsAnother) // a device takes its sound as its input
+    if (feedsAnother) { // a device takes its sound as its input
         for (std::uint32_t s = 0; s < frames; ++s)
             d.raw[s] = 0.5f * (d.left[s] + d.right[s]);
+        std::copy_n(d.left.data(), frames, d.rawL.data());
+        std::copy_n(d.right.data(), frames, d.rawR.data());
+    }
 
     if (block.deviceOutputs) { // the device's own output, before the mixer
         std::copy_n(d.left.data(), frames, block.deviceOutputs[2 * i] + offset);

@@ -55,6 +55,7 @@ struct InstrumentEntry
     int defaultMidiChannel = -1; // 0..15 for the rack's channel routing, -1 = focus only
     QList<int> extraMidiChannels; // more channels (0..15) the rack routes to it (Krimson's slots B-D)
     bool playsNotes = true;      // false: a song's tracks can't play it (the metronome, the guitar amp)
+    bool inRackByDefault = true; // false: in the Krate rack only once added (audio tracks: docs/DAW.md)
     QString qmlModule;           // QML module holding the panel, e.g. "Korrode"
     QString panelComponent;      // the panel inside it, e.g. "Panel"
     QStringList actions;         // learnable buttons, e.g. "pattern1", "runstop"

@@ -656,6 +656,48 @@ private slots:
         session.load();
         QVERIFY(f.controller->isPresent(0) && f.controller->isPresent(1));
     }
+
+    // An instrument only in the rack once added (an audio track): out at first,
+    // and in older sessions (no list, or only an "absent" list); in when a
+    // session's "inRack" says so.
+    void outOfTheRackByDefault()
+    {
+        QTemporaryDir dir;
+        const QString path = dir.filePath("rack.json");
+        const auto load = [&](const char *json) {
+            QFile file(path);
+            if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+                return false;
+            file.write(json);
+            return true;
+        };
+        const auto makeFixture = [] {
+            auto f = std::make_unique<Fixture>();
+            f->entries[1].inRackByDefault = false;
+            f->controller = std::make_unique<RackController>(f->rack, f->transport, f->entries, nullptr);
+            return f;
+        };
+        {
+            auto f = makeFixture();
+            QVERIFY(!f->controller->isPresent(1));
+        }
+        for (const char *older : {R"({ "version": 1 })", R"({ "version": 1, "absent": [] })"}) {
+            QVERIFY(load(older));
+            auto f = makeFixture();
+            f->controller->setPresent(1, true);
+            RackSession session(path, *f->controller, f->rack, *f->learn, {"alpha", "beta"}, nullptr);
+            session.load();
+            QVERIFY(f->controller->isPresent(0));
+            QVERIFY(!f->controller->isPresent(1));
+        }
+        QVERIFY(load(R"({ "version": 1, "inRack": ["beta"] })"));
+        auto f = makeFixture();
+        RackSession session(path, *f->controller, f->rack, *f->learn, {"alpha", "beta"}, nullptr);
+        session.load();
+        QVERIFY(!f->controller->isPresent(0));
+        QVERIFY(f->controller->isPresent(1));
+        QCOMPARE(f->controller->presentIds(), QStringList{"beta"});
+    }
 };
 
 QTEST_GUILESS_MAIN(TestRackLearn)

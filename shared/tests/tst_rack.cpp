@@ -56,6 +56,7 @@ public:
     }
     std::uint64_t takeParamsChangedByAudio() noexcept override { return std::exchange(changed, 0); }
     int inputChannels() const noexcept override { return inputs; }
+    bool stereoInput() const noexcept override { return stereo; }
 
     void process(const AudioBlock &block) noexcept override
     {
@@ -77,7 +78,7 @@ public:
             return;
         }
         std::fill_n(block.outputs[0], block.frames, dc);
-        std::fill_n(block.outputs[1], block.frames, dc);
+        std::fill_n(block.outputs[1], block.frames, dcRight < 0.0f ? dc : dcRight);
     }
     double sineHz = 0.0;
     double phase = 0.0;
@@ -93,6 +94,8 @@ public:
     std::vector<MidiEvent> received;
     std::vector<TransportState> transports;
     int inputs = 0;
+    bool stereo = false;
+    float dcRight = -1.0f; // the right channel's level, if not dc
     std::vector<bool> gotInputs;
     std::vector<std::pair<float, float>> inputSamples;
 };
@@ -235,6 +238,29 @@ private slots:
         c.inputSamples.clear();
         run(rack, 64);
         QCOMPARE(c.inputSamples.back().first, 0.0f); // its source isn't in the rack: silence
+    }
+
+    // A device fed by another: in stereo if it asks (an audio track), else
+    // the two summed on every input (a guitar amp).
+    void stereoAndMonoFeeds()
+    {
+        FakeDevice synth(kParamsA, 0.2f), track(kParamsB, 0.0f), amp(kParamsA, 0.0f);
+        synth.dcRight = 0.6f;
+        track.inputs = 2;
+        track.stereo = true;
+        amp.inputs = 2;
+        Rack rack;
+        rack.addDevice(synth);
+        rack.addDevice(track);
+        rack.addDevice(amp);
+        rack.setInputSource(1, 0);
+        rack.setInputSource(2, 0);
+        run(rack, 64);
+        QCOMPARE(track.inputSamples.size(), std::size_t(2));
+        QCOMPARE(track.inputSamples[0].first, 0.2f);
+        QCOMPARE(track.inputSamples[1].first, 0.6f);
+        QCOMPARE(amp.inputSamples[0].first, 0.4f);
+        QCOMPARE(amp.inputSamples[1].first, 0.4f);
     }
 
     // A channel assigned to a device always reaches it, whatever has focus.

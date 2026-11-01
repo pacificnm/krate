@@ -58,6 +58,10 @@ public:
     virtual int outputChannels() const noexcept { return 2; }
     // Audio inputs it plays (a guitar amp: the interface's inputs); most have none.
     virtual int inputChannels() const noexcept { return 0; }
+    // Fed by another device in the rack: its left and right on inputs 1 and 2
+    // (true: an audio track recording an instrument), or their sum on every
+    // input (false: a guitar amp).
+    virtual bool stereoInput() const noexcept { return false; }
 
     // Parameters by index into parameters(), normalized 0..1. Any thread.
     virtual float param(int index) const noexcept = 0;

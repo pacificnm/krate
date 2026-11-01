@@ -91,12 +91,19 @@ void RackSession::load()
                 if (ch >= 1 && ch <= 16)
                     m_rack.setChannelDevice(ch - 1, i);
         }
-        // The instruments not in the rack (docs/DAW.md, D1): before focus, so it
-        // can't land on one of them. Older sessions: every instrument.
-        QStringList absent;
-        for (const QJsonValue v : json.value(u"absent").toArray())
-            absent << v.toString();
-        m_controller.setAbsentIds(absent);
+        // The instruments in the rack (docs/DAW.md, D1): before focus, so it
+        // can't land on one that's out. Older sessions: those not listed
+        // "absent", or every instrument (audio tracks are only in once added).
+        const auto strings = [](const QJsonValue &v) {
+            QStringList out;
+            for (const QJsonValue s : v.toArray())
+                out << s.toString();
+            return out;
+        };
+        if (json.contains(u"inRack"))
+            m_controller.setPresentIds(strings(json.value(u"inRack")));
+        else
+            m_controller.setAbsentIds(strings(json.value(u"absent")));
         if (const int focus = int(m_ids.indexOf(json.value(u"focus").toString())); focus >= 0)
             m_controller.setFocus(focus);
         // After focus (which shows the panel).
@@ -168,7 +175,7 @@ void RackSession::save()
         {QStringLiteral("version"), kVersion},
         {QStringLiteral("tempo"), m_controller.bpm()},
         {QStringLiteral("focus"), m_ids.value(m_controller.focus())},
-        {QStringLiteral("absent"), QJsonArray::fromStringList(m_controller.absentIds())},
+        {QStringLiteral("inRack"), QJsonArray::fromStringList(m_controller.presentIds())},
         {QStringLiteral("view"), m_controller.mixerShown()  ? QStringLiteral("mixer")
                                  : m_controller.songShown() ? QStringLiteral("song")
                                  : m_controller.seqShown()  ? QStringLiteral("seq")
