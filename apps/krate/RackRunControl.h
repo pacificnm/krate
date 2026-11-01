@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include <QList>
 #include <QSet>
 #include <QStringList>
@@ -13,11 +15,12 @@ class Transport;
 
 // The rack's RunControl: each instrument's own RUN / STOP runs just its
 // sequencer on the rack's transport, while the rack's PLAY / STOP runs them all.
-// - An instrument started while the rack is stopped plays alone (the others
-//   are switched off, then the transport starts).
+// - An instrument started while the rack is stopped plays alone (the others,
+//   and the rack sequencer's RUN, are switched off, then the transport starts).
 // - Started while the rack plays: it joins, in time, from the next bar.
-// - Stopping the last one running stops the transport.
-// - The rack's PLAY switches every sequencer on (playAll()).
+// - Stopping the last one running stops the transport (unless the rack
+//   sequencer still runs).
+// - The rack's PLAY switches every sequencer on, the rack sequencer's too (playAll()).
 // Devices are the rack's, in the order of `ids`. GUI thread.
 class RackRunControl final : public krate::RunControl
 {
@@ -29,6 +32,14 @@ public:
     bool running(const QString &id) const override;
     void setRunning(const QString &id, bool running) override;
     void addRunner(const QString &id) override;
+
+    // The rack sequencer (the Seq screen's RUN, which plays the arranger's song
+    // too): whether it runs, and switching it.
+    void setRackSequencer(std::function<bool()> running, std::function<void(bool)> setRunning)
+    {
+        m_rackSequencerRunning = std::move(running);
+        m_setRackSequencer = std::move(setRunning);
+    }
 
     // The rack's PLAY: every sequencer on (the transport is the caller's).
     void playAll();
@@ -50,4 +61,6 @@ private:
     QStringList m_ids;
     QList<bool> m_enabled;
     QSet<QString> m_runners;
+    std::function<bool()> m_rackSequencerRunning;
+    std::function<void(bool)> m_setRackSequencer;
 };

@@ -252,6 +252,9 @@ int main(int argc, char *argv[])
     QObject::connect(&audioTracks, &AudioTracksController::recordingChanged, &arrangeController,
                      [&] { arrangeController.setRecording(audioTracks.recording()); }); // one REC for both
     sequencerController.setRunControl(&runControl);
+    // An instrument's own RUN plays it alone, the Seq screen's tracks off; PLAY runs them all.
+    runControl.setRackSequencer([&sequencerController] { return sequencerController.running(); },
+                                [&sequencerController](bool on) { sequencerController.setRunning(on); });
 
     // The Song screen and the song library (~/.local/share/krate/library: the
     // songs' files, library.db with each song's set-up and sounds).

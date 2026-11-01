@@ -30,6 +30,8 @@ void RackRunControl::setRunning(const QString &id, bool running)
                 m_enabled[j] = j == i;
                 apply(int(j));
             }
+            if (m_setRackSequencer) // nor the Seq screen's tracks
+                m_setRackSequencer(false);
             m_transport.setPlaying(true);
         } else { // joins the others on the next bar
             m_enabled[i] = true;
@@ -41,7 +43,7 @@ void RackRunControl::setRunning(const QString &id, bool running)
         bool any = false;
         for (qsizetype j = 0; j < m_ids.size(); ++j)
             any = any || (m_enabled[j] && m_runners.contains(m_ids[j]));
-        if (!any)
+        if (!any && !(m_rackSequencerRunning && m_rackSequencerRunning()))
             m_transport.setPlaying(false);
     }
     emit changed();
@@ -55,6 +57,8 @@ void RackRunControl::playAll()
         m_enabled[j] = true;
         apply(int(j));
     }
+    if (m_setRackSequencer)
+        m_setRackSequencer(true);
     emit changed();
 }
 

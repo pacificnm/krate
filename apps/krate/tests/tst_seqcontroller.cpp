@@ -602,6 +602,38 @@ private slots:
         QVERIFY(transport.playing());
     }
 
+    // An instrument's own RUN from silence plays it alone: the rack sequencer
+    // (whose RUN is on, as by default) is switched off; the rack's PLAY runs
+    // it again with everyone; an instrument stopping leaves it playing.
+    void instrumentRunsAlone()
+    {
+        QTemporaryDir dir;
+        krate::Rack rack(64);
+        krate::Transport transport;
+        RackRunControl run(rack, transport, {QStringLiteral("korrode")});
+        run.addRunner(QStringLiteral("korrode"));
+        Sequencer seq;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.setRunControl(&run);
+        c.load();
+        run.setRackSequencer([&c] { return c.running(); }, [&c](bool on) { c.setRunning(on); });
+        QVERIFY(c.running());
+
+        run.setRunning(QStringLiteral("korrode"), true);
+        QVERIFY(transport.playing());
+        QVERIFY(!c.running()); // the Seq screen's tracks don't play
+        QVERIFY(!seq.runningSetting());
+        run.setRunning(QStringLiteral("korrode"), false);
+        QVERIFY(!transport.playing());
+
+        run.playAll(); // the rack's PLAY
+        transport.setPlaying(true);
+        QVERIFY(c.running());
+        QVERIFY(run.running(QStringLiteral("korrode")));
+        run.setRunning(QStringLiteral("korrode"), false); // the sequencer still plays
+        QVERIFY(transport.playing());
+    }
+
     // A track's notes copied onto another track, in another pattern; the
     // destination keeps its instrument; the source is untouched.
     void copyAndPasteTrack()
