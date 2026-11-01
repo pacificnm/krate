@@ -54,8 +54,18 @@ void Rack::prepare(double sampleRate) noexcept
 
 void Rack::setFocus(int device) noexcept
 {
-    if (device >= 0 && device < m_count)
+    if (device >= 0 && device < m_count && present(device))
         m_focus.store(device, std::memory_order_relaxed);
+}
+
+void Rack::setPresent(int device, bool present) noexcept
+{
+    if (device < 0 || device >= m_count)
+        return;
+    Device &d = m_devices[std::size_t(device)];
+    if (present && !d.present.load(std::memory_order_relaxed))
+        d.reset.store(true, std::memory_order_relaxed);
+    d.present.store(present, std::memory_order_relaxed);
 }
 
 void Rack::setInputSource(int device, int source) noexcept
@@ -237,7 +247,9 @@ bool Rack::runAction(int action) noexcept
     if (m_count == 0)
         return false;
     const int current = m_focus.load(std::memory_order_relaxed);
-    const auto focusable = [this](int d) { return m_devices[std::size_t(d)].focusable.load(std::memory_order_relaxed); };
+    const auto focusable = [this](int d) {
+        return m_devices[std::size_t(d)].focusable.load(std::memory_order_relaxed) && present(d);
+    };
     int next = current;
     if (action == kFocusNext || action == kFocusPrevious) { // the next one that can take focus
         const int step = action == kFocusNext ? 1 : m_count - 1;
@@ -257,8 +269,8 @@ bool Rack::runAction(int action) noexcept
 
 void Rack::forward(int device, const MidiEvent &event) noexcept
 {
-    if (device < 0 || device >= m_count)
-        return;
+    if (device < 0 || device >= m_count || !present(device))
+        return; // not in the rack: nothing reaches it
     Device &d = m_devices[std::size_t(device)];
     if (d.midiCount < kMaxEventsPerDevice)
         d.midi[d.midiCount++] = event;
@@ -289,7 +301,8 @@ void Rack::route(MidiEvent event) noexcept
     const int assigned = m_channelDevice[std::size_t(channel)].load(std::memory_order_relaxed);
     const int keys = m_keysChannel.load(std::memory_order_relaxed);
     const bool followsFocus = keys == kAnyChannel || keys == channel; // the keyboard: always the focused device
-    const int target = assigned >= 0 && !followsFocus ? assigned : focused;
+    // A channel's device not in the rack: the focused one plays it.
+    const int target = assigned >= 0 && !followsFocus && present(assigned) ? assigned : focused;
 
     switch (m.type) {
     case MidiMessage::Type::ControlChange: {
@@ -328,8 +341,8 @@ void Rack::route(MidiEvent event) noexcept
             if (m.data2 > 0) // a button press, not its release
                 runAction(map.target);
             break;
-        case Mapping::Kind::Action:
-            if (m.data2 > 0)
+        case Mapping::Kind::Action: // a device's button: not one that isn't in the rack
+            if (m.data2 > 0 && (map.device == kRackDevice || (map.device < m_count && present(map.device))))
                 m_fired.push({map.device, map.target});
             break;
         case Mapping::Kind::Mixer:
@@ -375,7 +388,8 @@ void Rack::route(MidiEvent event) noexcept
         break;
     }
     case MidiMessage::Type::ProgramChange:
-        if (m_programFocus.load(std::memory_order_relaxed) && m.data1 < m_count)
+        // Program n focuses device n (one in the rack); anything else is passed on.
+        if (m_programFocus.load(std::memory_order_relaxed) && m.data1 < m_count && present(m.data1))
             m_focus.store(m.data1, std::memory_order_relaxed);
         else
             forward(target, event);
@@ -434,7 +448,7 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
     // Run every device on the shared transport.
     bool anySolo = false;
     for (int i = 0; i < m_count; ++i)
-        anySolo = anySolo || m_devices[std::size_t(i)].solo.load(std::memory_order_relaxed);
+        anySolo = anySolo || (present(i) && m_devices[std::size_t(i)].solo.load(std::memory_order_relaxed));
 
     std::fill_n(block.masterL + offset, frames, 0.0f);
     std::fill_n(block.masterR + offset, frames, 0.0f);
@@ -445,14 +459,29 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
     std::uint32_t feeds = 0, fed = 0;
     for (int i = 0; i < m_count; ++i)
         if (const int source = m_devices[std::size_t(i)].inputSource.load(std::memory_order_relaxed);
-            source >= 0 && m_devices[std::size_t(i)].instrument->inputChannels() > 0) {
+            source >= 0 && present(source) && present(i) && m_devices[std::size_t(i)].instrument->inputChannels() > 0) {
             feeds |= 1u << source;
             fed |= 1u << i;
         }
     for (int pass = 0; pass < 2; ++pass)
-        for (int i = 0; i < m_count; ++i)
-            if (bool((fed >> i) & 1u) == (pass == 1))
-                processDevice(i, block, offset, frames, transport, anySolo, (feeds >> i) & 1u);
+        for (int i = 0; i < m_count; ++i) {
+            if (bool((fed >> i) & 1u) != (pass == 1))
+                continue;
+            Device &d = m_devices[std::size_t(i)];
+            if (!present(i)) { // not in the rack: silent, not run
+                if (pass == 0 && block.deviceOutputs) {
+                    std::fill_n(block.deviceOutputs[2 * i] + offset, frames, 0.0f);
+                    std::fill_n(block.deviceOutputs[2 * i + 1] + offset, frames, 0.0f);
+                }
+                continue;
+            }
+            if (d.reset.exchange(false, std::memory_order_relaxed)) { // back in the rack: as new
+                d.instrument->prepare(m_sampleRate, m_maxFrames);
+                d.eqDsp.prepare(m_sampleRate);
+                d.peak.store(0.0f, std::memory_order_relaxed);
+            }
+            processDevice(i, block, offset, frames, transport, anySolo, (feeds >> i) & 1u);
+        }
 
     // The effects: each bus through its effect, only the effect's sound into the master.
     processEffects(block, offset, frames);
@@ -483,8 +512,9 @@ void Rack::processDevice(int i, const RackBlock &block, std::uint32_t offset, st
     const float *inputs[kInputs + 6];
     const int inputCount = std::min(d.instrument->inputChannels(), int(std::size(inputs)));
     const int source = d.inputSource.load(std::memory_order_relaxed);
+    const bool fromDevice = source >= 0 && present(source); // a source not in the rack: silence
     for (int c = 0; c < inputCount; ++c)
-        inputs[c] = source >= 0 ? m_devices[std::size_t(source)].raw.data()
+        inputs[c] = source >= 0 ? (fromDevice ? m_devices[std::size_t(source)].raw.data() : m_silence.data())
                     : block.inputs && c < kInputs ? block.inputs[c] + offset
                                                  : m_silence.data();
     d.instrument->process(AudioBlock{outputs, frames, d.midi.data(), d.midiCount,

@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include <QSignalSpy>
+
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -582,6 +584,77 @@ private slots:
         f.rack.setFocusable(1, true);
         f.send({noteOn(0, 60)});
         QCOMPARE(f.rack.focus(), 1);
+    }
+
+    // --- Instruments in the rack (docs/DAW.md, D1) ----------------------------
+
+    // Removing the focused instrument moves focus on; stepping and setting focus
+    // pass it by; its solo goes; adding it back keeps everything else as it was.
+    void removeAndAddInstruments()
+    {
+        Fixture f;
+        QSignalSpy presence(f.controller.get(), &RackController::presenceChanged);
+        QVERIFY(f.controller->removable(0) && f.controller->removable(1));
+        f.controller->setFocus(1);
+        f.controller->setFader(1, 0.3);
+        f.controller->setSolo(1, true);
+        f.controller->setPresent(1, false);
+        QCOMPARE(presence.count(), 1);
+        QVERIFY(!f.controller->isPresent(1));
+        QVERIFY(!f.rack.present(1));
+        QCOMPARE(f.controller->focus(), 0);
+        QVERIFY(!f.controller->solo(1));
+        QCOMPARE(f.controller->stepFocus(1), 0); // the only one left
+        f.controller->setFocus(1);
+        QCOMPARE(f.controller->focus(), 0); // refused
+        QCOMPARE(f.controller->absentIds(), QStringList{"beta"});
+        f.controller->setPresent(1, true);
+        QCOMPARE(f.controller->fader(1), 0.3); // its strip as it was
+        QCOMPARE(f.controller->stepFocus(1), 1);
+        QVERIFY(f.controller->absentIds().isEmpty());
+    }
+
+    // A device without a panel (the backing track) can't be removed.
+    void panelLessDevicesStay()
+    {
+        Fixture f;
+        f.entries[1].panelComponent.clear();
+        RackController controller(f.rack, f.transport, f.entries, nullptr);
+        QVERIFY(!controller.removable(1));
+        controller.setPresent(1, false);
+        QVERIFY(controller.isPresent(1));
+        controller.setAbsentIds({"beta"});
+        QVERIFY(controller.isPresent(1));
+    }
+
+    // The session keeps which instruments are in the rack; an older session
+    // (no list) has them all; focus can't land on one that's out.
+    void sessionKeepsTheRacksInstruments()
+    {
+        QTemporaryDir dir;
+        const QString path = dir.filePath("rack.json");
+        {
+            Fixture f;
+            RackSession session(path, *f.controller, f.rack, *f.learn, {"alpha", "beta"}, nullptr);
+            f.controller->setPresent(0, false);
+            session.save();
+        }
+        {
+            Fixture f;
+            RackSession session(path, *f.controller, f.rack, *f.learn, {"alpha", "beta"}, nullptr);
+            session.load();
+            QVERIFY(!f.controller->isPresent(0));
+            QVERIFY(f.controller->isPresent(1));
+            QCOMPARE(f.controller->focus(), 1);
+        }
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        file.write(R"({ "version": 1, "focus": "alpha" })");
+        file.close();
+        Fixture f;
+        RackSession session(path, *f.controller, f.rack, *f.learn, {"alpha", "beta"}, nullptr);
+        session.load();
+        QVERIFY(f.controller->isPresent(0) && f.controller->isPresent(1));
     }
 };
 

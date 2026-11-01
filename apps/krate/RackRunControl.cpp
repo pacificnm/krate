@@ -73,7 +73,7 @@ bool RackRunControl::anyInstrumentRunning() const
     if (!m_transport.playing())
         return false;
     for (qsizetype j = 0; j < m_ids.size(); ++j)
-        if (m_enabled[j] && m_runners.contains(m_ids[j]))
+        if (m_enabled[j] && m_rack.present(int(j)) && m_runners.contains(m_ids[j])) // not one out of the rack
             return true;
     return false;
 }

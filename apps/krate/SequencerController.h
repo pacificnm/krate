@@ -43,6 +43,10 @@ class SequencerController : public QObject
     Q_PROPERTY(int maxTicks READ maxTicks CONSTANT)
     Q_PROPERTY(QStringList gridNames READ gridNames CONSTANT)
     Q_PROPERTY(QStringList targetChoices READ targetChoices CONSTANT) // "None", then the instruments
+    // The rack device each choice plays (-1 for "None"): the screen leaves out
+    // instruments not in the rack; the list itself stays whole, so saved
+    // targets keep their meaning (docs/DAW.md, D1).
+    Q_PROPERTY(QVariantList targetDevices READ targetDevices CONSTANT)
     // Per track: {choice, mute, notes (in this pattern), label, drums}.
     Q_PROPERTY(QVariantList tracks READ tracks NOTIFY changed)
     // The selected track's notes in this pattern: {start, length, pitch, velocity}.
@@ -102,6 +106,7 @@ public:
     int maxTicks() const { return krate::seq::kMaxTicks; }
     QStringList gridNames() const;
     QStringList targetChoices() const;
+    QVariantList targetDevices() const;
     QVariantList tracks() const;
     QVariantList notes() const;
     QVariantList patternsUsed() const;

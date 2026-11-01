@@ -34,6 +34,7 @@ The rack hosts every instrument at once: one transport (play, stop, tempo), one 
 - **Mixer**: a strip per instrument with three-band EQ, reverb and delay sends, pan, mute, solo and meters; any instrument can be routed into Krunch's input, to play a synth through the guitar amp.
 - **Seq**: an 8-track pattern sequencer for the whole rack: 16 patterns of up to 4 bars, a piano roll per track (drum lanes for Kessel), velocity, chains of patterns ([docs/SEQUENCER.md](docs/SEQUENCER.md)).
 - **Song**: open a Guitar Pro tab (`.gp`) and/or a MIDI file, put its tracks on Krate's instruments, leave your own part out and play along, with your part's tab scrolling by; a song library keeps every song with its setup and sounds ([docs/SONG_PLAYER.md](docs/SONG_PLAYER.md)).
+- **Your choice of instruments**: **+** next to the tabs adds or removes them; one you remove isn't shown or played (no CPU), and comes back with its sound, mixer strip and MIDI links as they were. Krate is growing into a DAW from here: recording, an arranger, editing, automation and export are next ([docs/DAW.md](docs/DAW.md)).
 - **MIDI Learn** across the rack: any knob, button or tab to a control on your keyboard.
 
 ![The mixer](docs/screenshots/krate-mixer.png)

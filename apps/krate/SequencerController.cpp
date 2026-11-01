@@ -166,6 +166,14 @@ QStringList SequencerController::gridNames() const
     return {QStringLiteral("1/16"), QStringLiteral("1/32"), QStringLiteral("1/16T"), QStringLiteral("1/8T")};
 }
 
+QVariantList SequencerController::targetDevices() const
+{
+    QVariantList out{-1};
+    for (const NoteTarget &t : m_targets)
+        out << t.device;
+    return out;
+}
+
 QStringList SequencerController::targetChoices() const
 {
     QStringList list{QStringLiteral("None")};

@@ -122,6 +122,14 @@ QString SongController::files() const
     return names.join(QStringLiteral(" + "));
 }
 
+QVariantList SongController::instrumentDevices() const
+{
+    QVariantList out{-1};
+    for (const auto &c : m_choices)
+        out << c.device;
+    return out;
+}
+
 QStringList SongController::instrumentChoices() const
 {
     QStringList out{QStringLiteral("—")};
@@ -473,10 +481,10 @@ void SongController::suggest()
     if (m_score)
         for (const s::ScoreTrack &t : m_score->tracks)
             score.push_back(&t);
-    const auto choiceOf = [this](const QString &key) {
+    const auto choiceOf = [this](const QString &key) { // not an instrument out of the rack
         for (std::size_t i = 0; i < m_choices.size(); ++i)
             if (m_choices[i].key == key)
-                return int(i) + 1;
+                return m_rack.isPresent(m_choices[i].device) ? int(i) + 1 : 0;
         return 0;
     };
     // Polysynth parts in order: Kalliope, then Krimson's slots.

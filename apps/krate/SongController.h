@@ -63,6 +63,9 @@ class SongController : public QObject
     Q_PROPERTY(bool hasMidi READ hasMidi NOTIFY songChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
     Q_PROPERTY(QStringList instrumentChoices READ instrumentChoices CONSTANT) // index 0 = none
+    // The rack device each choice plays (-1 for none): the screen leaves out
+    // instruments not in the rack; the list stays whole (saved songs keep theirs).
+    Q_PROPERTY(QVariantList instrumentDevices READ instrumentDevices CONSTANT)
     Q_PROPERTY(QVariantList tracks READ tracks NOTIFY tracksChanged)
     Q_PROPERTY(int myTrack READ myTrack WRITE setMyTrack NOTIFY tracksChanged)
     // The track the tab / notes view shows (click a track to see it); "my track" when a song opens.
@@ -111,6 +114,7 @@ public:
     bool hasMidi() const { return m_midi.has_value(); }
     QString error() const { return m_error; }
     QStringList instrumentChoices() const;
+    QVariantList instrumentDevices() const;
     QVariantList tracks() const;
     int myTrack() const { return m_myTrack; }
     void setMyTrack(int track);

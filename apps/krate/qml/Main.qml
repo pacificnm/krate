@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import Krate
 
 // The Krate rack window: transport bar, instrument tabs (click = focus), the
@@ -59,9 +60,10 @@ Window {
         spacing: 8
         // Tabs fit the window: the screens' tabs keep their size, the instruments' share the rest.
         readonly property int screenTabWidth: 112
-        readonly property int instrumentTabs: Rack.panelComponents.filter(c => c !== "").length
-        readonly property real tabWidth: Math.max(72, Math.min(150, (root.width - 32 - 2 * 40 - 16 - 3 * screenTabWidth
-                                                                     - (instrumentTabs + 5) * spacing) / instrumentTabs))
+        // Only the instruments in the rack have tabs (docs/DAW.md, D1).
+        readonly property int instrumentTabs: Math.max(1, Rack.panelComponents.filter((c, i) => c !== "" && Rack.present[i]).length)
+        readonly property real tabWidth: Math.max(72, Math.min(150, (root.width - 32 - 3 * 40 - 16 - 3 * screenTabWidth
+                                                                     - (instrumentTabs + 6) * spacing) / instrumentTabs))
 
         PanelButton { // focus previous (learnable)
             width: 40
@@ -82,7 +84,8 @@ Window {
                 readonly property bool focused: Rack.focus === index
                 readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown
 
-                visible: Rack.panelComponents[index] !== "" // devices without a panel (the backing track) have no tab
+                // Devices without a panel (the backing track), or not in the rack, have no tab.
+                visible: Rack.panelComponents[index] !== "" && Rack.present[index] === true
                 width: tabs.tabWidth
                 clip: true
                 height: 40
@@ -129,6 +132,14 @@ Window {
             text: "Focus next instrument"
             onClicked: Rack.focus = Rack.stepFocus(1)
             LearnOverlay { anchors.fill: parent; paramKey: "rack:next"; round: false }
+        }
+
+        PanelButton { // add or remove instruments
+            width: 40
+            height: 40
+            faceText: "+"
+            text: "Add or remove instruments"
+            onClicked: instrumentsPopup.open()
         }
 
         Item { width: 16; height: 1 }
@@ -261,7 +272,8 @@ Window {
 
                 Loader {
                     id: loader
-                    active: Rack.panelComponents[slot.index] !== ""
+                    // Only an instrument in the rack has its panel made.
+                    active: Rack.panelComponents[slot.index] !== "" && Rack.present[slot.index] === true
                     sourceComponent: Qt.createComponent(Rack.panelModules[slot.index], Rack.panelComponents[slot.index])
                     readonly property Item panel: item as Item
                     // Fit, but don't blow small panels up past 1.25x.
@@ -272,6 +284,15 @@ Window {
                 }
             }
         }
+    }
+
+    Text { // an empty rack
+        anchors.centerIn: panelArea
+        visible: panelArea.visible && !Rack.present.some((p, i) => p && Rack.panelComponents[i] !== "")
+        text: "No instruments in the rack: press + (next to the tabs) to add one."
+        color: Theme.inkInverse
+        font.family: Theme.labelFont
+        font.pixelSize: 20
     }
 
     Item { // the mixer screen: the strips, taller and (room permitting) larger
@@ -298,6 +319,7 @@ Window {
                 MixerStrip {
                     required property int index
                     required property string modelData
+                    visible: Rack.present[index] === true // not in the rack: no strip
                     device: index
                     name: modelData
                     height: mixer.stripHeight
@@ -328,5 +350,78 @@ Window {
         width: root.width - 32
         height: panelArea.height
         visible: Rack.seqShown
+    }
+
+    // ---- Instruments in the rack: add or remove (docs/DAW.md, D1)
+    Popup {
+        id: instrumentsPopup
+        x: (root.width - width) / 2
+        y: tabs.y + tabs.height + 6
+        width: 620
+        padding: 16
+        modal: true
+        background: Rectangle { radius: 8; color: Theme.lowerDeck; border.color: Theme.deckLine; border.width: 2 }
+
+        readonly property var about: ({
+            korrode: "Acid bass: one voice, a squelching filter, a 16-step sequencer.",
+            kessel: "Drum machine: synthesized drums and a sample voice, a step sequencer.",
+            kalliope: "Polysynth: two oscillators, a ladder filter, an arpeggiator.",
+            krimson: "Four sounds at once: leads, basses, pads, each on its own channel.",
+            kobalt: "Monosynth: one oscillator, a sub, portamento, an arpeggiator.",
+            klang: "Sampler: your WAV and MP3 files on pads, slices and patterns.",
+            krunch: "Guitar amp: your guitar through amp channels, cabinets and pedals.",
+            klick: "Metronome: a click on the rack's tempo."
+        })
+
+        Column {
+            width: parent.width
+            spacing: 8
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "INSTRUMENTS IN THE RACK. Removing one keeps its sound, mixer settings and MIDI links for when you add it back; it isn't played or shown meanwhile."
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+                font.bold: true
+            }
+            Repeater {
+                model: Rack.deviceNames
+                Row {
+                    id: instrumentRow
+                    required property int index
+                    required property string modelData
+                    readonly property bool inRack: Rack.present[index] === true
+                    visible: Rack.removable(index)
+                    spacing: 12
+                    PanelButton {
+                        width: 110
+                        height: 32
+                        faceText: instrumentRow.inRack ? "REMOVE" : "ADD"
+                        text: (instrumentRow.inRack ? "Remove " : "Add ") + instrumentRow.modelData + (instrumentRow.inRack ? " from the rack" : " to the rack")
+                        onClicked: Rack.setPresent(instrumentRow.index, !instrumentRow.inRack)
+                    }
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        Text {
+                            text: instrumentRow.modelData
+                            color: Theme.ink
+                            font.family: Theme.labelFont
+                            font.pixelSize: 16
+                            font.bold: instrumentRow.inRack
+                        }
+                        Text {
+                            width: 460
+                            elide: Text.ElideRight
+                            text: instrumentsPopup.about[Rack.deviceIds[instrumentRow.index]] ?? ""
+                            color: Theme.ink
+                            opacity: 0.7
+                            font.family: Theme.labelFont
+                            font.pixelSize: 12
+                        }
+                    }
+                }
+            }
+        }
     }
 }

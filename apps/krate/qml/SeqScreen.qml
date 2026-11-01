@@ -354,10 +354,15 @@ Item {
                     y: 6
                     width: 170
                     height: 30
-                    model: Sequencer.targetChoices
-                    currentIndex: trackRow.modelData.choice
+                    // "None", the instruments in the rack, and the one chosen even if it isn't (docs/DAW.md, D1).
+                    readonly property var choices: Sequencer.targetChoices.map((label, i) => ({ label: label, choice: i }))
+                        .filter(c => c.choice === 0 || c.choice === trackRow.modelData.choice
+                                     || Rack.present[Sequencer.targetDevices[c.choice]] === true)
+                    model: choices.map(c => c.label + (c.choice > 0 && Rack.present[Sequencer.targetDevices[c.choice]] !== true
+                                                       ? " (not in rack)" : ""))
+                    currentIndex: choices.findIndex(c => c.choice === trackRow.modelData.choice)
                     onActivated: index => {
-                        Sequencer.setTarget(trackRow.index, index)
+                        Sequencer.setTarget(trackRow.index, choices[index].choice)
                         Sequencer.track = trackRow.index
                     }
                     Accessible.name: "Track " + (trackRow.index + 1) + " instrument"

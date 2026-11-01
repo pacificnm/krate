@@ -64,6 +64,72 @@ RackController *RackController::create(QQmlEngine *, QJSEngine *)
     return s_instance;
 }
 
+QStringList RackController::deviceIds() const
+{
+    QStringList ids;
+    for (const auto &e : m_entries)
+        ids << e.id;
+    return ids;
+}
+
+QVariantList RackController::present() const
+{
+    QVariantList out;
+    for (int d = 0; d < deviceCount(); ++d)
+        out << m_rack.present(d);
+    return out;
+}
+
+bool RackController::isPresent(int device) const
+{
+    return device >= 0 && device < deviceCount() && m_rack.present(device);
+}
+
+bool RackController::removable(int device) const
+{
+    return device >= 0 && device < deviceCount() && !m_components.value(device).isEmpty();
+}
+
+void RackController::setPresent(int device, bool present)
+{
+    if (!removable(device) || present == isPresent(device))
+        return;
+    m_rack.setPresent(device, present);
+    if (!present) {
+        setSolo(device, false); // a soloed strip that's gone would leave the rest silent
+        for (int d = 0; d < deviceCount(); ++d)
+            if (inputSource(d) == device)
+                setInputSource(d, -1); // fed by it: the interface's input again
+        if (device == m_focus) {
+            const int next = stepFocus(1);
+            if (next != m_focus) {
+                m_rack.setFocus(next);
+                m_focus = next;
+                emit focusChanged();
+            }
+        }
+    } else if (!isPresent(m_focus) || m_components.value(m_focus).isEmpty()) {
+        setFocus(device); // the first one back
+    }
+    emit presenceChanged();
+}
+
+QStringList RackController::absentIds() const
+{
+    QStringList ids;
+    for (int d = 0; d < deviceCount(); ++d)
+        if (!isPresent(d))
+            ids << m_entries[d].id;
+    return ids;
+}
+
+void RackController::setAbsentIds(const QStringList &ids)
+{
+    for (int d = 0; d < deviceCount(); ++d)
+        if (removable(d))
+            setPresent(d, !ids.contains(m_entries[d].id));
+}
+
 int RackController::stepFocus(int step) const
 {
     const int count = deviceCount();
@@ -72,7 +138,7 @@ int RackController::stepFocus(int step) const
     int next = m_focus;
     for (int i = 0; i < count; ++i) {
         next = ((next + step) % count + count) % count;
-        if (!m_components.value(next).isEmpty())
+        if (!m_components.value(next).isEmpty() && m_rack.present(next))
             return next;
     }
     return m_focus;
@@ -80,7 +146,8 @@ int RackController::stepFocus(int step) const
 
 void RackController::setFocus(int device)
 {
-    if (device < 0 || device >= deviceCount() || device == m_focus || m_components.value(device).isEmpty())
+    if (device < 0 || device >= deviceCount() || device == m_focus || m_components.value(device).isEmpty()
+        || !m_rack.present(device))
         return;
     m_rack.setFocus(device);
     m_focus = device;
@@ -480,7 +547,7 @@ void RackController::stepInputSource(int device, int delta)
     // The interface, then every instrument that can feed it (not itself, nor another with inputs).
     QList<int> sources{-1};
     for (int d = 0; d < m_strips.size(); ++d)
-        if (d != device && !takesInput(d))
+        if (d != device && !takesInput(d) && isPresent(d))
             sources << d;
     const int at = std::max(0, int(sources.indexOf(inputSource(device))));
     const int n = int(sources.size());

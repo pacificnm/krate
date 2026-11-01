@@ -41,7 +41,11 @@ public:
     {
     }
 
-    void prepare(double sr, std::uint32_t) noexcept override { sampleRate = sr; }
+    void prepare(double sr, std::uint32_t) noexcept override
+    {
+        sampleRate = sr;
+        ++prepares;
+    }
     std::span<const ParamDescriptor> parameters() const noexcept override { return params; }
     float param(int i) const noexcept override { return values[std::size_t(i)]; }
     void setParam(int i, float v) noexcept override { values[std::size_t(i)] = v; }
@@ -83,6 +87,7 @@ public:
     std::vector<float> values;
     float dc;
     double sampleRate = 0.0;
+    int prepares = 0;
     std::uint64_t changed = 0;
     int calls = 0;
     std::vector<MidiEvent> received;
@@ -153,6 +158,83 @@ private slots:
         run(rack, 64, {noteOn(0, 62)});
         QCOMPARE(b.received.size(), std::size_t(1));
         QCOMPARE(int(b.received[0].data[1]), 62);
+    }
+
+    // --- In the rack or not (docs/DAW.md, D1) ----------------------------------
+
+    // A device not in the rack isn't run, its outputs are silent, its MIDI is
+    // dropped; back in, it plays again, reset (prepared afresh).
+    void absentDeviceIsSkipped()
+    {
+        FakeDevice a(kParamsA, 0.25f), b(kParamsB, 0.5f);
+        Rack rack;
+        rack.addDevice(a);
+        rack.addDevice(b, /*midiChannel*/ 9);
+        rack.prepare(48000.0);
+        rack.setPresent(1, false);
+        QVERIFY(!rack.present(1));
+        Output out = run(rack, 64, {noteOn(9, 36)});
+        QCOMPARE(b.calls, 0);
+        QVERIFY(b.received.empty());
+        QCOMPARE(out.devices[2][0], 0.0f); // its outputs: silence
+        QCOMPARE(out.left[0], run(rack, 64).left[0]); // the master: only a
+        QCOMPARE(a.received.size(), std::size_t(1)); // its channel went to the focused device
+        const int prepared = b.prepares;
+        rack.setPresent(1, true);
+        out = run(rack, 64, {noteOn(9, 38)});
+        QCOMPARE(b.prepares, prepared + 1);
+        QCOMPARE(b.calls, 1);
+        QCOMPARE(b.received.size(), std::size_t(1));
+        QCOMPARE(out.devices[2][0], 0.5f);
+    }
+
+    // Its outputs are silent even when the buffers held something (JACK ports).
+    void absentOutputsAreCleared()
+    {
+        FakeDevice a(kParamsA, 0.25f), b(kParamsB, 0.5f);
+        Rack rack;
+        rack.addDevice(a);
+        rack.addDevice(b);
+        rack.setPresent(1, false);
+        std::vector<float> l(64, 0.0f), r(64, 0.0f);
+        std::vector<std::vector<float>> devices(4, std::vector<float>(64, 9.0f));
+        std::vector<float *> ptrs{devices[0].data(), devices[1].data(), devices[2].data(), devices[3].data()};
+        RackBlock block;
+        block.frames = 64;
+        block.masterL = l.data();
+        block.masterR = r.data();
+        block.deviceOutputs = ptrs.data();
+        rack.process(block);
+        QCOMPARE(devices[2][10], 0.0f);
+        QCOMPARE(devices[3][63], 0.0f);
+        QCOMPARE(devices[0][10], 0.25f);
+    }
+
+    // No focus, Program Change or focus button reaches a device not in the
+    // rack; it isn't soloed; it feeds nothing (a device fed by it gets silence).
+    void absentDeviceTakesNoFocusSoloOrFeed()
+    {
+        FakeDevice a(kParamsA, 0.25f), b(kParamsB, 0.5f), c(kParamsA, 0.0f);
+        c.inputs = 1;
+        Rack rack;
+        rack.addDevice(a);
+        rack.addDevice(b);
+        rack.addDevice(c);
+        rack.setPresent(1, false);
+        rack.setFocus(1);
+        QCOMPARE(rack.focus(), 0);
+        run(rack, 64, {program(0, 1)});
+        QCOMPARE(rack.focus(), 0);
+        QCOMPARE(a.received.size(), std::size_t(1)); // not a device in the rack: passed on
+        rack.setCcMapping(0, 20, {Kind::FocusAction, -1, Rack::kFocusNext});
+        run(rack, 64, {cc(0, 20, 127)});
+        QCOMPARE(rack.focus(), 2); // past the absent one
+        rack.setSolo(1, true);
+        QVERIFY(run(rack, 64).left[0] != 0.0f); // its solo doesn't silence the rest
+        rack.setInputSource(2, 1);
+        c.inputSamples.clear();
+        run(rack, 64);
+        QCOMPARE(c.inputSamples.back().first, 0.0f); // its source isn't in the rack: silence
     }
 
     // A channel assigned to a device always reaches it, whatever has focus.

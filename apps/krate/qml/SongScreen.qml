@@ -526,9 +526,14 @@ Item {
                         width: 160
                         height: 32
                         anchors.verticalCenter: parent.verticalCenter
-                        model: Song.instrumentChoices
-                        currentIndex: row.modelData.choice
-                        onActivated: index => Song.setInstrument(row.index, index)
+                        // None, the instruments in the rack, and the one chosen even if it isn't (docs/DAW.md, D1).
+                        readonly property var choices: Song.instrumentChoices.map((label, i) => ({ label: label, choice: i }))
+                            .filter(c => c.choice === 0 || c.choice === row.modelData.choice
+                                         || Rack.present[Song.instrumentDevices[c.choice]] === true)
+                        model: choices.map(c => c.label + (c.choice > 0 && Rack.present[Song.instrumentDevices[c.choice]] !== true
+                                                           ? " (not in rack)" : ""))
+                        currentIndex: choices.findIndex(c => c.choice === row.modelData.choice)
+                        onActivated: index => Song.setInstrument(row.index, choices[index].choice)
                         Accessible.name: row.modelData.name + " instrument"
                     }
                     Item { width: 10; height: 1 }
@@ -856,7 +861,7 @@ Item {
             fromBox.value = Song.selectionFrom >= 0 ? Song.selectionFrom + 1 : 1
             toBox.value = Song.selectionFrom >= 0 ? Song.selectionTo + 1 : Math.min(last, fromBox.value + 3)
             const choice = trackInfo ? trackInfo.choice : 0
-            instrumentBox.currentIndex = choice
+            instrumentBox.currentIndex = Math.max(0, instrumentBox.choices.findIndex(c => c.choice === choice))
             // The sequencer track already playing that instrument, else the first unused one.
             const tracks = Sequencer.tracks
             let pick = -1
@@ -941,7 +946,11 @@ Item {
                 ComboBox {
                     id: instrumentBox
                     width: 170
-                    model: Sequencer.targetChoices
+                    // The instruments in the rack (indices into Sequencer.targetChoices: `choice`).
+                    readonly property var choices: Sequencer.targetChoices.map((label, i) => ({ label: label, choice: i }))
+                        .filter(c => c.choice === 0 || Rack.present[Sequencer.targetDevices[c.choice]] === true)
+                    readonly property int choice: currentIndex >= 0 && currentIndex < choices.length ? choices[currentIndex].choice : 0
+                    model: choices.map(c => c.label)
                     Accessible.name: "Instrument for the sequencer track"
                 }
             }
@@ -990,7 +999,7 @@ Item {
                     text: "Copy the bars into the sequencer"
                     onClicked: copyDialog.result = Song.copyToSequencer(copyDialog.track, fromBox.value - 1, toBox.value - 1,
                                                                         patternBox.value - 1, seqTrackBox.value - 1,
-                                                                        instrumentBox.currentIndex)
+                                                                        instrumentBox.choice)
                 }
                 PanelButton {
                     visible: copyDialog.result !== ""

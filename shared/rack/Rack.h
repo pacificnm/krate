@@ -134,6 +134,12 @@ public:
     // Devices without a panel (a backing track) are passed over by focus actions.
     void setFocusable(int device, bool focusable) noexcept { m_devices[std::size_t(device)].focusable.store(focusable, std::memory_order_relaxed); }
     bool focusable(int device) const noexcept { return m_devices[std::size_t(device)].focusable.load(std::memory_order_relaxed); }
+    // In the rack or not (docs/DAW.md, D1): a device not in the rack isn't
+    // processed (its outputs are silent), takes no MIDI, no focus and no
+    // solo, and feeds nothing. Every device is built and kept, so it comes
+    // back as it was, reset (no hanging notes). Default: in the rack.
+    void setPresent(int device, bool present) noexcept;
+    bool present(int device) const noexcept { return m_devices[std::size_t(device)].present.load(std::memory_order_relaxed); }
 
     void setChannelDevice(int channel, int device) noexcept; // device -1 = none (use focus)
     // The keyboard follows focus: MIDI on this channel (0..15), or on any
@@ -219,6 +225,8 @@ private:
         std::atomic<bool> mute{false};
         std::atomic<bool> solo{false};
         std::atomic<bool> focusable{true};
+        std::atomic<bool> present{true};
+        std::atomic<bool> reset{false}; // back in the rack: re-prepared before it plays (audio thread)
         std::atomic<float> peak{0.0f};
         float gainL = 1.0f; // current (ramped) gains, audio thread only
         float gainR = 1.0f;

@@ -36,6 +36,11 @@ class RackController : public QObject
     Q_PROPERTY(QStringList deviceNames READ deviceNames CONSTANT)
     Q_PROPERTY(QStringList panelModules READ panelModules CONSTANT)
     Q_PROPERTY(QStringList panelComponents READ panelComponents CONSTANT)
+    Q_PROPERTY(QStringList deviceIds READ deviceIds CONSTANT)
+    // Which instruments are in the rack (docs/DAW.md, D1), per device. The
+    // device list never changes (every instrument is built at startup): one
+    // not in the rack is only hidden and skipped.
+    Q_PROPERTY(QVariantList present READ present NOTIFY presenceChanged)
     Q_PROPERTY(int focus READ focus WRITE setFocus NOTIFY focusChanged)
     // Your keyboard plays the focused instrument: notes on this channel (0..15),
     // or any channel (16), go to the focused instrument whatever the mixer's
@@ -67,8 +72,19 @@ public:
     QStringList deviceNames() const { return m_names; }
     QStringList panelModules() const { return m_modules; }
     QStringList panelComponents() const { return m_components; }
+    QStringList deviceIds() const;
     // The device `step` places on (1 next, -1 previous) that has a panel to show.
     Q_INVOKABLE int stepFocus(int step) const;
+
+    QVariantList present() const;
+    Q_INVOKABLE bool isPresent(int device) const;
+    // An instrument with a panel can be added or removed (the backing track is always there).
+    Q_INVOKABLE bool removable(int device) const;
+    // Add (true) or remove one. Removing the focused one moves focus on; its
+    // sound, mixer strip and MIDI Learn links are kept for when it comes back.
+    Q_INVOKABLE void setPresent(int device, bool present);
+    QStringList absentIds() const;            // for the session
+    void setAbsentIds(const QStringList &ids); // every other one in the rack
 
     int focus() const { return m_focus; }
     void setFocus(int device);
@@ -169,6 +185,7 @@ signals:
     void beatChanged();
     void mixerChanged();
     void metersChanged();
+    void presenceChanged();
 
 private:
     struct Strip

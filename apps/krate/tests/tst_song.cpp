@@ -258,6 +258,22 @@ private slots:
         QCOMPARE(f.player.assignment(1), song::Assignment{});
     }
 
+    // An instrument not in the rack isn't suggested (docs/DAW.md, D1); the
+    // choices themselves stay whole, each with its rack device.
+    void suggestionsOnlyFromTheRack()
+    {
+        Fixture f;
+        f.rack.setPresent(1, false); // no Kessel
+        write(f.path("band.mid"), midiFile({{"Lead Guitar", 0, 64}, {"Bass", 1, 33}, {"Drums", 9, 36}}));
+        f.song->openPaths({f.path("band.mid")});
+        QCOMPARE(f.track(1).value("choice").toInt(), f.choice("Korrode"));
+        QCOMPARE(f.track(2).value("choice").toInt(), 0); // drums: nothing to play them
+        const QVariantList devices = f.song->instrumentDevices();
+        QCOMPARE(devices.size(), f.song->instrumentChoices().size());
+        QCOMPARE(devices[f.choice("Kessel")].toInt(), 1);
+        QCOMPARE(devices[0].toInt(), -1);
+    }
+
     void tabFindsItsMidiFile()
     {
         Fixture f;
