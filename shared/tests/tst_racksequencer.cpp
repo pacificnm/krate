@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "core/EventMerge.h"
+#include "core/Transport.h"
 #include "seq/Sequencer.h"
 
 using namespace krate;
@@ -79,7 +80,125 @@ class TestRackSequencer : public QObject
         return bank;
     }
 
+    // An arrangement: one lane's clips.
+    static std::unique_ptr<Arrangement> songWith(std::initializer_list<Clip> clips, int lane = 0)
+    {
+        auto song = std::make_unique<Arrangement>();
+        for (const Clip &c : clips)
+            song->lanes[std::size_t(lane)].push_back(c);
+        return song;
+    }
+
 private slots:
+    // SONG mode (docs/DAW.md, D3): a one-beat pattern in a clip on bars 2-3
+    // plays on each of its 8 beats and nowhere else; a note longer than its
+    // clip ends at the clip's end.
+    void patternClipsAtTheirBars()
+    {
+        Sequencer seq;
+        seq.setTarget(0, {0, 0});
+        seq.setBank(bankWith({{0, 48, 60, 100}}, 0, 96));
+        seq.setArrangement(songWith({{1, 2, 0, -1}}));
+        seq.setSongMode(true);
+        Run run{seq};
+        run.blocks(24000 * 16);
+        const auto ons = run.ons();
+        QCOMPARE(ons.size(), std::size_t(8));
+        for (std::size_t i = 0; i < ons.size(); ++i)
+            QCOMPARE(ons[i].frame, std::uint64_t(24000 * (4 + i)));
+
+        Sequencer cut;
+        cut.setTarget(0, {0, 0});
+        cut.setBank(bankWith({{0, 96 * 8, 60, 100}}, 0, 384)); // two bars long, in a one-bar clip
+        cut.setArrangement(songWith({{0, 1, 0, -1}}));
+        cut.setSongMode(true);
+        Run r2{cut};
+        r2.blocks(24000 * 6);
+        QCOMPARE(r2.ons().size(), std::size_t(1));
+        QCOMPARE(r2.offs().size(), std::size_t(1));
+        QCOMPARE(r2.offs()[0].frame, std::uint64_t(96000)); // bar 1's end
+    }
+
+    // A MIDI clip's own notes, from its start; lanes go to their own targets;
+    // a muted lane is silent.
+    void midiClips()
+    {
+        Sequencer seq;
+        seq.setTarget(0, {2, 0});
+        seq.setTarget(1, {5, 1});
+        seq.setBank(std::make_unique<Bank>());
+        auto song = std::make_unique<Arrangement>();
+        song->midi.push_back({{{0, 48, 64, 90}, {96 * 5, 48, 67, 80}}});
+        song->lanes[0].push_back({2, 4, -1, 0});
+        song->lanes[1].push_back({0, 1, -1, 0});
+        seq.setArrangement(std::move(song));
+        seq.setSongMode(true);
+        seq.setMute(1, true);
+        Run run{seq};
+        run.blocks(24000 * 20);
+        const auto ons = run.ons();
+        QCOMPARE(ons.size(), std::size_t(2));
+        QCOMPARE(ons[0].frame, std::uint64_t(24000 * 8));
+        QCOMPARE(ons[0].key, std::uint8_t(64));
+        QCOMPARE(ons[0].device, 2);
+        QCOMPARE(ons[1].frame, std::uint64_t(24000 * 13));
+        QCOMPARE(ons[1].velocity, std::uint8_t(80));
+    }
+
+    // A jump (the transport looping) ends what was sounding; play from a bar
+    // inside a clip picks the pattern up there.
+    void jumpsEndNotes()
+    {
+        Sequencer seq;
+        seq.setTarget(0, {0, 0});
+        seq.setBank(bankWith({{0, 96 * 6, 60, 100}}, 0, 768)); // a note of 6 beats, still sounding at the wrap
+        seq.setArrangement(songWith({{0, 4, 0, -1}}));
+        seq.setSongMode(true);
+        Transport transport;
+        transport.setLoop(true, 0, 1);
+        transport.setPlaying(true);
+        std::array<DeviceEvent, 256> out{};
+        std::vector<Hit> hits;
+        std::uint64_t at = 0;
+        while (at < 96000 * 2 + 10) {
+            const std::uint32_t n = transport.framesUntilLoop(kBlock, kRate);
+            const TransportState t = transport.advance(n, kRate);
+            const std::uint32_t count = seq.render(t, n, kRate, out.data(), std::uint32_t(out.size()));
+            for (std::uint32_t i = 0; i < count; ++i)
+                hits.push_back({at + out[i].event.frame, out[i].device, out[i].event.data[0], out[i].event.data[1],
+                                out[i].event.data[2], true});
+            at += n;
+        }
+        // On at 0; at the wrap (96000) it ends, then starts again; the same at 192000.
+        QCOMPARE(hits.size(), std::size_t(5));
+        QCOMPARE(hits[1].frame, std::uint64_t(96000));
+        QCOMPARE(hits[1].status, std::uint8_t(0x80));
+        QCOMPARE(hits[2].frame, std::uint64_t(96000));
+        QCOMPARE(hits[2].status, std::uint8_t(0x90));
+        QCOMPARE(hits[3].frame, std::uint64_t(192000));
+        QCOMPARE(hits[3].status, std::uint8_t(0x80));
+
+        // Play from bar 3 (beat 8): the one-bar pattern's note at bar 3's start.
+        Sequencer from;
+        from.setTarget(0, {0, 0});
+        from.setBank(bankWith({{96, 24, 62, 100}}, 0, 384));
+        from.setArrangement(songWith({{0, 4, 0, -1}}));
+        from.setSongMode(true);
+        Transport t2;
+        t2.setStartBeat(8.0);
+        t2.setPlaying(true);
+        std::vector<std::uint64_t> ons;
+        for (std::uint64_t f = 0; f < 96000 * 3; f += kBlock) {
+            const TransportState t = t2.advance(kBlock, kRate);
+            const std::uint32_t count = from.render(t, kBlock, kRate, out.data(), std::uint32_t(out.size()));
+            for (std::uint32_t i = 0; i < count; ++i)
+                if ((out[i].event.data[0] & 0xF0) == 0x90)
+                    ons.push_back(f + out[i].event.frame);
+        }
+        QCOMPARE(ons.size(), std::size_t(2)); // bars 3 and 4, then the clip ends
+        QCOMPARE(ons[0], std::uint64_t(24000));
+    }
+
     // A 16th note on step 2 at 120 BPM: on at 6000, off at 12000 (exact); at
     // 97 BPM a 16th-triplet step lands where the arithmetic says.
     void notesOnTheExactSample()

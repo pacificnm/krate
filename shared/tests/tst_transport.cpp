@@ -30,6 +30,63 @@ private slots:
         QVERIFY(!t.following());
     }
 
+    // The arranger's start position: play starts there, restarted.
+    void startsWhereSet()
+    {
+        Transport t;
+        t.setStartBeat(8.0);
+        t.setPlaying(true);
+        TransportState s = t.advance(kFrames, kRate);
+        QVERIFY(s.restarted);
+        QCOMPARE(s.beatAtBlockStart, 8.0);
+        QVERIFY(qFuzzyCompare(t.advance(kFrames, kRate).beatAtBlockStart, 8.0 + blockBeats(120.0)));
+        t.setPlaying(false);
+        t.advance(kFrames, kRate);
+        t.setStartBeat(0.0);
+        t.setPlaying(true);
+        QCOMPARE(t.advance(kFrames, kRate).beatAtBlockStart, 0.0);
+    }
+
+    // A loop of bar 2 (beats 4..8) at 120 BPM: 96000 frames long. Split where
+    // framesUntilLoop says, the block after the split starts back at beat 4,
+    // restarted, every time round; with no loop nothing splits.
+    void loopsOnTheSample()
+    {
+        Transport t;
+        QCOMPARE(t.framesUntilLoop(kFrames, kRate), kFrames);
+        t.setLoop(true, 1, 2);
+        QVERIFY(t.looping());
+        QCOMPARE(t.loopFromBar(), 1);
+        QCOMPARE(t.loopToBar(), 2);
+        t.setStartBeat(4.0);
+        t.setPlaying(true);
+        std::uint64_t frames = 0;
+        int wraps = 0;
+        for (int guard = 0; guard < 2000 && wraps < 3; ++guard) {
+            const std::uint32_t n = t.framesUntilLoop(kFrames, kRate);
+            const TransportState s = t.advance(n, kRate);
+            if (s.restarted && frames > 0) {
+                ++wraps;
+                QCOMPARE(frames % 96000, std::uint64_t(0)); // on the exact sample
+                QCOMPARE(s.beatAtBlockStart, 4.0);
+            }
+            QVERIFY(s.beatAtBlockStart >= 4.0 && s.beatAtBlockStart < 8.0);
+            frames += n;
+        }
+        QCOMPARE(wraps, 3);
+        // Started past the loop's end: it plays on.
+        Transport u;
+        u.setLoop(true, 0, 1);
+        u.setStartBeat(8.0);
+        u.setPlaying(true);
+        QCOMPARE(u.framesUntilLoop(kFrames, kRate), kFrames);
+        u.advance(kFrames, kRate);
+        QVERIFY(u.advance(kFrames, kRate).beatAtBlockStart > 8.0);
+        // Off, or an empty range: no loop.
+        u.setLoop(true, 3, 3);
+        QVERIFY(!u.looping());
+    }
+
     // Bars, beats and ticks in the time signature's beats, to quarter notes.
     void fromBbt()
     {

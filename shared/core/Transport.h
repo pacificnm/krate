@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
@@ -22,6 +23,12 @@ namespace krate {
 // in before each block (setExternal), the state follows it, and play/stop
 // from the GUI become requests the host passes on (takeRequest) so the
 // external transport, and everything following it, starts and stops together.
+//
+// The Krate arranger (docs/DAW.md, D3) sets where play starts and a loop
+// range in bars: reaching the loop's end, the transport is back at its start
+// (restarted), on the exact sample when the host splits its block there
+// (framesUntilLoop). While an external transport leads, position and looping
+// are its own.
 class Transport
 {
 public:
@@ -65,6 +72,37 @@ public:
     // Beat position at the start of the last block (for display: beat LEDs, counters).
     double beatPosition() const noexcept { return m_lastBeat.load(std::memory_order_relaxed); }
 
+    // GUI thread: where play starts (beats; 0 by default).
+    void setStartBeat(double beat) noexcept { m_startBeat.store(std::max(beat, 0.0), std::memory_order_relaxed); }
+    double startBeat() const noexcept { return m_startBeat.load(std::memory_order_relaxed); }
+    // GUI thread: loop bars [fromBar, toBar) while on (toBar > fromBar, bars of 4 beats).
+    void setLoop(bool on, int fromBar, int toBar) noexcept
+    {
+        const bool valid = on && fromBar >= 0 && toBar > fromBar;
+        m_loop.store(valid ? std::uint64_t(std::uint32_t(fromBar)) << 32 | std::uint32_t(toBar) : 0,
+                     std::memory_order_relaxed);
+    }
+    bool looping() const noexcept { return m_loop.load(std::memory_order_relaxed) != 0; }
+    int loopFromBar() const noexcept { return int(m_loop.load(std::memory_order_relaxed) >> 32); }
+    int loopToBar() const noexcept { return int(m_loop.load(std::memory_order_relaxed) & 0xFFFFFFFFu); }
+
+    // Audio thread, before advance(): of the next `frames`, how many come
+    // before the loop's end (a block split there wraps on the sample), or
+    // `frames` when it isn't in them.
+    std::uint32_t framesUntilLoop(std::uint32_t frames, double sampleRate) const noexcept
+    {
+        const std::uint64_t loop = m_loop.load(std::memory_order_relaxed);
+        if (!loop || m_hasExternal || !m_playing.load(std::memory_order_relaxed))
+            return frames;
+        const double end = double(loop & 0xFFFFFFFFu) * kBeatsPerBar;
+        const double bpm = m_bpm.load(std::memory_order_relaxed);
+        const double from = m_wasPlaying ? beatNow() : m_startBeat.load(std::memory_order_relaxed);
+        if (from >= end - kLoopEpsilon)
+            return frames;
+        const double k = std::ceil((end - from) * 60.0 / bpm * sampleRate - 1e-6);
+        return k >= double(frames) ? frames : std::uint32_t(std::max(k, 1.0));
+    }
+
     // Audio thread, before advance(): the external transport for this block,
     // or nullptr when there is none (this transport keeps its own time).
     void setExternal(const External *external) noexcept
@@ -91,9 +129,15 @@ public:
         state.playing = m_playing.load(std::memory_order_relaxed);
         state.bpm = m_bpm.load(std::memory_order_relaxed);
 
+        const std::uint64_t loop = m_loop.load(std::memory_order_relaxed);
         if (state.playing && !m_wasPlaying) {
             state.restarted = true;
-            anchor(0.0, state.bpm, sampleRate);
+            anchor(m_startBeat.load(std::memory_order_relaxed), state.bpm, sampleRate);
+        } else if (state.playing && loop && m_lastStart < double(loop & 0xFFFFFFFFu) * kBeatsPerBar - kLoopEpsilon
+                   && beatNow() >= double(loop & 0xFFFFFFFFu) * kBeatsPerBar - kLoopEpsilon) {
+            // The loop's end: back to its start, as if play were pressed there.
+            state.restarted = true;
+            anchor(double(loop >> 32) * kBeatsPerBar, state.bpm, sampleRate);
         } else if (state.bpm != m_anchorBpm || sampleRate != m_anchorRate) {
             anchor(beatNow(), state.bpm, sampleRate);
         }
@@ -103,6 +147,7 @@ public:
             state.beatAtBlockStart = beatNow();
             m_samplesSinceAnchor += frames;
         }
+        m_lastStart = state.beatAtBlockStart;
         m_lastBeat.store(state.beatAtBlockStart, std::memory_order_relaxed);
         return state;
     }
@@ -157,12 +202,15 @@ private:
 
     static constexpr double kBeatsPerBar = 4.0;
     static constexpr double kJumpBeats = 0.02; // further than this from where it should be: a locate
+    static constexpr double kLoopEpsilon = 1e-6; // beats: a block split at the loop's end may stop this short of it
 
     std::atomic<bool> m_playing{false};
     std::atomic<double> m_bpm{120.0};
     std::atomic<double> m_lastBeat{0.0};
     std::atomic<bool> m_following{false};
     std::atomic<int> m_request{None};
+    std::atomic<double> m_startBeat{0.0};
+    std::atomic<std::uint64_t> m_loop{0}; // fromBar << 32 | toBar, 0 = off
 
     // Audio thread only.
     bool m_wasPlaying = false;
@@ -173,6 +221,7 @@ private:
     bool m_hasExternal = false;
     External m_external;
     double m_predicted = 0.0; // where the external beat should be next block
+    double m_lastStart = 0.0; // the last block's beat (a loop wraps once it's reached)
 };
 
 // A standalone panel's TEMPO knob while an external transport leads: the knob

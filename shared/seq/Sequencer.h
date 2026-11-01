@@ -7,6 +7,7 @@
 
 #include "core/EventSource.h"
 #include "core/SpscQueue.h"
+#include "seq/Arrangement.h"
 #include "seq/Pattern.h"
 
 // The rack sequencer's player (docs/SEQUENCER.md): plays the current pattern
@@ -19,6 +20,12 @@
 // Threads: the GUI thread hands over whole banks (setBank), sets targets,
 // mutes, RUN and the cued pattern; the audio thread calls render()
 // (IEventSource). Banks are handed back for deletion by collectGarbage().
+//
+// SONG mode (the arranger, docs/DAW.md D3): instead of looping a pattern it
+// plays the arrangement at the transport's beat: each lane's clips, a pattern
+// clip being that track's part of a pattern, a MIDI clip its own notes, each
+// cut at its clip's end. A jump (play from a bar, a loop going round) ends
+// what was sounding.
 namespace krate::seq {
 
 struct Target
@@ -42,6 +49,10 @@ public:
     void setBank(std::unique_ptr<Bank> bank);
     // Deletes banks the audio thread has let go of. Call now and then.
     void collectGarbage();
+    // Hands the audio thread a new arrangement (handed back as banks are).
+    void setArrangement(std::unique_ptr<Arrangement> arrangement);
+    void setSongMode(bool on) noexcept { m_songMode.store(on, std::memory_order_relaxed); }
+    bool songMode() const noexcept { return m_songMode.load(std::memory_order_relaxed); }
 
     void setTarget(int track, Target t) noexcept;
     Target target(int track) const noexcept;
@@ -95,6 +106,10 @@ private:
     int next(int cued) noexcept; // the pattern after a pass: the chain's next, the range's next, or the cued one
     int startPattern(int cued) noexcept;
     void play(int track, const Note &note, double onBeat, double b0, double framesPerBeat) noexcept;
+    void play(int track, std::uint8_t pitch, std::uint8_t velocity, double onBeat, double offBeat, double b0,
+              double framesPerBeat) noexcept;
+    void renderSong(const TransportState &transport, bool run, double sampleRate) noexcept;
+    void sortOut() noexcept; // by frame; offs first
     void endNotes(double b0, double b1, double framesPerBeat) noexcept; // offs due in [b0, b1)
     void flush(int track, std::uint32_t frame) noexcept;
     void flushAll(std::uint32_t frame) noexcept;
@@ -114,14 +129,22 @@ private:
     std::atomic<int> m_range{0x0F00}; // from << 8 | to
     std::atomic<int> m_chainStep{-1};
     std::atomic<int> m_chainPass{0};
+    std::atomic<bool> m_songMode{false};
 
     SpscQueue<Bank *, 16> m_banks;   // GUI -> audio
     SpscQueue<Bank *, 64> m_retired; // audio -> GUI, for deletion
     Bank *m_pending = nullptr;       // GUI side: a bank the queue couldn't take yet
+    SpscQueue<Arrangement *, 16> m_arrangements; // GUI -> audio
+    SpscQueue<Arrangement *, 64> m_retiredArrangements; // audio -> GUI
+    Arrangement *m_pendingArrangement = nullptr;
 
     // Audio thread only.
     Bank *m_bank = nullptr;
     Bank *m_backlog = nullptr; // retired, waiting for room in m_retired
+    Arrangement *m_arrangement = nullptr;
+    Arrangement *m_arrangementBacklog = nullptr;
+    bool m_inSong = false;   // the mode last played
+    double m_songNext = 0.0; // the beat the next block should start on (else it jumped)
     std::array<TrackState, kTracks> m_tracks{};
     bool m_playing = false;
     int m_pattern = 0;

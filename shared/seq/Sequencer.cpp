@@ -25,8 +25,6 @@ Target unpack(std::int32_t v) noexcept
     return t;
 }
 
-constexpr double kBeatsPerBar = 4.0;
-
 } // namespace
 
 Sequencer::Sequencer()
@@ -46,6 +44,11 @@ Sequencer::~Sequencer()
     delete m_pending;
     delete m_backlog;
     delete m_bank;
+    while (const auto a = m_arrangements.pop())
+        delete *a;
+    delete m_pendingArrangement;
+    delete m_arrangementBacklog;
+    delete m_arrangement;
 }
 
 // --- GUI thread -----------------------------------------------------------------------
@@ -66,6 +69,20 @@ void Sequencer::collectGarbage()
         delete *b;
     if (m_pending && m_banks.push(m_pending))
         m_pending = nullptr;
+    while (const auto a = m_retiredArrangements.pop())
+        delete *a;
+    if (m_pendingArrangement && m_arrangements.push(m_pendingArrangement))
+        m_pendingArrangement = nullptr;
+}
+
+void Sequencer::setArrangement(std::unique_ptr<Arrangement> arrangement)
+{
+    collectGarbage();
+    Arrangement *raw = arrangement.release();
+    if (!m_arrangements.push(raw)) {
+        delete m_pendingArrangement;
+        m_pendingArrangement = raw;
+    }
 }
 
 void Sequencer::setTarget(int track, Target t) noexcept
@@ -128,6 +145,16 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
             m_backlog = m_bank;
         m_bank = *b;
     }
+    if (m_arrangementBacklog && m_retiredArrangements.push(m_arrangementBacklog))
+        m_arrangementBacklog = nullptr;
+    while (!m_arrangementBacklog) {
+        const auto a = m_arrangements.pop();
+        if (!a)
+            break;
+        if (m_arrangement && !m_retiredArrangements.push(m_arrangement))
+            m_arrangementBacklog = m_arrangement;
+        m_arrangement = *a;
+    }
 
     // Retargeted or muted tracks end their notes.
     for (int t = 0; t < kTracks; ++t) {
@@ -139,6 +166,18 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
         }
         if (m_mute[std::size_t(t)].load(std::memory_order_relaxed))
             flush(t, 0);
+    }
+
+    // SONG mode switched: what was sounding ends, the other mode starts afresh.
+    const bool song = m_songMode.load(std::memory_order_relaxed);
+    if (song != m_inSong) {
+        flushAll(0);
+        m_inSong = song;
+        m_playing = false;
+    }
+    if (song) {
+        renderSong(transport, transport.playing && m_running.load(std::memory_order_relaxed) && frames > 0, sampleRate);
+        return m_outCount;
     }
 
     const int cued = m_cued.load(std::memory_order_relaxed);
@@ -214,8 +253,14 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
     m_chainPass.store(std::max(m_pass, 0), std::memory_order_relaxed);
 
     endNotes(b0, b1, framesPerBeat);
+    sortOut();
+    return m_outCount;
+}
 
+void Sequencer::sortOut() noexcept
+{
     // By frame; at the same frame, offs before ons (a note repeated on the next step).
+    DeviceEvent *out = m_out;
     for (std::uint32_t i = 1; i < m_outCount; ++i)
         for (std::uint32_t j = i; j > 0; --j) {
             const DeviceEvent &a = out[j - 1], &b = out[j];
@@ -225,7 +270,71 @@ std::uint32_t Sequencer::render(const TransportState &transport, std::uint32_t f
             else
                 break;
         }
-    return m_outCount;
+}
+
+void Sequencer::renderSong(const TransportState &transport, bool run, double sampleRate) noexcept
+{
+    if (!run || !m_arrangement) {
+        if (m_playing)
+            flushAll(0);
+        m_playing = false;
+        m_isPlaying.store(false, std::memory_order_relaxed);
+        return;
+    }
+    const double framesPerBeat = 60.0 / std::max(transport.bpm, 1.0) * sampleRate;
+    const double b0 = transport.beatAtBlockStart;
+    const double b1 = b0 + double(m_frames) / framesPerBeat;
+    // Started, or not where the last block left off (a jump, a loop going round).
+    if (transport.restarted || !m_playing || std::fabs(b0 - m_songNext) > 1e-6) {
+        if (m_playing)
+            flushAll(0);
+        m_playing = true;
+    }
+    m_songNext = b1;
+
+    const Arrangement &song = *m_arrangement;
+    for (int t = 0; t < kTracks; ++t) {
+        if (m_tracks[std::size_t(t)].applied.device < 0 || m_mute[std::size_t(t)].load(std::memory_order_relaxed))
+            continue;
+        for (const Clip &clip : song.lanes[std::size_t(t)]) {
+            const double cs = double(clip.startBar) * kBeatsPerBar, ce = double(clip.endBar()) * kBeatsPerBar;
+            if (ce <= b0)
+                continue;
+            if (cs >= b1)
+                break; // the lane is in order
+            const double from = std::max(b0, cs), to = std::min(b1, ce);
+            if (clip.pattern >= 0 && clip.pattern < kPatterns && m_bank) {
+                // That track's part of the pattern, round and round.
+                const Pattern &p = m_bank->patterns[std::size_t(clip.pattern)];
+                const TrackNotes &notes = p.tracks[std::size_t(t)];
+                const double length = double(std::max<int>(p.length, 1)) / kTicksPerBeat;
+                for (double ps = cs + std::floor((from - cs) / length) * length; ps < to; ps += length)
+                    for (int n = 0; n < notes.count; ++n) {
+                        const Note &note = notes.notes[std::size_t(n)];
+                        if (note.start >= p.length)
+                            continue;
+                        const double on = ps + double(note.start) / kTicksPerBeat;
+                        if (on >= from && on < to)
+                            play(t, note.pitch, note.velocity, on,
+                                 std::min(on + double(std::max<int>(note.length, 1)) / kTicksPerBeat, ce), b0,
+                                 framesPerBeat);
+                    }
+            } else if (clip.midi >= 0 && clip.midi < int(song.midi.size())) {
+                for (const ClipNote &note : song.midi[std::size_t(clip.midi)].notes) {
+                    const double on = cs + double(note.start) / kTicksPerBeat;
+                    if (on >= to)
+                        break;
+                    if (on >= from)
+                        play(t, note.pitch, note.velocity, on,
+                             std::min(on + double(std::max<std::uint32_t>(note.length, 1)) / kTicksPerBeat, ce), b0,
+                             framesPerBeat);
+                }
+            }
+        }
+    }
+    m_isPlaying.store(true, std::memory_order_relaxed);
+    endNotes(b0, b1, framesPerBeat);
+    sortOut();
 }
 
 int Sequencer::startPattern(int cued) noexcept
@@ -267,6 +376,13 @@ int Sequencer::next(int cued) noexcept
 
 void Sequencer::play(int track, const Note &note, double onBeat, double b0, double framesPerBeat) noexcept
 {
+    play(track, note.pitch, note.velocity, onBeat, onBeat + double(std::max<int>(note.length, 1)) / kTicksPerBeat, b0,
+         framesPerBeat);
+}
+
+void Sequencer::play(int track, std::uint8_t pitch, std::uint8_t velocity, double onBeat, double offBeat, double b0,
+                     double framesPerBeat) noexcept
+{
     TrackState &ts = m_tracks[std::size_t(track)];
     const std::uint32_t frame = frameAt(onBeat, b0, framesPerBeat);
     const auto device = std::int16_t(ts.applied.device);
@@ -274,7 +390,7 @@ void Sequencer::play(int track, const Note &note, double onBeat, double b0, doub
     // The same key still sounding on this track: end it first.
     for (int i = 0; i < ts.count; ++i) {
         Sounding &s = ts.sounding[std::size_t(i)];
-        if (s.device == device && s.channel == channel && s.pitch == note.pitch) {
+        if (s.device == device && s.channel == channel && s.pitch == pitch) {
             send(s.device, frame, std::uint8_t(0x80 | s.channel), s.pitch, 0);
             s = ts.sounding[std::size_t(--ts.count)];
             break;
@@ -282,9 +398,8 @@ void Sequencer::play(int track, const Note &note, double onBeat, double b0, doub
     }
     if (ts.count >= int(ts.sounding.size()))
         return;
-    send(device, frame, std::uint8_t(0x90 | channel), note.pitch, std::uint8_t(std::clamp<int>(note.velocity, 1, 127)));
-    ts.sounding[std::size_t(ts.count++)] = {onBeat + double(std::max<int>(note.length, 1)) / kTicksPerBeat, device,
-                                            channel, note.pitch};
+    send(device, frame, std::uint8_t(0x90 | channel), pitch, std::uint8_t(std::clamp<int>(velocity, 1, 127)));
+    ts.sounding[std::size_t(ts.count++)] = {offBeat, device, channel, pitch};
 }
 
 void Sequencer::endNotes(double b0, double b1, double framesPerBeat) noexcept

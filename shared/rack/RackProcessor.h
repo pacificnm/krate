@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <vector>
@@ -46,6 +47,39 @@ public:
     void process(const float *const *inputs, float *const *outputs, std::uint32_t frames, const MidiEvent *midi,
                  std::uint32_t midiCount, double sampleRate) noexcept override
     {
+        // A loop's end inside this block (docs/DAW.md, D3): the block is run in
+        // parts, split there, so the transport wraps on the exact sample.
+        const std::uint32_t first = m_transport.framesUntilLoop(frames, sampleRate);
+        if (first >= frames) {
+            processPart(inputs, outputs, frames, midi, midiCount, sampleRate);
+            return;
+        }
+        const int outs = std::min<int>(outputCount(), int(m_outs.size()));
+        std::uint32_t done = 0, m = 0;
+        for (int guard = 0; done < frames && guard < 64; ++guard) {
+            const std::uint32_t n = done == 0 ? first : m_transport.framesUntilLoop(frames - done, sampleRate);
+            for (int c = 0; c < outs; ++c)
+                m_outs[std::size_t(c)] = outputs[c] + done;
+            for (int c = 0; c < Rack::kInputs; ++c)
+                m_ins[std::size_t(c)] = inputs && inputs[c] ? inputs[c] + done : nullptr;
+            std::uint32_t count = 0; // this part's MIDI, its frames from the part's start
+            for (; m < midiCount && midi[m].frame < done + n; ++m)
+                if (count < m_midi.size()) {
+                    m_midi[count] = midi[m];
+                    m_midi[count++].frame -= done;
+                }
+            processPart(inputs ? m_ins.data() : nullptr, m_outs.data(), n, m_midi.data(), count, sampleRate);
+            done += n;
+        }
+    }
+
+    float takePeak() noexcept override { return m_rack.takeMasterPeak(); }
+    Transport *transport() noexcept override { return &m_transport; }
+
+private:
+    void processPart(const float *const *inputs, float *const *outputs, std::uint32_t frames, const MidiEvent *midi,
+                     std::uint32_t midiCount, double sampleRate) noexcept
+    {
         if (m_source)
             m_source->beforeTransport(m_transport);
         const TransportState transport = m_transport.advance(frames, sampleRate);
@@ -66,15 +100,15 @@ public:
         m_rack.process(block);
     }
 
-    float takePeak() noexcept override { return m_rack.takeMasterPeak(); }
-    Transport *transport() noexcept override { return &m_transport; }
-
-private:
     Rack &m_rack;
     Transport &m_transport;
     std::vector<std::string> m_ids;
     IEventSource *m_source = nullptr;
     std::array<DeviceEvent, 4096> m_sourceEvents{};
+    // A split block's parts: the buffers from the split on, its MIDI.
+    std::array<float *, 2 + 2 * Rack::kMaxDevices> m_outs{};
+    std::array<const float *, Rack::kInputs> m_ins{};
+    std::array<MidiEvent, 1024> m_midi{};
 };
 
 } // namespace krate

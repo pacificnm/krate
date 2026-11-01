@@ -26,7 +26,7 @@ struct TransportState
     bool playing = false;
     bool restarted = false;        // play was pressed this block
     double bpm = 120.0;            // constant for the block
-    double beatAtBlockStart = 0.0; // quarter notes since play was pressed
+    double beatAtBlockStart = 0.0; // quarter notes from the song's start (play may start further in: the arranger)
 };
 
 // One block of work for an instrument.

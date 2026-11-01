@@ -11,6 +11,7 @@
 
 #include "core/Instrument.h"
 #include "rack/Rack.h"
+#include "rack/RackProcessor.h"
 
 using namespace krate;
 using Kind = Rack::Mapping::Kind;
@@ -145,6 +146,40 @@ class TestRack : public QObject
     Q_OBJECT
 
 private slots:
+    // The arranger's loop (docs/DAW.md, D3): the processor runs a block that
+    // holds the loop's end in two parts, so the devices see the transport
+    // wrap on the exact sample, and MIDI after the split in the second part.
+    void processorSplitsAtTheLoop()
+    {
+        Rack rack;
+        FakeDevice dev(kParamsA, 0.25f);
+        rack.addDevice(dev, 0);
+        rack.prepare(48000.0);
+        Transport transport;
+        transport.setLoop(true, 0, 1); // beats 0..4: 96000 frames at 120 BPM
+        transport.setPlaying(true);
+        RackProcessor processor(rack, transport, {"a"});
+        constexpr std::uint32_t kN = 1024;
+        std::vector<std::vector<float>> buffers(4, std::vector<float>(kN, 0.0f));
+        float *outputs[4] = {buffers[0].data(), buffers[1].data(), buffers[2].data(), buffers[3].data()};
+        for (int b = 0; b < 93; ++b)
+            processor.process(nullptr, outputs, kN, nullptr, 0, 48000.0);
+        QVERIFY(dev.received.empty());
+        dev.transports.clear();
+        // Block 93 is frames 95232..96255: the loop ends 768 frames in.
+        const MidiEvent on = noteOn(0, 60, 900);
+        processor.process(nullptr, outputs, kN, &on, 1, 48000.0);
+        QVERIFY(dev.transports.size() >= 2);
+        QVERIFY(!dev.transports.front().restarted);
+        QCOMPARE(dev.transports.front().beatAtBlockStart, 95232.0 / 24000.0);
+        QVERIFY(dev.transports.back().restarted);
+        QCOMPARE(dev.transports.back().beatAtBlockStart, 0.0);
+        QCOMPARE(dev.received.size(), std::size_t(1));
+        QCOMPARE(dev.received[0].frame, std::uint32_t(900 - 768));
+        for (std::uint32_t i = 0; i < kN; ++i) // the whole block written, both parts
+            QVERIFY(buffers[2][i] == 0.25f);
+    }
+
     // --- MIDI routing ------------------------------------------------------------
 
     void notesGoToTheFocusedDevice()
