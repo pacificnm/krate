@@ -1,6 +1,6 @@
 # MIDI
 
-MIDI arrives on a JACK MIDI input port (`korrode:midi_in`). Under PipeWire, USB MIDI devices such as the LX49 appear as JACK MIDI ports automatically. Events are read in the process callback with their frame offsets and applied at that exact sample. There is no separate MIDI thread.
+MIDI arrives on a JACK MIDI input port (`korrode:midi_in`). Under PipeWire, USB MIDI devices such as your keyboard appear as JACK MIDI ports automatically. Events are read in the process callback with their frame offsets and applied at that exact sample. There is no separate MIDI thread.
 
 ## Handled messages (v1)
 
@@ -13,7 +13,7 @@ MIDI arrives on a JACK MIDI input port (`korrode:midi_in`). Under PipeWire, USB 
 
 Channel: v1 listens on all channels (omni). A channel filter is a later setting. Keys are ignored while the sequencer runs; starting the sequencer forgets held keys.
 
-Auto-connect: at startup, and again whenever JACK ports appear (e.g. the controller is plugged in later), `midi_in` connects to **every** MIDI source whose name matches `inputPortMatch` (case-insensitive regex). The LX49 mk3 has two USB MIDI ports, `Impact LX49mk3 MIDI1` (keys, knobs, faders, pads) and `Impact LX49mk3 MIDI2` (control and transport buttons); both match the default "Impact LX49". The status line under the pattern buttons shows "MIDI in" or "no MIDI".
+Auto-connect: at startup, and again whenever JACK ports appear (e.g. the controller is plugged in later), `midi_in` connects to **every** MIDI device plugged in (`midiInputs` empty, the default), or to every MIDI source whose name matches `midiInputs` (case-insensitive regex). A keyboard can have several ports, say `MIDI1` (keys, knobs, faders, pads) and `MIDI2` (control and transport buttons); all of them connect, as do a second keyboard's. The status line under the pattern buttons shows "MIDI in" or "no MIDI".
 
 ## MIDI Learn
 
@@ -24,7 +24,7 @@ Auto-connect: at startup, and again whenever JACK ports appear (e.g. the control
         ─► GUI shows the binding, saves midimap.json
 ```
 
-- Learn mode is a panel toggle (MIDI LEARN button, or L; Esc leaves it). In learn mode a click on any knob or switch arms it instead of changing it; clicking the armed control again disarms it. Learnable: the six sound knobs, Tempo, Scale, Play Mode, Volume and the Waveform switch, plus **buttons**: pattern select 1–8 and RUN/STOP. A learned button fires when the hardware sends a press (CC value > 0); the release (value 0) is ignored, and the press that teaches it does not fire. Example: the LX49 mk3's control buttons send CCs on channel 16 through its MIDI2 port (one sends CC 47), and can be learned onto pattern buttons. Learn mode stays on after a binding, so you can map several controls in a row.
+- Learn mode is a panel toggle (MIDI LEARN button, or L; Esc leaves it). In learn mode a click on any knob or switch arms it instead of changing it; clicking the armed control again disarms it. Learnable: the six sound knobs, Tempo, Scale, Play Mode, Volume and the Waveform switch, plus **buttons**: pattern select 1–8 and RUN/STOP. A learned button fires when the hardware sends a press (CC value > 0); the release (value 0) is ignored, and the press that teaches it does not fire. Example: a keyboard whose control buttons send CCs on channel 16 through its MIDI2 port (one sends CC 47), and can be learned onto pattern buttons. Learn mode stays on after a binding, so you can map several controls in a row.
 - Implementation: `MidiLearn` QML singleton (`MidiLearnController`) plus a `LearnOverlay` inside each learnable control. The overlay shows a blue outline (pulsing while armed) and a "CC n" badge, and takes the clicks only while learn mode is on.
 - The first CC that arrives while a parameter is armed binds to it. The binding is done in the audio thread so the next CC of that same turn already moves the knob.
 - One CC drives one parameter. Binding a CC that was already mapped elsewhere moves it (the old binding is removed). A parameter may have several CCs.
@@ -49,7 +49,7 @@ Inside `krate`, MIDI Learn works the same way from the panels, but learns into t
 ```json
 {
   "version": 1,
-  "inputPortMatch": "Impact LX49",
+  "midiInputs": "",
   "mappings": [
     { "cc": 21, "param": "cutoff" },
     { "cc": 22, "param": "resonance" }
@@ -59,19 +59,19 @@ Inside `krate`, MIDI Learn works the same way from the panels, but learns into t
 
 - `param` is the stable string id from [DSP.md](DSP.md#parameters), or a button's action key: `pattern1` … `pattern8` (a number in the current bank), `bank1` … `bank8`, `runstop`. Unknown ids and CC numbers outside 0–127 are skipped.
 - Mappings are omni: a CC number maps the same on every channel.
-- `inputPortMatch` is a regular expression matched against JACK port names to auto-connect `midi_in` at startup. Empty = no auto-connect.
-- The CC numbers above are examples, not the LX49's actual defaults.
+- `midiInputs` is a regular expression matched against JACK port names to auto-connect `midi_in`; empty (the default) = every MIDI device. (Older files' `inputPortMatch` is ignored.)
+- The CC numbers above are examples, not any keyboard's actual defaults.
 
-## Nektar Impact LX49 mk3 setup
+## Keyboard setup
 
-The LX49 mk3 has a DAW integration mode that can send proprietary messages instead of plain CCs. For Korrode, use the controller's standalone/preset mode so the knobs send plain Control Change messages.
+Some keyboards have a DAW integration mode that can send proprietary messages instead of plain CCs. For Korrode, use the controller's standalone/preset mode so the knobs send plain Control Change messages.
 
 Check before debugging the app:
 
 ```sh
-aconnect -l                 # find the LX49 client number
+aconnect -l                 # find the keyboard's client number
 aseqdump -p <client>        # turn knobs: expect "Control change" lines
-pw-jack jack_lsp -t | grep -i midi   # LX49 should be listed as a JACK MIDI port
+pw-jack jack_lsp -t | grep -i midi   # the keyboard should be listed as a JACK MIDI port
 ```
 
 If `aseqdump` shows SysEx instead of Control Change lines, the controller is still in DAW mode. Record the actual mode name and the default CC numbers here once checked on the hardware (open question in [DECISIONS.md](DECISIONS.md)).

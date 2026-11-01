@@ -17,7 +17,7 @@ pw-jack ./build/bin/kessel      # standalone; or pw-jack ./build/bin/krate for t
 3. **A–H** pick a pattern (**I–P**: the industrial ones); while playing, the change waits for the end of the bar (the LED blinks).
 4. The **KIT** display's ▲▼ load a kit: try **2 Industrial** on pattern **I**. **MIX** shows each voice's pan, drive and effect sends.
 5. The LCD sets the pattern's length, step size and play order; **CLEAR** clears the track (Shift: the pattern).
-6. **LEARN** (or L), click a knob or button, move an LX49 control. Pads and keys play the drums by note: 36 kick, 38 snare, 39 clap, 42/46 hats, 41/45/48 toms, 49 crash, 51 ride, 56 metal, 54 clank, 52 noise, 34 boom, 60 sample; velocity ≥ 100 is accented.
+6. **LEARN** (or L), click a knob or button, move a control on your keyboard. Pads and keys play the drums by note: 36 kick, 38 snare, 39 clap, 42/46 hats, 41/45/48 toms, 49 crash, 51 ride, 56 metal, 54 clank, 52 noise, 34 boom, 60 sample; velocity ≥ 100 is accented.
 
 Patterns: `~/.local/share/kessel/patterns.json`. Kits: `~/.local/share/kessel/kits.json`. Samples: `~/.local/share/kessel/samples/` (LOAD, or drop WAV files on the panel). Knobs: `~/.config/kessel/panel.json`. MIDI map: `~/.config/kessel/midimap.json` (in the rack, the rack's session).
 

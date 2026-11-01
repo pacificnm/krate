@@ -64,7 +64,7 @@ public:
     std::vector<std::string> playbackDevices() const override;
 
     // MIDI output ports of other clients (candidates to feed midi_in).
-    std::vector<std::string> midiSourcePorts() const override;
+    std::vector<std::string> midiSourcePorts(bool hardwareOnly = false) const override;
     bool connectMidiFrom(const std::string &port) override;
     bool midiInputConnected() const override;
     // True once after ports appear or disappear (e.g. a controller is plugged in).

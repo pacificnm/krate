@@ -9,7 +9,7 @@ Source: https://claude.ai/artifact/LaAN7BW2HQQeyTFBxxYhxQ
 Build a standalone acid-bass synthesizer for Linux/KDE, written in Qt6/QML, inspired by classic 1980s analog bass synths, with a hardware-style panel and:
 
 - A built-in 16-step sequencer (note, octave, slide, accent, gate/tie per step)
-- MIDI Learn so any knob or control can be mapped to a hardware controller (target controller: Nektar Impact LX49 mk3)
+- MIDI Learn so any knob or control can be mapped to a hardware controller (target controller: a class-compliant USB MIDI keyboard)
 - A software-modeled diode ladder filter aiming for the characteristic acid "squelch"
 
 Note: use only original names, logos and artwork. Do not reproduce any manufacturer's trademarks, model names or panel graphics.
@@ -40,14 +40,14 @@ Sample-accurate, not QML/`QTimer`-driven — UI-thread timers drift and jitter a
 - QML only **displays** the current step (via a `Q_PROPERTY` the engine updates once per audio block) and **edits** step data through a thread-safe path (lock-free queue or atomic struct swap) — QML never owns timing
 - Internal clock by default; optional external MIDI clock sync for locking to a DAW or drum machine later
 
-## MIDI Input & Learn (Nektar Impact LX49 mk3)
+## MIDI Input & Learn
 
-Gotcha to check first: the LX49 mk3 has a DAW Integration mode (NIntegrate) that sends proprietary SysEx instead of plain CCs when paired with supported DAWs — keep it in generic/Standard mode so knobs send plain CC messages.
+Gotcha to check first: the keyboard may have a DAW integration mode that sends proprietary SysEx instead of plain CCs when paired with supported DAWs — keep it in generic/Standard mode so knobs send plain CC messages.
 
 - `MidiInput` class (RtMidi or raw ALSA sequencer API) runs on its own thread, decodes incoming CC/note messages, pushes them into a lock-free queue the audio thread drains each block
 - **MIDI Learn** is a UI-layer mode: click a knob → app enters "listening" → next CC received binds to that parameter → mapping stored as `{ccNumber: parameterId}`
 - Mappings persist to `~/.config/<app>/midimap.json` (via `QSettings` or manual JSON), reloaded on startup
-- Nice-to-have: step-record mode — tap a step pad on the LED row, then play a note on the LX49 to set that step's pitch
+- Nice-to-have: step-record mode — tap a step pad on the LED row, then play a note on the keyboard to set that step's pitch
 
 ## Audio Engine & DSP
 

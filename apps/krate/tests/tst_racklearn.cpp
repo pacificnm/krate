@@ -451,7 +451,7 @@ private slots:
             Fixture f;
             RackSession session(path, *f.controller, f.rack, *f.learn, {"alpha", "beta"}, nullptr);
             session.load(); // nothing yet: defaults
-            QCOMPARE(session.midiInput(), QStringLiteral("Impact LX49"));
+            QCOMPARE(session.midiInput(), QString()); // every MIDI device
             f.controller->setBpm(133);
             f.controller->setFader(1, 0.5);
             f.controller->setPan(0, -0.25);

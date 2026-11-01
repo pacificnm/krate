@@ -21,7 +21,7 @@ sudo apt install build-essential cmake ninja-build \
 | --- | --- |
 | `libjack-jackd2-dev` | JACK headers; we build against the JACK API |
 | `pipewire-jack` | PipeWire's libjack replacement, so the JACK client runs on PipeWire |
-| `alsa-utils` | `aseqdump` / `aconnect` for checking the LX49 |
+| `alsa-utils` | `aseqdump` / `aconnect` for checking the keyboard |
 | `qpwgraph` | Graph view to see and patch Korrode's ports |
 
 ## Repo layout

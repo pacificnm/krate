@@ -45,7 +45,7 @@ private:
     krate::Rack &m_rack;
     RackMidiLearn &m_learn;
     QStringList m_ids;
-    QString m_midiInput = QStringLiteral("Impact LX49");
+    QString m_midiInput; // "" = every MIDI device (HostController::setMidiInputMatch)
     QStringList m_audioInputs;
     int m_bufferSize = 0;
     QString m_outputDevice;

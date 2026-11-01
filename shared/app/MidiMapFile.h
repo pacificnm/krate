@@ -17,7 +17,7 @@ inline constexpr int kMidiMapFileVersion = 1;
 
 struct MidiMap
 {
-    QString inputPortMatch = QStringLiteral("Impact LX49");
+    QString inputPortMatch; // "midiInputs": a port-name pattern, "" = every MIDI device
     // Per CC: parameter index, or an action as krate::MidiLearnMap::actionTarget(n); -1 = unmapped.
     std::array<int, 128> ccToParam;
 

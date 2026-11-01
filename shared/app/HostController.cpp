@@ -102,19 +102,23 @@ void HostController::setMidiInputMatch(const QString &pattern)
 
 void HostController::connectMidiInput()
 {
-    if (!m_host.isOpen() || m_midiMatch.isEmpty())
+    if (!m_host.isOpen())
         return;
+    // "" (the default): every MIDI device plugged in, however many (two
+    // keyboards and what's plugged into them play together; tell them apart by
+    // channel). Otherwise the ports whose names match the pattern, devices or apps.
+    const bool every = m_midiMatch.isEmpty();
     const QRegularExpression match(m_midiMatch, QRegularExpression::CaseInsensitiveOption);
     if (!match.isValid()) {
         qCWarning(lcHost) << "invalid MIDI input pattern" << m_midiMatch;
         return;
     }
-    // Every matching port: a controller can have several (the LX49 mk3 sends its
-    // keys and knobs on MIDI1 and its control buttons on MIDI2). Ports already
-    // connected are skipped by JACK, so this is safe to repeat on every port change.
-    for (const auto &port : m_host.midiSourcePorts()) {
+    // Every port: a controller can have several (keys and knobs on one, its
+    // control buttons on another). Ports already connected are skipped by
+    // JACK, so this is safe to repeat on every port change (one plugged in).
+    for (const auto &port : m_host.midiSourcePorts(every)) {
         const QString name = QString::fromStdString(port);
-        if (name.contains(match) && m_host.connectMidiFrom(port))
+        if ((every || name.contains(match)) && m_host.connectMidiFrom(port))
             qCInfo(lcHost) << "midi_in <-" << name;
     }
 }

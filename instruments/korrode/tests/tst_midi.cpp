@@ -342,7 +342,7 @@ private slots:
 
             std::vector<float> l(64), r(64);
             MidiEvent ch16 = cc(47, 127);
-            ch16.data[0] = 0xBF; // channel 16, as the LX49's MIDI2 buttons send
+            ch16.data[0] = 0xBF; // channel 16, as some keyboards' control buttons send
             krate::processStereo(fake, l.data(), r.data(), 64, &ch16, 1);
             learn.drainEvents();
             QCOMPARE(learn.mappingFor(QStringLiteral("pattern1")), QStringLiteral("47"));
@@ -394,7 +394,29 @@ private slots:
         QCOMPARE(map.ccToParam[21], int(ParamId::Cutoff));
         QCOMPARE(map.ccToParam[5], -1);
         QCOMPARE(map.ccToParam[6], -1);
-        QCOMPARE(map.inputPortMatch, QStringLiteral("Impact LX49")); // default kept
+        QCOMPARE(map.inputPortMatch, QString()); // default kept: every MIDI device
+    }
+
+    // Which MIDI inputs: "midiInputs" is kept; the older "inputPortMatch" (one
+    // keyboard by name, by default) is left behind for every device.
+    void midiInputsKey()
+    {
+        for (const auto &[text, expected] : {std::pair{R"({ "version": 1, "inputPortMatch": "Old Keys", "mappings": [] })", QString()},
+                                             std::pair{R"({ "version": 1, "midiInputs": "Keys", "mappings": [] })", QStringLiteral("Keys")}}) {
+            QFile f(m_path);
+            QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
+            f.write(text);
+            f.close();
+            kp::MidiMap map;
+            QCOMPARE(kp::loadMidiMap(m_path, kParams, &map), kp::LoadResult::Loaded);
+            QCOMPARE(map.inputPortMatch, expected);
+        }
+        kp::MidiMap map;
+        map.inputPortMatch = QStringLiteral("Pads");
+        QVERIFY(kp::saveMidiMap(m_path, kParams, map));
+        kp::MidiMap back;
+        QCOMPARE(kp::loadMidiMap(m_path, kParams, &back), kp::LoadResult::Loaded);
+        QCOMPARE(back.inputPortMatch, QStringLiteral("Pads"));
     }
 
     // --- MidiLearn controller -------------------------------------------------

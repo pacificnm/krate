@@ -18,5 +18,5 @@ Decisions taken after the [project brief](PROJECT_BRIEF.md). Where a decision na
 
 ## Open questions
 
-- Exact LX49 mk3 mode name and default CC numbers: confirm on the hardware with `aseqdump` (see [MIDI.md](MIDI.md)).
+- The keyboard's exact mode name and default CC numbers: confirm on the hardware with `aseqdump` (see [MIDI.md](MIDI.md)).
 - DSP constants marked "starting value" in [DSP.md](DSP.md) are to be tuned by ear against reference recordings.

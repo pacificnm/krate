@@ -25,7 +25,8 @@ LoadResult loadMidiMap(const QString &path, std::span<const ParamDescriptor> par
     if (result != LoadResult::Loaded)
         return result;
 
-    map->inputPortMatch = json.value(u"inputPortMatch").toString(map->inputPortMatch);
+    // "inputPortMatch" (older files) named one keyboard by default: left behind.
+    map->inputPortMatch = json.value(u"midiInputs").toString(map->inputPortMatch);
     for (const auto &entry : json.value(u"mappings").toArray()) {
         const QJsonObject o = entry.toObject();
         const int cc = o.value(u"cc").toInt(-1);
@@ -60,7 +61,7 @@ bool saveMidiMap(const QString &path, std::span<const ParamDescriptor> params, c
     }
     return writeJsonFile(path, {
         {QStringLiteral("version"), kMidiMapFileVersion},
-        {QStringLiteral("inputPortMatch"), map.inputPortMatch},
+        {QStringLiteral("midiInputs"), map.inputPortMatch},
         {QStringLiteral("mappings"), mappings},
     });
 }

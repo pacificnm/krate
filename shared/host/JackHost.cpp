@@ -169,12 +169,13 @@ std::vector<std::string> JackHost::playbackDevices() const
     return devices;
 }
 
-std::vector<std::string> JackHost::midiSourcePorts() const
+std::vector<std::string> JackHost::midiSourcePorts(bool hardwareOnly) const
 {
     std::vector<std::string> result;
     if (!m_client)
         return result;
-    const char **ports = jack_get_ports(m_client, nullptr, JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput);
+    const char **ports = jack_get_ports(m_client, nullptr, JACK_DEFAULT_MIDI_TYPE,
+                                       JackPortIsOutput | (hardwareOnly ? JackPortIsPhysical : 0));
     if (!ports)
         return result;
     for (int i = 0; ports[i]; ++i)

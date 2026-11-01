@@ -26,7 +26,7 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
   - **Count-in**: one bar of Klick before play starts (and before each loop pass, as an option).
   - **Mute / guide** your track (above).
 - **Remembered per song**: assignments, levels, your track, speed and loop are saved next to the song files' names in `~/.config/krate/songs.json`, so a song reopens the way you left it. The last song reopens with the rack.
-- **MIDI Learn**: play/stop, back to start, loop on/off, speed up/down and set A / set B are learnable rack actions, so a foot controller or the LX49's buttons can run practice hands-free.
+- **MIDI Learn**: play/stop, back to start, loop on/off, speed up/down and set A / set B are learnable rack actions, so a foot controller or the keyboard's buttons can run practice hands-free.
 
 ## Library
 

@@ -846,7 +846,7 @@ Item {
     DeckLabel { x: 225 - width / 2; y: 800; text: "TEMPO"; visible: panel.kalliope.ownsTransport }
     ParamKnob { key: "tempo"; x: 195; y: 828; width: 60; height: 60; visible: panel.kalliope.ownsTransport }
 
-    // Octave (Z / X): shifts the keys, the LX49's and the on-screen keyboard's, -3..+3
+    // Octave (Z / X): shifts the keys, your keyboard's and the on-screen keyboard's, -3..+3
     readonly property int octave: panel.kalliope.revision >= 0 ? Math.round(panel.kalliope.value("octave") * 6) - 3 : 0
     function shiftOctave(delta) {
         panel.kalliope.setValue("octave", (Math.max(-3, Math.min(3, octave + delta)) + 3) / 6)

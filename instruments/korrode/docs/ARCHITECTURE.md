@@ -27,7 +27,7 @@ Korrode is two halves joined by lock-free primitives: a Qt GUI that never touche
  │ ParamStore (atomics) ──┼──────────────┼─────►│   4. publish playhead, CC hits  │
  │ CcMap (atomics)  ──────┼──────────────┼─────►│   5. write out_L / out_R        │
  │ SPSC GuiToAudio ───────┼──────────────┼─────►│                                 │
- │ SPSC AudioToGui ◄──────┴──────────────┼──────│◄── midi_in port (LX49)          │
+ │ SPSC AudioToGui ◄──────┴──────────────┼──────│◄── midi_in port (keys)          │
  └───────────────────────────────────────┘      └─────────────────────────────────┘
 ```
 
@@ -86,7 +86,7 @@ Singleton instances: `main()` builds Korrode through `korrode::registryEntry()` 
 
 1. Load `panel.json` (knob positions), `patterns.json` and `midimap.json` (missing or invalid → defaults, warning logged).
 2. Create JACK client `korrode`, register `out_L`, `out_R`, `midi_in`, set callbacks, activate.
-3. Auto-connect outputs to the first two physical playback ports (under PipeWire these are the default sink's, which it lists first); connect `midi_in` to the first capture port whose name matches the configured regex (default `Impact LX49`).
+3. Auto-connect outputs to the first two physical playback ports (under PipeWire these are the default sink's, which it lists first); connect `midi_in` to the first capture port whose name matches the configured regex (default: every MIDI device).
 4. If JACK is unavailable, the UI still starts with an "audio offline" indicator and retries every 2 s.
 5. On quit: stop transport, deactivate and close the client, save patterns and mappings.
 

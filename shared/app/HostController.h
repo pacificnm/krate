@@ -66,8 +66,9 @@ public:
     bool midiConnected() const { return m_midiConnected; }
     qreal outputLevel() const { return m_outputLevel; }
 
-    // Regular expression (case-insensitive) naming the MIDI controller; every
-    // matching source is connected, again whenever ports appear.
+    // Regular expression (case-insensitive) naming the MIDI controllers; every
+    // matching source is connected, again whenever ports appear. "": every
+    // MIDI device plugged in (not other apps' ports).
     void setMidiInputMatch(const QString &pattern);
 
     int inputCount() const;

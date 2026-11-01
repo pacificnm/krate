@@ -49,7 +49,9 @@ void RackSession::load()
     }
 
     if (!json.isEmpty()) {
-        m_midiInput = json.value(u"midiInput").toString(m_midiInput);
+        // "midiInputs" (a pattern, "" = every device); the older "midiInput" named one
+        // keyboard by default and is left behind, so a second one plugged in plays too.
+        m_midiInput = json.value(u"midiInputs").toString(m_midiInput);
         for (const auto &port : json.value(u"audioInputs").toArray())
             m_audioInputs << port.toString();
         m_bufferSize = json.value(u"bufferSize").toInt(0);
@@ -186,7 +188,7 @@ void RackSession::save()
                                  : m_controller.arrangeShown() ? QStringLiteral("arrange")
                                  : m_controller.soundsShown() ? QStringLiteral("sounds")
                                                             : QStringLiteral("instrument")},
-        {QStringLiteral("midiInput"), m_midiInput},
+        {QStringLiteral("midiInputs"), m_midiInput},
         {QStringLiteral("audioInputs"), QJsonArray::fromStringList(m_audioInputs)},
         {QStringLiteral("bufferSize"), m_bufferSize},
         {QStringLiteral("keysChannel"), m_controller.keysChannel()},

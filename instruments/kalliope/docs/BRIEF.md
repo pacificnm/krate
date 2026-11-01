@@ -76,7 +76,7 @@ All parameters are normalized 0..1 in the `IInstrument` descriptor table; select
 | | `delay_fb` | Delay Feedback | 0–90% |
 | | `reverb_level` | Reverb Level | 0–100% wet |
 | | `reverb_size` | Reverb Size | decay 0.4–8 s |
-| Keys | `octave` | Octave | −3 … +3 octaves on every key, the LX49's and the on-screen keyboard's (7) *panel* |
+| Keys | `octave` | Octave | −3 … +3 octaves on every key, your keyboard's and the on-screen keyboard's (7) *panel* |
 | Master | `volume` | Volume | output level *panel* |
 | | `tempo` | Tempo | 40–240 BPM; drives the standalone transport, unused in the rack (as Korrode and Kessel) *panel* |
 

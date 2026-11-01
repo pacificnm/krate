@@ -752,7 +752,7 @@ Item {
         radius: 6
         color: "#1A1A1B"
     }
-    Wheel { // follows the LX49's wheels too
+    Wheel { // follows your keyboard's wheels too
         x: 50; y: 560; label: "PITCH"; springs: true; height: 200
         position: (panel.krimson.bendPosition + 1) / 2
         onChanged: a => panel.krimson.pitchBend(a * 2 - 1)

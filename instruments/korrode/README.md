@@ -2,7 +2,7 @@
 
 Part of **Krate**, a suite of instruments and a rack that plays them together (see [SHARED_FOUNDATIONS.MD](../../docs/SHARED_FOUNDATIONS.MD)).
 
-A standalone acid bass synthesizer for Linux/KDE, inspired by classic 1980s analog bass synths. Qt 6 / QML hardware-style front panel, a C++ realtime DSP engine with a modeled, saturating diode-ladder filter, overdrive, delay and reverb, a built-in 16-step sequencer, and MIDI Learn for hardware controllers (developed against a Nektar Impact LX49 mk3).
+A standalone acid bass synthesizer for Linux/KDE, inspired by classic 1980s analog bass synths. Qt 6 / QML hardware-style front panel, a C++ realtime DSP engine with a modeled, saturating diode-ladder filter, overdrive, delay and reverb, a built-in 16-step sequencer, and MIDI Learn for hardware controllers (developed against a class-compliant USB MIDI keyboard).
 
 Status: M0–M6 built (panel, JACK audio out, parameters, voice DSP with diode-ladder filter, sequencer with scale and play modes, pattern editing and storage, MIDI input and MIDI Learn); knob positions are saved. Next: M7, v1 polish (About box, sound tuning, accessibility, quick-start check). See [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -19,7 +19,7 @@ Status: M0–M6 built (panel, JACK audio out, parameters, voice DSP with diode-l
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Modules, threads, how GUI, audio and MIDI talk to each other |
 | [DSP.md](docs/DSP.md) | Oscillator, diode-ladder filter, envelopes, accent, slide, the output stage (drive, delay, reverb, width), parameters |
 | [SEQUENCER.md](docs/SEQUENCER.md) | Step data, sample-accurate timing, slide/tie/accent rules, pattern storage |
-| [MIDI.md](docs/MIDI.md) | JACK MIDI input, MIDI Learn, mapping file, LX49 setup |
+| [MIDI.md](docs/MIDI.md) | JACK MIDI input, MIDI Learn, mapping file, keyboard setup |
 | [UI.md](docs/UI.md) | Panel layout, QML components, interaction, colors |
 | [BUILD.md](docs/BUILD.md) | Dependencies, repo layout, CMake, running, testing |
 | [ROADMAP.md](docs/ROADMAP.md) | Milestones with acceptance criteria |

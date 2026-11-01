@@ -30,7 +30,9 @@ public:
     // replacing earlier connections. Returns the ports connected to.
     virtual std::vector<std::string> connectToPlayback(const std::string &device = {}) = 0;
     virtual std::vector<std::string> playbackDevices() const { return {}; } // hardware outputs, by device
-    virtual std::vector<std::string> midiSourcePorts() const = 0;
+    // MIDI output ports of other clients; `hardwareOnly`: just the devices'
+    // (keyboards, pedals), not other apps'.
+    virtual std::vector<std::string> midiSourcePorts(bool hardwareOnly = false) const = 0;
     virtual bool connectMidiFrom(const std::string &port) = 0;
     virtual bool midiInputConnected() const = 0;
     virtual bool takePortsChanged() = 0;
