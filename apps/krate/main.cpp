@@ -16,6 +16,7 @@
 #include "ArrangeController.h"
 #include "AudioTracks.h"
 #include "PluginSlots.h"
+#include "SoundsController.h"
 #include "ExportController.h"
 #include "BackingInstrument.h"
 #include "RackController.h"
@@ -161,6 +162,8 @@ int main(int argc, char *argv[])
                                     rackController.setSeqShown(!rackController.seqShown());
                                 else if (action == u"arrange")
                                     rackController.setArrangeShown(!rackController.arrangeShown());
+                                else if (action == u"sounds")
+                                    rackController.setSoundsShown(!rackController.soundsShown());
                                 else if (SequencerController *s = sequencerActions; s && action.startsWith(u"seq")) {
                                     if (action == u"seqrun")
                                         s->toggleRun();
@@ -196,6 +199,15 @@ int main(int argc, char *argv[])
     sequencerActions = &sequencerController;
     // The arranger (docs/DAW.md, D3): the sequence's song, start, loop and punch.
     ArrangeController arrangeController(sequencerController, transport, &audioTracks, nullptr);
+    // The sound library (docs/SOUNDS.md): browse your sounds, audition them over
+    // the master, send them to Klang's pads or Kessel's drums.
+    krate::Previewer previewer;
+    std::vector<SoundsController::Device> soundDevices;
+    for (qsizetype i = 0; i < entries.size(); ++i)
+        soundDevices.push_back({int(i), entries[i].name, instances[std::size_t(i)].get()});
+    SoundsController soundsController(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                                          + QStringLiteral("/sounds.db"),
+                                      previewer, rackController, std::move(soundDevices), nullptr);
     krate::MidiCapture midiCapture; // the keyboard's notes, for MIDI clips
     arrangeController.setMidiCapture(&midiCapture);
     // Automation (docs/DAW.md, D5): the instruments' knobs over the song.
@@ -239,6 +251,7 @@ int main(int argc, char *argv[])
     processor.setEventSource(&eventSources);
     processor.setMidiCapture(&midiCapture);
     processor.setAutomation(&automationPlayer);
+    processor.setPreview(&previewer);
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
     // Export (docs/DAW.md, D6): the host hands the rack over while it renders.
@@ -275,6 +288,7 @@ int main(int argc, char *argv[])
     const int result = app.exec();
     audioTracks.finish(); // a take still recording is kept, while the rack and the host are here
     pluginSlots.finish(); // the plugins' state kept, each stopped while the host runs
+    soundsController.finish(); // no preview playing, no folder being looked through
     if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
         transport.setPlaying(false);
     return result;

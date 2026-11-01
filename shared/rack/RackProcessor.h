@@ -9,6 +9,7 @@
 #include "host/JackProcessor.h"
 #include "rack/Automation.h"
 #include "rack/MidiCapture.h"
+#include "rack/Preview.h"
 #include "rack/Rack.h"
 
 namespace krate {
@@ -34,6 +35,8 @@ public:
     void setMidiCapture(MidiCapture *capture) { m_capture = capture; }
     // Before the host starts: automation, played into the instruments each block (part).
     void setAutomation(AutomationPlayer *automation) { m_automation = automation; }
+    // Before the host starts: sounds auditioned from the sound library, over the master.
+    void setPreview(Previewer *preview) { m_preview = preview; }
 
     int outputCount() const override { return 2 + 2 * m_rack.deviceCount(); }
     std::string outputName(int index) const override
@@ -108,6 +111,8 @@ private:
         block.masterR = outputs[1];
         block.deviceOutputs = outputs + 2;
         m_rack.process(block);
+        if (m_preview)
+            m_preview->mix(outputs[0], outputs[1], frames, sampleRate);
     }
 
     Rack &m_rack;
@@ -116,6 +121,7 @@ private:
     IEventSource *m_source = nullptr;
     MidiCapture *m_capture = nullptr;
     AutomationPlayer *m_automation = nullptr;
+    Previewer *m_preview = nullptr;
     std::array<DeviceEvent, 4096> m_sourceEvents{};
     // A split block's parts: the buffers from the split on, its MIDI.
     std::array<float *, 2 + 2 * Rack::kMaxDevices> m_outs{};

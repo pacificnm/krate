@@ -10,6 +10,12 @@ qt_add_qml_module(krate
     IMPORTS Krate
     DEPENDENCIES QtQuick # TabView is a QQuickPaintedItem
     SOURCES
+        SoundIndex.h
+        SoundIndex.cpp
+        SoundLibrary.h
+        SoundLibrary.cpp
+        SoundsController.h
+        SoundsController.cpp
         PluginSlots.h
         PluginSlots.cpp
         PluginEditor.h
@@ -58,6 +64,7 @@ qt_add_qml_module(krate
         qml/AudioTrackPanel.qml
         qml/ArrangeScreen.qml
         qml/PluginPanel.qml
+        qml/SoundsScreen.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(krate PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSION}")
@@ -161,3 +168,10 @@ target_include_directories(tst_audiotracks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_audiotracks PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_audiotracks PRIVATE krate_rec krate_rack krate_app Qt6::Qml Qt6::Test)
 add_test(NAME tst_audiotracks COMMAND tst_audiotracks)
+
+# The sound library: categories, WAV headers, folders indexed in place.
+add_executable(tst_sounds tests/tst_sounds.cpp SoundIndex.h SoundIndex.cpp SoundLibrary.h SoundLibrary.cpp)
+target_include_directories(tst_sounds PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_sounds PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_sounds PRIVATE krate_rec Qt6::Sql Qt6::Test)
+add_test(NAME tst_sounds COMMAND tst_sounds)

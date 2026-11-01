@@ -47,4 +47,37 @@ krate::InstrumentEntry registryEntry()
     return entry;
 }
 
+QStringList Instance::sampleTargets() const
+{
+    QStringList list;
+    for (int p = 0; p < KlangPadController::kPads; ++p)
+        list << QStringLiteral("Pad %1").arg(p + 1);
+    return list;
+}
+
+QStringList Instance::sampleTargetContents() const
+{
+    QStringList list;
+    for (int p = 0; p < KlangPadController::kPads; ++p)
+        list << pads.name(p);
+    return list;
+}
+
+bool Instance::assignSample(int target, const QString &path, QString *error)
+{
+    if (target < 0 || target >= KlangPadController::kPads)
+        return false;
+    pads.loadUrls(target, {QUrl::fromLocalFile(path)});
+    if (pads.message().startsWith(QStringLiteral("Loaded")))
+        return true;
+    if (error)
+        *error = pads.message();
+    return false;
+}
+
+void Instance::clearSample(int target)
+{
+    pads.clear(target);
+}
+
 } // namespace klang

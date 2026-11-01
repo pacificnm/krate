@@ -43,6 +43,10 @@ Window {
         onActivated: Rack.arrangeShown = !Rack.arrangeShown
     }
     Shortcut {
+        sequence: "O"
+        onActivated: Rack.soundsShown = !Rack.soundsShown
+    }
+    Shortcut {
         sequence: "L"
         onActivated: MidiLearn.active = !MidiLearn.active
     }
@@ -63,11 +67,11 @@ Window {
         x: 16
         spacing: 8
         // Tabs fit the window: the screens' tabs keep their size, the instruments' share the rest.
-        readonly property int screenTabWidth: instrumentTabs > 8 ? 100 : 112 // narrower with more in the rack
+        readonly property int screenTabWidth: instrumentTabs > 8 ? 92 : 104 // narrower with more in the rack
         // Only the instruments in the rack have tabs (docs/DAW.md, D1).
         readonly property int instrumentTabs: Math.max(1, Rack.panelComponents.filter((c, i) => c !== "" && Rack.present[i]).length)
-        readonly property real tabWidth: Math.max(60, Math.min(150, (root.width - 32 - 3 * 40 - 16 - 4 * screenTabWidth
-                                                                     - (instrumentTabs + 7) * spacing) / instrumentTabs))
+        readonly property real tabWidth: Math.max(60, Math.min(150, (root.width - 32 - 3 * 40 - 16 - 5 * screenTabWidth
+                                                                     - (instrumentTabs + 8) * spacing) / instrumentTabs))
 
         PanelButton { // focus previous (learnable)
             width: 40
@@ -86,7 +90,7 @@ Window {
                 required property int index
                 required property string modelData
                 readonly property bool focused: Rack.focus === index
-                readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown
+                readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown && !Rack.soundsShown
 
                 // Devices without a panel (the backing track), or not in the rack, have no tab.
                 visible: Rack.panelComponents[index] !== "" && Rack.present[index] === true
@@ -163,12 +167,12 @@ Window {
                 on: Rack.mixerShown
             }
             Text {
-                x: 34
+                x: tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Mixer"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: 18
+                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
                 font.bold: Rack.mixerShown
             }
             MouseArea {
@@ -199,12 +203,12 @@ Window {
                 on: Rack.songShown
             }
             Text {
-                x: 34
+                x: tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Song"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: 18
+                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
                 font.bold: Rack.songShown
             }
             MouseArea {
@@ -235,12 +239,12 @@ Window {
                 on: Rack.seqShown
             }
             Text {
-                x: 34
+                x: tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Seq"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: 18
+                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
                 font.bold: Rack.seqShown
             }
             MouseArea {
@@ -271,12 +275,12 @@ Window {
                 on: Rack.arrangeShown
             }
             Text {
-                x: 34
+                x: tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Arrange"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: 18
+                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
                 font.bold: Rack.arrangeShown
             }
             MouseArea {
@@ -291,6 +295,41 @@ Window {
             Accessible.role: Accessible.PageTab
             Accessible.name: "Arranger" + (Rack.arrangeShown ? " (shown)" : "")
         }
+
+        Rectangle { // the sound library (learnable, O)
+            width: tabs.screenTabWidth
+            height: 40
+            radius: 4
+            color: Rack.soundsShown ? Theme.silverLight : Theme.lowerDeck
+            border.color: Rack.soundsShown ? Theme.accentUi : Theme.deckLine
+            border.width: Rack.soundsShown ? 3 : 1
+
+            Led {
+                x: 12
+                anchors.verticalCenter: parent.verticalCenter
+                on: Rack.soundsShown
+            }
+            Text {
+                x: tabs.screenTabWidth < 100 ? 30 : 34
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Sounds"
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
+                font.bold: Rack.soundsShown
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: Rack.soundsShown = !Rack.soundsShown
+            }
+            LearnOverlay {
+                anchors.fill: parent
+                paramKey: "rack:sounds"
+                round: false
+            }
+            Accessible.role: Accessible.PageTab
+            Accessible.name: "Sound library" + (Rack.soundsShown ? " (shown)" : "")
+        }
     }
 
     Item { // the focused instrument's panel, scaled to fit
@@ -299,7 +338,7 @@ Window {
         y: tabs.y + tabs.height + 10
         width: root.width - 32
         height: root.height - y - 16
-        visible: !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown
+        visible: !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown && !Rack.soundsShown
 
         Repeater {
             model: Rack.deviceCount
@@ -400,6 +439,14 @@ Window {
         width: root.width - 32
         height: panelArea.height
         visible: Rack.arrangeShown
+    }
+
+    SoundsScreen {
+        x: 16
+        y: panelArea.y
+        width: root.width - 32
+        height: panelArea.height
+        visible: Rack.soundsShown
     }
 
     // ---- Instruments in the rack: add or remove (docs/DAW.md, D1)

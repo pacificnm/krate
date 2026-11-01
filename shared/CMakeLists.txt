@@ -76,6 +76,7 @@ add_library(krate_rack STATIC
     rack/Automation.h
     rack/Automation.cpp
     rack/MidiCapture.h
+    rack/Preview.h
 )
 target_link_libraries(krate_rack PUBLIC krate_core krate_dsp)
 target_compile_options(krate_rack PRIVATE ${KRATE_WARNINGS})

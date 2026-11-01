@@ -44,6 +44,22 @@ public:
     // parameter table (Krimson's four slots) add it.
     virtual QJsonObject saveSound();
     virtual void loadSound(const QJsonObject &sound);
+
+    // Where a sound file can go (the sound library, docs/SOUNDS.md): Klang's
+    // pads, Kessel's drums. Their names, what each holds now ("" = nothing, or
+    // its own sound), giving one a file (copied in; false and *error if not),
+    // and taking it away again. None by default.
+    virtual QStringList sampleTargets() const { return {}; }
+    virtual QStringList sampleTargetContents() const { return {}; }
+    virtual bool assignSample(int target, const QString &path, QString *error)
+    {
+        Q_UNUSED(target);
+        Q_UNUSED(path);
+        if (error)
+            *error = QStringLiteral("it takes no sounds");
+        return false;
+    }
+    virtual void clearSample(int target) { Q_UNUSED(target); }
 };
 
 // How a host (standalone app or the Krate rack) finds and builds an instrument.

@@ -111,6 +111,7 @@ void RackSession::load()
         m_controller.setSongShown(json.value(u"view").toString() == u"song");
         m_controller.setSeqShown(json.value(u"view").toString() == u"seq");
         m_controller.setArrangeShown(json.value(u"view").toString() == u"arrange");
+        m_controller.setSoundsShown(json.value(u"view").toString() == u"sounds");
 
         m_rack.clearMappings();
         m_learn.loadMappings(json.value(u"mappings").toArray());
@@ -123,6 +124,7 @@ void RackSession::load()
     connect(&m_controller, &RackController::songShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::seqShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::arrangeShownChanged, this, &RackSession::changed);
+    connect(&m_controller, &RackController::soundsShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::bpmChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::mixerChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::presenceChanged, this, &RackSession::changed);
@@ -182,6 +184,7 @@ void RackSession::save()
                                  : m_controller.songShown() ? QStringLiteral("song")
                                  : m_controller.seqShown()  ? QStringLiteral("seq")
                                  : m_controller.arrangeShown() ? QStringLiteral("arrange")
+                                 : m_controller.soundsShown() ? QStringLiteral("sounds")
                                                             : QStringLiteral("instrument")},
         {QStringLiteral("midiInput"), m_midiInput},
         {QStringLiteral("audioInputs"), QJsonArray::fromStringList(m_audioInputs)},

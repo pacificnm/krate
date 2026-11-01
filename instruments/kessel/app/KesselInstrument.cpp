@@ -41,4 +41,43 @@ krate::InstrumentEntry registryEntry()
     return entry;
 }
 
+namespace {
+// Kessel's drums as the sound library shows them (DrumId order).
+const QStringList &drumNames()
+{
+    static const QStringList names{
+        QStringLiteral("Kick"),      QStringLiteral("Snare"),     QStringLiteral("Low Tom"), QStringLiteral("Mid Tom"),
+        QStringLiteral("High Tom"),  QStringLiteral("Rimshot"),   QStringLiteral("Clap"),    QStringLiteral("Closed Hat"),
+        QStringLiteral("Open Hat"),  QStringLiteral("Crash"),     QStringLiteral("Ride"),    QStringLiteral("Metal"),
+        QStringLiteral("Clank"),     QStringLiteral("Noise"),     QStringLiteral("Boom"),    QStringLiteral("Sample")};
+    return names;
+}
+} // namespace
+
+QStringList Instance::sampleTargets() const
+{
+    return drumNames();
+}
+
+QStringList Instance::sampleTargetContents() const
+{
+    return samples.drumSamples();
+}
+
+bool Instance::assignSample(int target, const QString &path, QString *error)
+{
+    if (target < 0 || target >= DrumCount)
+        return false;
+    if (samples.assignFile(target, path))
+        return true;
+    if (error)
+        *error = samples.message();
+    return false;
+}
+
+void Instance::clearSample(int target)
+{
+    samples.setDrumSample(target, QString());
+}
+
 } // namespace Kessel

@@ -195,6 +195,45 @@ private slots:
         QCOMPARE(out.left[511], steady.left[511]);
     }
 
+    // Auditioning (the sound library): a sound at half the rack's rate plays
+    // twice as long over the master, once, from its start; again from the top
+    // when handed over again; stopped at once.
+    void previewsOverTheMaster()
+    {
+        Rack rack;
+        rack.prepare(48000.0);
+        Transport transport;
+        RackProcessor processor(rack, transport, {});
+        Previewer preview;
+        preview.setLevel(1.0f);
+        processor.setPreview(&preview);
+        PreviewSound sound;
+        sound.rate = 24000.0;
+        for (int i = 0; i < 1000; ++i)
+            sound.left.push_back(0.5f);
+        std::vector<float> l(512), r(512);
+        float *outputs[2] = {l.data(), r.data()};
+        const auto block = [&] { processor.process(nullptr, outputs, 512, nullptr, 0, 48000.0); };
+        QVERIFY(preview.play(&sound) == nullptr);
+        int sounding = 0;
+        for (int b = 0; b < 6; ++b) {
+            block();
+            for (float x : l)
+                sounding += x > 0.4f;
+            QCOMPARE(r[0], l[0]); // mono on both sides
+        }
+        QCOMPARE(sounding, 1998); // 999 source steps, two output samples each
+        QVERIFY(!preview.playing());
+        preview.play(&sound); // again: from the top
+        block();
+        QCOMPARE(l[0], 0.5f);
+        QVERIFY(preview.playing());
+        QVERIFY(preview.stop() == &sound);
+        block();
+        QCOMPARE(l[0], 0.0f);
+        QVERIFY(preview.blocks() >= 8);
+    }
+
     void bounces()
     {
         Rack rack;
