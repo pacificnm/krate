@@ -187,6 +187,17 @@ int main(int argc, char *argv[])
     ArrangeController arrangeController(sequencerController, transport, &audioTracks, nullptr);
     krate::MidiCapture midiCapture; // the keyboard's notes, for MIDI clips
     arrangeController.setMidiCapture(&midiCapture);
+    // Automation (docs/DAW.md, D5): the instruments' knobs over the song.
+    krate::AutomationPlayer automationPlayer;
+    {
+        QStringList names;
+        std::vector<krate::IInstrument *> instruments;
+        for (qsizetype i = 0; i < entries.size(); ++i) {
+            names << entries[i].name;
+            instruments.push_back(&instances[std::size_t(i)]->instrument());
+        }
+        arrangeController.setAutomationTargets(&automationPlayer, deviceIds, names, std::move(instruments));
+    }
     QObject::connect(&audioTracks, &AudioTracksController::recordingChanged, &arrangeController,
                      [&] { arrangeController.setRecording(audioTracks.recording()); }); // one REC for both
     sequencerController.setRunControl(&runControl);
@@ -216,6 +227,7 @@ int main(int argc, char *argv[])
     krate::RackProcessor processor(rack, transport, ids);
     processor.setEventSource(&eventSources);
     processor.setMidiCapture(&midiCapture);
+    processor.setAutomation(&automationPlayer);
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
     audioTracks.setRoundTrip([&jack] { return int(jack.roundTripFrames()); });

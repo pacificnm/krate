@@ -7,6 +7,7 @@
 #include "SequencerController.h"
 #include "core/Transport.h"
 #include "rack/MidiCapture.h"
+#include "rack/Automation.h"
 #include "rec/WavWriter.h"
 
 #include <QDir>
@@ -17,6 +18,24 @@
 using namespace krate;
 using namespace krate::seq;
 using namespace Qt::StringLiterals;
+
+namespace {
+std::string fmt(float v) { return std::to_string(int(std::lround(v * 100.0f))) + "%"; }
+constexpr ParamDescriptor kFakeParams[] = {{"tone", "Tone", 0.5f, 0, &fmt}, {"cutoff", "Cutoff", 0.5f, 0, &fmt}};
+// Two knobs, nothing else (automation tests).
+class FakeInstrument final : public IInstrument
+{
+public:
+    void prepare(double, std::uint32_t) noexcept override {}
+    std::span<const ParamDescriptor> parameters() const noexcept override { return kFakeParams; }
+    float param(int i) const noexcept override { return values[std::size_t(i)]; }
+    void setParam(int i, float v) noexcept override { values[std::size_t(i)] = v; }
+    void setParamFromHost(int i, float v) noexcept override { values[std::size_t(i)] = v; }
+    std::uint64_t takeParamsChangedByAudio() noexcept override { return 0; }
+    void process(const AudioBlock &) noexcept override {}
+    std::array<float, 2> values{0.5f, 0.5f};
+};
+} // namespace
 
 // The SEQ screen's controller (docs/SEQUENCER.md): edits reach the player at
 // once, targets resolve to instruments, and sequencer.json keeps it all.
@@ -186,6 +205,95 @@ private slots:
         AudioTracksController again(dir.filePath(QStringLiteral("recordings")));
         QCOMPARE(again.clips(0)[0].toMap().value(u"startBeat"_s).toDouble(), 5.0);
         QCOMPARE(again.clips(0)[0].toMap().value(u"seconds"_s).toDouble(), 71520.0 / 48000.0);
+    }
+
+    // Automation (D5): lanes and points edited (undoable) and handed to the
+    // player; knobs turned while AUTO records become a lane, or replace a
+    // stretch of one; the lane playing isn't taken for someone turning it.
+    void automation()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        Transport transport;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        ArrangeController arrange(c, transport, nullptr);
+        AutomationPlayer player;
+        FakeInstrument a, b;
+        arrange.setAutomationTargets(&player, {u"a"_s, u"b"_s}, {u"Synth A"_s, u"Synth B"_s}, {&a, &b});
+        QCOMPARE(arrange.automatableDevices().size(), 2);
+        QCOMPARE(arrange.paramLabels(1), (QStringList{u"Tone"_s, u"Cutoff"_s}));
+
+        // Lanes and points.
+        b.values[1] = 0.25f;
+        QCOMPARE(arrange.addAutomationLane(1, 1), 0);
+        QCOMPARE(arrange.addAutomationLane(1, 1), 0); // there already
+        QCOMPARE(arrange.addPoint(0, 8.0, 1.0), 1);
+        QCOMPARE(arrange.addPoint(0, 4.0, 2.0), 1);   // clamped to 1, in beat order
+        QCOMPARE(arrange.movePoint(0, 1, 12.0, 0.5), 2);
+        QCOMPARE(arrange.valueText(0, 0.5), u"50%"_s);
+        const QVariantMap lane = arrange.automationLanes()[0].toMap();
+        QCOMPARE(lane.value(u"deviceName"_s).toString(), u"Synth B"_s);
+        QCOMPARE(lane.value(u"label"_s).toString(), u"Cutoff"_s);
+        QCOMPARE(lane.value(u"points"_s).toList().size(), 3);
+        QCOMPARE(lane.value(u"points"_s).toList()[0].toMap().value(u"value"_s).toDouble(), 0.25); // where the knob was
+        arrange.removePoint(0, 2);
+        arrange.undo();
+        QCOMPARE(arrange.automationLanes()[0].toMap().value(u"points"_s).toList().size(), 3);
+
+        // Played in SONG mode: at beat 6, halfway from 0.25 (beat 0)... to 1 (beat 8).
+        arrange.setSongMode(true);
+        TransportState t;
+        t.playing = true;
+        t.bpm = 120.0;
+        t.beatAtBlockStart = 4.0;
+        player.apply(t);
+        QCOMPARE(b.values[1], 0.625f);
+
+        // Recording: knob A's tone, turned at beats 4 and 6 (a lane of its own).
+        arrange.setAutoWrite(true);
+        transport.setPlaying(true);
+        const auto at = [&](double beat) { // the transport's beat, as the host leaves it
+            transport.advance(std::uint32_t(beat * 24000.0) - std::uint32_t(transport.beatPosition() * 24000.0), 48000.0);
+            transport.advance(0, 48000.0);
+        };
+        transport.advance(0, 48000.0);
+        arrange.poll();
+        QVERIFY(arrange.writing());
+        at(4.0);
+        a.values[0] = 0.3f;
+        QTest::qWait(40);
+        at(6.0);
+        a.values[0] = 0.6f;
+        // Lane 0 playing knob B isn't someone turning it.
+        t.beatAtBlockStart = 6.0;
+        player.apply(t);
+        QTest::qWait(40);
+        // Knob B turned by hand at beat 7: recorded over its lane from there.
+        at(7.0);
+        b.values[1] = 0.9f;
+        QTest::qWait(40);
+        transport.setPlaying(false);
+        arrange.poll();
+        QVERIFY(!arrange.writing());
+
+        const QVariantList lanes = arrange.automationLanes();
+        QCOMPARE(lanes.size(), 2);
+        const QVariantList tone = lanes[1].toMap().value(u"points"_s).toList();
+        QCOMPARE(lanes[1].toMap().value(u"label"_s).toString(), u"Tone"_s);
+        QCOMPARE(tone.size(), 2);
+        QCOMPARE(tone[0].toMap().value(u"beat"_s).toDouble(), 4.0);
+        QVERIFY(std::fabs(tone[0].toMap().value(u"value"_s).toDouble() - 0.3) < 1e-6);
+        QCOMPARE(tone[1].toMap().value(u"beat"_s).toDouble(), 6.0);
+        // Knob B's lane: as before up to beat 7, 0.9 there, back to the old line after.
+        const auto &cutoff = c.state().automation[0].points;
+        const krate::AutomationLane line{-1, -1, cutoff};
+        QVERIFY(std::fabs(line.valueAt(2.0) - 0.4375f) < 1e-4f);
+        QCOMPARE(line.valueAt(7.0), 0.9f);
+        QVERIFY(std::fabs(line.valueAt(7.0 + 1.0 / 96.0) - float(0.25 + 0.75 * (7.0 + 1.0 / 96.0) / 8.0)) < 1e-5f);
+        QVERIFY(line.valueAt(8.0) == 1.0f); // the old line resumes
+        arrange.undo(); // all of the recording in one step
+        QCOMPARE(arrange.automationLanes().size(), 1);
     }
 
     void recordsMidiClips()

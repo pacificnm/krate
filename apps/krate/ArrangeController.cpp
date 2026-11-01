@@ -7,7 +7,11 @@
 #include "AudioTracks.h"
 #include "SequencerController.h"
 #include "core/Transport.h"
+#include "core/Instrument.h"
+#include "rack/Automation.h"
 #include "rack/MidiCapture.h"
+
+#include <cmath>
 
 using namespace krate::seq;
 
@@ -27,6 +31,8 @@ ArrangeController::ArrangeController(SequencerController &sequencer, krate::Tran
     // A sequence opened, a pattern edited: the transport and the lanes follow.
     connect(&m_sequencer, &SequencerController::changed, this, [this] {
         apply();
+        if (m_player && m_sequencer.state().automation != m_handed)
+            handOverAutomation();
         ++m_revision;
         emit changed();
     });
@@ -38,6 +44,8 @@ ArrangeController::ArrangeController(SequencerController &sequencer, krate::Tran
     if (m_tracks) // a recording, the panel, an edit: undoable too
         m_tracks->setBeforeLaneEdit([this] { beforeEdit(); });
     apply();
+    m_writeTimer.setInterval(15); // knobs recorded about 66 times a second
+    connect(&m_writeTimer, &QTimer::timeout, this, &ArrangeController::writeTick);
     m_pollTimer.setInterval(33);
     connect(&m_pollTimer, &QTimer::timeout, this, &ArrangeController::poll);
     m_pollTimer.start();
@@ -350,13 +358,15 @@ bool ArrangeController::duplicateClip(int track, int index)
 
 ArrangeController::Snapshot ArrangeController::snapshot() const
 {
-    return {m_sequencer.state().arrangement, m_tracks ? m_tracks->lanes() : AudioTracksController::Lanes{}};
+    return {m_sequencer.state().arrangement, m_tracks ? m_tracks->lanes() : AudioTracksController::Lanes{},
+            m_sequencer.state().automation};
 }
 
 void ArrangeController::restore(const Snapshot &s)
 {
     m_restoring = true;
     m_sequencer.arrangerState().arrangement = s.song;
+    m_sequencer.arrangerState().automation = s.automation;
     edited(true);
     if (m_tracks)
         m_tracks->setLanes(s.audio);
@@ -515,8 +525,309 @@ void ArrangeController::finishTake()
     edited(true);
 }
 
+void ArrangeController::setAutomationTargets(krate::AutomationPlayer *player, QStringList ids, QStringList names,
+                                             std::vector<krate::IInstrument *> instruments)
+{
+    m_player = player;
+    m_deviceIds = std::move(ids);
+    m_deviceNames = std::move(names);
+    m_instruments = std::move(instruments);
+    if (m_player)
+        m_player->setInstruments(m_instruments);
+    apply();
+    handOverAutomation();
+}
+
+void ArrangeController::setAutoWrite(bool on)
+{
+    if (on == m_autoWrite)
+        return;
+    m_autoWrite = on;
+    ++m_revision;
+    emit changed();
+}
+
+int ArrangeController::deviceOf(const QString &id) const
+{
+    return int(m_deviceIds.indexOf(id));
+}
+
+int ArrangeController::paramOf(int device, const QString &key) const
+{
+    if (device < 0 || device >= int(m_instruments.size()) || !m_instruments[std::size_t(device)])
+        return -1;
+    const auto params = m_instruments[std::size_t(device)]->parameters();
+    for (std::size_t i = 0; i < params.size(); ++i)
+        if (key == QLatin1StringView(params[i].key.data(), qsizetype(params[i].key.size())))
+            return int(i);
+    return -1;
+}
+
+void ArrangeController::handOverAutomation()
+{
+    m_handed = m_sequencer.state().automation;
+    if (!m_player)
+        return;
+    // Lane for lane (one not found plays nothing), so indices match the state's.
+    auto automation = std::make_unique<krate::Automation>();
+    for (const AutomationData &lane : m_handed) {
+        const int device = deviceOf(lane.device), param = paramOf(device, lane.param);
+        automation->lanes.push_back({param >= 0 ? device : -1, param, lane.points});
+    }
+    m_player->setAutomation(std::move(automation));
+}
+
+QVariantList ArrangeController::automationLanes() const
+{
+    QVariantList list;
+    for (const AutomationData &lane : m_sequencer.state().automation) {
+        const int device = deviceOf(lane.device), param = paramOf(device, lane.param);
+        QVariantList points;
+        for (const krate::AutomationPoint &p : lane.points)
+            points.append(QVariantMap{{QStringLiteral("beat"), p.beat}, {QStringLiteral("value"), double(p.value)}});
+        const auto params = param >= 0 ? m_instruments[std::size_t(device)]->parameters() : std::span<const krate::ParamDescriptor>{};
+        list.append(QVariantMap{
+            {QStringLiteral("device"), device},
+            {QStringLiteral("deviceName"), device >= 0 ? m_deviceNames.value(device) : lane.device},
+            {QStringLiteral("param"), param},
+            {QStringLiteral("label"), param >= 0 ? QString::fromUtf8(params[std::size_t(param)].label.data(),
+                                                                    qsizetype(params[std::size_t(param)].label.size()))
+                                                 : lane.param},
+            {QStringLiteral("points"), points},
+        });
+    }
+    return list;
+}
+
+QVariantList ArrangeController::automatableDevices() const
+{
+    QVariantList list;
+    for (int d = 0; d < int(m_instruments.size()); ++d) {
+        const QString id = m_deviceIds.value(d);
+        if (!m_instruments[std::size_t(d)] || m_instruments[std::size_t(d)]->parameters().empty()
+            || id.startsWith(QStringLiteral("audio")))
+            continue; // (an audio track's ARM / MONITOR / INPUT aren't for automating)
+        list.append(QVariantMap{{QStringLiteral("device"), d}, {QStringLiteral("name"), m_deviceNames.value(d)}});
+    }
+    return list;
+}
+
+QStringList ArrangeController::paramLabels(int device) const
+{
+    QStringList list;
+    if (device < 0 || device >= int(m_instruments.size()) || !m_instruments[std::size_t(device)])
+        return list;
+    for (const krate::ParamDescriptor &p : m_instruments[std::size_t(device)]->parameters())
+        list << QString::fromUtf8(p.label.data(), qsizetype(p.label.size()));
+    return list;
+}
+
+int ArrangeController::addAutomationLane(int device, int param)
+{
+    if (device < 0 || device >= int(m_instruments.size()) || !m_instruments[std::size_t(device)])
+        return -1;
+    const auto params = m_instruments[std::size_t(device)]->parameters();
+    if (param < 0 || param >= int(params.size()))
+        return -1;
+    const QString id = m_deviceIds.value(device);
+    const QString key = QString::fromUtf8(params[std::size_t(param)].key.data(), qsizetype(params[std::size_t(param)].key.size()));
+    auto &lanes = m_sequencer.arrangerState().automation;
+    for (std::size_t i = 0; i < lanes.size(); ++i)
+        if (lanes[i].device == id && lanes[i].param == key)
+            return int(i);
+    beforeEdit();
+    // It starts where the knob is.
+    lanes.push_back({id, key, {{0.0, m_instruments[std::size_t(device)]->param(param)}}});
+    edited(false);
+    return int(lanes.size()) - 1;
+}
+
+void ArrangeController::removeAutomationLane(int lane)
+{
+    auto &lanes = m_sequencer.arrangerState().automation;
+    if (lane < 0 || lane >= int(lanes.size()))
+        return;
+    beforeEdit();
+    lanes.erase(lanes.begin() + lane);
+    edited(false);
+}
+
+namespace {
+void sortPoints(std::vector<krate::AutomationPoint> &points)
+{
+    std::stable_sort(points.begin(), points.end(),
+                     [](const krate::AutomationPoint &a, const krate::AutomationPoint &b) { return a.beat < b.beat; });
+}
+} // namespace
+
+int ArrangeController::addPoint(int lane, double beat, double value)
+{
+    auto &lanes = m_sequencer.arrangerState().automation;
+    if (lane < 0 || lane >= int(lanes.size()))
+        return -1;
+    beforeEdit();
+    auto &points = lanes[std::size_t(lane)].points;
+    const krate::AutomationPoint p{std::max(0.0, beat), float(std::clamp(value, 0.0, 1.0))};
+    const auto at = std::upper_bound(points.begin(), points.end(), p.beat,
+                                     [](double b, const krate::AutomationPoint &q) { return b < q.beat; });
+    const int index = int(at - points.begin());
+    points.insert(at, p);
+    edited(false);
+    return index;
+}
+
+int ArrangeController::movePoint(int lane, int point, double beat, double value)
+{
+    auto &lanes = m_sequencer.arrangerState().automation;
+    if (lane < 0 || lane >= int(lanes.size()))
+        return -1;
+    auto &points = lanes[std::size_t(lane)].points;
+    if (point < 0 || point >= int(points.size()))
+        return -1;
+    beforeEdit();
+    krate::AutomationPoint p{std::max(0.0, beat), float(std::clamp(value, 0.0, 1.0))};
+    points.erase(points.begin() + point);
+    const auto at = std::upper_bound(points.begin(), points.end(), p.beat,
+                                     [](double b, const krate::AutomationPoint &q) { return b < q.beat; });
+    const int index = int(at - points.begin());
+    points.insert(at, p);
+    edited(false);
+    return index;
+}
+
+void ArrangeController::removePoint(int lane, int point)
+{
+    auto &lanes = m_sequencer.arrangerState().automation;
+    if (lane < 0 || lane >= int(lanes.size()))
+        return;
+    auto &points = lanes[std::size_t(lane)].points;
+    if (point < 0 || point >= int(points.size()))
+        return;
+    beforeEdit();
+    points.erase(points.begin() + point);
+    edited(false);
+}
+
+QString ArrangeController::valueText(int lane, double value) const
+{
+    const auto &lanes = m_sequencer.state().automation;
+    if (lane < 0 || lane >= int(lanes.size()))
+        return {};
+    const int device = deviceOf(lanes[std::size_t(lane)].device), param = paramOf(device, lanes[std::size_t(lane)].param);
+    if (param < 0)
+        return QString::number(value, 'f', 2);
+    return QString::fromStdString(m_instruments[std::size_t(device)]->parameters()[std::size_t(param)].format(float(value)));
+}
+
+void ArrangeController::writeTick()
+{
+    const double beat = m_transport.beatPosition();
+    for (int d = 0; d < int(m_instruments.size()); ++d) {
+        krate::IInstrument *instrument = m_instruments[std::size_t(d)];
+        if (!instrument || m_deviceIds.value(d).startsWith(QStringLiteral("audio")))
+            continue;
+        auto &seen = m_seen[std::size_t(d)];
+        for (int p = 0; p < int(seen.size()); ++p) {
+            const float v = instrument->param(p);
+            if (v == seen[std::size_t(p)])
+                continue;
+            seen[std::size_t(p)] = v;
+            auto rec = std::find_if(m_recorded.begin(), m_recorded.end(),
+                                    [&](const Recorded &r) { return r.device == d && r.param == p; });
+            if (rec == m_recorded.end()) {
+                // Its lane playing it isn't someone turning it.
+                int lane = -1;
+                for (std::size_t i = 0; i < m_handed.size() && lane < 0; ++i)
+                    if (deviceOf(m_handed[i].device) == d && paramOf(d, m_handed[i].param) == p)
+                        lane = int(i);
+                if (lane >= 0) {
+                    const float played = m_player->lastValue(lane);
+                    if (!std::isnan(played) && std::fabs(v - played) < 1e-6f)
+                        continue;
+                    m_player->setHeld(lane, true); // touched: recorded from here, not played
+                }
+                m_recorded.push_back({d, p, {}});
+                rec = m_recorded.end() - 1;
+            }
+            auto &segments = rec->segments;
+            if (segments.empty() || beat < segments.back().back().beat - 1e-9)
+                segments.emplace_back(); // a loop went round
+            segments.back().push_back({beat, v});
+        }
+    }
+}
+
+void ArrangeController::finishWriting()
+{
+    writeTick(); // the last moves
+    m_writing = false;
+    m_writeTimer.stop();
+    if (!m_recorded.empty()) {
+        beforeEdit();
+        auto &lanes = m_sequencer.arrangerState().automation;
+        constexpr double kEdge = 1.0 / kTicksPerBeat; // the old line, just outside what was recorded
+        for (const Recorded &rec : m_recorded) {
+            const QString id = m_deviceIds.value(rec.device);
+            const auto &params = m_instruments[std::size_t(rec.device)]->parameters();
+            const QString key = QString::fromUtf8(params[std::size_t(rec.param)].key.data(),
+                                                  qsizetype(params[std::size_t(rec.param)].key.size()));
+            auto lane = std::find_if(lanes.begin(), lanes.end(),
+                                     [&](const AutomationData &l) { return l.device == id && l.param == key; });
+            if (lane == lanes.end()) {
+                lanes.push_back({id, key, {}});
+                lane = lanes.end() - 1;
+            }
+            for (const auto &segment : rec.segments) {
+                const double first = segment.front().beat, last = segment.back().beat;
+                auto &points = lane->points;
+                const bool had = !points.empty();
+                const krate::AutomationLane old{-1, -1, points};
+                std::erase_if(points, [&](const krate::AutomationPoint &p) {
+                    return p.beat >= first - kEdge && p.beat <= last + kEdge;
+                });
+                points.insert(points.end(), segment.begin(), segment.end());
+                if (had) { // the lane as it was, either side
+                    if (first - kEdge >= 0.0)
+                        points.push_back({first - kEdge, old.valueAt(first - kEdge)});
+                    points.push_back({last + kEdge, old.valueAt(last + kEdge)});
+                }
+                sortPoints(points);
+            }
+            // Fewer points: those a straight line through their neighbours already gives.
+            auto &points = lane->points;
+            for (std::size_t i = 1; i + 1 < points.size();) {
+                const krate::AutomationLane line{-1, -1, {points[i - 1], points[i + 1]}};
+                if (std::fabs(line.valueAt(points[i].beat) - points[i].value) < 0.002f)
+                    points.erase(points.begin() + std::ptrdiff_t(i));
+                else
+                    ++i;
+            }
+        }
+        m_recorded.clear();
+        edited(false);
+    }
+    if (m_player)
+        m_player->releaseAll();
+}
+
 void ArrangeController::poll()
 {
+    // Recording automation: AUTO, SONG and playing (and Krate keeping its own time).
+    const bool write = m_player && m_autoWrite && songMode() && m_transport.playing() && !m_transport.following();
+    if (write && !m_writing) {
+        m_seen.assign(m_instruments.size(), {});
+        for (std::size_t d = 0; d < m_instruments.size(); ++d)
+            if (m_instruments[d])
+                for (int p = 0; p < int(m_instruments[d]->parameters().size()); ++p)
+                    m_seen[d].push_back(m_instruments[d]->param(p));
+        m_recorded.clear();
+        m_writing = true;
+        m_writeTimer.start();
+    } else if (!write && m_writing) {
+        finishWriting();
+    }
+    if (m_player)
+        m_player->collectGarbage();
     takeCaptured();
     const bool playing = m_transport.playing();
     const bool following = m_transport.following();
@@ -535,6 +846,8 @@ void ArrangeController::apply()
     // Outside SONG mode the patterns play as before: from the top, no loop, no punch.
     m_transport.setStartBeat(state.songMode ? double(state.startBar) * kBeatsPerBar : 0.0);
     m_transport.setLoop(state.songMode && state.loopOn, state.loopFrom, state.loopTo);
+    if (m_player)
+        m_player->setActive(state.songMode);
     if (m_tracks)
         m_tracks->setPunch(state.songMode && state.punchOn, state.punchFrom, state.punchTo);
 }

@@ -11,6 +11,7 @@
 
 #include "core/Instrument.h"
 #include "rack/Rack.h"
+#include "rack/Automation.h"
 #include "rack/RackProcessor.h"
 
 using namespace krate;
@@ -149,6 +150,59 @@ private slots:
     // The arranger's loop (docs/DAW.md, D3): the processor runs a block that
     // holds the loop's end in two parts, so the devices see the transport
     // wrap on the exact sample, and MIDI after the split in the second part.
+    // Automation (docs/DAW.md, D5): played into a device's parameter at each
+    // block's (part's) beat, as a learned knob's is (its panel told), only
+    // when it changes, only while playing and on; a held lane is left alone.
+    void processorPlaysAutomation()
+    {
+        Rack rack;
+        FakeDevice dev(kParamsA, 0.25f);
+        rack.addDevice(dev, 0);
+        rack.prepare(48000.0);
+        Transport transport;
+        RackProcessor processor(rack, transport, {"a"});
+        AutomationPlayer player;
+        player.setInstruments({&dev});
+        auto automation = std::make_unique<Automation>();
+        automation->lanes.push_back({0, 0, {{0.0, 0.0f}, {4.0, 1.0f}}}); // cutoff: up over bar 1
+        automation->lanes.push_back({0, 1, {{0.0, 0.75f}}});              // level: held at 0.75
+        player.setAutomation(std::move(automation));
+        processor.setAutomation(&player);
+        constexpr std::uint32_t kN = 1000;
+        std::vector<std::vector<float>> buffers(4, std::vector<float>(kN, 0.0f));
+        float *outputs[4] = {buffers[0].data(), buffers[1].data(), buffers[2].data(), buffers[3].data()};
+        const auto block = [&] { processor.process(nullptr, outputs, kN, nullptr, 0, 48000.0); };
+
+        block(); // stopped: nothing
+        QCOMPARE(dev.values[0], 0.0f);
+        transport.setPlaying(true);
+        block(); // playing but off
+        QCOMPARE(dev.values[1], 0.0f);
+        player.setActive(true);
+        player.setHeld(1, true);
+        dev.takeParamsChangedByAudio();
+        for (int k = 0; k < 48; ++k) // the last starts at 48000 frames since play: beat 2
+            block();
+        QCOMPARE(dev.values[0], 0.5f); // halfway up
+        QCOMPARE(dev.values[1], 0.0f); // held
+        QVERIFY(dev.takeParamsChangedByAudio() & 1); // the panel is told
+        QCOMPARE(player.lastValue(0), dev.values[0]);
+        QVERIFY(std::isnan(player.lastValue(1)));
+        player.setHeld(1, false);
+        block();
+        QCOMPARE(dev.values[1], 0.75f);
+        // Unchanged values aren't set again: a knob turned by hand stays (until the line moves on).
+        dev.values[1] = 0.3f;
+        block();
+        QCOMPARE(dev.values[1], 0.3f);
+
+        // Round a loop (bar 1): the part after the wrap starts at beat 0.
+        transport.setLoop(true, 0, 1);
+        for (int k = 0; k < 60; ++k)
+            block();
+        QVERIFY(dev.values[0] < 0.5f); // went round, rising again
+    }
+
     void processorSplitsAtTheLoop()
     {
         Rack rack;

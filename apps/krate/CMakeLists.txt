@@ -117,7 +117,7 @@ add_test(NAME tst_song COMMAND tst_song)
 add_executable(tst_sequencerfile tests/tst_sequencerfile.cpp SequencerFile.h SequencerFile.cpp)
 target_include_directories(tst_sequencerfile PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_sequencerfile PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_sequencerfile PRIVATE krate_seq Qt6::Core Qt6::Test)
+target_link_libraries(tst_sequencerfile PRIVATE krate_seq krate_rack Qt6::Core Qt6::Test)
 add_test(NAME tst_sequencerfile COMMAND tst_sequencerfile)
 
 # Copying a song's bars into the sequencer.

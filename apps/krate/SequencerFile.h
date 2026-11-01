@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QString>
 
+#include "rack/Automation.h"
 #include "seq/Arrangement.h"
 #include "seq/Pattern.h"
 
@@ -17,7 +18,18 @@
 // pitch, velocity] in ticks (96 per beat). "arrange" holds the arranger's
 // song (docs/DAW.md, D3): SONG mode, where play starts, the loop and punch
 // ranges (bars, 0-based, [from, to)), each lane's clips [startBar, bars,
-// pattern, midi(, offsetBars)] (-1 = not that kind) and the MIDI clips' notes.
+// pattern, midi(, offsetBars)] (-1 = not that kind), the MIDI clips' notes
+// and the automation lanes (D5): {device, param (keys), points [[beat, value]]}.
+// An automation lane as kept (docs/DAW.md, D5): the device's id and the
+// parameter's key, so it survives instruments moving or gaining knobs.
+struct AutomationData
+{
+    QString device;
+    QString param;
+    std::vector<krate::AutomationPoint> points; // by beat
+    bool operator==(const AutomationData &) const = default;
+};
+
 struct SequencerState
 {
     std::unique_ptr<krate::seq::Bank> bank = std::make_unique<krate::seq::Bank>();
@@ -30,6 +42,7 @@ struct SequencerState
     int pattern = 0;
     // The arranger.
     krate::seq::Arrangement arrangement;
+    std::vector<AutomationData> automation;
     bool songMode = false;
     int startBar = 0;
     bool loopOn = false, punchOn = false;

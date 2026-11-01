@@ -25,7 +25,17 @@ QJsonObject arrangeToJson(const SequencerState &state)
             notes.append(QJsonArray{qint64(n.start), qint64(n.length), n.pitch, n.velocity});
         midi.append(notes);
     }
-    return {{QStringLiteral("songMode"), state.songMode},
+    QJsonArray automation;
+    for (const AutomationData &lane : state.automation) {
+        QJsonArray points;
+        for (const krate::AutomationPoint &p : lane.points)
+            points.append(QJsonArray{p.beat, double(p.value)});
+        automation.append(QJsonObject{{QStringLiteral("device"), lane.device},
+                                      {QStringLiteral("param"), lane.param},
+                                      {QStringLiteral("points"), points}});
+    }
+    return {{QStringLiteral("automation"), automation},
+            {QStringLiteral("songMode"), state.songMode},
             {QStringLiteral("start"), state.startBar},
             {QStringLiteral("loop"), QJsonArray{state.loopOn, state.loopFrom, state.loopTo}},
             {QStringLiteral("punch"), QJsonArray{state.punchOn, state.punchFrom, state.punchTo}},
@@ -47,6 +57,21 @@ void arrangeFromJson(const QJsonObject &json, SequencerState &state)
     };
     range(json.value(u"loop"), state.loopOn, state.loopFrom, state.loopTo);
     range(json.value(u"punch"), state.punchOn, state.punchFrom, state.punchTo);
+    for (const QJsonValue &v : json.value(u"automation").toArray()) {
+        const QJsonObject o = v.toObject();
+        AutomationData lane{o.value(u"device").toString(), o.value(u"param").toString(), {}};
+        if (lane.device.isEmpty() || lane.param.isEmpty())
+            continue;
+        for (const QJsonValue &p : o.value(u"points").toArray()) {
+            const QJsonArray a = p.toArray();
+            if (a.size() < 2 || a[0].toDouble(-1.0) < 0.0)
+                continue;
+            lane.points.push_back({a[0].toDouble(), float(std::clamp(a[1].toDouble(), 0.0, 1.0))});
+        }
+        std::stable_sort(lane.points.begin(), lane.points.end(),
+                         [](const krate::AutomationPoint &a, const krate::AutomationPoint &b) { return a.beat < b.beat; });
+        state.automation.push_back(std::move(lane));
+    }
     for (const QJsonValue &v : json.value(u"midi").toArray()) {
         MidiClip clip;
         for (const QJsonValue &n : v.toArray()) {

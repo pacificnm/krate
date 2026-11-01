@@ -72,8 +72,10 @@ private slots:
         state.arrangement.midi.push_back({{{0, 48, 60, 90}, {200000, 96, 64, 100}}});
         state.arrangement.lanes[0] = {{0, 4, 2, -1}, {4, 2, -1, 0}};
         state.arrangement.lanes[7] = {{10, 1, 15, -1}};
+        state.automation = {{QStringLiteral("kalliope"), QStringLiteral("cutoff"), {{0.0, 0.25f}, {8.5, 1.0f}}}};
         const SequencerState back = sequencerFromJson(sequencerToJson(state));
         QVERIFY(back.arrangement == state.arrangement);
+        QVERIFY(back.automation == state.automation);
         QVERIFY(back.songMode);
         QCOMPARE(back.startBar, 8);
         QVERIFY(back.loopOn);

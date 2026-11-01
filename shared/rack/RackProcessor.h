@@ -7,6 +7,7 @@
 
 #include "core/Transport.h"
 #include "host/JackProcessor.h"
+#include "rack/Automation.h"
 #include "rack/MidiCapture.h"
 #include "rack/Rack.h"
 
@@ -31,6 +32,8 @@ public:
     void setEventSource(IEventSource *source) { m_source = source; }
     // Before the host starts: the keyboard's notes for the arranger to record.
     void setMidiCapture(MidiCapture *capture) { m_capture = capture; }
+    // Before the host starts: automation, played into the instruments each block (part).
+    void setAutomation(AutomationPlayer *automation) { m_automation = automation; }
 
     int outputCount() const override { return 2 + 2 * m_rack.deviceCount(); }
     std::string outputName(int index) const override
@@ -88,6 +91,8 @@ private:
         const TransportState transport = m_transport.advance(frames, sampleRate);
         if (m_capture)
             m_capture->capture(transport, midi, midiCount, sampleRate);
+        if (m_automation)
+            m_automation->apply(transport);
         RackBlock block;
         block.frames = frames;
         block.midi = midi;
@@ -110,6 +115,7 @@ private:
     std::vector<std::string> m_ids;
     IEventSource *m_source = nullptr;
     MidiCapture *m_capture = nullptr;
+    AutomationPlayer *m_automation = nullptr;
     std::array<DeviceEvent, 4096> m_sourceEvents{};
     // A split block's parts: the buffers from the split on, its MIDI.
     std::array<float *, 2 + 2 * Rack::kMaxDevices> m_outs{};
