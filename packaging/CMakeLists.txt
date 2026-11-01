@@ -1,6 +1,9 @@
 # Installing Krate and packaging it as a .deb (packaging/README.md):
 # the eight apps, a menu entry and an icon each, and the docs.
 include(GNUInstallDirs)
+# Directories as Debian has them (rwxr-xr-x), whatever the builder's umask.
+set(CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+                                                WORLD_READ WORLD_EXECUTE)
 
 set(KRATE_APPS krate korrode kessel kalliope krimson kobalt klang konnekt)
 install(TARGETS ${KRATE_APPS} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -10,6 +13,13 @@ foreach(app IN LISTS KRATE_APPS)
 endforeach()
 install(FILES ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME copyright)
 install(FILES ${PROJECT_SOURCE_DIR}/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+
+# A dedicated player (docs/PLAYER.md): Krate full screen under cage, started
+# at boot by krate-kiosk@<user>.service once enabled (not by installing).
+install(PROGRAMS kiosk/krate-kiosk DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES kiosk/krate-kiosk@.service DESTINATION lib/systemd/system)
+install(FILES kiosk/krate-kiosk.pam DESTINATION /etc/pam.d RENAME krate-kiosk)
+install(FILES ${PROJECT_SOURCE_DIR}/docs/PLAYER.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
 # --- The .deb (cpack -G DEB; packaging/build-deb.sh does it all)
 set(CPACK_GENERATOR DEB)
@@ -42,4 +52,8 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
     "pipewire-jack, qml6-module-qtqml, qml6-module-qtqml-models, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-layouts, qml6-module-qtquick-shapes, qml6-module-qtquick-templates, qml6-module-qtquick-window, qt6-qpa-plugins, libqt6sql6-sqlite")
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-wayland")
+set(CPACK_DEBIAN_PACKAGE_SUGGESTS "cage") # the kiosk (docs/PLAYER.md)
+# The PAM file is a configuration file; systemd learns of the kiosk service.
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/kiosk/conffiles;${CMAKE_CURRENT_SOURCE_DIR}/kiosk/postinst;${CMAKE_CURRENT_SOURCE_DIR}/kiosk/postrm")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION ON)
 include(CPack)

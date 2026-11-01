@@ -66,12 +66,15 @@ Window {
         y: transportBar.height + 10
         x: 16
         spacing: 8
-        // Tabs fit the window: the screens' tabs keep their size, the instruments' share the rest.
-        readonly property int screenTabWidth: instrumentTabs > 8 ? 92 : 104 // narrower with more in the rack
+        // Tabs fit the window: the screens' tabs always show (narrower on a
+        // narrower window), the instruments' share the rest, and scroll when
+        // they don't fit (the focused one kept in view).
+        readonly property int screenTabWidth: root.width >= 1500 ? 104 : root.width >= 1200 ? 92 : 80
         // Only the instruments in the rack have tabs (docs/DAW.md, D1).
         readonly property int instrumentTabs: Math.max(1, Rack.panelComponents.filter((c, i) => c !== "" && Rack.present[i]).length)
-        readonly property real tabWidth: Math.max(60, Math.min(150, (root.width - 32 - 3 * 40 - 16 - 5 * screenTabWidth
-                                                                     - (instrumentTabs + 8) * spacing) / instrumentTabs))
+        // Beside the instruments: ◂ ▸ +, a gap, the five screen tabs, and the spaces between them all.
+        readonly property real stripWidth: Math.max(80, root.width - 32 - 3 * 40 - 16 - 5 * screenTabWidth - 9 * spacing)
+        readonly property real tabWidth: Math.max(64, Math.min(150, (stripWidth - (instrumentTabs - 1) * spacing) / instrumentTabs))
 
         PanelButton { // focus previous (learnable)
             width: 40
@@ -82,54 +85,87 @@ Window {
             LearnOverlay { anchors.fill: parent; paramKey: "rack:previous"; round: false }
         }
 
-        Repeater {
-            model: Rack.deviceNames
-
-            Rectangle {
-                id: tab
-                required property int index
-                required property string modelData
-                readonly property bool focused: Rack.focus === index
-                readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown && !Rack.soundsShown
-
-                // Devices without a panel (the backing track), or not in the rack, have no tab.
-                visible: Rack.panelComponents[index] !== "" && Rack.present[index] === true
-                width: tabs.tabWidth
-                clip: true
-                height: 40
-                radius: 4
-                color: shown ? Theme.silverLight : Theme.lowerDeck
-                border.color: shown ? Theme.accentUi : Theme.deckLine
-                border.width: shown ? 3 : 1
-
-                Led {
-                    x: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    on: tab.focused
+        Flickable { // the instruments' tabs: scrolled when they don't all fit
+            id: tabStrip
+            width: tabs.stripWidth
+            height: 40
+            contentWidth: tabRow.width
+            contentHeight: 40
+            clip: true
+            flickableDirection: Flickable.HorizontalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            // The focused instrument's tab in view, whenever it or the tabs change.
+            property Item focusedTab: null
+            function reveal() {
+                let x = contentX
+                if (focusedTab && focusedTab.visible) {
+                    if (focusedTab.x < x)
+                        x = focusedTab.x
+                    else if (focusedTab.x + focusedTab.width > x + width)
+                        x = focusedTab.x + focusedTab.width - width
                 }
-                Text {
-                    x: 34
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: tab.modelData
-                    color: Theme.ink
-                    font.family: Theme.labelFont
-                    font.pixelSize: 18
-                    font.bold: tab.focused
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        Rack.focus = tab.index
-                        Rack.mixerShown = false
+                contentX = Math.max(0, Math.min(x, contentWidth - width))
+            }
+            onFocusedTabChanged: Qt.callLater(reveal)
+            onWidthChanged: Qt.callLater(reveal)
+            onContentWidthChanged: Qt.callLater(reveal)
+
+            Row {
+                id: tabRow
+                spacing: tabs.spacing
+                Repeater {
+                    model: Rack.deviceNames
+
+                    Rectangle {
+                        id: tab
+                        required property int index
+                        required property string modelData
+                        readonly property bool focused: Rack.focus === index
+                        readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown && !Rack.soundsShown
+                        onFocusedChanged: if (focused) tabStrip.focusedTab = tab
+                        onXChanged: if (focused) Qt.callLater(tabStrip.reveal)
+                        Component.onCompleted: if (focused) tabStrip.focusedTab = tab
+
+                        // Devices without a panel (the backing track), or not in the rack, have no tab.
+                        visible: Rack.panelComponents[index] !== "" && Rack.present[index] === true
+                        width: tabs.tabWidth
+                        clip: true
+                        height: 40
+                        radius: 4
+                        color: shown ? Theme.silverLight : Theme.lowerDeck
+                        border.color: shown ? Theme.accentUi : Theme.deckLine
+                        border.width: shown ? 3 : 1
+
+                        Led {
+                            x: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            on: tab.focused
+                        }
+                        Text {
+                            x: 34
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: tab.modelData
+                            color: Theme.ink
+                            font.family: Theme.labelFont
+                            font.pixelSize: 18
+                            font.bold: tab.focused
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                Rack.focus = tab.index
+                                Rack.mixerShown = false
+                            }
+                        }
+                        LearnOverlay { // a controller button can focus this instrument
+                            anchors.fill: parent
+                            paramKey: "rack:focus:" + tab.index
+                            round: false
+                        }
+                        Accessible.role: Accessible.PageTab
+                        Accessible.name: modelData + (focused ? " (focused)" : "")
                     }
                 }
-                LearnOverlay { // a controller button can focus this instrument
-                    anchors.fill: parent
-                    paramKey: "rack:focus:" + tab.index
-                    round: false
-                }
-                Accessible.role: Accessible.PageTab
-                Accessible.name: modelData + (focused ? " (focused)" : "")
             }
         }
 
@@ -164,15 +200,16 @@ Window {
             Led {
                 x: 12
                 anchors.verticalCenter: parent.verticalCenter
+                visible: tabs.screenTabWidth >= 90 // narrow: the label alone, centred
                 on: Rack.mixerShown
             }
             Text {
-                x: tabs.screenTabWidth < 100 ? 30 : 34
+                x: tabs.screenTabWidth < 90 ? (parent.width - width) / 2 : tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Mixer"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
+                font.pixelSize: tabs.screenTabWidth < 90 ? 14 : tabs.screenTabWidth < 100 ? 15 : 18
                 font.bold: Rack.mixerShown
             }
             MouseArea {
@@ -200,15 +237,16 @@ Window {
             Led {
                 x: 12
                 anchors.verticalCenter: parent.verticalCenter
+                visible: tabs.screenTabWidth >= 90 // narrow: the label alone, centred
                 on: Rack.songShown
             }
             Text {
-                x: tabs.screenTabWidth < 100 ? 30 : 34
+                x: tabs.screenTabWidth < 90 ? (parent.width - width) / 2 : tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Song"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
+                font.pixelSize: tabs.screenTabWidth < 90 ? 14 : tabs.screenTabWidth < 100 ? 15 : 18
                 font.bold: Rack.songShown
             }
             MouseArea {
@@ -236,15 +274,16 @@ Window {
             Led {
                 x: 12
                 anchors.verticalCenter: parent.verticalCenter
+                visible: tabs.screenTabWidth >= 90 // narrow: the label alone, centred
                 on: Rack.seqShown
             }
             Text {
-                x: tabs.screenTabWidth < 100 ? 30 : 34
+                x: tabs.screenTabWidth < 90 ? (parent.width - width) / 2 : tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Seq"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
+                font.pixelSize: tabs.screenTabWidth < 90 ? 14 : tabs.screenTabWidth < 100 ? 15 : 18
                 font.bold: Rack.seqShown
             }
             MouseArea {
@@ -272,15 +311,16 @@ Window {
             Led {
                 x: 12
                 anchors.verticalCenter: parent.verticalCenter
+                visible: tabs.screenTabWidth >= 90 // narrow: the label alone, centred
                 on: Rack.arrangeShown
             }
             Text {
-                x: tabs.screenTabWidth < 100 ? 30 : 34
+                x: tabs.screenTabWidth < 90 ? (parent.width - width) / 2 : tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Arrange"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
+                font.pixelSize: tabs.screenTabWidth < 90 ? 14 : tabs.screenTabWidth < 100 ? 15 : 18
                 font.bold: Rack.arrangeShown
             }
             MouseArea {
@@ -307,15 +347,16 @@ Window {
             Led {
                 x: 12
                 anchors.verticalCenter: parent.verticalCenter
+                visible: tabs.screenTabWidth >= 90 // narrow: the label alone, centred
                 on: Rack.soundsShown
             }
             Text {
-                x: tabs.screenTabWidth < 100 ? 30 : 34
+                x: tabs.screenTabWidth < 90 ? (parent.width - width) / 2 : tabs.screenTabWidth < 100 ? 30 : 34
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Sounds"
                 color: Theme.ink
                 font.family: Theme.labelFont
-                font.pixelSize: tabs.screenTabWidth < 100 ? 15 : 18 // five screen tabs: room for the words
+                font.pixelSize: tabs.screenTabWidth < 90 ? 14 : tabs.screenTabWidth < 100 ? 15 : 18
                 font.bold: Rack.soundsShown
             }
             MouseArea {

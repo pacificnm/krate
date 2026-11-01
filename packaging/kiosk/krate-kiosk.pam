@@ -1,0 +1,6 @@
+# The login session krate-kiosk@.service opens (docs/PLAYER.md): the user's
+# own session, with logind (its seat) and the user's systemd (PipeWire).
+auth       required   pam_unix.so nullok
+account    required   pam_unix.so
+session    required   pam_unix.so
+session    required   pam_systemd.so

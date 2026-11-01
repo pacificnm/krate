@@ -26,13 +26,14 @@ Installing a newer `.deb` the same way updates it.
 | `/usr/bin/krate`, `/usr/bin/korrode`, ... | The apps |
 | `/usr/share/applications/<app>.desktop` | Menu entries: `pw-jack <app>`, so they play through PipeWire |
 | `/usr/share/icons/hicolor/scalable/apps/<app>.svg` | Icons |
-| `/usr/share/doc/krate/` | Licence and README |
+| `/usr/share/doc/krate/` | Licence, README, PLAYER.md |
+| `/usr/bin/krate-kiosk`, `/usr/lib/systemd/system/krate-kiosk@.service`, `/etc/pam.d/krate-kiosk` | A dedicated player: Krate full screen under cage at boot, off until `systemctl enable krate-kiosk@<user>` ([docs/PLAYER.md](../docs/PLAYER.md)) |
 
 Your own data is never in the package: patches, kits, patterns, songs and settings live in `~/.local/share/<app>` and `~/.config/<app>`, and are kept when the package is removed or updated.
 
 ## Dependencies
 
-The Qt 6 and JACK libraries are found by `dpkg-shlibdeps`. What Qt loads at run time isn't found that way: its QML modules (QtQuick, Controls, Dialogs, Shapes and what they use), the platform plugins and the SQLite driver (the song and IR libraries), with `pipewire-jack` (for `pw-jack`), are listed in `packaging/CMakeLists.txt`; `qt6-wayland` is recommended for Wayland sessions.
+The Qt 6 and JACK libraries are found by `dpkg-shlibdeps`. What Qt loads at run time isn't found that way: its QML modules (QtQuick, Controls, Dialogs, Shapes and what they use), the platform plugins and the SQLite driver (the song and IR libraries), with `pipewire-jack` (for `pw-jack`), are listed in `packaging/CMakeLists.txt`; `qt6-wayland` is recommended for Wayland sessions, `cage` suggested (the dedicated player). Installing and removing tell systemd about the kiosk service (`systemctl daemon-reload`); the PAM file is a configuration file, so your changes to it are kept.
 
 ## Builds and releases (GitHub Actions)
 

@@ -25,6 +25,8 @@ sudo apt install ./krate_*_amd64.deb
 
 Every app gets its own menu entry and icon (KDE: *Multimedia*): **Krate** for the whole rack, or any instrument on its own. They start through `pw-jack`, so they play through PipeWire; plug in a MIDI keyboard and play. Your sounds, patterns, songs and settings are kept in `~/.local/share` and `~/.config`, and stay when you update or remove the package. More: [packaging/README.md](packaging/README.md).
 
+A spare mini PC can be a dedicated player: it boots straight into Krate, full screen, with your audio interface and keyboard, no desktop needed ([docs/PLAYER.md](docs/PLAYER.md)).
+
 ## The apps
 
 ### Krate (the rack)
