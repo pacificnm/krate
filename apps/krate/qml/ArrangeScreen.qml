@@ -9,22 +9,34 @@ import KrateRack
 // tracks in the rack as lanes across bars. SONG plays the arrangement instead
 // of the patterns. The ruler sets where play starts; the LOOP and PUNCH strips
 // under it are dragged to set those ranges. On a MIDI lane, a click places the
-// chosen pattern (drag for a longer clip), a click on a clip opens its pattern
-// in the Seq screen, a right click (or ERASE) removes it; R arms the lane for
-// recording what you play on the keyboard (SONG and REC on). On an audio lane,
-// the takes on it; a right click (or ERASE) takes one off.
+// chosen pattern (drag for a longer clip); R arms the lane for recording what
+// you play on the keyboard (SONG and REC on). On an audio lane, the takes on it.
+//
+// Editing clips (D4): a click selects one, dragging it moves it (a MIDI clip
+// to another lane too), dragging an edge trims it, an audio clip's top
+// corners set its fades; SPLIT cuts where you click, DUPLICATE (Ctrl+D) puts
+// a copy right after, Delete or a right click (or ERASE) removes it; a double
+// click opens a pattern clip's pattern in the Seq screen. MIDI clips edit in
+// whole bars, audio clips in beats (SNAP off: freely). UNDO / REDO (Ctrl+Z,
+// Ctrl+Shift+Z) take back or redo any of it.
 Item {
     id: screen
 
     property int brush: 0          // the pattern a click places
     property bool erasing: false
+    property bool splitting: false
+    property bool snap: true       // audio clips to beats
+    // The selected clip: "midi" or "audio", its lane (a sequencer track or an audio track) and index.
+    property string selKind: ""
+    property int selTrack: -1
+    property int selIndex: -1
     property real barWidth: 48
     readonly property int headerWidth: 168
     readonly property int rulerHeight: 26
     readonly property int stripHeight: 18
     // The lanes fill the screen's height (an audio lane a little taller), within reason.
     readonly property int midiLaneHeight: Math.max(30, Math.min(56, Math.floor(
-        (height - 112 - lanesTop - 24) / (8 + 1.4 * audioLanes.length))))
+        (height - 150 - lanesTop - 24) / (8 + 1.4 * audioLanes.length))))
     readonly property int audioLaneHeight: Math.round(midiLaneHeight * 1.4)
     readonly property var trackList: Sequencer.revision >= 0 ? Sequencer.tracks : []
     // The audio tracks in the rack: [{track, device}].
@@ -43,6 +55,40 @@ Item {
     readonly property real lanesHeight: 8 * midiLaneHeight + audioLanes.length * audioLaneHeight
 
     function barAt(x) { return Math.max(0, Math.min(Arrange.maxBars - 1, Math.floor(x / screen.barWidth))) }
+    function select(kind, track, index) {
+        selKind = kind
+        selTrack = track
+        selIndex = index
+    }
+    function isSelected(kind, track, index) { return selKind === kind && selTrack === track && selIndex === index }
+    // Beats on the timeline from a pixel offset, snapped to beats when SNAP is on.
+    function beatsOf(dx) {
+        const beats = dx / screen.barWidth * 4
+        return snap ? Math.round(beats) : beats
+    }
+    function deleteSelected() {
+        if (selKind === "midi")
+            Arrange.removeClip(selTrack, selIndex)
+        else if (selKind === "audio")
+            Tracks.removeClip(selTrack, selIndex)
+        select("", -1, -1)
+    }
+    function duplicateSelected() {
+        if (selKind === "midi") {
+            if (Arrange.duplicateClip(selTrack, selIndex))
+                select("midi", selTrack, selIndex + 1)
+        } else if (selKind === "audio") {
+            const index = Tracks.duplicateClip(selTrack, selIndex, Rack.bpm)
+            if (index >= 0)
+                select("audio", selTrack, index)
+        }
+    }
+
+    // Undo, redo and the selection's keys, while this screen shows.
+    Shortcut { sequences: [StandardKey.Undo]; enabled: screen.visible; onActivated: { Arrange.undo(); screen.select("", -1, -1) } }
+    Shortcut { sequences: [StandardKey.Redo, "Ctrl+Shift+Z"]; enabled: screen.visible; onActivated: { Arrange.redo(); screen.select("", -1, -1) } }
+    Shortcut { sequence: "Ctrl+D"; enabled: screen.visible; onActivated: screen.duplicateSelected() }
+    Shortcut { sequences: [StandardKey.Delete, "Backspace"]; enabled: screen.visible; onActivated: screen.deleteSelected() }
     function patternColor(pattern) { return Qt.hsla((pattern * 0.13) % 1.0, 0.45, 0.62, 1.0) }
 
     Rectangle { // the deck
@@ -137,7 +183,10 @@ Item {
                     faceText: "ERASE"
                     text: "Erase: a click removes a clip"
                     tint: screen.erasing ? Theme.labelOrange : "transparent"
-                    onClicked: screen.erasing = !screen.erasing
+                    onClicked: {
+                        screen.erasing = !screen.erasing
+                        screen.splitting = false
+                    }
                 }
             }
         }
@@ -191,10 +240,71 @@ Item {
         }
     }
 
-    Text { // what this screen does in pattern mode, or while a DAW leads
+    // --- Editing: split, duplicate, snap, undo, redo --------------------------------------
+    Row {
+        id: tools
         x: 16
         y: header.y + header.height + 2
-        width: parent.width - 32
+        spacing: 8
+        PanelButton {
+            width: 76
+            height: 30
+            faceText: "SPLIT"
+            text: "Split: a click on a clip cuts it there"
+            tint: screen.splitting ? Theme.labelOrange : "transparent"
+            onClicked: {
+                screen.splitting = !screen.splitting
+                screen.erasing = false
+            }
+        }
+        PanelButton {
+            width: 104
+            height: 30
+            faceText: "DUPLICATE"
+            text: "Duplicate the selected clip right after itself (Ctrl+D)"
+            enabled: screen.selKind !== ""
+            opacity: enabled ? 1 : 0.5
+            onClicked: screen.duplicateSelected()
+        }
+        PanelButton {
+            width: 76
+            height: 30
+            faceText: "SNAP"
+            text: "Snap audio clips to beats"
+            tint: screen.snap ? Theme.labelOrange : "transparent"
+            onClicked: screen.snap = !screen.snap
+        }
+        Item { width: 12; height: 1 }
+        PanelButton {
+            width: 76
+            height: 30
+            faceText: "UNDO"
+            text: "Undo the last edit (Ctrl+Z)"
+            enabled: Arrange.canUndo
+            opacity: enabled ? 1 : 0.5
+            onClicked: {
+                Arrange.undo()
+                screen.select("", -1, -1)
+            }
+        }
+        PanelButton {
+            width: 76
+            height: 30
+            faceText: "REDO"
+            text: "Redo what was undone (Ctrl+Shift+Z)"
+            enabled: Arrange.canRedo
+            opacity: enabled ? 1 : 0.5
+            onClicked: {
+                Arrange.redo()
+                screen.select("", -1, -1)
+            }
+        }
+    }
+
+    Text { // what this screen does in pattern mode, or while a DAW leads
+        x: tools.x + tools.width + 16
+        anchors.verticalCenter: tools.verticalCenter
+        width: parent.width - x - 16
         elide: Text.ElideRight
         text: Arrange.following ? "A DAW leads over JACK: its position and its loop play (start, LOOP and PUNCH here wait)."
               : Arrange.songMode && Arrange.recording && Arrange.playing ? "Recording: " + Arrange.takeNotes + " notes so far (armed lanes)."
@@ -210,7 +320,7 @@ Item {
     Item {
         id: names
         x: 16
-        y: header.y + header.height + 24
+        y: tools.y + tools.height + 8
         width: screen.headerWidth
         height: screen.lanesTop + screen.lanesHeight
 
@@ -475,6 +585,8 @@ Item {
                     readonly property var clips: Arrange.revision >= 0 ? Arrange.lane(index) : []
                     property int pressBar: -1
                     property int dragBar: -1
+                    property bool dragging: false // a clip of it: drawn over the other lanes
+                    z: dragging ? 5 : 0
                     y: screen.lanesTop + index * screen.midiLaneHeight
                     width: content.width
                     height: screen.midiLaneHeight - 2
@@ -505,15 +617,10 @@ Item {
                         preventStealing: true
                         onPressed: mouse => {
                             const bar = screen.barAt(mouse.x)
-                            const clip = Arrange.clipAt(midiLane.index, bar)
-                            if (clip >= 0) {
-                                if (mouse.button === Qt.RightButton || screen.erasing)
-                                    Arrange.removeClip(midiLane.index, clip)
-                                else if (midiLane.clips[clip].pattern >= 0)
-                                    Sequencer.pattern = midiLane.clips[clip].pattern // to edit in the Seq screen
-                                return
-                            }
-                            if (mouse.button === Qt.LeftButton && !screen.erasing) {
+                            screen.select("", -1, -1)
+                            if (Arrange.clipAt(midiLane.index, bar) >= 0)
+                                return // (the clips take their own clicks)
+                            if (mouse.button === Qt.LeftButton && !screen.erasing && !screen.splitting) {
                                 midiLane.pressBar = bar
                                 midiLane.dragBar = bar
                             }
@@ -538,12 +645,22 @@ Item {
                             required property int index
                             required property var modelData
                             readonly property bool isPattern: modelData.pattern >= 0
-                            x: modelData.startBar * screen.barWidth + 1
-                            width: modelData.bars * screen.barWidth - 2
+                            readonly property bool selected: screen.isSelected("midi", midiLane.index, index)
+                            // A drag: "move", "start" or "end", and how far (whole bars, lanes).
+                            property string dragKind: ""
+                            property int dBars: 0
+                            property int dLanes: 0
+                            readonly property int shownStart: modelData.startBar + (dragKind === "end" ? 0 : dBars)
+                            readonly property int shownEnd: modelData.startBar + modelData.bars + (dragKind === "start" ? 0 : dBars)
+                            x: shownStart * screen.barWidth + 1
+                            y: dLanes * screen.midiLaneHeight
+                            width: Math.max(screen.barWidth, (shownEnd - shownStart) * screen.barWidth) - 2
                             height: midiLane.height
                             radius: 3
                             color: isPattern ? screen.patternColor(modelData.pattern) : "#9FB4C8"
-                            border.color: Qt.darker(color, 1.4)
+                            border.color: selected ? Theme.accentUi : Qt.darker(color, 1.4)
+                            border.width: selected ? 3 : 1
+                            opacity: dragKind !== "" ? 0.8 : 1.0
                             clip: true
                             Canvas { // its notes
                                 anchors.fill: parent
@@ -581,6 +698,64 @@ Item {
                                 font.pixelSize: 10
                                 font.bold: true
                             }
+                            MouseArea {
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                preventStealing: true
+                                hoverEnabled: true
+                                property real pressX: 0
+                                property real pressY: 0
+                                readonly property int edge: 8
+                                cursorShape: screen.splitting ? Qt.SplitHCursor
+                                             : mouseX < edge || mouseX > width - edge ? Qt.SizeHorCursor : Qt.OpenHandCursor
+                                onPressed: mouse => {
+                                    if (mouse.button === Qt.RightButton || screen.erasing) {
+                                        Arrange.removeClip(midiLane.index, clipBox.index)
+                                        screen.select("", -1, -1)
+                                        return
+                                    }
+                                    if (screen.splitting) {
+                                        Arrange.splitClip(midiLane.index, clipBox.index,
+                                                          clipBox.modelData.startBar + Math.round(mouse.x / screen.barWidth))
+                                        return
+                                    }
+                                    screen.select("midi", midiLane.index, clipBox.index)
+                                    pressX = mouse.x
+                                    pressY = mouse.y
+                                    clipBox.dragKind = mouse.x < edge ? "start" : mouse.x > width - edge ? "end" : "move"
+                                    midiLane.dragging = true
+                                }
+                                onPositionChanged: mouse => {
+                                    if (clipBox.dragKind === "")
+                                        return
+                                    clipBox.dBars = Math.round((mouse.x - pressX) / screen.barWidth)
+                                    if (clipBox.dragKind === "move")
+                                        clipBox.dLanes = Math.max(-midiLane.index, Math.min(7 - midiLane.index,
+                                                                  Math.round((mouse.y - pressY) / screen.midiLaneHeight)))
+                                }
+                                onReleased: {
+                                    const kind = clipBox.dragKind, bars = clipBox.dBars, lanes = clipBox.dLanes
+                                    const start = clipBox.modelData.startBar, end = start + clipBox.modelData.bars
+                                    clipBox.dragKind = ""
+                                    clipBox.dBars = 0
+                                    clipBox.dLanes = 0
+                                    midiLane.dragging = false
+                                    if (kind === "move" && (bars !== 0 || lanes !== 0)) {
+                                        if (Arrange.moveClip(midiLane.index, clipBox.index, midiLane.index + lanes, start + bars))
+                                            screen.select("", -1, -1) // (it has a new place in its lane)
+                                    } else if (kind === "start" && bars !== 0) {
+                                        Arrange.trimClipStart(midiLane.index, clipBox.index, start + bars)
+                                    } else if (kind === "end" && bars !== 0) {
+                                        Arrange.trimClipEnd(midiLane.index, clipBox.index, end + bars)
+                                    }
+                                }
+                                onDoubleClicked: {
+                                    if (!clipBox.isPattern)
+                                        return
+                                    Sequencer.pattern = clipBox.modelData.pattern // its notes, in the Seq screen
+                                    Rack.seqShown = true
+                                }
+                            }
                         }
                     }
                 }
@@ -609,45 +784,105 @@ Item {
                             color: index % 4 === 0 ? Theme.deckLine : "#BDB7AC"
                         }
                     }
+                    MouseArea { // a click beside the clips: nothing selected
+                        anchors.fill: parent
+                        onPressed: screen.select("", -1, -1)
+                    }
                     Repeater { // the takes on the lane, a later one on top
                         model: audioLane.clips
                         Rectangle {
                             id: takeBox
                             required property int index
                             required property var modelData
-                            x: modelData.startBeat / 4 * screen.barWidth
-                            width: Math.max(4, modelData.seconds * Rack.bpm / 60 / 4 * screen.barWidth)
+                            readonly property int track: audioLane.modelData.track
+                            readonly property real beatsLong: modelData.seconds * Rack.bpm / 60
+                            readonly property bool selected: screen.isSelected("audio", track, index)
+                            // A drag: "move", "start", "end", "fadeIn" or "fadeOut", and how far (beats).
+                            property string dragKind: ""
+                            property real dBeats: 0
+                            readonly property real shownStart: modelData.startBeat + (dragKind === "move" || dragKind === "start" ? dBeats : 0)
+                            readonly property real shownEnd: modelData.startBeat + beatsLong
+                                                              + (dragKind === "move" || dragKind === "end" ? dBeats : 0)
+                            readonly property real fadeInBeats: Math.max(0, modelData.fadeIn * Rack.bpm / 60 + (dragKind === "fadeIn" ? dBeats : 0))
+                            readonly property real fadeOutBeats: Math.max(0, modelData.fadeOut * Rack.bpm / 60 - (dragKind === "fadeOut" ? dBeats : 0))
+                            readonly property real beatWidth: screen.barWidth / 4
+                            x: shownStart * beatWidth
+                            width: Math.max(4, (shownEnd - shownStart) * beatWidth)
                             height: audioLane.height
                             radius: 3
                             color: "#5E6F7E"
-                            border.color: "#33404C"
+                            border.color: selected ? Theme.accentUi : "#33404C"
+                            border.width: selected ? 3 : 1
+                            opacity: dragKind !== "" ? 0.85 : 1.0
                             clip: true
-                            Canvas {
+                            Canvas { // the part of the take it plays, and its fades
                                 anchors.fill: parent
                                 anchors.margins: 2
                                 readonly property var peaks: Tracks.revision >= 0 && takeBox.modelData.loaded
-                                                             ? Tracks.takePeaks(audioLane.modelData.track, takeBox.modelData.take) : []
+                                                             ? Tracks.takePeaks(takeBox.track, takeBox.modelData.take) : []
+                                readonly property real from: takeBox.modelData.from
+                                readonly property real to: takeBox.modelData.to
+                                readonly property real fadeIn: takeBox.fadeInBeats * takeBox.beatWidth
+                                readonly property real fadeOut: takeBox.fadeOutBeats * takeBox.beatWidth
                                 onPeaksChanged: requestPaint()
                                 onWidthChanged: requestPaint()
+                                onFromChanged: requestPaint()
+                                onToChanged: requestPaint()
+                                onFadeInChanged: requestPaint()
+                                onFadeOutChanged: requestPaint()
                                 onPaint: {
                                     const ctx = getContext("2d")
                                     ctx.clearRect(0, 0, width, height)
                                     const n = peaks.length
-                                    if (n === 0)
-                                        return
-                                    ctx.fillStyle = Theme.labelOrange
-                                    const mid = height / 2
-                                    for (let x = 0; x < width; ++x) {
-                                        const p = peaks[Math.min(n - 1, Math.floor(x * n / width))]
-                                        const h = Math.max(0.5, p * mid)
-                                        ctx.fillRect(x, mid - h, 1, 2 * h)
+                                    if (n > 0) {
+                                        ctx.fillStyle = Theme.labelOrange
+                                        const mid = height / 2
+                                        for (let x = 0; x < width; ++x) {
+                                            const at = from + (to - from) * x / width
+                                            const p = peaks[Math.min(n - 1, Math.floor(at * n))]
+                                            const h = Math.max(0.5, p * mid)
+                                            ctx.fillRect(x, mid - h, 1, 2 * h)
+                                        }
+                                    }
+                                    ctx.fillStyle = "rgba(20, 24, 28, 0.55)" // the fades: what they take away
+                                    if (fadeIn > 0) {
+                                        ctx.beginPath()
+                                        ctx.moveTo(0, 0)
+                                        ctx.lineTo(fadeIn, 0)
+                                        ctx.lineTo(0, height)
+                                        ctx.closePath()
+                                        ctx.fill()
+                                    }
+                                    if (fadeOut > 0) {
+                                        ctx.beginPath()
+                                        ctx.moveTo(width, 0)
+                                        ctx.lineTo(width - fadeOut, 0)
+                                        ctx.lineTo(width, height)
+                                        ctx.closePath()
+                                        ctx.fill()
                                     }
                                 }
                             }
+                            Rectangle { // the fade handles (top corners), on the selected clip
+                                visible: takeBox.selected
+                                x: Math.min(takeBox.fadeInBeats * takeBox.beatWidth, takeBox.width - 10)
+                                width: 10
+                                height: 10
+                                color: Theme.inkInverse
+                                border.color: "#33404C"
+                            }
+                            Rectangle {
+                                visible: takeBox.selected
+                                x: Math.max(0, takeBox.width - 10 - takeBox.fadeOutBeats * takeBox.beatWidth)
+                                width: 10
+                                height: 10
+                                color: Theme.inkInverse
+                                border.color: "#33404C"
+                            }
                             Text {
-                                x: 4
+                                x: 14
                                 y: 1
-                                visible: takeBox.width > 60
+                                visible: takeBox.width > 80
                                 text: takeBox.modelData.name.replace(/^take-/, "")
                                 color: Theme.inkInverse
                                 font.family: "monospace"
@@ -656,11 +891,59 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                onClicked: mouse => {
-                                    if (mouse.button === Qt.RightButton || screen.erasing)
-                                        Tracks.removeClip(audioLane.modelData.track, takeBox.index)
-                                    else
-                                        Tracks.selectTake(audioLane.modelData.track, takeBox.modelData.take)
+                                preventStealing: true
+                                hoverEnabled: true
+                                property real pressX: 0
+                                readonly property int edge: 8
+                                readonly property int corner: 12 // the top corners: fades
+                                function kindAt(x, y) {
+                                    if (y < corner && x < corner + takeBox.fadeInBeats * takeBox.beatWidth && x < width / 2)
+                                        return "fadeIn"
+                                    if (y < corner && x > width - corner - takeBox.fadeOutBeats * takeBox.beatWidth && x >= width / 2)
+                                        return "fadeOut"
+                                    return x < edge ? "start" : x > width - edge ? "end" : "move"
+                                }
+                                cursorShape: screen.splitting ? Qt.SplitHCursor
+                                             : kindAt(mouseX, mouseY) === "move" ? Qt.OpenHandCursor : Qt.SizeHorCursor
+                                onPressed: mouse => {
+                                    if (mouse.button === Qt.RightButton || screen.erasing) {
+                                        Tracks.removeClip(takeBox.track, takeBox.index)
+                                        screen.select("", -1, -1)
+                                        return
+                                    }
+                                    if (screen.splitting) {
+                                        Tracks.splitClip(takeBox.track, takeBox.index,
+                                                         takeBox.modelData.startBeat + screen.beatsOf(mouse.x), Rack.bpm)
+                                        return
+                                    }
+                                    screen.select("audio", takeBox.track, takeBox.index)
+                                    Tracks.selectTake(takeBox.track, takeBox.modelData.take)
+                                    pressX = mouse.x
+                                    takeBox.dragKind = kindAt(mouse.x, mouse.y)
+                                }
+                                onPositionChanged: mouse => {
+                                    if (takeBox.dragKind === "")
+                                        return
+                                    const fade = takeBox.dragKind === "fadeIn" || takeBox.dragKind === "fadeOut"
+                                    takeBox.dBeats = fade ? (mouse.x - pressX) / takeBox.beatWidth : screen.beatsOf(mouse.x - pressX)
+                                }
+                                onReleased: {
+                                    const kind = takeBox.dragKind, d = takeBox.dBeats
+                                    const fadeIn = takeBox.fadeInBeats * 60 / Rack.bpm, fadeOut = takeBox.fadeOutBeats * 60 / Rack.bpm
+                                    const start = takeBox.modelData.startBeat
+                                    takeBox.dragKind = ""
+                                    takeBox.dBeats = 0
+                                    if (d === 0)
+                                        return
+                                    if (kind === "move") {
+                                        screen.select("audio", takeBox.track, Tracks.moveClip(takeBox.track, takeBox.index, start + d))
+                                    } else if (kind === "start") {
+                                        Tracks.trimClipStart(takeBox.track, takeBox.index, start + d, Rack.bpm)
+                                    } else if (kind === "end") {
+                                        Tracks.trimClipEnd(takeBox.track, takeBox.index, start + takeBox.beatsLong + d, Rack.bpm)
+                                    } else {
+                                        Tracks.setClipFades(takeBox.track, takeBox.index, fadeIn, fadeOut)
+                                    }
                                 }
                             }
                         }

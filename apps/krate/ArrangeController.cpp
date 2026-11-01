@@ -204,8 +204,9 @@ QVariantList ArrangeController::clipNotes(int track, int index) const
         return list;
     const Clip &clip = lane[std::size_t(index)];
     const double clipBeats = double(clip.bars) * kBeatsPerBar;
+    const double origin = -double(clip.offsetBars) * kBeatsPerBar; // its content's start, from the clip's
     const auto add = [&](double x, double w, int pitch) {
-        if (x < clipBeats && list.size() < kMaxDrawnNotes)
+        if (x >= 0.0 && x < clipBeats && list.size() < kMaxDrawnNotes)
             list.append(QVariantMap{{QStringLiteral("x"), x},
                                     {QStringLiteral("w"), std::min(w, clipBeats - x)},
                                     {QStringLiteral("pitch"), pitch}});
@@ -214,14 +215,14 @@ QVariantList ArrangeController::clipNotes(int track, int index) const
         const Pattern &p = state.bank->patterns[std::size_t(clip.pattern)];
         const TrackNotes &notes = p.tracks[std::size_t(track)];
         const double length = double(std::max<int>(p.length, 1)) / kTicksPerBeat;
-        for (double pass = 0.0; pass < clipBeats; pass += length)
+        for (double pass = origin + std::floor(-origin / length) * length; pass < clipBeats; pass += length)
             for (int n = 0; n < notes.count; ++n) {
                 const Note &note = notes.notes[std::size_t(n)];
                 add(pass + double(note.start) / kTicksPerBeat, double(note.length) / kTicksPerBeat, note.pitch);
             }
     } else if (clip.midi >= 0 && clip.midi < int(state.arrangement.midi.size())) {
         for (const ClipNote &note : state.arrangement.midi[std::size_t(clip.midi)].notes)
-            add(double(note.start) / kTicksPerBeat, double(note.length) / kTicksPerBeat, note.pitch);
+            add(origin + double(note.start) / kTicksPerBeat, double(note.length) / kTicksPerBeat, note.pitch);
     }
     return list;
 }

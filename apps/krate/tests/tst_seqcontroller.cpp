@@ -285,6 +285,12 @@ private slots:
             QCOMPARE(arrange.clipAt(0, 6), -1);
             QCOMPARE(arrange.endBar(), 6);
             QCOMPARE(arrange.clipNotes(0, 0).size(), 2); // the 2-bar pattern twice in 3 bars (the second cut)
+            // Trimmed a bar in (D4): the pattern's first note is gone, its next pass's is a bar in.
+            QVERIFY(arrange.trimClipStart(0, 0, 2));
+            const QVariantList trimmed = arrange.clipNotes(0, 0);
+            QCOMPARE(trimmed.size(), 1);
+            QCOMPARE(trimmed[0].toMap().value(u"x"_s).toDouble(), 4.0);
+            arrange.undo();
 
             // Pattern mode: the transport from the top, no loop.
             arrange.setStartBar(4);
