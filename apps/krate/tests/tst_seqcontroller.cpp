@@ -2,6 +2,7 @@
 
 #include <QTemporaryDir>
 
+#include "ArrangeController.h"
 #include "RackRunControl.h"
 #include "SequencerController.h"
 #include "core/Transport.h"
@@ -42,6 +43,74 @@ class TestSeqController : public QObject
     }
 
 private slots:
+    // The arranger (docs/DAW.md, D3): clips placed and removed, the song
+    // played in SONG mode, start / loop / punch handed to the transport (only
+    // in SONG mode), all of it kept in sequencer.json.
+    void arranger()
+    {
+        QTemporaryDir dir;
+        const QString path = dir.filePath(QStringLiteral("sequencer.json"));
+        {
+            Sequencer seq;
+            Transport transport;
+            SequencerController c(seq, targets(), path);
+            c.load();
+            ArrangeController arrange(c, transport, nullptr);
+            c.setTarget(0, 1); // Korrode
+            c.setTrack(0);
+            c.setPattern(2);
+            c.setLength(2 * 384); // two bars
+            QCOMPARE(c.addNote(0, 50, 24, 100), 0);
+            QCOMPARE(arrange.patternBars(2), 2);
+
+            QVERIFY(arrange.placePattern(0, 4, 2));  // bars 5-6
+            QVERIFY(arrange.placePattern(0, 1, 2, 9)); // shortened: ends where the next begins
+            QVERIFY(!arrange.placePattern(0, 5, 0)); // taken
+            QCOMPARE(arrange.lane(0).size(), 2);
+            QCOMPARE(arrange.lane(0)[0].toMap().value(u"bars"_s).toInt(), 3);
+            QCOMPARE(arrange.clipAt(0, 3), 0);
+            QCOMPARE(arrange.clipAt(0, 6), -1);
+            QCOMPARE(arrange.endBar(), 6);
+            QCOMPARE(arrange.clipNotes(0, 0).size(), 2); // the 2-bar pattern twice in 3 bars (the second cut)
+
+            // Pattern mode: the transport from the top, no loop.
+            arrange.setStartBar(4);
+            arrange.setLoop(6, 4);
+            arrange.setLoopOn(true);
+            QCOMPARE(transport.startBeat(), 0.0);
+            QVERIFY(!transport.looping());
+            // SONG: the arrangement plays from bar 5, the loop goes to the transport.
+            arrange.setSongMode(true);
+            QVERIFY(seq.songMode());
+            QCOMPARE(transport.startBeat(), 16.0);
+            QVERIFY(transport.looping());
+            QCOMPARE(transport.loopFromBar(), 4);
+            QCOMPARE(transport.loopToBar(), 6);
+            std::array<DeviceEvent, 64> out{};
+            TransportState t;
+            t.playing = true;
+            t.restarted = true;
+            t.beatAtBlockStart = 16.0;
+            QCOMPARE(seq.render(t, 64, 48000.0, out.data(), std::uint32_t(out.size())), std::uint32_t(1));
+            QCOMPARE(out[0].event.data[1], std::uint8_t(50));
+            arrange.removeClip(0, 0);
+            QCOMPARE(arrange.lane(0).size(), 1);
+            c.flush();
+        }
+        // Back from the file.
+        Sequencer seq;
+        Transport transport;
+        SequencerController c(seq, targets(), path);
+        c.load();
+        ArrangeController arrange(c, transport, nullptr);
+        QVERIFY(arrange.songMode());
+        QCOMPARE(arrange.startBar(), 4);
+        QCOMPARE(arrange.lane(0).size(), 1);
+        QCOMPARE(arrange.lane(0)[0].toMap().value(u"startBar"_s).toInt(), 4);
+        QCOMPARE(transport.startBeat(), 16.0);
+        QVERIFY(transport.looping());
+    }
+
     void editsPlayAndPersist()
     {
         QTemporaryDir dir;

@@ -39,6 +39,10 @@ Window {
         onActivated: Rack.seqShown = !Rack.seqShown
     }
     Shortcut {
+        sequence: "A"
+        onActivated: Rack.arrangeShown = !Rack.arrangeShown
+    }
+    Shortcut {
         sequence: "L"
         onActivated: MidiLearn.active = !MidiLearn.active
     }
@@ -62,8 +66,8 @@ Window {
         readonly property int screenTabWidth: 112
         // Only the instruments in the rack have tabs (docs/DAW.md, D1).
         readonly property int instrumentTabs: Math.max(1, Rack.panelComponents.filter((c, i) => c !== "" && Rack.present[i]).length)
-        readonly property real tabWidth: Math.max(72, Math.min(150, (root.width - 32 - 3 * 40 - 16 - 3 * screenTabWidth
-                                                                     - (instrumentTabs + 6) * spacing) / instrumentTabs))
+        readonly property real tabWidth: Math.max(72, Math.min(150, (root.width - 32 - 3 * 40 - 16 - 4 * screenTabWidth
+                                                                     - (instrumentTabs + 7) * spacing) / instrumentTabs))
 
         PanelButton { // focus previous (learnable)
             width: 40
@@ -82,7 +86,7 @@ Window {
                 required property int index
                 required property string modelData
                 readonly property bool focused: Rack.focus === index
-                readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown
+                readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown
 
                 // Devices without a panel (the backing track), or not in the rack, have no tab.
                 visible: Rack.panelComponents[index] !== "" && Rack.present[index] === true
@@ -251,6 +255,42 @@ Window {
             Accessible.role: Accessible.PageTab
             Accessible.name: "Sequencer" + (Rack.seqShown ? " (shown)" : "")
         }
+
+        Rectangle { // the arranger (learnable, A)
+            id: arrangeTab
+            width: tabs.screenTabWidth
+            height: 40
+            radius: 4
+            color: Rack.arrangeShown ? Theme.silverLight : Theme.lowerDeck
+            border.color: Rack.arrangeShown ? Theme.accentUi : Theme.deckLine
+            border.width: Rack.arrangeShown ? 3 : 1
+
+            Led {
+                x: 12
+                anchors.verticalCenter: parent.verticalCenter
+                on: Rack.arrangeShown
+            }
+            Text {
+                x: 34
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Arrange"
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 18
+                font.bold: Rack.arrangeShown
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: Rack.arrangeShown = !Rack.arrangeShown
+            }
+            LearnOverlay {
+                anchors.fill: parent
+                paramKey: "rack:arrange"
+                round: false
+            }
+            Accessible.role: Accessible.PageTab
+            Accessible.name: "Arranger" + (Rack.arrangeShown ? " (shown)" : "")
+        }
     }
 
     Item { // the focused instrument's panel, scaled to fit
@@ -259,7 +299,7 @@ Window {
         y: tabs.y + tabs.height + 10
         width: root.width - 32
         height: root.height - y - 16
-        visible: !Rack.mixerShown && !Rack.songShown && !Rack.seqShown
+        visible: !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown
 
         Repeater {
             model: Rack.deviceCount
@@ -352,6 +392,14 @@ Window {
         width: root.width - 32
         height: panelArea.height
         visible: Rack.seqShown
+    }
+
+    ArrangeScreen {
+        x: 16
+        y: panelArea.y
+        width: root.width - 32
+        height: panelArea.height
+        visible: Rack.arrangeShown
     }
 
     // ---- Instruments in the rack: add or remove (docs/DAW.md, D1)

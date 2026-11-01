@@ -1,5 +1,7 @@
 #include <QtTest>
 
+#include <QJsonArray>
+
 #include "SequencerFile.h"
 
 using namespace krate::seq;
@@ -53,6 +55,50 @@ private slots:
         QVERIFY(back.bank->chain[0] == state.bank->chain[0]);
         QVERIFY(back.bank->chain[1] == state.bank->chain[1]);
         QCOMPARE(back.bank->patterns[0].length, std::uint16_t(4 * kTicksPerBeat));
+    }
+
+    // The arranger's part (docs/DAW.md, D3): back as it was; bad clips (out
+    // of range, overlapping, of no kind) left out; none in older files.
+    void arrangement()
+    {
+        SequencerState state;
+        state.songMode = true;
+        state.startBar = 8;
+        state.loopOn = true;
+        state.loopFrom = 4;
+        state.loopTo = 12;
+        state.punchFrom = 6;
+        state.punchTo = 7;
+        state.arrangement.midi.push_back({{{0, 48, 60, 90}, {200000, 96, 64, 100}}});
+        state.arrangement.lanes[0] = {{0, 4, 2, -1}, {4, 2, -1, 0}};
+        state.arrangement.lanes[7] = {{10, 1, 15, -1}};
+        const SequencerState back = sequencerFromJson(sequencerToJson(state));
+        QVERIFY(back.arrangement == state.arrangement);
+        QVERIFY(back.songMode);
+        QCOMPARE(back.startBar, 8);
+        QVERIFY(back.loopOn);
+        QCOMPARE(back.loopFrom, 4);
+        QCOMPARE(back.loopTo, 12);
+        QVERIFY(!back.punchOn);
+        QCOMPARE(back.punchFrom, 6);
+        QCOMPARE(back.punchTo, 7);
+
+        QJsonObject json = sequencerToJson(state);
+        QJsonObject arrange = json["arrange"].toObject();
+        QJsonArray lanes = arrange["lanes"].toArray();
+        lanes[1] = QJsonArray{QJsonArray{0, 2, 0, -1}, QJsonArray{1, 1, 3, -1}, // overlaps the first
+                              QJsonArray{3, 1, 16, -1}, QJsonArray{4, 1, -1, 5}, // no such pattern, no such clip
+                              QJsonArray{5, 1, -1, -1}, QJsonArray{6, 0, 1, -1}, QJsonArray{7, 1, 1, -1}};
+        arrange["lanes"] = lanes;
+        json["arrange"] = arrange;
+        const SequencerState bad = sequencerFromJson(json);
+        QCOMPARE(bad.arrangement.lanes[1].size(), std::size_t(2));
+        QCOMPARE(bad.arrangement.lanes[1][1].startBar, 7);
+
+        json.remove("arrange");
+        const SequencerState old = sequencerFromJson(json);
+        QCOMPARE(old.arrangement.endBar(), 0);
+        QVERIFY(!old.songMode);
     }
 
     void badValuesFallBack()

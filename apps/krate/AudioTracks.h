@@ -61,6 +61,12 @@ public:
 
     bool recording() const { return m_recording; }
     void setRecording(bool on);
+    // The arranger's punch range (bars [from, to)): armed tracks record only inside it.
+    void setPunch(bool on, int fromBar, int toBar)
+    {
+        for (Track &t : m_tracks)
+            t.engine->setPunch(on, fromBar, toBar);
+    }
     int revision() const { return m_revision; }
     int frame() const { return m_frame; }
 

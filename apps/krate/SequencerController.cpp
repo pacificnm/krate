@@ -83,6 +83,20 @@ void SequencerController::applyState()
     m_sequencer.setRange(m_state.rangeFrom, m_state.rangeTo);
     m_sequencer.cue(m_state.pattern);
     m_sequencer.setBank(std::make_unique<Bank>(*m_state.bank));
+    m_sequencer.setArrangement(std::make_unique<Arrangement>(m_state.arrangement));
+    m_sequencer.setSongMode(m_state.songMode);
+    ++m_revision;
+    emit changed();
+}
+
+void SequencerController::arrangerEdited(bool arrangementChanged)
+{
+    if (arrangementChanged)
+        m_sequencer.setArrangement(std::make_unique<Arrangement>(m_state.arrangement));
+    m_sequencer.setSongMode(m_state.songMode);
+    m_dirty = true;
+    m_state.modified = true;
+    m_saveTimer.start();
     ++m_revision;
     emit changed();
 }

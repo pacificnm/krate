@@ -173,6 +173,7 @@ void RackController::setFocus(int device)
     setMixerShown(false);
     setSongShown(false);
     setSeqShown(false);
+    setArrangeShown(false);
 }
 
 int RackController::keysChannel() const
@@ -196,6 +197,7 @@ void RackController::setMixerShown(bool shown)
     if (shown) {
         setSongShown(false);
         setSeqShown(false);
+        setArrangeShown(false);
     }
     m_mixerShown = shown;
     emit mixerShownChanged();
@@ -208,6 +210,7 @@ void RackController::setSongShown(bool shown)
     if (shown) {
         setMixerShown(false);
         setSeqShown(false);
+        setArrangeShown(false);
     }
     m_songShown = shown;
     emit songShownChanged();
@@ -220,9 +223,23 @@ void RackController::setSeqShown(bool shown)
     if (shown) {
         setMixerShown(false);
         setSongShown(false);
+        setArrangeShown(false);
     }
     m_seqShown = shown;
     emit seqShownChanged();
+}
+
+void RackController::setArrangeShown(bool shown)
+{
+    if (shown == m_arrangeShown)
+        return;
+    if (shown) {
+        setMixerShown(false);
+        setSongShown(false);
+        setSeqShown(false);
+    }
+    m_arrangeShown = shown;
+    emit arrangeShownChanged();
 }
 
 bool RackController::playing() const { return m_transport.playing(); }
@@ -712,6 +729,7 @@ void RackController::poll()
         setMixerShown(false);
         setSongShown(false);
         setSeqShown(false);
+        setArrangeShown(false);
     }
     if (const bool playing = m_transport.playing(); playing != m_shownPlaying) { // an instrument's RUN, or a song's end
         m_shownPlaying = playing;

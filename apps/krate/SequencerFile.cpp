@@ -6,6 +6,80 @@
 
 using namespace krate::seq;
 
+namespace {
+
+QJsonObject arrangeToJson(const SequencerState &state)
+{
+    QJsonArray lanes;
+    for (const auto &lane : state.arrangement.lanes) {
+        QJsonArray clips;
+        for (const Clip &c : lane)
+            clips.append(QJsonArray{c.startBar, c.bars, c.pattern, c.midi});
+        lanes.append(clips);
+    }
+    QJsonArray midi;
+    for (const MidiClip &m : state.arrangement.midi) {
+        QJsonArray notes;
+        for (const ClipNote &n : m.notes)
+            notes.append(QJsonArray{qint64(n.start), qint64(n.length), n.pitch, n.velocity});
+        midi.append(notes);
+    }
+    return {{QStringLiteral("songMode"), state.songMode},
+            {QStringLiteral("start"), state.startBar},
+            {QStringLiteral("loop"), QJsonArray{state.loopOn, state.loopFrom, state.loopTo}},
+            {QStringLiteral("punch"), QJsonArray{state.punchOn, state.punchFrom, state.punchTo}},
+            {QStringLiteral("lanes"), lanes},
+            {QStringLiteral("midi"), midi}};
+}
+
+void arrangeFromJson(const QJsonObject &json, SequencerState &state)
+{
+    state.songMode = json.value(u"songMode").toBool(false);
+    state.startBar = std::clamp(json.value(u"start").toInt(0), 0, kMaxBars - 1);
+    const auto range = [](const QJsonValue &v, bool &on, int &from, int &to) {
+        const QJsonArray a = v.toArray();
+        if (a.size() < 3)
+            return;
+        from = std::clamp(a[1].toInt(0), 0, kMaxBars - 1);
+        to = std::clamp(a[2].toInt(from + 4), from + 1, kMaxBars);
+        on = a[0].toBool(false);
+    };
+    range(json.value(u"loop"), state.loopOn, state.loopFrom, state.loopTo);
+    range(json.value(u"punch"), state.punchOn, state.punchFrom, state.punchTo);
+    for (const QJsonValue &v : json.value(u"midi").toArray()) {
+        MidiClip clip;
+        for (const QJsonValue &n : v.toArray()) {
+            const QJsonArray a = n.toArray();
+            if (a.size() < 4 || a[0].toInteger(-1) < 0 || a[1].toInteger(0) < 1 || a[2].toInt(-1) < 0 || a[2].toInt() > 127)
+                continue;
+            clip.notes.push_back({std::uint32_t(a[0].toInteger()), std::uint32_t(a[1].toInteger()),
+                                  std::uint8_t(a[2].toInt()), std::uint8_t(std::clamp(a[3].toInt(100), 1, 127))});
+        }
+        std::stable_sort(clip.notes.begin(), clip.notes.end(),
+                         [](const ClipNote &a, const ClipNote &b) { return a.start < b.start; });
+        state.arrangement.midi.push_back(std::move(clip));
+    }
+    const QJsonArray lanes = json.value(u"lanes").toArray();
+    for (int t = 0; t < kTracks && t < lanes.size(); ++t) {
+        auto &lane = state.arrangement.lanes[std::size_t(t)];
+        for (const QJsonValue &v : lanes[t].toArray()) {
+            const QJsonArray a = v.toArray();
+            if (a.size() < 4)
+                continue;
+            Clip c{a[0].toInt(-1), a[1].toInt(0), a[2].toInt(-1), a[3].toInt(-1)};
+            const bool kind = (c.pattern >= 0 && c.pattern < kPatterns && c.midi < 0)
+                              || (c.midi >= 0 && c.midi < int(state.arrangement.midi.size()) && c.pattern < 0);
+            if (c.startBar < 0 || c.bars < 1 || c.endBar() > kMaxBars || !kind)
+                continue;
+            if (!lane.empty() && lane.back().endBar() > c.startBar)
+                continue; // out of order or overlapping
+            lane.push_back(c);
+        }
+    }
+}
+
+} // namespace
+
 QJsonObject sequencerToJson(const SequencerState &state)
 {
     QJsonArray tracks;
@@ -42,7 +116,8 @@ QJsonObject sequencerToJson(const SequencerState &state)
             {QStringLiteral("rangeTo"), state.rangeTo + 1},
             {QStringLiteral("chain"), chain},
             {QStringLiteral("tracks"), tracks},
-            {QStringLiteral("patterns"), patterns}};
+            {QStringLiteral("patterns"), patterns},
+            {QStringLiteral("arrange"), arrangeToJson(state)}};
 }
 
 SequencerState sequencerFromJson(const QJsonObject &json)
@@ -74,6 +149,7 @@ SequencerState sequencerFromJson(const QJsonObject &json)
         state.targets[std::size_t(t)] = o.value(u"target").toString();
         state.mutes[std::size_t(t)] = o.value(u"mute").toBool(false);
     }
+    arrangeFromJson(json.value(u"arrange").toObject(), state);
     const QJsonArray patterns = json.value(u"patterns").toArray();
     for (int i = 0; i < kPatterns && i < patterns.size(); ++i) {
         const QJsonObject o = patterns[i].toObject();

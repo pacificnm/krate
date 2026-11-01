@@ -13,6 +13,7 @@
 #include <QQuickStyle>
 #include <QStandardPaths>
 
+#include "ArrangeController.h"
 #include "AudioTracks.h"
 #include "BackingInstrument.h"
 #include "RackController.h"
@@ -147,6 +148,8 @@ int main(int argc, char *argv[])
                                     rackController.setSongShown(!rackController.songShown());
                                 else if (action == u"seq")
                                     rackController.setSeqShown(!rackController.seqShown());
+                                else if (action == u"arrange")
+                                    rackController.setArrangeShown(!rackController.arrangeShown());
                                 else if (SequencerController *s = sequencerActions; s && action.startsWith(u"seq")) {
                                     if (action == u"seqrun")
                                         s->toggleRun();
@@ -180,6 +183,8 @@ int main(int argc, char *argv[])
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/sequencer.json"), nullptr);
     sequencerController.load();
     sequencerActions = &sequencerController;
+    // The arranger (docs/DAW.md, D3): the sequence's song, start, loop and punch.
+    ArrangeController arrangeController(sequencerController, transport, &audioTracks, nullptr);
     sequencerController.setRunControl(&runControl);
 
     // The Song screen and the song library (~/.local/share/krate/library: the

@@ -8,6 +8,8 @@ qt_add_qml_module(krate
     IMPORTS Krate
     DEPENDENCIES QtQuick # TabView is a QQuickPaintedItem
     SOURCES
+        ArrangeController.h
+        ArrangeController.cpp
         AudioTracks.h
         AudioTracks.cpp
         BackingInstrument.h
@@ -46,6 +48,7 @@ qt_add_qml_module(krate
         qml/SeqScreen.qml
         qml/LibraryPanel.qml
         qml/AudioTrackPanel.qml
+        qml/ArrangeScreen.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(krate PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSION}")
@@ -126,12 +129,13 @@ add_test(NAME tst_songimport COMMAND tst_songimport)
 
 # The sequencer screen's controller.
 add_executable(tst_seqcontroller tests/tst_seqcontroller.cpp SequencerController.h SequencerController.cpp
+               ArrangeController.h ArrangeController.cpp
                SequencerFile.h SequencerFile.cpp NoteTargets.h NoteTargets.cpp SongImport.h SongImport.cpp
                RackRunControl.h RackRunControl.cpp RackSounds.h RackSounds.cpp SongLibrary.h SongLibrary.cpp
                RackController.h RackController.cpp)
 target_include_directories(tst_seqcontroller PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_seqcontroller PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_seqcontroller PRIVATE krate_seq krate_song krate_rack krate_app Qt6::Sql Qt6::Qml Qt6::Test)
+target_link_libraries(tst_seqcontroller PRIVATE krate_seq krate_song krate_rack krate_rec krate_app Qt6::Sql Qt6::Qml Qt6::Test)
 add_test(NAME tst_seqcontroller COMMAND tst_seqcontroller)
 
 # The song library's database, with generated files.

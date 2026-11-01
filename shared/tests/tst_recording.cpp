@@ -31,6 +31,7 @@ class TestRecording : public QObject
         AudioTrack track;
         std::uint64_t played = 0; // input samples fed so far
         double beat = 0.0;
+        double bpm = 120.0;
         std::vector<float> l = std::vector<float>(kBlock), r = std::vector<float>(kBlock);
         std::vector<float> a = std::vector<float>(kBlock), b = std::vector<float>(kBlock);
         Rig() { track.prepare(kRate, kBlock); }
@@ -46,12 +47,12 @@ class TestRecording : public QObject
             TransportState t;
             t.playing = playing;
             t.restarted = restarted;
-            t.bpm = 120.0;
+            t.bpm = bpm;
             t.beatAtBlockStart = playing ? beat : 0.0;
             track.process(AudioBlock{outputs, kBlock, nullptr, 0, &t, inputs});
             played += kBlock;
             if (playing)
-                beat += kBlock * 2.0 / kRate; // 120 BPM: 2 beats a second
+                beat += kBlock * bpm / 60.0 / kRate;
         }
     };
 
@@ -223,6 +224,37 @@ private slots:
         QCOMPARE(left[47990], 0.25f);
         QCOMPARE(left[48010], 0.0f);      // a ended
         rig.track.setPlaylist(nullptr);
+    }
+
+    // Punch (docs/DAW.md, D3): bar 2 only, beats 4..8, at 110 BPM frames
+    // 104727.3..209454.5: in at the first sample on or after it (104728), out
+    // before 209455, both mid-block.
+    void punchesInAndOut()
+    {
+        QTemporaryDir dir;
+        Rig rig;
+        rig.bpm = 110.0;
+        Recorder recorder({&rig.track}, [&](int) { return dir.filePath("punch.wav").toStdString(); });
+        rig.track.setParam(AudioTrack::Arm, 1.0f);
+        rig.track.setRecordEnabled(true);
+        rig.track.setPunch(true, 1, 2);
+        rig.block(true, true);
+        QVERIFY(!rig.track.recording());
+        while (rig.played < 240000) {
+            rig.block(true);
+            recorder.poll();
+        }
+        QVERIFY(!rig.track.recording());
+        rig.block(false);
+        recorder.poll();
+        const auto finished = recorder.takeFinished();
+        QCOMPARE(finished.size(), std::size_t(1));
+        QCOMPARE(finished[0].frames, std::uint64_t(209455 - 104728));
+        QVERIFY(std::fabs(finished[0].startBeat - 104728.0 * 110.0 / 60.0 / kRate) < 1e-9);
+        WavData data;
+        QVERIFY(readWavFile(finished[0].path, &data));
+        QVERIFY(std::fabs(data.left[0] - inL(104728)) < 1e-6f);
+        QVERIFY(std::fabs(data.left.back() - inL(209454)) < 1e-6f);
     }
 
     // A new take waits until the last one is written.

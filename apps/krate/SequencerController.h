@@ -196,6 +196,11 @@ public:
 
     // The GUI's copy (tests, the Song screen's import).
     const SequencerState &state() const { return m_state; }
+    // The arranger (ArrangeController, docs/DAW.md D3) edits its part of the
+    // state, then says so: the player gets the arrangement (if it changed)
+    // and SONG mode, and it's saved with the sequence.
+    SequencerState &arrangerState() { return m_state; }
+    void arrangerEdited(bool arrangementChanged);
 
 signals:
     void changed();

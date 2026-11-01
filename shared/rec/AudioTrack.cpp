@@ -86,22 +86,39 @@ void AudioTrack::process(const AudioBlock &block) noexcept
     if (peak > m_inputPeak.load(std::memory_order_relaxed))
         m_inputPeak.store(peak, std::memory_order_relaxed);
 
-    // Recording: armed, REC on, the transport playing. A play from the top
-    // (restarted) is a new take.
-    const bool want = armed && m_recordEnabled.load(std::memory_order_relaxed) && t.playing;
+    // Recording: armed, REC on, the transport playing (inside the punch
+    // range, when there is one: frames [from, to) of this block). A play from
+    // the top (restarted) is a new take.
+    std::uint32_t from = 0, to = n;
+    double framesPerBeat = 0.0;
+    if (const std::uint64_t punch = m_punch.load(std::memory_order_relaxed); punch && t.playing && t.bpm > 0.0) {
+        framesPerBeat = 60.0 / t.bpm * m_rate;
+        const auto frameOf = [&](double beat) {
+            return std::uint32_t(std::clamp(std::ceil((beat - t.beatAtBlockStart) * framesPerBeat - 1e-6), 0.0, double(n)));
+        };
+        from = frameOf(double(punch >> 32) * 4.0);
+        to = frameOf(double(punch & 0xFFFFFFFFu) * 4.0);
+    }
+    const bool want = armed && m_recordEnabled.load(std::memory_order_relaxed) && t.playing && from < to;
     bool recording = m_recording.load(std::memory_order_relaxed);
     if (recording && (!want || t.restarted))
         recording = false;
     if (want && !recording && !m_writerBusy.load(std::memory_order_acquire)) {
         m_writerBusy.store(true, std::memory_order_relaxed);
-        m_takeStartBeat.store(t.beatAtBlockStart, std::memory_order_relaxed);
+        m_takeStartBeat.store(t.beatAtBlockStart + (from > 0 ? double(from) / framesPerBeat : 0.0),
+                              std::memory_order_relaxed);
         m_takeChannels.store(inputMode == Stereo ? 2 : 1, std::memory_order_relaxed);
         m_takeId.fetch_add(1, std::memory_order_release);
         recording = true;
+    } else if (recording && from > 0) {
+        from = 0; // recording since an earlier block: the whole of this one up to `to`
+    }
+    if (recording) {
+        m_ring.write(m_inL.data() + from, m_inR.data() + from, to - from);
+        if (to < n)
+            recording = false; // punched out: everything up to it is in the buffer
     }
     m_recording.store(recording, std::memory_order_release);
-    if (recording)
-        m_ring.write(m_inL.data(), m_inR.data(), n);
 
     // Output: the take (not while this track records over it), and the input if monitored.
     float *outL = block.outputs[0];

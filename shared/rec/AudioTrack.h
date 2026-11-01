@@ -72,6 +72,14 @@ public:
 
     // --- GUI thread
     void setRecordEnabled(bool on) noexcept { m_recordEnabled.store(on, std::memory_order_relaxed); }
+    // Punch (docs/DAW.md, D3): while on, records only inside bars [fromBar,
+    // toBar), starting and stopping on the exact sample.
+    void setPunch(bool on, int fromBar, int toBar) noexcept
+    {
+        const bool valid = on && fromBar >= 0 && toBar > fromBar;
+        m_punch.store(valid ? std::uint64_t(std::uint32_t(fromBar)) << 32 | std::uint32_t(toBar) : 0,
+                      std::memory_order_relaxed);
+    }
     // The playlist to play (owned by the caller, with its takes), returning
     // the one before: free it (and takes only it used) once blocks() has
     // moved on by two (the audio thread may be using it).
@@ -102,6 +110,7 @@ private:
     std::vector<float> m_inL, m_inR; // this block's input, as recorded
 
     std::atomic<bool> m_recordEnabled{false};
+    std::atomic<std::uint64_t> m_punch{0}; // fromBar << 32 | toBar, 0 = off
     std::atomic<bool> m_recording{false};
     std::atomic<bool> m_writerBusy{false};
     std::atomic<std::uint32_t> m_takeId{0};

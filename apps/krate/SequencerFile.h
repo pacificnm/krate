@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QString>
 
+#include "seq/Arrangement.h"
 #include "seq/Pattern.h"
 
 // The rack sequencer's file, ~/.local/share/krate/sequencer.json
@@ -13,7 +14,10 @@
 // "krimson:B"; "" = none) and mute, RUN, CHAIN, RANGE (from, to: 1-based in
 // the file), the chosen pattern and the
 // chain ([pattern, repeats], 0-based pattern). Notes are [start, length,
-// pitch, velocity] in ticks (96 per beat).
+// pitch, velocity] in ticks (96 per beat). "arrange" holds the arranger's
+// song (docs/DAW.md, D3): SONG mode, where play starts, the loop and punch
+// ranges (bars, 0-based, [from, to)), each lane's clips [startBar, bars,
+// pattern, midi] (-1 = not that kind) and the MIDI clips' notes.
 struct SequencerState
 {
     std::unique_ptr<krate::seq::Bank> bank = std::make_unique<krate::seq::Bank>();
@@ -24,6 +28,12 @@ struct SequencerState
     bool rangeMode = false;
     int rangeFrom = 0, rangeTo = 3; // 0-based, inclusive
     int pattern = 0;
+    // The arranger.
+    krate::seq::Arrangement arrangement;
+    bool songMode = false;
+    int startBar = 0;
+    bool loopOn = false, punchOn = false;
+    int loopFrom = 0, loopTo = 4, punchFrom = 0, punchTo = 4;
     // The library's sequence this came from (docs/SEQUENCER.md#saved-sequences;
     // 0 = none), its name, and whether it changed since it was opened or saved.
     qint64 sequenceId = 0;
