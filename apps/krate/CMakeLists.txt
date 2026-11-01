@@ -8,6 +8,8 @@ qt_add_qml_module(krate
     IMPORTS Krate
     DEPENDENCIES QtQuick # TabView is a QQuickPaintedItem
     SOURCES
+        AudioTracks.h
+        AudioTracks.cpp
         BackingInstrument.h
         BackingInstrument.cpp
         RackController.h
@@ -43,6 +45,7 @@ qt_add_qml_module(krate
         qml/SongScreen.qml
         qml/SeqScreen.qml
         qml/LibraryPanel.qml
+        qml/AudioTrackPanel.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(krate PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSION}")
@@ -57,7 +60,7 @@ target_link_libraries(krate PRIVATE
     krunch_ui krunch_uiplugin
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin
-    krate_rack krate_host krate_song krate_seq
+    krate_rack krate_host krate_song krate_seq krate_rec
     Qt6::Gui Qt6::Sql Qt6::Quick Qt6::QuickControls2
 )
 
@@ -137,3 +140,11 @@ target_include_directories(tst_library PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_library PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_library PRIVATE Qt6::Sql Qt6::Test)
 add_test(NAME tst_library COMMAND tst_library)
+
+# The audio tracks' controller: takes recorded, kept, reloaded, deleted.
+add_executable(tst_audiotracks tests/tst_audiotracks.cpp AudioTracks.h AudioTracks.cpp
+               RackController.h RackController.cpp RackRunControl.h RackRunControl.cpp)
+target_include_directories(tst_audiotracks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_audiotracks PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_audiotracks PRIVATE krate_rec krate_rack krate_app Qt6::Qml Qt6::Test)
+add_test(NAME tst_audiotracks COMMAND tst_audiotracks)

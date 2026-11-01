@@ -13,6 +13,7 @@
 #include <QQuickStyle>
 #include <QStandardPaths>
 
+#include "AudioTracks.h"
 #include "BackingInstrument.h"
 #include "RackController.h"
 #include "RackMidiLearn.h"
@@ -51,6 +52,9 @@ Q_IMPORT_QML_PLUGIN(KlangPlugin)
 Q_IMPORT_QML_PLUGIN(KrunchPlugin)
 Q_IMPORT_QML_PLUGIN(KlickPlugin)
 
+// The host gives the rack the master and every device its own stereo output.
+static_assert(krate::JackHost::kMaxChannels >= 2 + 2 * krate::Rack::kMaxDevices);
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
@@ -80,6 +84,12 @@ int main(int argc, char *argv[])
     krate::Transport transport;
     krate::Rack rack;
     krate::song::SongPlayer songPlayer; // plays a loaded song into the rack (docs/SONG_PLAYER.md)
+    // The audio tracks (docs/DAW.md, D2): out of the rack until added from +;
+    // their takes in ~/.local/share/krate/recordings.
+    AudioTracksController audioTracks(
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/recordings"), nullptr);
+    const qsizetype firstTrack = entries.size();
+    entries.append(audioTrackEntries(audioTracks));
     // Last: the Song screen's backing track (a mixer strip, no panel).
     entries.append(backingEntry(songPlayer));
     std::vector<std::unique_ptr<krate::InstrumentInstance>> instances;
@@ -111,7 +121,11 @@ int main(int argc, char *argv[])
         ids.push_back(entry.id.toStdString());
     }
 
+    for (int i = 0; i < AudioTracksController::kTracks; ++i)
+        audioTracks.setDevice(i, int(firstTrack) + i); // devices are added in the entries' order
+
     RackController rackController(rack, transport, entries, nullptr);
+    audioTracks.setRack(&rackController);
     rackController.setRunControl(&runControl);
     QObject::connect(&rackController, &RackController::playingChanged, &runControl, &RackRunControl::transportChanged);
 
@@ -122,9 +136,11 @@ int main(int argc, char *argv[])
                                 instances[std::size_t(i)].get()});
     SequencerController *sequencerActions = nullptr; // set below, once the sequencer exists
     RackMidiLearn midiLearn(rack, std::move(learnDevices),
-                            [&rackController, &sequencerActions](const QString &action) {
+                            [&rackController, &sequencerActions, &audioTracks](const QString &action) {
                                 if (action == u"playstop")
                                     rackController.setPlaying(!rackController.playing());
+                                else if (action == u"record")
+                                    audioTracks.setRecording(!audioTracks.recording());
                                 else if (action == u"mixer")
                                     rackController.setMixerShown(!rackController.mixerShown());
                                 else if (action == u"song")
@@ -192,6 +208,7 @@ int main(int argc, char *argv[])
     processor.setEventSource(&eventSources);
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
+    audioTracks.setRoundTrip([&jack] { return int(jack.roundTripFrames()); });
     host.setMidiInputMatch(session.midiInput());
     host.setRequestedBufferSize(session.bufferSize());
     host.setInputPorts(session.audioInputs());
@@ -212,8 +229,8 @@ int main(int argc, char *argv[])
     krate::installScreenshotHook(engine);
 
     const int result = app.exec();
+    audioTracks.finish(); // a take still recording is kept, while the rack and the host are here
     if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
-        if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
         transport.setPlaying(false);
     return result;
 }

@@ -60,7 +60,6 @@ int main(int argc, char *argv[])
 
     const int result = app.exec();
     if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
-        if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
         transport.setPlaying(false);
     return result;
 }

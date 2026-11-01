@@ -39,6 +39,31 @@ Rectangle {
             }
         }
 
+        Column { // recording (docs/DAW.md, D2): armed audio tracks record while playing
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            PanelButton {
+                width: 58
+                height: 46
+                text: "Record: armed audio tracks record while the transport plays"
+                hasLed: true
+                ledOn: Tracks.recording
+                tint: Tracks.recording ? Theme.ledOn : "transparent"
+                onClicked: Tracks.recording = !Tracks.recording
+
+                LearnOverlay {
+                    anchors.fill: parent
+                    paramKey: "rack:record"
+                    round: false
+                }
+            }
+            PanelLabel {
+                width: 58
+                text: "REC"
+                font.pixelSize: 10
+            }
+        }
+
         Led {
             anchors.verticalCenter: parent.verticalCenter
             width: 18

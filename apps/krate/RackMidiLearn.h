@@ -23,7 +23,7 @@ class InstrumentInstance;
 // screen): a parameter key maps as fixed (that instrument's knob), or as
 // follow-focus when followFocus is on; an action key (e.g. "pattern1") maps as
 // that instrument's button. Rack keys: "rack:playstop", "rack:mixer", "rack:song", "rack:seq", the sequencer's
-// "rack:seqrun", "rack:seqchain", "rack:seqnext", "rack:seqprevious", "rack:seqpattern1".."16", "rack:seqrange" (the
+// "rack:seqrun", "rack:seqchain", "rack:seqnext", "rack:seqprevious", "rack:seqpattern1".."16", "rack:seqrange", "rack:record" (the
 // rack's own actions, kRackActions), "rack:focus:<n>", "rack:next",
 // "rack:previous", and the mixer's "rack:mix:<n>:fader|pan|mute|solo|lowgain|lowfreq|midgain|midfreq|midq|highgain|highfreq|revsend|dlysend" (strip
 // n) and "rack:mix:master:fader|revlevel|revsize|dlylevel|dlytime|dlyfeedback". Notes can be learned for buttons (mute and
@@ -50,6 +50,7 @@ public:
         for (int p = 1; p <= 16; ++p) // the sequencer's pattern buttons
             list << QStringLiteral("seqpattern%1").arg(p);
         list << QStringLiteral("seqrange");
+        list << QStringLiteral("record"); // REC (docs/DAW.md, D2)
         return list;
     }();
     // Mixer controls, indexed by krate::Rack::MixerControl.

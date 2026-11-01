@@ -281,6 +281,8 @@ Window {
                     x: panel ? (slot.width - panel.width * s) / 2 : 0
                     y: panel ? (slot.height - panel.height * s) / 2 : 0
                     transform: Scale { xScale: loader.s; yScale: loader.s }
+                    // A panel shared by several devices (the audio tracks) is told which it is.
+                    onLoaded: if (item && item.hasOwnProperty("rackDevice")) item.rackDevice = slot.index
                 }
             }
         }
@@ -392,7 +394,7 @@ Window {
                     required property int index
                     required property string modelData
                     readonly property bool inRack: Rack.present[index] === true
-                    visible: Rack.removable(index)
+                    visible: Rack.removable(index) && !Rack.deviceIds[index].startsWith("audio") // the tracks: below
                     spacing: 12
                     PanelButton {
                         width: 110
@@ -419,6 +421,33 @@ Window {
                             font.family: Theme.labelFont
                             font.pixelSize: 12
                         }
+                    }
+                }
+            }
+            Text {
+                topPadding: 8
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "AUDIO TRACKS. Each records your interface's inputs (or another instrument) and plays the take. Lit: in the rack."
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+                font.bold: true
+            }
+            Row {
+                spacing: 8
+                Repeater {
+                    model: Rack.deviceIds.map((id, i) => id.startsWith("audio") ? i : -1).filter(i => i >= 0)
+                    PanelButton {
+                        id: trackButton
+                        required property int modelData
+                        readonly property bool inRack: Rack.present[modelData] === true
+                        width: 64
+                        height: 36
+                        faceText: Rack.deviceNames[modelData].replace("Audio ", "")
+                        text: (inRack ? "Remove " : "Add ") + Rack.deviceNames[modelData] + (inRack ? " from the rack" : " to the rack")
+                        tint: inRack ? Theme.labelOrange : "transparent"
+                        onClicked: Rack.setPresent(modelData, !inRack)
                     }
                 }
             }
