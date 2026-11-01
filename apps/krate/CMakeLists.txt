@@ -1,5 +1,7 @@
 # krate: the Krate rack app.
 
+find_package(X11 REQUIRED) # plugin editors' windows (docs/DAW.md, D7)
+
 qt_add_executable(krate main.cpp)
 qt_add_qml_module(krate
     URI KrateRack
@@ -8,6 +10,10 @@ qt_add_qml_module(krate
     IMPORTS Krate
     DEPENDENCIES QtQuick # TabView is a QQuickPaintedItem
     SOURCES
+        PluginSlots.h
+        PluginSlots.cpp
+        PluginEditor.h
+        PluginEditor.cpp
         ExportController.h
         ExportController.cpp
         ArrangeController.h
@@ -51,6 +57,7 @@ qt_add_qml_module(krate
         qml/LibraryPanel.qml
         qml/AudioTrackPanel.qml
         qml/ArrangeScreen.qml
+        qml/PluginPanel.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(krate PRIVATE PROJECT_VERSION_STRING="${PROJECT_VERSION}")
@@ -65,7 +72,7 @@ target_link_libraries(krate PRIVATE
     krunch_ui krunch_uiplugin
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin
-    krate_rack krate_host krate_song krate_seq krate_rec
+    krate_rack krate_host krate_song krate_seq krate_rec krate_plugin X11::X11
     Qt6::Gui Qt6::Sql Qt6::Quick Qt6::QuickControls2
 )
 

@@ -94,6 +94,8 @@ add_library(krate-test-clap MODULE plugin/testplugin/KrateTestPlugin.cpp)
 set_target_properties(krate-test-clap PROPERTIES PREFIX "" SUFFIX ".clap" OUTPUT_NAME "krate-test"
                       LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/clap CXX_VISIBILITY_PRESET hidden)
 target_include_directories(krate-test-clap PRIVATE ${PROJECT_SOURCE_DIR}/third_party/clap/include)
+find_package(X11 REQUIRED)
+target_link_libraries(krate-test-clap PRIVATE X11::X11)
 
 # --- krate_song: songs to play along with (tempo map, MIDI files, .gp tab files, the player); no Qt
 add_library(krate_song STATIC

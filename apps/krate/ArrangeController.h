@@ -149,6 +149,13 @@ public:
     // The transport's start and loop, the tracks' punch, put back from the
     // sequence (after an export used the transport its own way).
     void reapply() { apply(); }
+    // A device's knobs changed (a plugin loaded into a slot): its lanes found again.
+    void devicesChanged()
+    {
+        handOverAutomation();
+        ++m_revision;
+        emit changed();
+    }
     // The beat the song ends on: its last clip, MIDI or audio (at the tempo).
     double songEndBeat(double bpm) const;
 

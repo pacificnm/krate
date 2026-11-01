@@ -63,10 +63,10 @@ Window {
         x: 16
         spacing: 8
         // Tabs fit the window: the screens' tabs keep their size, the instruments' share the rest.
-        readonly property int screenTabWidth: 112
+        readonly property int screenTabWidth: instrumentTabs > 8 ? 100 : 112 // narrower with more in the rack
         // Only the instruments in the rack have tabs (docs/DAW.md, D1).
         readonly property int instrumentTabs: Math.max(1, Rack.panelComponents.filter((c, i) => c !== "" && Rack.present[i]).length)
-        readonly property real tabWidth: Math.max(72, Math.min(150, (root.width - 32 - 3 * 40 - 16 - 4 * screenTabWidth
+        readonly property real tabWidth: Math.max(60, Math.min(150, (root.width - 32 - 3 * 40 - 16 - 4 * screenTabWidth
                                                                      - (instrumentTabs + 7) * spacing) / instrumentTabs))
 
         PanelButton { // focus previous (learnable)
@@ -442,7 +442,8 @@ Window {
                     required property int index
                     required property string modelData
                     readonly property bool inRack: Rack.present[index] === true
-                    visible: Rack.removable(index) && !Rack.deviceIds[index].startsWith("audio") // the tracks: below
+                    visible: Rack.removable(index) && !Rack.deviceIds[index].startsWith("audio")
+                             && !Rack.deviceIds[index].startsWith("plugin") // the tracks and plugin slots: below
                     spacing: 12
                     PanelButton {
                         width: 110
@@ -493,6 +494,33 @@ Window {
                         width: 64
                         height: 36
                         faceText: Rack.deviceNames[modelData].replace("Audio ", "")
+                        text: (inRack ? "Remove " : "Add ") + Rack.deviceNames[modelData] + (inRack ? " from the rack" : " to the rack")
+                        tint: inRack ? Theme.labelOrange : "transparent"
+                        onClicked: Rack.setPresent(modelData, !inRack)
+                    }
+                }
+            }
+            Text {
+                topPadding: 8
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "PLUGIN SLOTS. Each holds a CLAP plugin you pick on its panel: an instrument, or an effect fed by another device. Lit: in the rack."
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+                font.bold: true
+            }
+            Row {
+                spacing: 8
+                Repeater {
+                    model: Rack.deviceIds.map((id, i) => id.startsWith("plugin") ? i : -1).filter(i => i >= 0)
+                    PanelButton {
+                        id: slotButton
+                        required property int modelData
+                        readonly property bool inRack: Rack.present[modelData] === true
+                        width: 64
+                        height: 36
+                        faceText: Rack.deviceNames[modelData].replace("Plugin ", "")
                         text: (inRack ? "Remove " : "Add ") + Rack.deviceNames[modelData] + (inRack ? " from the rack" : " to the rack")
                         tint: inRack ? Theme.labelOrange : "transparent"
                         onClicked: Rack.setPresent(modelData, !inRack)

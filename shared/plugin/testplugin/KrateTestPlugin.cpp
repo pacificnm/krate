@@ -1,7 +1,10 @@
 // krate-test.clap: two small CLAP plugins Krate's tests host (docs/DAW.md, D7).
 // "Krate Test Synth": a sine per note (notes as CLAP events or MIDI), Level
 // and Detune knobs, its knobs kept as state. "Krate Test Gain": a stereo
-// effect, one Gain knob. No GUI.
+// effect, one Gain knob. The synth has a small X11 editor (a coloured
+// window inside the one the host gives it) that ticks on a host timer and
+// shows the count in its window's name, so the host's editor and timer
+// support can be checked.
 
 #include <clap/clap.h>
 
@@ -11,6 +14,9 @@
 #include <cstdio>
 #include <cstring>
 #include <numbers>
+#include <string>
+
+#include <X11/Xlib.h>
 
 namespace {
 
@@ -37,6 +43,11 @@ struct Plugin
     // The synth: one note at a time.
     int note = -1;
     double phase = 0.0;
+    // Its editor.
+    Display *display = nullptr;
+    Window window = 0;
+    clap_id timer = CLAP_INVALID_ID;
+    int ticks = 0;
 
     int indexOf(clap_id id) const
     {
@@ -190,9 +201,111 @@ bool noteGet(const clap_plugin *p, std::uint32_t index, bool isInput, clap_note_
 }
 const clap_plugin_note_ports kNotePortsExt{noteCount, noteGet};
 
+// --- the synth's editor (X11)
+constexpr std::uint32_t kGuiWidth = 320, kGuiHeight = 120;
+const clap_host_timer_support *hostTimer(const Plugin *s)
+{
+    return static_cast<const clap_host_timer_support *>(s->host->get_extension(s->host, CLAP_EXT_TIMER_SUPPORT));
+}
+bool guiSupported(const clap_plugin *p, const char *api, bool floating)
+{
+    return self(p)->synth && !floating && !std::strcmp(api, CLAP_WINDOW_API_X11);
+}
+bool guiPreferred(const clap_plugin *, const char **api, bool *floating)
+{
+    *api = CLAP_WINDOW_API_X11;
+    *floating = false;
+    return true;
+}
+bool guiCreate(const clap_plugin *p, const char *api, bool floating)
+{
+    Plugin *s = self(p);
+    if (!guiSupported(p, api, floating) || s->display)
+        return false;
+    s->display = XOpenDisplay(nullptr);
+    if (!s->display)
+        return false;
+    if (const auto *timer = hostTimer(s))
+        timer->register_timer(s->host, 20, &s->timer);
+    return true;
+}
+void guiDestroy(const clap_plugin *p)
+{
+    Plugin *s = self(p);
+    if (s->timer != CLAP_INVALID_ID)
+        if (const auto *timer = hostTimer(s))
+            timer->unregister_timer(s->host, s->timer);
+    s->timer = CLAP_INVALID_ID;
+    if (s->display) {
+        if (s->window)
+            XDestroyWindow(s->display, s->window);
+        XCloseDisplay(s->display);
+    }
+    s->display = nullptr;
+    s->window = 0;
+}
+bool guiScale(const clap_plugin *, double) { return true; }
+bool guiSize(const clap_plugin *, std::uint32_t *w, std::uint32_t *h)
+{
+    *w = kGuiWidth;
+    *h = kGuiHeight;
+    return true;
+}
+bool guiCanResize(const clap_plugin *) { return false; }
+bool guiHints(const clap_plugin *, clap_gui_resize_hints *) { return false; }
+bool guiAdjust(const clap_plugin *, std::uint32_t *, std::uint32_t *) { return false; }
+bool guiSetSize(const clap_plugin *, std::uint32_t w, std::uint32_t h) { return w == kGuiWidth && h == kGuiHeight; }
+bool guiParent(const clap_plugin *p, const clap_window *parent)
+{
+    Plugin *s = self(p);
+    if (!s->display || !parent || std::strcmp(parent->api, CLAP_WINDOW_API_X11))
+        return false;
+    s->window = XCreateSimpleWindow(s->display, Window(parent->x11), 0, 0, kGuiWidth, kGuiHeight, 0, 0, 0x3060A0);
+    XStoreName(s->display, s->window, "krate-test-gui");
+    XFlush(s->display);
+    return true;
+}
+bool guiTransient(const clap_plugin *, const clap_window *) { return false; }
+void guiTitle(const clap_plugin *, const char *) {}
+bool guiShow(const clap_plugin *p)
+{
+    Plugin *s = self(p);
+    if (!s->window)
+        return false;
+    XMapWindow(s->display, s->window);
+    XFlush(s->display);
+    return true;
+}
+bool guiHide(const clap_plugin *p)
+{
+    Plugin *s = self(p);
+    if (!s->window)
+        return false;
+    XUnmapWindow(s->display, s->window);
+    XFlush(s->display);
+    return true;
+}
+const clap_plugin_gui kGuiExt{guiSupported, guiPreferred, guiCreate, guiDestroy, guiScale, guiSize, guiCanResize,
+                              guiHints, guiAdjust, guiSetSize, guiParent, guiTransient, guiTitle, guiShow, guiHide};
+
+void onTimer(const clap_plugin *p, clap_id id)
+{
+    Plugin *s = self(p);
+    if (id != s->timer || !s->window)
+        return;
+    const std::string name = "krate-test-gui ticks=" + std::to_string(++s->ticks);
+    XStoreName(s->display, s->window, name.c_str());
+    XFlush(s->display);
+}
+const clap_plugin_timer_support kTimerExt{onTimer};
+
 // --- the plugin
 bool init(const clap_plugin *) { return true; }
-void destroy(const clap_plugin *p) { delete self(p); }
+void destroy(const clap_plugin *p)
+{
+    guiDestroy(p);
+    delete self(p);
+}
 bool activate(const clap_plugin *p, double rate, std::uint32_t, std::uint32_t)
 {
     self(p)->rate = rate;
@@ -240,8 +353,12 @@ clap_process_status process(const clap_plugin *p, const clap_process *process)
         s->handle(process->in_events->get(process->in_events, next++));
     return CLAP_PROCESS_CONTINUE;
 }
-const void *extension(const clap_plugin *, const char *id)
+const void *extension(const clap_plugin *p, const char *id)
 {
+    if (self(p)->synth && !std::strcmp(id, CLAP_EXT_GUI))
+        return &kGuiExt;
+    if (self(p)->synth && !std::strcmp(id, CLAP_EXT_TIMER_SUPPORT))
+        return &kTimerExt;
     if (!std::strcmp(id, CLAP_EXT_PARAMS))
         return &kParamsExt;
     if (!std::strcmp(id, CLAP_EXT_STATE))

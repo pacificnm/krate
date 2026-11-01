@@ -91,6 +91,7 @@ private slots:
         QCOMPARE(synth->parameters()[1].detents, 25); // -12..12, stepped
         QCOMPARE(synth->param(0), 0.5f);              // Level's default, 0.5 of 0..1
         QCOMPARE(synth->inputChannels(), 0);
+        QVERIFY(synth->gui()); // its editor (X11, made only when opened)
 
         PluginSlot slot;
         slot.prepare(kRate, kBlock);
@@ -143,6 +144,7 @@ private slots:
         auto gain = Instance::create(library(), "com.krate.test.gain", &services);
         QVERIFY(gain);
         QCOMPARE(gain->inputChannels(), 2);
+        QVERIFY(!gain->gui()); // no editor
         QVERIFY(gain->activate(kRate, kBlock));
         PluginSlot slot;
         slot.setInstance(gain.get());

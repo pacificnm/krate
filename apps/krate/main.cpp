@@ -15,6 +15,7 @@
 
 #include "ArrangeController.h"
 #include "AudioTracks.h"
+#include "PluginSlots.h"
 #include "ExportController.h"
 #include "BackingInstrument.h"
 #include "RackController.h"
@@ -92,6 +93,13 @@ int main(int argc, char *argv[])
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/recordings"), nullptr);
     const qsizetype firstTrack = entries.size();
     entries.append(audioTrackEntries(audioTracks));
+    // CLAP plugins (docs/DAW.md, D7): eight slots, out of the rack until added;
+    // which plugin each holds, and its state, in ~/.config/krate/plugins.json.
+    PluginSlotsController pluginSlots(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
+                                          + QStringLiteral("/plugins.json"),
+                                      krate::clap::defaultSearchPaths(), nullptr);
+    const qsizetype firstPlugin = entries.size();
+    entries.append(pluginSlotEntries(pluginSlots));
     // Last: the Song screen's backing track (a mixer strip, no panel).
     entries.append(backingEntry(songPlayer));
     std::vector<std::unique_ptr<krate::InstrumentInstance>> instances;
@@ -125,6 +133,8 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < AudioTracksController::kTracks; ++i)
         audioTracks.setDevice(i, int(firstTrack) + i); // devices are added in the entries' order
+    for (int i = 0; i < PluginSlotsController::kSlots; ++i)
+        pluginSlots.setDevice(i, int(firstPlugin) + i);
 
     RackController rackController(rack, transport, entries, nullptr);
     audioTracks.setRack(&rackController);
@@ -237,6 +247,11 @@ int main(int argc, char *argv[])
                               QStandardPaths::writableLocation(QStandardPaths::MusicLocation) + QStringLiteral("/Krate"),
                               nullptr);
     exporter.setHost({[&jack] { jack.suspend(); }, [&jack] { jack.resume(); }, [&jack] { return double(jack.sampleRate()); }});
+    // The plugins as they were, at the host's rate.
+    pluginSlots.setHostRate([&jack] { return double(jack.sampleRate()); });
+    QObject::connect(&pluginSlots, &PluginSlotsController::pluginsChanged, &arrangeController,
+                     &ArrangeController::devicesChanged);
+    pluginSlots.restore();
     audioTracks.setRoundTrip([&jack] { return int(jack.roundTripFrames()); });
     host.setMidiInputMatch(session.midiInput());
     host.setRequestedBufferSize(session.bufferSize());
@@ -259,6 +274,7 @@ int main(int argc, char *argv[])
 
     const int result = app.exec();
     audioTracks.finish(); // a take still recording is kept, while the rack and the host are here
+    pluginSlots.finish(); // the plugins' state kept, each stopped while the host runs
     if (!transport.following()) // a DAW leading over JACK keeps playing when this app closes
         transport.setPlaying(false);
     return result;
