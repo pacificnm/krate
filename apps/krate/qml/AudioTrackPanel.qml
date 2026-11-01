@@ -4,8 +4,9 @@ import QtQuick
 import Krate
 
 // An audio track's panel (docs/DAW.md, D2) at design size 900 x 450: ARM,
-// MONITOR, INPUT and where the input comes from, the input meter, the active
-// take's waveform and the list of takes. REC is on the transport bar.
+// MONITOR, INPUT and where the input comes from, the input meter, the
+// selected take's waveform and the takes, each on the track's lane (where it
+// was recorded, shown in the arranger) or not. REC is on the transport bar.
 Item {
     id: panel
 
@@ -174,7 +175,7 @@ Item {
         }
     }
 
-    // The active take's waveform
+    // The selected take's waveform
     PanelLabel { x: 40; y: 246; text: "TAKE"; font.pixelSize: 12 }
     Rectangle {
         id: wave
@@ -213,7 +214,7 @@ Item {
             width: parent.width - 40
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
-            text: panel.takes.length === 0 ? "No takes yet: ARM, press REC, then PLAY." : "No take playing: pick one from the list."
+            text: panel.takes.length === 0 ? "No takes yet: ARM, press REC, then PLAY." : "Pick a take from the list to see it."
             color: Theme.inkInverse
             opacity: 0.7
             font.family: Theme.labelFont
@@ -221,7 +222,7 @@ Item {
         }
     }
 
-    // The takes, newest last: click one to play it (again to play none)
+    // The takes, newest last: click one to see it; its LED puts it on the lane (it plays) or takes it off
     PanelLabel { x: 590; y: 246; text: "TAKES (" + panel.takes.length + ")"; font.pixelSize: 12 }
     Rectangle {
         x: 590
@@ -249,19 +250,41 @@ Item {
                 width: takeList.width
                 height: 28
                 radius: 3
-                color: modelData.active ? Theme.accentUi : "transparent"
+                color: modelData.selected ? Theme.accentUi : "transparent"
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: Tracks.setActiveTake(panel.track, takeRow.modelData.active ? -1 : takeRow.index)
+                    onClicked: Tracks.selectTake(panel.track, takeRow.index)
+                }
+                Rectangle { // on the lane: lit
+                    id: laneLed
+                    x: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 22
+                    height: 22
+                    radius: 11
+                    color: "transparent"
+                    Led {
+                        anchors.centerIn: parent
+                        width: 12
+                        height: 12
+                        on: takeRow.modelData.onLane
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: Tracks.setOnLane(panel.track, takeRow.index, !takeRow.modelData.onLane)
+                    }
+                    Accessible.role: Accessible.CheckBox
+                    Accessible.checked: takeRow.modelData.onLane
+                    Accessible.name: "Take " + takeRow.modelData.name + " on the lane"
                 }
                 Text {
-                    x: 8
+                    x: 30
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 90
+                    width: parent.width - 112
                     elide: Text.ElideRight
                     text: takeRow.modelData.name.replace(/^take-/, "")
-                    color: takeRow.modelData.active ? Theme.inkInverse : Theme.lcdInk
+                    color: takeRow.modelData.selected ? Theme.inkInverse : Theme.lcdInk
                     font.family: "monospace"
                     font.pixelSize: 12
                 }
@@ -270,7 +293,7 @@ Item {
                     anchors.rightMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
                     text: takeRow.modelData.seconds.toFixed(1) + " s" + (takeRow.modelData.mono ? " M" : "")
-                    color: takeRow.modelData.active ? Theme.inkInverse : Theme.lcdInk
+                    color: takeRow.modelData.selected ? Theme.inkInverse : Theme.lcdInk
                     font.family: "monospace"
                     font.pixelSize: 12
                 }

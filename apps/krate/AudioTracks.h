@@ -3,6 +3,7 @@
 #include <array>
 #include <functional>
 #include <future>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -23,14 +24,17 @@ class RackController;
 // QML singleton "Tracks": Krate's audio tracks (docs/DAW.md, D2). Eight
 // tracks, each a rack device (added from +, like an instrument): it records
 // its input (the interface, or another device in stereo) into takes, WAV
-// files in ~/.local/share/krate/recordings/audioN/, and plays the active one.
-// REC (the transport bar) arms recording: armed tracks record while playing.
+// files in ~/.local/share/krate/recordings/audioN/. REC (the transport bar)
+// arms recording: armed tracks record while playing.
 //
-// The disk thread (Recorder) writes the takes; finished ones are loaded off
-// the GUI thread and handed to their track. A take from the interface skips
-// its round trip (what you played reached Krate that late); one from
-// another device doesn't. The takes and each track's active one are kept in
-// recordings/tracks.json.
+// Each track has its takes and its lane (docs/DAW.md, D3): clips, takes
+// placed at a beat, a later one on top. A new take goes on the lane where it
+// was recorded; the panel takes one off or puts it back. The disk thread
+// (Recorder) writes the takes; those on the lane (and the one selected, for
+// its waveform) are loaded off the GUI thread and handed to the track as a
+// playlist. A take from the interface skips its round trip (what you played
+// reached Krate that late); one from another device doesn't. Takes, clips
+// and knobs are kept in recordings/tracks.json.
 class AudioTracksController : public QObject
 {
     Q_OBJECT
@@ -61,11 +65,17 @@ public:
     int frame() const { return m_frame; }
 
     Q_INVOKABLE int trackOf(int rackDevice) const; // -1: not a track
-    Q_INVOKABLE QVariantList takes(int track) const; // [{name, seconds, active}]
-    Q_INVOKABLE int activeTake(int track) const;
-    Q_INVOKABLE void setActiveTake(int track, int index); // -1: none
-    Q_INVOKABLE void deleteTake(int track, int index);    // and its file
-    Q_INVOKABLE QVariantList peaks(int track) const;      // the active take's waveform: 0..1 each
+    Q_INVOKABLE QVariantList takes(int track) const; // [{name, seconds, mono, onLane, selected}]
+    Q_INVOKABLE int selectedTake(int track) const;
+    Q_INVOKABLE void selectTake(int track, int index);    // the panel's waveform
+    Q_INVOKABLE bool onLane(int track, int index) const;
+    Q_INVOKABLE void setOnLane(int track, int index, bool on); // at the beat it was recorded on
+    Q_INVOKABLE void deleteTake(int track, int index);    // its clips and its file
+    Q_INVOKABLE QVariantList peaks(int track) const;      // the selected take's waveform: 0..1 each
+    // The lane, for the arranger: [{take, name, startBeat, seconds, loaded}], later on top.
+    Q_INVOKABLE QVariantList clips(int track) const;
+    Q_INVOKABLE QVariantList takePeaks(int track, int index) const; // [] until loaded
+    Q_INVOKABLE void removeClip(int track, int clip);
     Q_INVOKABLE bool isRecording(int track) const;
     Q_INVOKABLE qreal inputLevel(int track) const;        // 0..1 (-60..0 dB)
     // The track's knobs: Arm, Monitor, Input (krate::AudioTrack::Param).
@@ -94,31 +104,43 @@ private:
         qint64 frames = 0;
         int channels = 2;
     };
+    struct ClipInfo
+    {
+        QString file; // the take's
+        double startBeat = 0.0;
+    };
     struct Loaded
     {
         std::unique_ptr<krate::Take> take;
         std::vector<float> peaks;
     };
+    // A playlist the engine let go of, with the takes only it used.
+    struct Retired
+    {
+        std::unique_ptr<krate::Playlist> playlist;
+        std::vector<std::unique_ptr<krate::Take>> takes;
+        std::uint64_t block = 0; // freed once the engine is two blocks on
+    };
     struct Track
     {
         std::unique_ptr<krate::AudioTrack> engine;
         std::vector<TakeInfo> takes;
-        int active = -1;
+        std::vector<ClipInfo> clips;
+        int selected = -1;
         int device = -1;
-        std::unique_ptr<krate::Take> playing; // handed to the engine
-        std::vector<float> peaks;
-        std::vector<std::pair<std::unique_ptr<krate::Take>, std::uint64_t>> retired; // freed when the engine has moved on
+        std::map<QString, Loaded> cache;             // loaded takes, by file
+        std::unique_ptr<krate::Playlist> playlist;   // handed to the engine
+        std::vector<Retired> retired;
         std::future<Loaded> loading;
         QString loadingFile; // the take being loaded
         qreal level = 0.0;
-        bool wasRecording = false;
     };
 
     QString trackDir(int track) const;
     void load();
     void poll();
-    void startLoading(int track);
-    void play(int track, Loaded loaded);
+    int takeIndex(const Track &t, const QString &file) const;
+    void refresh(int track); // loads what the lane needs, hands the engine its playlist
     void addFinished(const krate::Recorder::Finished &f);
     void bump();
 

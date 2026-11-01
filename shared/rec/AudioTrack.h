@@ -12,14 +12,29 @@
 
 namespace krate {
 
-// A recorded take: its audio (right empty for mono), and where it belongs.
+// A recorded take's audio (right empty for mono).
 struct Take
 {
     std::vector<float> left, right;
     int rate = 48000;
-    double startBeat = 0.0;   // the transport's beat where recording began
-    std::int64_t offset = 0;  // frames to skip at its start: what the interface's round trip delayed
     std::size_t frames() const { return left.size(); }
+};
+
+// A take placed on the track's lane (docs/DAW.md, D3): it plays from
+// `startBeat`, `skip` frames into the take (its round trip), for `frames`
+// frames (0: to its end).
+struct AudioClip
+{
+    const Take *take = nullptr;
+    double startBeat = 0.0;
+    std::int64_t skip = 0;
+    std::int64_t frames = 0;
+};
+
+// What a track plays: its clips, a later one on top where they overlap.
+struct Playlist
+{
+    std::vector<AudioClip> clips;
 };
 
 // An audio track in the Krate rack (docs/DAW.md, D2): records its input
@@ -30,10 +45,10 @@ struct Take
 // thread (Recorder) writes it to a WAV file. The audio thread never waits on
 // the disk. A new take can't begin until the last one is written.
 //
-// Playback: the take the GUI hands over (setTake), at the transport's beat:
-// (beat - startBeat) seconds at the tempo, plus its offset. Monitoring: the
-// input to the output (On, or Auto while armed); an armed track recording
-// doesn't play its take.
+// Playback: the playlist the GUI hands over (setPlaylist), at the
+// transport's beat: each clip from its start beat, (beat - startBeat)
+// seconds at the tempo into it, a later clip on top. Monitoring: the input to
+// the output (On, or Auto while armed); an armed track recording doesn't play.
 class AudioTrack final : public IInstrument
 {
 public:
@@ -57,9 +72,13 @@ public:
 
     // --- GUI thread
     void setRecordEnabled(bool on) noexcept { m_recordEnabled.store(on, std::memory_order_relaxed); }
-    // The take to play (owned by the caller), returning the one before: free
-    // it once blocks() has moved on by two (the audio thread may be using it).
-    const Take *setTake(const Take *take) noexcept { return m_take.exchange(take, std::memory_order_acq_rel); }
+    // The playlist to play (owned by the caller, with its takes), returning
+    // the one before: free it (and takes only it used) once blocks() has
+    // moved on by two (the audio thread may be using it).
+    const Playlist *setPlaylist(const Playlist *playlist) noexcept
+    {
+        return m_playlist.exchange(playlist, std::memory_order_acq_rel);
+    }
     std::uint64_t blocks() const noexcept { return m_blocks.load(std::memory_order_acquire); }
     bool recording() const noexcept { return m_recording.load(std::memory_order_acquire); }
     float takeInputPeak() noexcept { return m_inputPeak.exchange(0.0f, std::memory_order_relaxed); }
@@ -88,7 +107,8 @@ private:
     std::atomic<std::uint32_t> m_takeId{0};
     std::atomic<double> m_takeStartBeat{0.0};
     std::atomic<int> m_takeChannels{2};
-    std::atomic<const Take *> m_take{nullptr};
+    std::atomic<const Playlist *> m_playlist{nullptr};
+    std::vector<std::uint8_t> m_covered; // this block's samples a later clip has written
     std::atomic<std::uint64_t> m_blocks{0};
     std::atomic<float> m_inputPeak{0.0f};
 };

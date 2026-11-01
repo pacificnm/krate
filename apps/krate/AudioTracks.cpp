@@ -58,7 +58,7 @@ AudioTracksController::AudioTracksController(const QString &dir, QObject *parent
     });
     m_recorder->start();
     for (int i = 0; i < kTracks; ++i)
-        startLoading(i);
+        refresh(i);
     m_pollTimer.setInterval(50);
     connect(&m_pollTimer, &QTimer::timeout, this, &AudioTracksController::poll);
     m_pollTimer.start();
@@ -70,7 +70,7 @@ AudioTracksController::~AudioTracksController()
     for (Track &t : m_tracks) {
         if (t.loading.valid())
             t.loading.wait();
-        t.engine->setTake(nullptr); // the audio has stopped (the host goes first)
+        t.engine->setPlaylist(nullptr); // the audio has stopped (the host goes first)
     }
     s_instance = nullptr;
 }
@@ -121,6 +121,14 @@ int AudioTracksController::trackOf(int rackDevice) const
     return -1;
 }
 
+int AudioTracksController::takeIndex(const Track &t, const QString &file) const
+{
+    for (std::size_t i = 0; i < t.takes.size(); ++i)
+        if (t.takes[i].file == file)
+            return int(i);
+    return -1;
+}
+
 QVariantList AudioTracksController::takes(int track) const
 {
     QVariantList list;
@@ -133,26 +141,52 @@ QVariantList AudioTracksController::takes(int track) const
             {QStringLiteral("name"), QFileInfo(take.file).completeBaseName()},
             {QStringLiteral("seconds"), take.rate > 0 ? double(take.frames) / take.rate : 0.0},
             {QStringLiteral("mono"), take.channels == 1},
-            {QStringLiteral("active"), int(i) == t.active},
+            {QStringLiteral("onLane"), onLane(track, int(i))},
+            {QStringLiteral("selected"), int(i) == t.selected},
         });
     }
     return list;
 }
 
-int AudioTracksController::activeTake(int track) const
+int AudioTracksController::selectedTake(int track) const
 {
-    return track >= 0 && track < kTracks ? m_tracks[std::size_t(track)].active : -1;
+    return track >= 0 && track < kTracks ? m_tracks[std::size_t(track)].selected : -1;
 }
 
-void AudioTracksController::setActiveTake(int track, int index)
+void AudioTracksController::selectTake(int track, int index)
 {
     if (track < 0 || track >= kTracks)
         return;
     Track &t = m_tracks[std::size_t(track)];
-    if (index < -1 || index >= int(t.takes.size()) || index == t.active)
+    if (index < -1 || index >= int(t.takes.size()) || index == t.selected)
         return;
-    t.active = index;
-    startLoading(track);
+    t.selected = index;
+    refresh(track);
+    bump();
+}
+
+bool AudioTracksController::onLane(int track, int index) const
+{
+    if (track < 0 || track >= kTracks)
+        return false;
+    const Track &t = m_tracks[std::size_t(track)];
+    if (index < 0 || index >= int(t.takes.size()))
+        return false;
+    return std::any_of(t.clips.begin(), t.clips.end(),
+                       [&](const ClipInfo &c) { return c.file == t.takes[std::size_t(index)].file; });
+}
+
+void AudioTracksController::setOnLane(int track, int index, bool on)
+{
+    if (track < 0 || track >= kTracks || on == onLane(track, index))
+        return;
+    Track &t = m_tracks[std::size_t(track)];
+    const TakeInfo &take = t.takes[std::size_t(index)];
+    if (on)
+        t.clips.push_back({take.file, take.startBeat}); // on top
+    else
+        std::erase_if(t.clips, [&](const ClipInfo &c) { return c.file == take.file; });
+    refresh(track);
     save();
     bump();
 }
@@ -164,26 +198,72 @@ void AudioTracksController::deleteTake(int track, int index)
     Track &t = m_tracks[std::size_t(track)];
     if (index < 0 || index >= int(t.takes.size()))
         return;
-    QFile::remove(QDir(trackDir(track)).filePath(t.takes[std::size_t(index)].file));
+    const QString file = t.takes[std::size_t(index)].file;
+    std::erase_if(t.clips, [&](const ClipInfo &c) { return c.file == file; });
     t.takes.erase(t.takes.begin() + index);
-    if (index == t.active) {
-        t.active = -1;
-        startLoading(track); // silence
-    } else if (index < t.active) {
-        --t.active;
-    }
+    if (index == t.selected)
+        t.selected = -1;
+    else if (index < t.selected)
+        --t.selected;
+    refresh(track); // lets go of its audio
+    QFile::remove(QDir(trackDir(track)).filePath(file));
     save();
     bump();
 }
 
 QVariantList AudioTracksController::peaks(int track) const
 {
+    return takePeaks(track, selectedTake(track));
+}
+
+QVariantList AudioTracksController::takePeaks(int track, int index) const
+{
     QVariantList list;
     if (track < 0 || track >= kTracks)
         return list;
-    for (float p : m_tracks[std::size_t(track)].peaks)
-        list.append(p);
+    const Track &t = m_tracks[std::size_t(track)];
+    if (index < 0 || index >= int(t.takes.size()))
+        return list;
+    const auto it = t.cache.find(t.takes[std::size_t(index)].file);
+    if (it != t.cache.end())
+        for (float p : it->second.peaks)
+            list.append(p);
     return list;
+}
+
+QVariantList AudioTracksController::clips(int track) const
+{
+    QVariantList list;
+    if (track < 0 || track >= kTracks)
+        return list;
+    const Track &t = m_tracks[std::size_t(track)];
+    for (const ClipInfo &clip : t.clips) {
+        const int index = takeIndex(t, clip.file);
+        if (index < 0)
+            continue;
+        const TakeInfo &take = t.takes[std::size_t(index)];
+        list.append(QVariantMap{
+            {QStringLiteral("take"), index},
+            {QStringLiteral("name"), QFileInfo(take.file).completeBaseName()},
+            {QStringLiteral("startBeat"), clip.startBeat},
+            {QStringLiteral("seconds"), take.rate > 0 ? double(take.frames - take.offset) / take.rate : 0.0},
+            {QStringLiteral("loaded"), t.cache.count(clip.file) > 0},
+        });
+    }
+    return list;
+}
+
+void AudioTracksController::removeClip(int track, int clip)
+{
+    if (track < 0 || track >= kTracks)
+        return;
+    Track &t = m_tracks[std::size_t(track)];
+    if (clip < 0 || clip >= int(t.clips.size()))
+        return;
+    t.clips.erase(t.clips.begin() + clip);
+    refresh(track);
+    save();
+    bump();
 }
 
 bool AudioTracksController::isRecording(int track) const
@@ -226,15 +306,16 @@ void AudioTracksController::poll()
         Track &t = m_tracks[std::size_t(i)];
         if (t.loading.valid() && t.loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
             Loaded loaded = t.loading.get();
-            const QString want = t.active >= 0 ? t.takes[std::size_t(t.active)].file : QString();
-            if (t.loadingFile == want)
-                play(i, std::move(loaded));
+            if (loaded.take)
+                t.cache[t.loadingFile] = std::move(loaded);
             else
-                startLoading(i); // the active take changed meanwhile
+                qWarning("krate: couldn't read the take %s", qPrintable(t.loadingFile));
+            refresh(i); // plays it, loads the next
+            bump();
         }
-        // A retired take is freed once the audio thread can't be in it any more.
+        // A retired playlist (and its takes) is freed once the audio thread can't be in it any more.
         const std::uint64_t blocks = t.engine->blocks();
-        std::erase_if(t.retired, [blocks](const auto &r) { return blocks >= r.second + 2; });
+        std::erase_if(t.retired, [blocks](const Retired &r) { return blocks >= r.block + 2; });
         // The input meter: -60..0 dB, falling back slowly.
         const float peak = t.engine->takeInputPeak();
         const qreal level = peak > 0.0f ? std::clamp((20.0 * std::log10(double(peak)) + 60.0) / 60.0, 0.0, 1.0) : 0.0;
@@ -267,63 +348,83 @@ void AudioTracksController::addFinished(const krate::Recorder::Finished &f)
     take.frames = qint64(f.frames);
     take.channels = f.channels;
     t.takes.push_back(take);
-    t.active = int(t.takes.size()) - 1; // the new take plays
-    startLoading(f.track);
+    t.clips.push_back({take.file, take.startBeat}); // on the lane where it was recorded, on top
+    t.selected = int(t.takes.size()) - 1;
+    refresh(f.track);
     save();
     bump();
 }
 
-void AudioTracksController::startLoading(int track)
+void AudioTracksController::refresh(int track)
 {
     Track &t = m_tracks[std::size_t(track)];
     if (m_stopping)
         return; // quitting: nothing more to play
-    if (t.active < 0) {
-        t.loadingFile.clear();
-        if (!t.loading.valid())
-            play(track, {});
+    // What's needed: the lane's takes and the selected one.
+    std::vector<QString> wanted;
+    for (const ClipInfo &c : t.clips)
+        wanted.push_back(c.file);
+    if (t.selected >= 0)
+        wanted.push_back(t.takes[std::size_t(t.selected)].file);
+    const auto isWanted = [&](const QString &file) { return std::find(wanted.begin(), wanted.end(), file) != wanted.end(); };
+
+    // The engine's new playlist: the clips whose takes are loaded.
+    auto playlist = std::make_unique<krate::Playlist>();
+    for (const ClipInfo &c : t.clips) {
+        const auto it = t.cache.find(c.file);
+        const int index = takeIndex(t, c.file);
+        if (it != t.cache.end() && index >= 0)
+            playlist->clips.push_back({it->second.take.get(), c.startBeat, t.takes[std::size_t(index)].offset, 0});
+    }
+    t.engine->setPlaylist(playlist.get());
+    Retired old;
+    old.playlist = std::move(t.playlist);
+    old.block = t.engine->blocks();
+    t.playlist = std::move(playlist);
+    for (auto it = t.cache.begin(); it != t.cache.end();) { // takes no longer needed go with the old playlist
+        if (isWanted(it->first)) {
+            ++it;
+        } else {
+            old.takes.push_back(std::move(it->second.take));
+            it = t.cache.erase(it);
+        }
+    }
+    if (old.playlist || !old.takes.empty())
+        t.retired.push_back(std::move(old));
+
+    // The next take to load (one at a time).
+    if (t.loading.valid())
+        return;
+    for (const QString &file : wanted) {
+        const int index = takeIndex(t, file);
+        if (t.cache.count(file) || index < 0)
+            continue;
+        t.loadingFile = file;
+        const std::string path = QDir(trackDir(track)).filePath(file).toStdString();
+        t.loading = std::async(std::launch::async, [path] {
+            Loaded loaded;
+            krate::WavData data;
+            if (!krate::readWavFile(path, &data) || data.left.empty())
+                return loaded;
+            auto take = std::make_unique<krate::Take>();
+            take->left = std::move(data.left);
+            take->right = std::move(data.right);
+            take->rate = data.rate;
+            // The waveform: each column's loudest sample, both sides.
+            const std::size_t n = take->frames();
+            loaded.peaks.assign(kPeakBins, 0.0f);
+            for (std::size_t i = 0; i < n; ++i) {
+                float v = std::fabs(take->left[i]);
+                if (!take->right.empty())
+                    v = std::max(v, std::fabs(take->right[i]));
+                float &bin = loaded.peaks[std::min<std::size_t>(i * kPeakBins / n, kPeakBins - 1)];
+                bin = std::max(bin, std::min(v, 1.0f));
+            }
+            loaded.take = std::move(take);
+            return loaded;
+        });
         return;
     }
-    if (t.loading.valid())
-        return; // when it's done, poll() sees the active take changed and loads that
-    const TakeInfo info = t.takes[std::size_t(t.active)];
-    t.loadingFile = info.file;
-    const std::string path = QDir(trackDir(track)).filePath(info.file).toStdString();
-    t.loading = std::async(std::launch::async, [path, info] {
-        Loaded loaded;
-        krate::WavData data;
-        if (!krate::readWavFile(path, &data) || data.left.empty())
-            return loaded;
-        auto take = std::make_unique<krate::Take>();
-        take->left = std::move(data.left);
-        take->right = std::move(data.right);
-        take->rate = data.rate;
-        take->startBeat = info.startBeat;
-        take->offset = info.offset;
-        // The waveform: each column's loudest sample, both sides.
-        const std::size_t n = take->frames();
-        loaded.peaks.assign(kPeakBins, 0.0f);
-        for (std::size_t i = 0; i < n; ++i) {
-            float v = std::fabs(take->left[i]);
-            if (!take->right.empty())
-                v = std::max(v, std::fabs(take->right[i]));
-            float &bin = loaded.peaks[std::min<std::size_t>(i * kPeakBins / n, kPeakBins - 1)];
-            bin = std::max(bin, std::min(v, 1.0f));
-        }
-        loaded.take = std::move(take);
-        return loaded;
-    });
-}
-
-void AudioTracksController::play(int track, Loaded loaded)
-{
-    Track &t = m_tracks[std::size_t(track)];
-    t.engine->setTake(loaded.take.get());
-    if (t.playing)
-        t.retired.emplace_back(std::move(t.playing), t.engine->blocks());
-    t.playing = std::move(loaded.take);
-    t.peaks = std::move(loaded.peaks);
-    bump();
 }
 
 void AudioTracksController::bump()
@@ -358,10 +459,19 @@ void AudioTracksController::load()
             take.rate = j.value(QStringLiteral("rate")).toInt(48000);
             take.frames = j.value(QStringLiteral("frames")).toInteger();
             take.channels = j.value(QStringLiteral("channels")).toInt(2);
-            if (take.file == o.value(QStringLiteral("active")).toString())
-                t.active = int(t.takes.size());
             t.takes.push_back(take);
         }
+        if (o.contains(QStringLiteral("clips"))) {
+            for (const QJsonValue &v : o.value(QStringLiteral("clips")).toArray()) {
+                const QJsonObject j = v.toObject();
+                const QString file = j.value(QStringLiteral("file")).toString();
+                if (takeIndex(t, file) >= 0)
+                    t.clips.push_back({file, j.value(QStringLiteral("startBeat")).toDouble()});
+            }
+        } else if (const int active = takeIndex(t, o.value(QStringLiteral("active")).toString()); active >= 0) {
+            t.clips.push_back({t.takes[std::size_t(active)].file, t.takes[std::size_t(active)].startBeat}); // before the lanes
+        }
+        t.selected = t.takes.empty() ? -1 : int(t.takes.size()) - 1;
     }
 }
 
@@ -385,8 +495,10 @@ void AudioTracksController::save()
                 {QStringLiteral("channels"), take.channels},
             });
         o.insert(QStringLiteral("takes"), takes);
-        if (t.active >= 0)
-            o.insert(QStringLiteral("active"), t.takes[std::size_t(t.active)].file);
+        QJsonArray clips;
+        for (const ClipInfo &clip : t.clips)
+            clips.append(QJsonObject{{QStringLiteral("file"), clip.file}, {QStringLiteral("startBeat"), clip.startBeat}});
+        o.insert(QStringLiteral("clips"), clips);
         tracks.append(o);
     }
     QDir().mkpath(m_dir);

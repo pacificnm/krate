@@ -37,6 +37,7 @@ void AudioTrack::prepare(double sampleRate, std::uint32_t maxFrames) noexcept
     m_rate = sampleRate;
     m_inL.assign(maxFrames, 0.0f); // prepare runs before processing: not realtime
     m_inR.assign(maxFrames, 0.0f);
+    m_covered.assign(maxFrames, 0);
 }
 
 std::span<const ParamDescriptor> AudioTrack::parameters() const noexcept { return kParams; }
@@ -107,23 +108,35 @@ void AudioTrack::process(const AudioBlock &block) noexcept
     float *outR = block.outputs[1];
     std::fill_n(outL, block.frames, 0.0f);
     std::fill_n(outR, block.frames, 0.0f);
-    const Take *take = m_take.load(std::memory_order_acquire);
-    if (take && t.playing && !(armed && m_recordEnabled.load(std::memory_order_relaxed)) && take->frames() > 0 && t.bpm > 0.0) {
-        const double seconds = (t.beatAtBlockStart - take->startBeat) * 60.0 / t.bpm;
-        const double start = seconds * take->rate + double(take->offset);
-        const double step = double(take->rate) / m_rate;
-        const bool mono = take->right.empty();
-        const std::size_t length = take->frames();
-        for (std::uint32_t i = 0; i < block.frames; ++i) {
-            const double pos = start + double(i) * step;
-            if (pos < 0.0)
+    const Playlist *playlist = m_playlist.load(std::memory_order_acquire);
+    if (playlist && !playlist->clips.empty() && t.playing && !(armed && m_recordEnabled.load(std::memory_order_relaxed))
+        && t.bpm > 0.0) {
+        std::fill_n(m_covered.begin(), n, std::uint8_t(0));
+        for (auto it = playlist->clips.rbegin(); it != playlist->clips.rend(); ++it) { // the latest on top
+            const AudioClip &clip = *it;
+            const Take *take = clip.take;
+            if (!take || take->frames() < 2)
                 continue;
-            const std::size_t k = std::size_t(pos);
-            if (k + 1 >= length)
-                break;
-            const float f = float(pos - double(k));
-            outL[i] = take->left[k] + f * (take->left[k + 1] - take->left[k]);
-            outR[i] = mono ? outL[i] : take->right[k] + f * (take->right[k + 1] - take->right[k]);
+            const std::int64_t length = std::int64_t(take->frames());
+            const std::int64_t end = clip.frames > 0 ? std::min(length, clip.skip + clip.frames) : length;
+            const double seconds = (t.beatAtBlockStart - clip.startBeat) * 60.0 / t.bpm;
+            const double start = seconds * take->rate + double(clip.skip);
+            const double step = double(take->rate) / m_rate;
+            if (start + double(n) * step < double(clip.skip) || start >= double(end - 1))
+                continue; // not in this block
+            const bool mono = take->right.empty();
+            for (std::uint32_t i = 0; i < n; ++i) {
+                const double pos = start + double(i) * step;
+                if (pos < double(clip.skip) || m_covered[i])
+                    continue;
+                const std::size_t k = std::size_t(pos);
+                if (std::int64_t(k) + 1 >= end)
+                    break;
+                const float f = float(pos - double(k));
+                outL[i] = take->left[k] + f * (take->left[k + 1] - take->left[k]);
+                outR[i] = mono ? outL[i] : take->right[k] + f * (take->right[k + 1] - take->right[k]);
+                m_covered[i] = 1;
+            }
         }
     }
     if (monitor == MonitorOn || (monitor == MonitorAuto && armed))

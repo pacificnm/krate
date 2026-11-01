@@ -66,10 +66,12 @@ private slots:
             feed.block(false);
             waitFor([&] { return !tracks.takes(2).isEmpty(); });
             QCOMPARE(tracks.takes(2).size(), 1);
-            QCOMPARE(tracks.activeTake(2), 0);
+            QCOMPARE(tracks.selectedTake(2), 0);
             const QVariantMap take = tracks.takes(2)[0].toMap();
             QCOMPARE(take.value("seconds").toDouble(), 100.0 * kBlock / 48000.0);
-            QVERIFY(take.value("active").toBool());
+            QVERIFY(take.value("onLane").toBool()); // on the lane where it was recorded
+            QCOMPARE(tracks.clips(2).size(), 1);
+            QCOMPARE(tracks.clips(2)[0].toMap().value("startBeat").toDouble(), 0.0);
             file = take.value("name").toString() + ".wav";
             QVERIFY(QFileInfo::exists(QDir(recordings).filePath("audio3/" + file)));
 
@@ -90,20 +92,25 @@ private slots:
         QFile json(QDir(recordings).filePath("tracks.json"));
         QVERIFY(json.open(QIODevice::ReadOnly));
         const QJsonObject track3 = QJsonDocument::fromJson(json.readAll()).object()["tracks"].toArray()[2].toObject();
-        QCOMPARE(track3["active"].toString(), file);
+        QCOMPARE(track3["clips"].toArray()[0].toObject()["file"].toString(), file);
         QCOMPARE(track3["takes"].toArray()[0].toObject()["offset"].toInt(), 64);
         QCOMPARE(track3["arm"].toDouble(), 0.0);
 
-        // Reopened: the take is back and playing; none, then deleted with its file.
+        // Reopened: the take is back on the lane; off it, on again, then
+        // deleted with its file and its clip.
         AudioTracksController tracks(recordings);
         QCOMPARE(tracks.takes(2).size(), 1);
-        QCOMPARE(tracks.activeTake(2), 0);
-        waitFor([&] { return !tracks.peaks(2).isEmpty(); });
+        QVERIFY(tracks.onLane(2, 0));
+        waitFor([&] { return tracks.clips(2).value(0).toMap().value("loaded").toBool(); });
         QVERIFY(!tracks.peaks(2).isEmpty());
-        tracks.setActiveTake(2, -1);
-        QVERIFY(tracks.peaks(2).isEmpty());
+        tracks.setOnLane(2, 0, false);
+        QVERIFY(tracks.clips(2).isEmpty());
+        QVERIFY(!tracks.peaks(2).isEmpty()); // still selected: its waveform stays
+        tracks.setOnLane(2, 0, true);
+        QCOMPARE(tracks.clips(2).size(), 1);
         tracks.deleteTake(2, 0);
         QVERIFY(tracks.takes(2).isEmpty());
+        QVERIFY(tracks.clips(2).isEmpty());
         QVERIFY(!QFileInfo::exists(QDir(recordings).filePath("audio3/" + file)));
     }
 
@@ -128,6 +135,72 @@ private slots:
         QCOMPARE(tracks.takes(0).size(), 1);
         QCOMPARE(tracks.takes(0)[0].toMap().value("seconds").toDouble(), 2.0 * kBlock / 48000.0);
         QCOMPARE(QDir(recordings).entryList({"audio*"}, QDir::Dirs).size(), 1);
+    }
+
+    // Two takes on one lane, the later on top; a lane from before (one
+    // "active" take) comes back as one clip.
+    void lanesAndOldFiles()
+    {
+        QTemporaryDir dir;
+        const QString recordings = dir.filePath("recordings");
+        {
+            AudioTracksController tracks(recordings);
+            krate::AudioTrack &engine = tracks.engine(0);
+            engine.prepare(48000.0, kBlock);
+            Feed feed{engine};
+            tracks.setParam(0, krate::AudioTrack::Arm, 1.0);
+            tracks.setRecording(true);
+            feed.block(true, true); // take 1: beat 0, 0.5
+            for (int k = 0; k < 7; ++k)
+                feed.block(true);
+            feed.block(false);
+            waitFor([&] { return tracks.takes(0).size() == 1; });
+            feed.a.assign(kBlock, 0.125f);
+            feed.beat = 0.0;
+            feed.block(true, true); // take 2: beat 0 again, 0.125 (an empty block lets the writer finish first)
+            for (int k = 0; k < 7 && !engine.recording(); ++k) {
+                QTest::qWait(20);
+                feed.beat = 0.0;
+                feed.block(true, true);
+            }
+            for (int k = 0; k < 7; ++k)
+                feed.block(true);
+            feed.block(false);
+            waitFor([&] { return tracks.takes(0).size() == 2; });
+            QCOMPARE(tracks.clips(0).size(), 2);
+            waitFor([&] {
+                const auto c = tracks.clips(0);
+                return c[0].toMap().value("loaded").toBool() && c[1].toMap().value("loaded").toBool();
+            });
+            tracks.setParam(0, krate::AudioTrack::Arm, 0.0);
+            feed.beat = 0.0;
+            feed.block(true, true);
+            QCOMPARE(feed.l[10], 0.125f); // the later take, on top
+            tracks.setOnLane(0, 1, false);
+            feed.beat = 0.0;
+            feed.block(true, true);
+            QCOMPARE(feed.l[10], 0.5f);
+            feed.block(false);
+        }
+        // An old tracks.json: its active take becomes the lane's one clip.
+        QFile json(QDir(recordings).filePath("tracks.json"));
+        QVERIFY(json.open(QIODevice::ReadOnly));
+        QJsonObject root = QJsonDocument::fromJson(json.readAll()).object();
+        json.close();
+        QJsonArray list = root["tracks"].toArray();
+        QJsonObject first = list[0].toObject();
+        const QString active = first["takes"].toArray()[1].toObject()["file"].toString();
+        first.remove("clips");
+        first["active"] = active;
+        list[0] = first;
+        root["tracks"] = list;
+        QVERIFY(json.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        json.write(QJsonDocument(root).toJson());
+        json.close();
+        AudioTracksController tracks(recordings);
+        QCOMPARE(tracks.clips(0).size(), 1);
+        QVERIFY(tracks.onLane(0, 1));
+        QVERIFY(!tracks.onLane(0, 0));
     }
 
     void registryEntries()

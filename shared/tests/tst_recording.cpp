@@ -146,8 +146,8 @@ private slots:
         Take take;
         take.left = data.left;
         take.right = data.right;
-        take.offset = 100;
-        QVERIFY(rig.track.setTake(&take) == nullptr);
+        Playlist playlist{{{&take, 0.0, 100, 0}}};
+        QVERIFY(rig.track.setPlaylist(&playlist) == nullptr);
         rig.track.setParam(AudioTrack::Arm, 0.0f);
         rig.beat = 0.0;
         rig.block(true, true);
@@ -157,7 +157,7 @@ private slots:
         QVERIFY(std::fabs(rig.r[5] - data.right[100 + kBlock + 5]) < 1e-5f);
         rig.block(false);
         QCOMPARE(rig.l[0], 0.0f); // stopped: silent
-        rig.track.setTake(nullptr);
+        QVERIFY(rig.track.setPlaylist(nullptr) == &playlist);
     }
 
     // Monitoring: the input heard (On, or Auto while armed); an armed track
@@ -169,7 +169,8 @@ private slots:
         Recorder recorder({&rig.track}, [&](int) { return dir.filePath("mono.wav").toStdString(); });
         Take take;
         take.left.assign(kBlock * 4, 0.75f);
-        rig.track.setTake(&take);
+        Playlist playlist{{{&take, 0.0, 0, 0}}};
+        rig.track.setPlaylist(&playlist);
         rig.block(true, true);
         QCOMPARE(rig.l[3], 0.75f); // not armed, Auto: the take only
         rig.track.setParam(AudioTrack::Monitor, 1.0f); // On
@@ -190,7 +191,38 @@ private slots:
         WavData data;
         QVERIFY(readWavFile(finished[0].path, &data));
         QCOMPARE(data.channels, 1);
-        rig.track.setTake(nullptr);
+        rig.track.setPlaylist(nullptr);
+    }
+
+    // Clips (docs/DAW.md, D3): each from its beat, a later one on top where
+    // they overlap, one cut to `frames`, silence where there's none.
+    void clipsOnTheLane()
+    {
+        Rig rig;
+        Take a, b;
+        a.left.assign(48000, 0.25f); // one second each
+        b.left.assign(48000, 0.5f);
+        b.right.assign(48000, -0.5f);
+        // a at beat 0 (1 s = 2 beats); b on top from beat 1, cut to a quarter second.
+        Playlist playlist{{{&a, 0.0, 0, 0}, {&b, 1.0, 0, 12000}}};
+        rig.track.setPlaylist(&playlist);
+        std::vector<float> left, right;
+        rig.block(true, true);
+        for (int k = 0; k < 400; ++k) {
+            left.insert(left.end(), rig.l.begin(), rig.l.end());
+            right.insert(right.end(), rig.r.begin(), rig.r.end());
+            rig.block(true);
+        }
+        QCOMPARE(left[100], 0.25f);
+        QCOMPARE(right[100], 0.25f);      // mono on both sides
+        QCOMPARE(left[23999], 0.25f);     // up to beat 1
+        QCOMPARE(left[24000], 0.5f);      // b from beat 1
+        QCOMPARE(right[24000], -0.5f);
+        QCOMPARE(left[24000 + 11999], 0.5f);
+        QCOMPARE(left[24000 + 12000], 0.25f); // b cut: a underneath again
+        QCOMPARE(left[47990], 0.25f);
+        QCOMPARE(left[48010], 0.0f);      // a ended
+        rig.track.setPlaylist(nullptr);
     }
 
     // A new take waits until the last one is written.
