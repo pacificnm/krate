@@ -20,6 +20,8 @@ qt_add_qml_module(krate
         InstrumentCopies.cpp
         CrashReportsController.h
         CrashReportsController.cpp
+        UpdateController.h
+        UpdateController.cpp
         PluginSlots.h
         PluginSlots.cpp
         PluginEditor.h
@@ -87,7 +89,7 @@ target_link_libraries(krate PRIVATE
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin
     krate_rack krate_host krate_song krate_seq krate_rec krate_plugin X11::X11
-    Qt6::Gui Qt6::Sql Qt6::Quick Qt6::QuickControls2
+    Qt6::Gui Qt6::Network Qt6::Sql Qt6::Quick Qt6::QuickControls2
 )
 
 # Rack learn and session, with fake instruments (sources compiled directly).
@@ -184,6 +186,13 @@ target_include_directories(tst_copies PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_copies PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_copies PRIVATE krate_rack krate_app Qt6::Qml Qt6::Test)
 add_test(NAME tst_copies COMMAND tst_copies)
+
+# Updates (docs/UPDATES.md): GitHub's answer, versions, the updater's status.
+add_executable(tst_updates tests/tst_updates.cpp UpdateController.h UpdateController.cpp)
+target_include_directories(tst_updates PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_updates PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_updates PRIVATE Qt6::Network Qt6::Qml Qt6::Test)
+add_test(NAME tst_updates COMMAND tst_updates)
 
 # The sound library: categories, WAV headers, folders indexed in place.
 add_executable(tst_sounds tests/tst_sounds.cpp SoundIndex.h SoundIndex.cpp SoundLibrary.h SoundLibrary.cpp)

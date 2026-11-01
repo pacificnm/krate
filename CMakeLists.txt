@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(krate VERSION 0.1 LANGUAGES CXX)
+project(krate VERSION 0.2.0 LANGUAGES CXX)
 
 # Krate: a suite of instruments and a rack that plays them together
 # (docs/SHARED_FOUNDATIONS.MD). shared/ holds everything instrument-neutral,
@@ -20,7 +20,7 @@ if(KRATE_SANITIZE)
     add_link_options(-fsanitize=address,undefined)
 endif()
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Sql Test)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Test)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(JACK REQUIRED IMPORTED_TARGET jack)
 find_package(ZLIB REQUIRED)

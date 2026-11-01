@@ -1,0 +1,70 @@
+#!/bin/sh
+# Krate's updater (docs/UPDATES.md), run as root by krate-update.service,
+# which Krate starts when you press UPDATE. It asks GitHub for the latest
+# release itself (it never takes a file from anyone), checks the package
+# against the release's SHA256SUMS and that it is Krate, installs it, and
+# restarts the kiosk if one is running. What it's doing goes to
+# /var/lib/krate/update-status for Krate to show: one line, "<state> <text>".
+set -eu
+
+REPO="pacificnm/krate"
+API="https://api.github.com/repos/$REPO/releases/latest"
+STATUS_DIR=/var/lib/krate
+# For trying it out by hand (the service's environment has neither):
+# KRATE_UPDATE_DRY_RUN=1 stops before installing; KRATE_UPDATE_STATUS_DIR
+# writes the status elsewhere; KRATE_UPDATE_INSTALLED pretends a version.
+DRY_RUN=${KRATE_UPDATE_DRY_RUN:-}
+STATUS_DIR=${KRATE_UPDATE_STATUS_DIR:-$STATUS_DIR}
+STATUS="$STATUS_DIR/update-status"
+
+say() { # say <state> <text>: checking, downloading, installing, done, current, failed
+    mkdir -p "$STATUS_DIR"
+    printf '%s %s\n' "$1" "$2" > "$STATUS.tmp"
+    mv "$STATUS.tmp" "$STATUS"
+}
+fail() { say failed "$1"; echo "krate-update: $1" >&2; exit 1; }
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+say checking "Asking GitHub for the latest release"
+curl -fsSL --max-time 30 -H 'Accept: application/vnd.github+json' "$API" -o "$work/release.json" \
+    || fail "Couldn't reach GitHub: is the network up?"
+tag=$(jq -r '.tag_name // empty' "$work/release.json")
+[ -n "$tag" ] || fail "GitHub's answer had no release in it"
+version=${tag#v}
+deb_url=$(jq -r '[.assets[] | select(.name | test("^krate_.*_amd64\\.deb$"))][0].browser_download_url // empty' "$work/release.json")
+sums_url=$(jq -r '[.assets[] | select(.name == "SHA256SUMS")][0].browser_download_url // empty' "$work/release.json")
+[ -n "$deb_url" ] || fail "Release $version has no Krate package"
+[ -n "$sums_url" ] || fail "Release $version has no SHA256SUMS to check the package with"
+
+installed=${KRATE_UPDATE_INSTALLED:-$(dpkg-query -W -f='${Version}' krate 2>/dev/null || echo 0)}
+if dpkg --compare-versions "$version" le "$installed"; then
+    say current "Krate $installed is the latest"
+    exit 0
+fi
+
+say downloading "Downloading Krate $version"
+curl -fsSL --max-time 600 "$deb_url" -o "$work/krate.deb" || fail "The download of $version failed"
+curl -fsSL --max-time 30 "$sums_url" -o "$work/SHA256SUMS" || fail "Couldn't get $version's SHA256SUMS"
+want=$(awk -v f="$(basename "$deb_url")" '$2 == f || $2 == "*"f {print $1}' "$work/SHA256SUMS")
+have=$(sha256sum "$work/krate.deb" | cut -d' ' -f1)
+[ -n "$want" ] && [ "$want" = "$have" ] || fail "The package didn't match its checksum: not installed"
+[ "$(dpkg-deb -f "$work/krate.deb" Package)" = krate ] || fail "The download isn't the Krate package: not installed"
+[ "$(dpkg-deb -f "$work/krate.deb" Version)" = "$version" ] || fail "The package isn't version $version: not installed"
+
+if [ -n "$DRY_RUN" ]; then
+    say done "Dry run: Krate $version downloaded and checked, not installed"
+    exit 0
+fi
+
+say installing "Installing Krate $version"
+chmod 0644 "$work/krate.deb"
+chmod 0755 "$work"
+DEBIAN_FRONTEND=noninteractive apt-get install -y "$work/krate.deb" > "$work/apt.log" 2>&1 \
+    || fail "Installing $version failed: $(tail -n 1 "$work/apt.log")"
+
+say done "Krate $version is installed"
+# The kiosk starts it again; on a desktop, Krate asks you to restart it.
+systemctl try-restart 'krate-kiosk@*.service' || true
+exit 0

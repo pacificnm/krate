@@ -20,6 +20,7 @@
 #include "SoundsController.h"
 #include "CrashReportsController.h"
 #include "ExportController.h"
+#include "UpdateController.h"
 #include "InstrumentCopies.h"
 #include "BackingInstrument.h"
 #include "RackController.h"
@@ -80,6 +81,8 @@ int main(int argc, char *argv[])
     const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     krate::crash::install(QStringLiteral("krate"), appData);
     CrashReportsController crashReports(appData, nullptr);
+    // Updates from GitHub's releases (docs/UPDATES.md).
+    UpdateController updates(QGuiApplication::applicationVersion());
 
     // The instruments in this rack: one registry line each
     // (docs/SHARED_FOUNDATIONS.MD#adding-instruments).

@@ -1,0 +1,14 @@
+# Krate's updater (docs/UPDATES.md): the latest release from GitHub, checked
+# and installed. Started by Krate's UPDATE button (allowed by
+# /usr/share/polkit-1/rules.d/50-krate-update.rules), or by hand:
+#   systemctl start krate-update
+[Unit]
+Description=Update Krate to its latest release
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/krate/krate-update
+StateDirectory=krate
+TimeoutStartSec=15min

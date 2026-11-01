@@ -21,12 +21,19 @@ install(FILES kiosk/krate-kiosk@.service DESTINATION lib/systemd/system)
 install(FILES kiosk/krate-kiosk.pam DESTINATION /etc/pam.d RENAME krate-kiosk)
 install(FILES ${PROJECT_SOURCE_DIR}/docs/PLAYER.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
+# Updates from inside Krate (docs/UPDATES.md): the updater, its service, and
+# the rule that lets whoever sits at the computer start it.
+install(PROGRAMS update/krate-update DESTINATION libexec/krate)
+install(FILES update/krate-update.service DESTINATION lib/systemd/system)
+install(FILES update/50-krate-update.rules DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/rules.d)
+install(FILES ${PROJECT_SOURCE_DIR}/docs/UPDATES.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+
 # --- The .deb (cpack -G DEB; packaging/build-deb.sh does it all)
 set(CPACK_GENERATOR DEB)
 set(CPACK_PACKAGE_NAME krate)
-# The package's version: the project's, or a release tag's (the release
-# workflow passes -DKRATE_PACKAGE_VERSION=<tag without the v>).
-set(KRATE_PACKAGE_VERSION "${PROJECT_VERSION}.0" CACHE STRING "Version of the .deb")
+# The package's version: the project's (the release workflow checks a tag
+# matches it: packaging/release.sh makes both).
+set(KRATE_PACKAGE_VERSION "${PROJECT_VERSION}") # always: a stale cache can't give the package another number
 set(CPACK_PACKAGE_VERSION ${KRATE_PACKAGE_VERSION})
 set(CPACK_PACKAGE_VENDOR "Jaimie Garner")
 set(CPACK_PACKAGE_CONTACT "Jaimie Garner <pacificnm@gmail.com>")
@@ -50,7 +57,7 @@ set(CPACK_STRIP_FILES ON)
 # pw-jack (PipeWire's JACK).
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "pipewire-jack, qml6-module-qtqml, qml6-module-qtqml-models, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-layouts, qml6-module-qtquick-shapes, qml6-module-qtquick-templates, qml6-module-qtquick-window, qt6-qpa-plugins, libqt6sql6-sqlite")
+    "pipewire-jack, curl, jq, polkitd, qml6-module-qtqml, qml6-module-qtqml-models, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-layouts, qml6-module-qtquick-shapes, qml6-module-qtquick-templates, qml6-module-qtquick-window, qt6-qpa-plugins, libqt6sql6-sqlite")
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-wayland")
 set(CPACK_DEBIAN_PACKAGE_SUGGESTS "cage") # the kiosk (docs/PLAYER.md)
 # The PAM file is a configuration file; systemd learns of the kiosk service.

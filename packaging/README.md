@@ -39,11 +39,4 @@ The Qt 6 and JACK libraries are found by `dpkg-shlibdeps`. What Qt loads at run 
 
 `.github/workflows/build.yml` runs on every push to `main` and every pull request: a release build on Debian 13 (Qt 6.8), every test (offscreen), and the `.deb`, attached to the run as the `krate-deb` artifact (the run's page, *Artifacts*).
 
-A release is a tag:
-
-```sh
-git tag v0.2.0          # the version: the package becomes krate_0.2.0_amd64.deb
-git push origin v0.2.0
-```
-
-The same build runs, and if it passes a GitHub Release named *Krate 0.2.0* is published with the `.deb` attached and notes generated from the commits since the last release. Tags look like `v<major>.<minor>.<patch>`.
+A release: `packaging/release.sh 0.3.0` (it sets the version in `CMakeLists.txt`, commits, tags `v0.3.0` and pushes; a tag that doesn't match `CMakeLists.txt` fails the build). The same build runs, and if it passes a GitHub Release named *Krate 0.3.0* is published with the `.deb` and its `SHA256SUMS` attached and notes generated from the commits since the last release. Every Krate then offers it under **AUDIO ▸ UPDATE** ([docs/UPDATES.md](../docs/UPDATES.md)).

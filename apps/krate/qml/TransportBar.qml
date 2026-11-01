@@ -291,6 +291,82 @@ Rectangle {
                 font.pixelSize: 11
                 wrapMode: Text.WordWrap
             }
+            Row { // what's left of a crash, or of a session that never ended (docs/CRASHES.md)
+                spacing: 10
+                PanelButton {
+                    width: 150
+                    height: 30
+                    faceText: "CRASH REPORTS"
+                    text: "What Krate wrote down when it crashed or didn't end properly"
+                    onClicked: {
+                        audioPopup.close()
+                        Crashes.viewing = true
+                    }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Crashes.reports.length === 0 ? "None: no crashes so far."
+                                                       : Crashes.reports.length + (Crashes.reports.length === 1 ? " report" : " reports")
+                                                         + ", the last " + Crashes.reports[0].when
+                    color: "#55575B"
+                    font.family: Theme.labelFont
+                    font.pixelSize: 11
+                }
+            }
+            // Updates from GitHub's releases (docs/UPDATES.md).
+            Row {
+                spacing: 10
+                readonly property bool busy: Updates.state === "checking" || Updates.state === "installing"
+                                             || Updates.state === "downloading"
+                PanelButton {
+                    width: 90
+                    height: 30
+                    enabled: !parent.busy
+                    opacity: enabled ? 1 : 0.5
+                    faceText: "CHECK"
+                    text: "Ask GitHub whether there's a newer Krate"
+                    onClicked: Updates.check()
+                }
+                PanelButton {
+                    width: 170
+                    height: 30
+                    visible: Updates.available && Updates.canInstall
+                    enabled: !parent.busy
+                    opacity: enabled ? 1 : 0.5
+                    faceText: "UPDATE TO " + Updates.latestVersion
+                    text: "Download, check and install Krate " + Updates.latestVersion + "; Krate starts again with it"
+                    onClicked: Updates.install()
+                }
+                Text {
+                    width: 540 - 28 - 100 - (Updates.available && Updates.canInstall ? 180 : 0)
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Krate " + Updates.currentVersion + (Updates.message !== "" ? ". " + Updates.message + "." : "")
+                    color: Updates.state === "failed" ? Theme.ledOn : "#55575B"
+                    font.family: Theme.labelFont
+                    font.pixelSize: 11
+                    wrapMode: Text.WordWrap
+                }
+            }
+            Text {
+                width: parent.width
+                visible: !Updates.canInstall
+                text: "Updates install with Krate's package (this Krate runs from a build)."
+                color: "#55575B"
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+            }
+            Text { // what's new
+                width: parent.width
+                visible: Updates.available && Updates.notes !== ""
+                text: Updates.notes
+                textFormat: Text.MarkdownText
+                maximumLineCount: 8
+                elide: Text.ElideRight
+                wrapMode: Text.WordWrap
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+            }
         }
     }
 
@@ -407,28 +483,6 @@ Rectangle {
                 font.pixelSize: 11
                 wrapMode: Text.WordWrap
             }
-            Row { // what's left of a crash, or of a session that never ended (docs/CRASHES.md)
-                spacing: 10
-                PanelButton {
-                    width: 150
-                    height: 30
-                    faceText: "CRASH REPORTS"
-                    text: "What Krate wrote down when it crashed or didn't end properly"
-                    onClicked: {
-                        audioPopup.close()
-                        Crashes.viewing = true
-                    }
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Crashes.reports.length === 0 ? "None: no crashes so far."
-                                                       : Crashes.reports.length + (Crashes.reports.length === 1 ? " report" : " reports")
-                                                         + ", the last " + Crashes.reports[0].when
-                    color: "#55575B"
-                    font.family: Theme.labelFont
-                    font.pixelSize: 11
-                }
-            }
         }
     }
 
@@ -450,6 +504,17 @@ Rectangle {
             text: Host.audioStatus
             color: Host.audioConnected ? Theme.ink : Theme.ledOn
             font.pixelSize: 12
+        }
+        PanelLabel { // a newer Krate: AUDIO has the button
+            visible: Updates.available
+            text: "Krate " + Updates.latestVersion + " is out: AUDIO ▸ UPDATE"
+            color: Theme.accentUi
+            font.pixelSize: 12
+            font.bold: true
+            MouseArea {
+                anchors.fill: parent
+                onClicked: audioPopup.open()
+            }
         }
     }
 

@@ -1,0 +1,11 @@
+// Krate's UPDATE button (docs/UPDATES.md): whoever sits at the computer (a
+// local, active session: the kiosk, or a desktop) may start the updater,
+// and only that; it fetches and checks the release itself.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.systemd1.manage-units"
+        && action.lookup("unit") == "krate-update.service"
+        && action.lookup("verb") == "start"
+        && subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});
