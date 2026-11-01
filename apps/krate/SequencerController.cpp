@@ -87,6 +87,7 @@ void SequencerController::applyState()
     m_sequencer.setSongMode(m_state.songMode);
     ++m_revision;
     emit changed();
+    emit stateReplaced();
 }
 
 void SequencerController::arrangerEdited(bool arrangementChanged)

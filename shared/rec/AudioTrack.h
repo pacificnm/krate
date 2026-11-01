@@ -21,14 +21,17 @@ struct Take
 };
 
 // A take placed on the track's lane (docs/DAW.md, D3): it plays from
-// `startBeat`, `skip` frames into the take (its round trip), for `frames`
-// frames (0: to its end).
+// `startBeat`, `skip` frames into the take (its round trip, and anything
+// trimmed off its start), for `frames` frames (0: to its end), fading in and
+// out over `fadeIn` / `fadeOut` frames (linear; D4).
 struct AudioClip
 {
     const Take *take = nullptr;
     double startBeat = 0.0;
     std::int64_t skip = 0;
     std::int64_t frames = 0;
+    std::int64_t fadeIn = 0;
+    std::int64_t fadeOut = 0;
 };
 
 // What a track plays: its clips, a later one on top where they overlap.

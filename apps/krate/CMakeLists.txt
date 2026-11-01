@@ -129,7 +129,7 @@ add_test(NAME tst_songimport COMMAND tst_songimport)
 
 # The sequencer screen's controller.
 add_executable(tst_seqcontroller tests/tst_seqcontroller.cpp SequencerController.h SequencerController.cpp
-               ArrangeController.h ArrangeController.cpp
+               ArrangeController.h ArrangeController.cpp AudioTracks.h AudioTracks.cpp
                SequencerFile.h SequencerFile.cpp NoteTargets.h NoteTargets.cpp SongImport.h SongImport.cpp
                RackRunControl.h RackRunControl.cpp RackSounds.h RackSounds.cpp SongLibrary.h SongLibrary.cpp
                RackController.h RackController.cpp)

@@ -30,6 +30,13 @@ ArrangeController::ArrangeController(SequencerController &sequencer, krate::Tran
         ++m_revision;
         emit changed();
     });
+    connect(&m_sequencer, &SequencerController::stateReplaced, this, [this] {
+        m_undo.clear(); // another sequence: its own history
+        m_redo.clear();
+        emit historyChanged();
+    });
+    if (m_tracks) // a recording, the panel, an edit: undoable too
+        m_tracks->setBeforeLaneEdit([this] { beforeEdit(); });
     apply();
     m_pollTimer.setInterval(33);
     connect(&m_pollTimer, &QTimer::timeout, this, &ArrangeController::poll);
@@ -38,6 +45,8 @@ ArrangeController::ArrangeController(SequencerController &sequencer, krate::Tran
 
 ArrangeController::~ArrangeController()
 {
+    if (m_tracks)
+        m_tracks->setBeforeLaneEdit({});
     s_instance = nullptr;
 }
 
@@ -153,6 +162,7 @@ bool ArrangeController::placePattern(int track, int bar, int pattern, int bars)
     if (track < 0 || track >= kTracks || pattern < 0 || pattern >= kPatterns || bar < 0 || bar >= kMaxBars
         || clipAt(track, bar) >= 0)
         return false;
+    beforeEdit();
     auto &lane = m_sequencer.arrangerState().arrangement.lanes[std::size_t(track)];
     const auto next = std::find_if(lane.begin(), lane.end(), [bar](const Clip &c) { return c.startBar > bar; });
     const int room = (next == lane.end() ? kMaxBars : next->startBar) - bar;
@@ -170,6 +180,7 @@ void ArrangeController::removeClip(int track, int index)
     auto &lane = song.lanes[std::size_t(track)];
     if (index < 0 || index >= int(lane.size()))
         return;
+    beforeEdit();
     const int midi = lane[std::size_t(index)].midi;
     lane.erase(lane.begin() + index);
     if (midi >= 0) { // its notes go too; later MIDI clips move down one
@@ -213,6 +224,175 @@ QVariantList ArrangeController::clipNotes(int track, int index) const
             add(double(note.start) / kTicksPerBeat, double(note.length) / kTicksPerBeat, note.pitch);
     }
     return list;
+}
+
+namespace {
+// Room on a lane for bars [from, to), leaving out clip `except`.
+bool fits(const std::vector<Clip> &lane, int from, int to, int except)
+{
+    if (from < 0 || to > kMaxBars || to <= from)
+        return false;
+    for (std::size_t i = 0; i < lane.size(); ++i)
+        if (int(i) != except && lane[i].startBar < to && lane[i].endBar() > from)
+            return false;
+    return true;
+}
+void insertInOrder(std::vector<Clip> &lane, const Clip &clip)
+{
+    lane.insert(std::find_if(lane.begin(), lane.end(), [&](const Clip &c) { return c.startBar > clip.startBar; }), clip);
+}
+} // namespace
+
+bool ArrangeController::moveClip(int track, int index, int toTrack, int startBar)
+{
+    if (track < 0 || track >= kTracks || toTrack < 0 || toTrack >= kTracks)
+        return false;
+    Arrangement &song = m_sequencer.arrangerState().arrangement;
+    auto &from = song.lanes[std::size_t(track)];
+    if (index < 0 || index >= int(from.size()))
+        return false;
+    Clip clip = from[std::size_t(index)];
+    if ((toTrack == track && startBar == clip.startBar)
+        || !fits(song.lanes[std::size_t(toTrack)], startBar, startBar + clip.bars, toTrack == track ? index : -1))
+        return false;
+    beforeEdit();
+    from.erase(from.begin() + index);
+    clip.startBar = startBar;
+    insertInOrder(song.lanes[std::size_t(toTrack)], clip);
+    edited(true);
+    return true;
+}
+
+bool ArrangeController::trimClipStart(int track, int index, int startBar)
+{
+    if (track < 0 || track >= kTracks)
+        return false;
+    auto &lane = m_sequencer.arrangerState().arrangement.lanes[std::size_t(track)];
+    if (index < 0 || index >= int(lane.size()))
+        return false;
+    const Clip clip = lane[std::size_t(index)];
+    const int offset = clip.offsetBars + startBar - clip.startBar; // no further back than its content's start
+    if (startBar == clip.startBar || offset < 0 || startBar >= clip.endBar() || !fits(lane, startBar, clip.endBar(), index))
+        return false;
+    beforeEdit();
+    Clip &c = lane[std::size_t(index)];
+    c.bars = clip.endBar() - startBar;
+    c.startBar = startBar;
+    c.offsetBars = offset;
+    edited(true);
+    return true;
+}
+
+bool ArrangeController::trimClipEnd(int track, int index, int endBar)
+{
+    if (track < 0 || track >= kTracks)
+        return false;
+    auto &lane = m_sequencer.arrangerState().arrangement.lanes[std::size_t(track)];
+    if (index < 0 || index >= int(lane.size()))
+        return false;
+    const Clip clip = lane[std::size_t(index)];
+    if (endBar == clip.endBar() || !fits(lane, clip.startBar, endBar, index))
+        return false;
+    beforeEdit();
+    lane[std::size_t(index)].bars = endBar - clip.startBar;
+    edited(true);
+    return true;
+}
+
+bool ArrangeController::splitClip(int track, int index, int bar)
+{
+    if (track < 0 || track >= kTracks)
+        return false;
+    Arrangement &song = m_sequencer.arrangerState().arrangement;
+    auto &lane = song.lanes[std::size_t(track)];
+    if (index < 0 || index >= int(lane.size()))
+        return false;
+    const Clip clip = lane[std::size_t(index)];
+    if (bar <= clip.startBar || bar >= clip.endBar())
+        return false;
+    beforeEdit();
+    Clip second = clip;
+    second.startBar = bar;
+    second.bars = clip.endBar() - bar;
+    second.offsetBars = clip.offsetBars + (bar - clip.startBar);
+    if (clip.midi >= 0) { // its own copy of the notes, so either can go without the other
+        song.midi.push_back(song.midi[std::size_t(clip.midi)]);
+        second.midi = int(song.midi.size()) - 1;
+    }
+    lane[std::size_t(index)].bars = bar - clip.startBar;
+    lane.insert(lane.begin() + index + 1, second);
+    edited(true);
+    return true;
+}
+
+bool ArrangeController::duplicateClip(int track, int index)
+{
+    if (track < 0 || track >= kTracks)
+        return false;
+    Arrangement &song = m_sequencer.arrangerState().arrangement;
+    auto &lane = song.lanes[std::size_t(track)];
+    if (index < 0 || index >= int(lane.size()))
+        return false;
+    Clip copy = lane[std::size_t(index)];
+    copy.startBar = copy.endBar();
+    if (!fits(lane, copy.startBar, copy.endBar(), -1))
+        return false;
+    beforeEdit();
+    if (copy.midi >= 0) {
+        song.midi.push_back(song.midi[std::size_t(copy.midi)]);
+        copy.midi = int(song.midi.size()) - 1;
+    }
+    insertInOrder(lane, copy);
+    edited(true);
+    return true;
+}
+
+ArrangeController::Snapshot ArrangeController::snapshot() const
+{
+    return {m_sequencer.state().arrangement, m_tracks ? m_tracks->lanes() : AudioTracksController::Lanes{}};
+}
+
+void ArrangeController::restore(const Snapshot &s)
+{
+    m_restoring = true;
+    m_sequencer.arrangerState().arrangement = s.song;
+    edited(true);
+    if (m_tracks)
+        m_tracks->setLanes(s.audio);
+    m_restoring = false;
+}
+
+void ArrangeController::beforeEdit()
+{
+    if (m_restoring)
+        return;
+    m_undo.push_back(snapshot());
+    if (m_undo.size() > 100)
+        m_undo.erase(m_undo.begin());
+    m_redo.clear();
+    emit historyChanged();
+}
+
+void ArrangeController::undo()
+{
+    if (m_undo.empty())
+        return;
+    m_redo.push_back(snapshot());
+    const Snapshot back = std::move(m_undo.back());
+    m_undo.pop_back();
+    restore(back);
+    emit historyChanged();
+}
+
+void ArrangeController::redo()
+{
+    if (m_redo.empty())
+        return;
+    m_undo.push_back(snapshot());
+    const Snapshot again = std::move(m_redo.back());
+    m_redo.pop_back();
+    restore(again);
+    emit historyChanged();
 }
 
 bool ArrangeController::armed(int track) const
@@ -306,6 +486,7 @@ void ArrangeController::finishTake()
     }
     std::stable_sort(clip.notes.begin(), clip.notes.end(), [](const ClipNote &a, const ClipNote &b) { return a.start < b.start; });
     m_take.clear();
+    beforeEdit();
 
     Arrangement &song = m_sequencer.arrangerState().arrangement;
     for (int t = 0; t < kTracks; ++t) {

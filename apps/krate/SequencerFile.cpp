@@ -14,7 +14,8 @@ QJsonObject arrangeToJson(const SequencerState &state)
     for (const auto &lane : state.arrangement.lanes) {
         QJsonArray clips;
         for (const Clip &c : lane)
-            clips.append(QJsonArray{c.startBar, c.bars, c.pattern, c.midi});
+            clips.append(c.offsetBars ? QJsonArray{c.startBar, c.bars, c.pattern, c.midi, c.offsetBars}
+                                      : QJsonArray{c.startBar, c.bars, c.pattern, c.midi});
         lanes.append(clips);
     }
     QJsonArray midi;
@@ -66,7 +67,7 @@ void arrangeFromJson(const QJsonObject &json, SequencerState &state)
             const QJsonArray a = v.toArray();
             if (a.size() < 4)
                 continue;
-            Clip c{a[0].toInt(-1), a[1].toInt(0), a[2].toInt(-1), a[3].toInt(-1)};
+            Clip c{a[0].toInt(-1), a[1].toInt(0), a[2].toInt(-1), a[3].toInt(-1), std::max(0, a[4].toInt(0))};
             const bool kind = (c.pattern >= 0 && c.pattern < kPatterns && c.midi < 0)
                               || (c.midi >= 0 && c.midi < int(state.arrangement.midi.size()) && c.pattern < 0);
             if (c.startBar < 0 || c.bars < 1 || c.endBar() > kMaxBars || !kind)

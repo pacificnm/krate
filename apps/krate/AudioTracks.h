@@ -41,12 +41,23 @@ class AudioTracksController : public QObject
     QML_NAMED_ELEMENT(Tracks)
     QML_SINGLETON
 
+public:
+    static constexpr int kTracks = 8;
+    // A take placed on a lane (D3), trimmed and faded (D4); frames are the take's.
+    struct LaneClip
+    {
+        QString file; // the take's
+        double startBeat = 0.0;
+        qint64 trim = 0;   // frames off its start (past the round trip)
+        qint64 length = 0; // frames it plays (0: to the take's end)
+        qint64 fadeIn = 0, fadeOut = 0;
+        bool operator==(const LaneClip &) const = default;
+    };
+    using Lanes = std::array<std::vector<LaneClip>, kTracks>;
+
     Q_PROPERTY(bool recording READ recording WRITE setRecording NOTIFY recordingChanged) // REC
     Q_PROPERTY(int revision READ revision NOTIFY changed)  // takes or the active one changed
     Q_PROPERTY(int frame READ frame NOTIFY frameChanged)   // ~20 Hz: meters, recording state
-
-public:
-    static constexpr int kTracks = 8;
 
     explicit AudioTracksController(const QString &dir, QObject *parent = nullptr);
     ~AudioTracksController() override;
@@ -78,8 +89,24 @@ public:
     Q_INVOKABLE void setOnLane(int track, int index, bool on); // at the beat it was recorded on
     Q_INVOKABLE void deleteTake(int track, int index);    // its clips and its file
     Q_INVOKABLE QVariantList peaks(int track) const;      // the selected take's waveform: 0..1 each
-    // The lane, for the arranger: [{take, name, startBeat, seconds, loaded}], later on top.
+    // The lane, for the arranger: [{take, name, startBeat, seconds (as it
+    // plays), from / to (0..1 of the take shown), fadeIn, fadeOut (seconds),
+    // loaded}], later on top.
     Q_INVOKABLE QVariantList clips(int track) const;
+    // Editing a lane's clips (D4); beats at `bpm`. A clip moved or made comes
+    // out on top (the lane's last); each returns its new index (-1: no change).
+    Q_INVOKABLE int moveClip(int track, int clip, double startBeat);
+    Q_INVOKABLE void trimClipStart(int track, int clip, double startBeat, double bpm);
+    Q_INVOKABLE void trimClipEnd(int track, int clip, double endBeat, double bpm);
+    Q_INVOKABLE int splitClip(int track, int clip, double beat, double bpm); // the second half's index
+    Q_INVOKABLE int duplicateClip(int track, int clip, double bpm);          // right after it
+    Q_INVOKABLE void setClipFades(int track, int clip, double fadeInSeconds, double fadeOutSeconds);
+
+    // Undo (the arranger, D4): every lane as it is, and put back as it was;
+    // `before` is told before any lane changes (a recording, the panel, an edit).
+    Lanes lanes() const;
+    void setLanes(const Lanes &lanes);
+    void setBeforeLaneEdit(std::function<void()> before) { m_beforeLaneEdit = std::move(before); }
     Q_INVOKABLE QVariantList takePeaks(int track, int index) const; // [] until loaded
     Q_INVOKABLE void removeClip(int track, int clip);
     Q_INVOKABLE bool isRecording(int track) const;
@@ -110,11 +137,6 @@ private:
         qint64 frames = 0;
         int channels = 2;
     };
-    struct ClipInfo
-    {
-        QString file; // the take's
-        double startBeat = 0.0;
-    };
     struct Loaded
     {
         std::unique_ptr<krate::Take> take;
@@ -131,7 +153,7 @@ private:
     {
         std::unique_ptr<krate::AudioTrack> engine;
         std::vector<TakeInfo> takes;
-        std::vector<ClipInfo> clips;
+        std::vector<LaneClip> clips;
         int selected = -1;
         int device = -1;
         std::map<QString, Loaded> cache;             // loaded takes, by file
@@ -143,6 +165,9 @@ private:
     };
 
     QString trackDir(int track) const;
+    void beforeEdit() { if (m_beforeLaneEdit) m_beforeLaneEdit(); }
+    qint64 playable(const Track &t, const LaneClip &c) const; // frames it plays
+    void laneEdited(int track); // play it, save, tell the screen
     void load();
     void poll();
     int takeIndex(const Track &t, const QString &file) const;
@@ -157,6 +182,7 @@ private:
     std::unique_ptr<krate::Recorder> m_recorder;
     RackController *m_rack = nullptr;
     std::function<int()> m_roundTrip = [] { return 0; };
+    std::function<void()> m_beforeLaneEdit;
     bool m_recording = false;
     bool m_finished = false, m_stopping = false;
     int m_revision = 0, m_frame = 0;

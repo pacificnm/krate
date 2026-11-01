@@ -10,8 +10,9 @@
 // each holding clips laid out across bars (4 beats each). A pattern clip
 // plays one of the bank's patterns, that track's part of it, looping for as
 // long as the clip lasts; a MIDI clip holds notes of its own (recorded from
-// the keyboard). Built on the GUI thread, handed to the sequencer whole, read
-// only by the audio thread.
+// the keyboard). A clip can start partway in (`offsetBars`: trimmed at its
+// start, or the second half of a split). Built on the GUI thread, handed to
+// the sequencer whole, read only by the audio thread.
 namespace krate::seq {
 
 inline constexpr int kBeatsPerBar = 4;
@@ -32,6 +33,7 @@ struct Clip
     int bars = 1;     // >= 1
     int pattern = -1; // a pattern clip: the bank's pattern (0..kPatterns-1)
     int midi = -1;    // a MIDI clip: its index in Arrangement::midi
+    int offsetBars = 0; // how far into its pattern (round and round) or notes it starts
     int endBar() const noexcept { return startBar + bars; }
     bool operator==(const Clip &) const = default;
 };

@@ -119,6 +119,33 @@ private slots:
         QCOMPARE(r2.offs()[0].frame, std::uint64_t(96000)); // bar 1's end
     }
 
+    // A clip starting partway in (D4: trimmed or split): a one-bar pattern
+    // with notes on beats 1 and 3, offset by a bar into a 2-bar pattern, plays
+    // the pattern's second bar first; a MIDI clip skips the notes before.
+    void offsetClips()
+    {
+        Sequencer seq;
+        seq.setTarget(0, {0, 0});
+        seq.setTarget(1, {1, 0});
+        seq.setBank(bankWith({{0, 24, 60, 100}, {384, 24, 62, 100}}, 0, 768)); // bar 1: 60, bar 2: 62
+        auto song = std::make_unique<Arrangement>();
+        song->lanes[0].push_back({1, 2, 0, -1, 1}); // bars 2-3, starting at the pattern's bar 2
+        song->midi.push_back({{{0, 24, 70, 100}, {384 + 96, 24, 72, 100}}});
+        song->lanes[1].push_back({4, 1, -1, 0, 1}); // bar 5: the clip's second bar only
+        seq.setArrangement(std::move(song));
+        seq.setSongMode(true);
+        Run run{seq};
+        run.blocks(24000 * 24);
+        const auto ons = run.ons();
+        QCOMPARE(ons.size(), std::size_t(3));
+        QCOMPARE(ons[0].frame, std::uint64_t(24000 * 4)); // bar 2: the pattern's bar 2
+        QCOMPARE(ons[0].key, std::uint8_t(62));
+        QCOMPARE(ons[1].frame, std::uint64_t(24000 * 8)); // bar 3: round to its bar 1
+        QCOMPARE(ons[1].key, std::uint8_t(60));
+        QCOMPARE(ons[2].frame, std::uint64_t(24000 * 17)); // bar 5, beat 2
+        QCOMPARE(ons[2].key, std::uint8_t(72));
+    }
+
     // A MIDI clip's own notes, from its start; lanes go to their own targets;
     // a muted lane is silent.
     void midiClips()

@@ -150,8 +150,14 @@ void AudioTrack::process(const AudioBlock &block) noexcept
                 if (std::int64_t(k) + 1 >= end)
                     break;
                 const float f = float(pos - double(k));
-                outL[i] = take->left[k] + f * (take->left[k + 1] - take->left[k]);
-                outR[i] = mono ? outL[i] : take->right[k] + f * (take->right[k + 1] - take->right[k]);
+                float gain = 1.0f;
+                if (clip.fadeIn > 0 && pos - double(clip.skip) < double(clip.fadeIn))
+                    gain = float((pos - double(clip.skip)) / double(clip.fadeIn));
+                if (clip.fadeOut > 0 && double(end) - pos < double(clip.fadeOut))
+                    gain *= float((double(end) - pos) / double(clip.fadeOut));
+                const float l = take->left[k] + f * (take->left[k + 1] - take->left[k]);
+                outL[i] = gain * l;
+                outR[i] = mono ? outL[i] : gain * (take->right[k] + f * (take->right[k + 1] - take->right[k]));
                 m_covered[i] = 1;
             }
         }

@@ -298,6 +298,7 @@ void Sequencer::renderSong(const TransportState &transport, bool run, double sam
             continue;
         for (const Clip &clip : song.lanes[std::size_t(t)]) {
             const double cs = double(clip.startBar) * kBeatsPerBar, ce = double(clip.endBar()) * kBeatsPerBar;
+            const double origin = cs - double(clip.offsetBars) * kBeatsPerBar; // where its content's beat 0 falls
             if (ce <= b0)
                 continue;
             if (cs >= b1)
@@ -308,7 +309,7 @@ void Sequencer::renderSong(const TransportState &transport, bool run, double sam
                 const Pattern &p = m_bank->patterns[std::size_t(clip.pattern)];
                 const TrackNotes &notes = p.tracks[std::size_t(t)];
                 const double length = double(std::max<int>(p.length, 1)) / kTicksPerBeat;
-                for (double ps = cs + std::floor((from - cs) / length) * length; ps < to; ps += length)
+                for (double ps = origin + std::floor((from - origin) / length) * length; ps < to; ps += length)
                     for (int n = 0; n < notes.count; ++n) {
                         const Note &note = notes.notes[std::size_t(n)];
                         if (note.start >= p.length)
@@ -321,9 +322,9 @@ void Sequencer::renderSong(const TransportState &transport, bool run, double sam
                     }
             } else if (clip.midi >= 0 && clip.midi < int(song.midi.size())) {
                 for (const ClipNote &note : song.midi[std::size_t(clip.midi)].notes) {
-                    const double on = cs + double(note.start) / kTicksPerBeat;
+                    const double on = origin + double(note.start) / kTicksPerBeat;
                     if (on >= to)
-                        break;
+                        break; // (notes before the clip's start, trimmed off, fall short of `from`)
                     if (on >= from)
                         play(t, note.pitch, note.velocity, on,
                              std::min(on + double(std::max<std::uint32_t>(note.length, 1)) / kTicksPerBeat, ce), b0,

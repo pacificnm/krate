@@ -7,6 +7,11 @@
 #include "SequencerController.h"
 #include "core/Transport.h"
 #include "rack/MidiCapture.h"
+#include "rec/WavWriter.h"
+
+#include <QDir>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include "rack/Rack.h"
 
 using namespace krate;
@@ -51,6 +56,138 @@ private slots:
     // as the rack hears them, become a clip on the armed lane over the bars
     // they span, replacing what was there; outside the punch range, or with
     // REC off, nothing is kept.
+    // Clip editing (D4) on a MIDI lane: move (to another lane too), trim
+    // either end, split, duplicate, never overlapping; undo and redo each.
+    void editsMidiClips()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        Transport transport;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        ArrangeController arrange(c, transport, nullptr);
+        const auto clipOf = [&](int track, int i) { return c.state().arrangement.lanes[std::size_t(track)][std::size_t(i)]; };
+        QVERIFY(!arrange.canUndo());
+        QVERIFY(arrange.placePattern(0, 0, 3, 4)); // bars 1-4
+        QVERIFY(arrange.placePattern(0, 6, 1, 2)); // bars 7-8
+        QVERIFY(arrange.canUndo());
+
+        QVERIFY(!arrange.moveClip(0, 0, 0, 4));   // would overlap bars 7-8
+        QVERIFY(arrange.moveClip(0, 0, 0, 2));    // bars 3-6
+        QCOMPARE(clipOf(0, 0).startBar, 2);
+        QVERIFY(arrange.trimClipStart(0, 0, 3));  // bars 4-6, a bar into the pattern
+        QCOMPARE(clipOf(0, 0).offsetBars, 1);
+        QCOMPARE(clipOf(0, 0).bars, 3);
+        QVERIFY(!arrange.trimClipStart(0, 0, 1)); // not before its content's start
+        QVERIFY(!arrange.trimClipEnd(0, 0, 7));   // into the next clip
+        QVERIFY(arrange.trimClipEnd(0, 0, 5));    // bars 4-5
+        QVERIFY(arrange.splitClip(0, 0, 4));      // bar 4 | bar 5
+        QCOMPARE(arrange.lane(0).size(), 3);
+        QCOMPARE(clipOf(0, 1).startBar, 4);
+        QCOMPARE(clipOf(0, 1).offsetBars, 2);
+        QVERIFY(arrange.duplicateClip(0, 1));     // bar 6
+        QVERIFY(!arrange.duplicateClip(0, 2));    // bar 7 is taken
+        QVERIFY(arrange.moveClip(0, 3, 5, 0));    // bars 7-8 to lane 6, bar 1
+        QCOMPARE(arrange.lane(5).size(), 1);
+        QCOMPARE(arrange.lane(0).size(), 3);
+
+        // Undo all of it, step by step, then redo one.
+        int steps = 0;
+        while (arrange.canUndo()) {
+            arrange.undo();
+            ++steps;
+        }
+        QCOMPARE(steps, 8); // the refused ones left no step
+        QCOMPARE(c.state().arrangement.endBar(), 0);
+        arrange.redo();
+        QCOMPARE(arrange.lane(0).size(), 1);
+        QVERIFY(arrange.canRedo());
+        arrange.placePattern(2, 0, 0); // a new edit: nothing left to redo
+        QVERIFY(!arrange.canRedo());
+        // A split MIDI clip's halves have their own notes: one can go alone.
+        auto &song = c.arrangerState().arrangement;
+        song.midi.push_back({{{0, 24, 60, 100}, {384, 24, 62, 100}}});
+        song.lanes[4] = {{0, 2, -1, int(song.midi.size()) - 1}};
+        c.arrangerEdited(true);
+        QVERIFY(arrange.splitClip(4, 0, 1));
+        arrange.removeClip(4, 0);
+        QCOMPARE(c.state().arrangement.midi.size(), std::size_t(1));
+        QCOMPARE(c.state().arrangement.lanes[4][0].midi, 0);
+        QCOMPARE(c.state().arrangement.lanes[4][0].offsetBars, 1);
+        // Another sequence: its own history.
+        c.newSequence();
+        QVERIFY(!arrange.canUndo());
+    }
+
+    // Audio clips (D4): trim, split, duplicate, fades, move, at the tempo;
+    // undo spans audio and MIDI lanes and a recording landing.
+    void editsAudioClips()
+    {
+        QTemporaryDir dir;
+        const QString recordings = dir.filePath(QStringLiteral("recordings"));
+        QDir().mkpath(recordings + QStringLiteral("/audio1"));
+        { // a 2-second take, recorded from beat 4 with a 480-frame round trip
+            WavWriter w;
+            QVERIFY(w.open((recordings + QStringLiteral("/audio1/take-a.wav")).toStdString(), 48000, 1));
+            std::vector<float> l(96000, 0.5f);
+            QVERIFY(w.write(l.data(), l.data(), l.size()));
+            QVERIFY(w.close());
+            QJsonObject take{{"file", "take-a.wav"}, {"startBeat", 4.0}, {"offset", 480}, {"rate", 48000},
+                             {"frames", 96000}, {"channels", 1}};
+            QJsonArray tracks{QJsonObject{{"takes", QJsonArray{take}},
+                                          {"clips", QJsonArray{QJsonObject{{"file", "take-a.wav"}, {"startBeat", 4.0}}}}}};
+            QFile f(recordings + QStringLiteral("/tracks.json"));
+            QVERIFY(f.open(QIODevice::WriteOnly));
+            f.write(QJsonDocument(QJsonObject{{"tracks", tracks}}).toJson());
+        }
+        Sequencer seq;
+        Transport transport;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        AudioTracksController tracks(recordings);
+        ArrangeController arrange(c, transport, &tracks);
+        const auto clip = [&](int i) { return tracks.clips(0)[i].toMap(); };
+        QCOMPARE(clip(0).value(u"seconds"_s).toDouble(), 95520.0 / 48000.0); // less the round trip
+
+        // At 120 BPM a beat is 24000 frames.
+        tracks.trimClipStart(0, 0, 5.0, 120.0);  // a beat off the start
+        QCOMPARE(clip(0).value(u"startBeat"_s).toDouble(), 5.0);
+        QCOMPARE(clip(0).value(u"seconds"_s).toDouble(), 71520.0 / 48000.0);
+        tracks.trimClipStart(0, 0, 2.0, 120.0);  // back: no further than the take's start
+        QCOMPARE(clip(0).value(u"startBeat"_s).toDouble(), 4.0);
+        tracks.trimClipEnd(0, 0, 7.0, 120.0);    // 3 beats long
+        QCOMPARE(clip(0).value(u"seconds"_s).toDouble(), 1.5);
+        QCOMPARE(tracks.splitClip(0, 0, 5.0, 120.0), 1); // beat 4 | beats 5-6
+        QCOMPARE(clip(0).value(u"seconds"_s).toDouble(), 0.5);
+        QCOMPARE(clip(1).value(u"startBeat"_s).toDouble(), 5.0);
+        QCOMPARE(clip(1).value(u"seconds"_s).toDouble(), 1.0);
+        QCOMPARE(tracks.duplicateClip(0, 1, 120.0), 2);   // beats 7-8
+        QCOMPARE(clip(2).value(u"startBeat"_s).toDouble(), 7.0);
+        tracks.setClipFades(0, 2, 0.25, 2.0);   // the fade out is cut to what's left
+        QCOMPARE(clip(2).value(u"fadeIn"_s).toDouble(), 0.25);
+        QCOMPARE(clip(2).value(u"fadeOut"_s).toDouble(), 0.75);
+        QCOMPARE(tracks.moveClip(0, 0, 12.0), 2); // on top
+        QCOMPARE(clip(2).value(u"startBeat"_s).toDouble(), 12.0);
+        QVERIFY(arrange.placePattern(1, 0, 0));    // a MIDI edit in between
+
+        // Undo: the MIDI clip, then the audio edits, back to the one clip.
+        arrange.undo();
+        QVERIFY(arrange.lane(1).isEmpty());
+        QCOMPARE(tracks.clips(0).size(), 3);
+        for (int k = 0; k < 7; ++k)
+            arrange.undo();
+        QVERIFY(!arrange.canUndo());
+        QCOMPARE(tracks.clips(0).size(), 1);
+        QCOMPARE(clip(0).value(u"seconds"_s).toDouble(), 95520.0 / 48000.0);
+        arrange.redo();
+        QCOMPARE(clip(0).value(u"startBeat"_s).toDouble(), 5.0);
+        // The edits are kept in tracks.json.
+        tracks.save();
+        AudioTracksController again(dir.filePath(QStringLiteral("recordings")));
+        QCOMPARE(again.clips(0)[0].toMap().value(u"startBeat"_s).toDouble(), 5.0);
+        QCOMPARE(again.clips(0)[0].toMap().value(u"seconds"_s).toDouble(), 71520.0 / 48000.0);
+    }
+
     void recordsMidiClips()
     {
         QTemporaryDir dir;

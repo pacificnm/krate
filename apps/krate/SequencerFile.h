@@ -17,7 +17,7 @@
 // pitch, velocity] in ticks (96 per beat). "arrange" holds the arranger's
 // song (docs/DAW.md, D3): SONG mode, where play starts, the loop and punch
 // ranges (bars, 0-based, [from, to)), each lane's clips [startBar, bars,
-// pattern, midi] (-1 = not that kind) and the MIDI clips' notes.
+// pattern, midi(, offsetBars)] (-1 = not that kind) and the MIDI clips' notes.
 struct SequencerState
 {
     std::unique_ptr<krate::seq::Bank> bank = std::make_unique<krate::seq::Bank>();

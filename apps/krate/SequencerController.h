@@ -206,6 +206,7 @@ signals:
     void changed();
     void positionChanged();
     void libraryChanged();
+    void stateReplaced(); // another sequence (opened, new, back from the file): the arranger's undo starts afresh
 
 private:
     krate::seq::Pattern &current() { return m_state.bank->patterns[std::size_t(m_state.pattern)]; }

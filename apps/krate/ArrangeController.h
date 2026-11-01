@@ -4,6 +4,9 @@
 #include <vector>
 
 #include <QObject>
+
+#include "AudioTracks.h"
+#include "seq/Arrangement.h"
 #include <QTimer>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
@@ -11,7 +14,6 @@
 class QQmlEngine;
 class QJSEngine;
 class SequencerController;
-class AudioTracksController;
 namespace krate {
 class MidiCapture;
 class Transport;
@@ -52,6 +54,8 @@ class ArrangeController : public QObject
     Q_PROPERTY(bool following READ following NOTIFY positionChanged) // a DAW leads over JACK: its position and loop
     Q_PROPERTY(bool recording READ recording NOTIFY changed)          // REC (the transport bar's)
     Q_PROPERTY(int takeNotes READ takeNotes NOTIFY positionChanged)   // notes in the MIDI take so far
+    Q_PROPERTY(bool canUndo READ canUndo NOTIFY historyChanged)
+    Q_PROPERTY(bool canRedo READ canRedo NOTIFY historyChanged)
 
 public:
     ArrangeController(SequencerController &sequencer, krate::Transport &transport, AudioTracksController *tracks,
@@ -93,6 +97,20 @@ public:
     // shortened to end before the next clip; false if the bar is taken.
     Q_INVOKABLE bool placePattern(int track, int bar, int pattern, int bars = 0);
     Q_INVOKABLE void removeClip(int track, int index);
+    // Editing a MIDI lane's clips (D4), in whole bars; clips on a lane never
+    // overlap, so each refuses (false) what would.
+    Q_INVOKABLE bool moveClip(int track, int index, int toTrack, int startBar);
+    Q_INVOKABLE bool trimClipStart(int track, int index, int startBar); // later into its content, or back
+    Q_INVOKABLE bool trimClipEnd(int track, int index, int endBar);
+    Q_INVOKABLE bool splitClip(int track, int index, int bar);
+    Q_INVOKABLE bool duplicateClip(int track, int index); // right after it
+    // Undo and redo every lane edit (MIDI and audio): up to 100 steps, back
+    // to when this sequence opened.
+    bool canUndo() const { return !m_undo.empty(); }
+    bool canRedo() const { return !m_redo.empty(); }
+    Q_INVOKABLE void undo();
+    Q_INVOKABLE void redo();
+
     // A MIDI lane armed for recording (not kept).
     Q_INVOKABLE bool armed(int track) const;
     Q_INVOKABLE void setArmed(int track, bool on);
@@ -105,6 +123,7 @@ public:
 signals:
     void changed();
     void positionChanged();
+    void historyChanged();
 
 private:
     struct TakeNote
@@ -118,6 +137,14 @@ private:
         double beat = 0.0;
         int velocity = 0;
     };
+    struct Snapshot
+    {
+        krate::seq::Arrangement song;
+        AudioTracksController::Lanes audio;
+    };
+    Snapshot snapshot() const;
+    void restore(const Snapshot &s);
+    void beforeEdit(); // the lanes as they are, onto the undo history
     void takeCaptured(); // the keyboard's notes since the last tick
     void finishTake();   // the notes into a clip on each armed lane
     void apply(); // the transport's start and loop, the tracks' punch, from the state
@@ -138,5 +165,7 @@ private:
     std::vector<TakeNote> m_take;
     std::array<Held, 128> m_held{};
     double m_lastBeat = 0.0;
+    std::vector<Snapshot> m_undo, m_redo;
+    bool m_restoring = false;
     QTimer m_pollTimer;
 };

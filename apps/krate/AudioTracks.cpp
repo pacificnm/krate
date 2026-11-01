@@ -173,19 +173,20 @@ bool AudioTracksController::onLane(int track, int index) const
     if (index < 0 || index >= int(t.takes.size()))
         return false;
     return std::any_of(t.clips.begin(), t.clips.end(),
-                       [&](const ClipInfo &c) { return c.file == t.takes[std::size_t(index)].file; });
+                       [&](const LaneClip &c) { return c.file == t.takes[std::size_t(index)].file; });
 }
 
 void AudioTracksController::setOnLane(int track, int index, bool on)
 {
     if (track < 0 || track >= kTracks || on == onLane(track, index))
         return;
+    beforeEdit();
     Track &t = m_tracks[std::size_t(track)];
     const TakeInfo &take = t.takes[std::size_t(index)];
     if (on)
         t.clips.push_back({take.file, take.startBeat}); // on top
     else
-        std::erase_if(t.clips, [&](const ClipInfo &c) { return c.file == take.file; });
+        std::erase_if(t.clips, [&](const LaneClip &c) { return c.file == take.file; });
     refresh(track);
     save();
     bump();
@@ -199,7 +200,9 @@ void AudioTracksController::deleteTake(int track, int index)
     if (index < 0 || index >= int(t.takes.size()))
         return;
     const QString file = t.takes[std::size_t(index)].file;
-    std::erase_if(t.clips, [&](const ClipInfo &c) { return c.file == file; });
+    if (onLane(track, index))
+        beforeEdit();
+    std::erase_if(t.clips, [&](const LaneClip &c) { return c.file == file; });
     t.takes.erase(t.takes.begin() + index);
     if (index == t.selected)
         t.selected = -1;
@@ -237,20 +240,209 @@ QVariantList AudioTracksController::clips(int track) const
     if (track < 0 || track >= kTracks)
         return list;
     const Track &t = m_tracks[std::size_t(track)];
-    for (const ClipInfo &clip : t.clips) {
+    for (const LaneClip &clip : t.clips) {
         const int index = takeIndex(t, clip.file);
         if (index < 0)
             continue;
         const TakeInfo &take = t.takes[std::size_t(index)];
+        const double rate = std::max(take.rate, 1);
+        const double total = double(std::max<qint64>(take.frames, 1));
+        const double from = double(take.offset + clip.trim);
         list.append(QVariantMap{
             {QStringLiteral("take"), index},
             {QStringLiteral("name"), QFileInfo(take.file).completeBaseName()},
             {QStringLiteral("startBeat"), clip.startBeat},
-            {QStringLiteral("seconds"), take.rate > 0 ? double(take.frames - take.offset) / take.rate : 0.0},
+            {QStringLiteral("seconds"), double(playable(t, clip)) / rate},
+            {QStringLiteral("from"), from / total},
+            {QStringLiteral("to"), (from + double(playable(t, clip))) / total},
+            {QStringLiteral("fadeIn"), double(clip.fadeIn) / rate},
+            {QStringLiteral("fadeOut"), double(clip.fadeOut) / rate},
             {QStringLiteral("loaded"), t.cache.count(clip.file) > 0},
         });
     }
     return list;
+}
+
+qint64 AudioTracksController::playable(const Track &t, const LaneClip &c) const
+{
+    const int index = takeIndex(t, c.file);
+    if (index < 0)
+        return 0;
+    const TakeInfo &take = t.takes[std::size_t(index)];
+    const qint64 rest = std::max<qint64>(0, take.frames - take.offset - c.trim);
+    return c.length > 0 ? std::min(c.length, rest) : rest;
+}
+
+void AudioTracksController::laneEdited(int track)
+{
+    refresh(track);
+    save();
+    bump();
+}
+
+namespace {
+constexpr double kMinSeconds = 0.01; // the shortest a clip is trimmed or split to
+// A take's frames in a beat.
+double framesPerBeat(int rate, double bpm) { return 60.0 / std::max(bpm, 1.0) * std::max(rate, 1); }
+} // namespace
+
+int AudioTracksController::moveClip(int track, int clip, double startBeat)
+{
+    if (track < 0 || track >= kTracks)
+        return -1;
+    Track &t = m_tracks[std::size_t(track)];
+    if (clip < 0 || clip >= int(t.clips.size()))
+        return -1;
+    startBeat = std::max(0.0, startBeat);
+    if (startBeat == t.clips[std::size_t(clip)].startBeat)
+        return clip;
+    beforeEdit();
+    LaneClip moved = t.clips[std::size_t(clip)];
+    moved.startBeat = startBeat;
+    t.clips.erase(t.clips.begin() + clip);
+    t.clips.push_back(moved); // on top
+    laneEdited(track);
+    return int(t.clips.size()) - 1;
+}
+
+void AudioTracksController::trimClipStart(int track, int clip, double startBeat, double bpm)
+{
+    if (track < 0 || track >= kTracks)
+        return;
+    Track &t = m_tracks[std::size_t(track)];
+    if (clip < 0 || clip >= int(t.clips.size()))
+        return;
+    LaneClip c = t.clips[std::size_t(clip)];
+    const TakeInfo &take = t.takes[std::size_t(takeIndex(t, c.file))];
+    const double fpb = framesPerBeat(take.rate, bpm);
+    const qint64 rest = playable(t, c);
+    // Frames to take off (or put back, < 0): no further back than the take's start, not past its end.
+    const qint64 d = std::clamp<qint64>(std::llround((startBeat - c.startBeat) * fpb), -c.trim,
+                                        rest - qint64(kMinSeconds * take.rate));
+    if (d == 0)
+        return;
+    beforeEdit();
+    c.trim += d;
+    c.startBeat += double(d) / fpb;
+    c.length = rest - d;
+    c.fadeIn = std::min(c.fadeIn, c.length);
+    c.fadeOut = std::min(c.fadeOut, c.length - c.fadeIn);
+    t.clips[std::size_t(clip)] = c;
+    laneEdited(track);
+}
+
+void AudioTracksController::trimClipEnd(int track, int clip, double endBeat, double bpm)
+{
+    if (track < 0 || track >= kTracks)
+        return;
+    Track &t = m_tracks[std::size_t(track)];
+    if (clip < 0 || clip >= int(t.clips.size()))
+        return;
+    LaneClip c = t.clips[std::size_t(clip)];
+    const TakeInfo &take = t.takes[std::size_t(takeIndex(t, c.file))];
+    const qint64 most = std::max<qint64>(0, take.frames - take.offset - c.trim);
+    const qint64 length = std::clamp<qint64>(std::llround((endBeat - c.startBeat) * framesPerBeat(take.rate, bpm)),
+                                             qint64(kMinSeconds * take.rate), most);
+    if (length == playable(t, c))
+        return;
+    beforeEdit();
+    c.length = length;
+    c.fadeIn = std::min(c.fadeIn, c.length);
+    c.fadeOut = std::min(c.fadeOut, c.length - c.fadeIn);
+    t.clips[std::size_t(clip)] = c;
+    laneEdited(track);
+}
+
+int AudioTracksController::splitClip(int track, int clip, double beat, double bpm)
+{
+    if (track < 0 || track >= kTracks)
+        return -1;
+    Track &t = m_tracks[std::size_t(track)];
+    if (clip < 0 || clip >= int(t.clips.size()))
+        return -1;
+    const LaneClip c = t.clips[std::size_t(clip)];
+    const TakeInfo &take = t.takes[std::size_t(takeIndex(t, c.file))];
+    const double fpb = framesPerBeat(take.rate, bpm);
+    const qint64 rest = playable(t, c), d = std::llround((beat - c.startBeat) * fpb);
+    const qint64 shortest = qint64(kMinSeconds * take.rate);
+    if (d < shortest || d > rest - shortest)
+        return -1;
+    beforeEdit();
+    LaneClip first = c, second = c;
+    first.length = d;
+    first.fadeIn = std::min(c.fadeIn, d);
+    first.fadeOut = 0;
+    second.trim += d;
+    second.startBeat += double(d) / fpb;
+    second.length = rest - d;
+    second.fadeIn = 0;
+    second.fadeOut = std::min(c.fadeOut, rest - d);
+    t.clips[std::size_t(clip)] = first;
+    t.clips.push_back(second);
+    laneEdited(track);
+    return int(t.clips.size()) - 1;
+}
+
+int AudioTracksController::duplicateClip(int track, int clip, double bpm)
+{
+    if (track < 0 || track >= kTracks)
+        return -1;
+    Track &t = m_tracks[std::size_t(track)];
+    if (clip < 0 || clip >= int(t.clips.size()))
+        return -1;
+    beforeEdit();
+    LaneClip copy = t.clips[std::size_t(clip)];
+    const TakeInfo &take = t.takes[std::size_t(takeIndex(t, copy.file))];
+    copy.startBeat += double(playable(t, copy)) / framesPerBeat(take.rate, bpm);
+    t.clips.push_back(copy);
+    laneEdited(track);
+    return int(t.clips.size()) - 1;
+}
+
+void AudioTracksController::setClipFades(int track, int clip, double fadeInSeconds, double fadeOutSeconds)
+{
+    if (track < 0 || track >= kTracks)
+        return;
+    Track &t = m_tracks[std::size_t(track)];
+    if (clip < 0 || clip >= int(t.clips.size()))
+        return;
+    LaneClip c = t.clips[std::size_t(clip)];
+    const TakeInfo &take = t.takes[std::size_t(takeIndex(t, c.file))];
+    const qint64 rest = playable(t, c);
+    const qint64 in = std::clamp<qint64>(std::llround(fadeInSeconds * take.rate), 0, rest);
+    const qint64 out = std::clamp<qint64>(std::llround(fadeOutSeconds * take.rate), 0, rest - in);
+    if (in == c.fadeIn && out == c.fadeOut)
+        return;
+    beforeEdit();
+    c.fadeIn = in;
+    c.fadeOut = out;
+    t.clips[std::size_t(clip)] = c;
+    laneEdited(track);
+}
+
+AudioTracksController::Lanes AudioTracksController::lanes() const
+{
+    Lanes lanes;
+    for (int i = 0; i < kTracks; ++i)
+        lanes[std::size_t(i)] = m_tracks[std::size_t(i)].clips;
+    return lanes;
+}
+
+void AudioTracksController::setLanes(const Lanes &lanes)
+{
+    for (int i = 0; i < kTracks; ++i) {
+        Track &t = m_tracks[std::size_t(i)];
+        std::vector<LaneClip> clips;
+        for (const LaneClip &c : lanes[std::size_t(i)])
+            if (takeIndex(t, c.file) >= 0) // a take deleted since is gone for good
+                clips.push_back(c);
+        if (clips == t.clips)
+            continue;
+        t.clips = std::move(clips);
+        refresh(i);
+    }
+    save();
+    bump();
 }
 
 void AudioTracksController::removeClip(int track, int clip)
@@ -260,6 +452,7 @@ void AudioTracksController::removeClip(int track, int clip)
     Track &t = m_tracks[std::size_t(track)];
     if (clip < 0 || clip >= int(t.clips.size()))
         return;
+    beforeEdit();
     t.clips.erase(t.clips.begin() + clip);
     refresh(track);
     save();
@@ -347,6 +540,8 @@ void AudioTracksController::addFinished(const krate::Recorder::Finished &f)
     take.rate = f.rate;
     take.frames = qint64(f.frames);
     take.channels = f.channels;
+    if (!m_finished)
+        beforeEdit(); // (not while quitting: the arranger may be gone)
     t.takes.push_back(take);
     t.clips.push_back({take.file, take.startBeat}); // on the lane where it was recorded, on top
     t.selected = int(t.takes.size()) - 1;
@@ -362,7 +557,7 @@ void AudioTracksController::refresh(int track)
         return; // quitting: nothing more to play
     // What's needed: the lane's takes and the selected one.
     std::vector<QString> wanted;
-    for (const ClipInfo &c : t.clips)
+    for (const LaneClip &c : t.clips)
         wanted.push_back(c.file);
     if (t.selected >= 0)
         wanted.push_back(t.takes[std::size_t(t.selected)].file);
@@ -370,11 +565,12 @@ void AudioTracksController::refresh(int track)
 
     // The engine's new playlist: the clips whose takes are loaded.
     auto playlist = std::make_unique<krate::Playlist>();
-    for (const ClipInfo &c : t.clips) {
+    for (const LaneClip &c : t.clips) {
         const auto it = t.cache.find(c.file);
         const int index = takeIndex(t, c.file);
         if (it != t.cache.end() && index >= 0)
-            playlist->clips.push_back({it->second.take.get(), c.startBeat, t.takes[std::size_t(index)].offset, 0});
+            playlist->clips.push_back({it->second.take.get(), c.startBeat, t.takes[std::size_t(index)].offset + c.trim,
+                                       c.length, c.fadeIn, c.fadeOut});
     }
     t.engine->setPlaylist(playlist.get());
     Retired old;
@@ -466,7 +662,11 @@ void AudioTracksController::load()
                 const QJsonObject j = v.toObject();
                 const QString file = j.value(QStringLiteral("file")).toString();
                 if (takeIndex(t, file) >= 0)
-                    t.clips.push_back({file, j.value(QStringLiteral("startBeat")).toDouble()});
+                    t.clips.push_back({file, j.value(QStringLiteral("startBeat")).toDouble(),
+                                       std::max<qint64>(0, j.value(QStringLiteral("trim")).toInteger()),
+                                       std::max<qint64>(0, j.value(QStringLiteral("length")).toInteger()),
+                                       std::max<qint64>(0, j.value(QStringLiteral("fadeIn")).toInteger()),
+                                       std::max<qint64>(0, j.value(QStringLiteral("fadeOut")).toInteger())});
             }
         } else if (const int active = takeIndex(t, o.value(QStringLiteral("active")).toString()); active >= 0) {
             t.clips.push_back({t.takes[std::size_t(active)].file, t.takes[std::size_t(active)].startBeat}); // before the lanes
@@ -496,8 +696,13 @@ void AudioTracksController::save()
             });
         o.insert(QStringLiteral("takes"), takes);
         QJsonArray clips;
-        for (const ClipInfo &clip : t.clips)
-            clips.append(QJsonObject{{QStringLiteral("file"), clip.file}, {QStringLiteral("startBeat"), clip.startBeat}});
+        for (const LaneClip &clip : t.clips)
+            clips.append(QJsonObject{{QStringLiteral("file"), clip.file},
+                                     {QStringLiteral("startBeat"), clip.startBeat},
+                                     {QStringLiteral("trim"), clip.trim},
+                                     {QStringLiteral("length"), clip.length},
+                                     {QStringLiteral("fadeIn"), clip.fadeIn},
+                                     {QStringLiteral("fadeOut"), clip.fadeOut}});
         o.insert(QStringLiteral("clips"), clips);
         tracks.append(o);
     }

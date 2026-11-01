@@ -257,6 +257,30 @@ private slots:
         QVERIFY(std::fabs(data.left.back() - inL(209454)) < 1e-6f);
     }
 
+    // Fades (D4): a clip trimmed to frames 1000..11000 of a constant take,
+    // fading in over 2000 and out over 4000: halfway up at 1000 in, whole in
+    // the middle, a quarter left 1000 before its end.
+    void fades()
+    {
+        Rig rig;
+        Take take;
+        take.left.assign(48000, 0.8f);
+        Playlist playlist{{{&take, 0.0, 1000, 10000, 2000, 4000}}};
+        rig.track.setPlaylist(&playlist);
+        std::vector<float> out;
+        rig.block(true, true);
+        for (int k = 0; k < 60; ++k) {
+            out.insert(out.end(), rig.l.begin(), rig.l.end());
+            rig.block(true);
+        }
+        QVERIFY(std::fabs(out[0]) < 1e-6f);
+        QVERIFY(std::fabs(out[1000] - 0.4f) < 1e-5f);
+        QVERIFY(std::fabs(out[5000] - 0.8f) < 1e-6f);
+        QVERIFY(std::fabs(out[9000] - 0.2f) < 1e-5f);
+        QCOMPARE(out[10000], 0.0f); // ended
+        rig.track.setPlaylist(nullptr);
+    }
+
     // A new take waits until the last one is written.
     void oneTakeAtATime()
     {
