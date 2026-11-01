@@ -5,6 +5,7 @@
 #include <QStandardPaths>
 
 #include "app/HostController.h"
+#include "app/Locations.h"
 #include "kobalt/app/KobaltInstrument.h"
 #include "app/InstrumentMidiLearn.h"
 #include "app/ScreenshotHook.h"
@@ -36,7 +37,8 @@ int main(int argc, char *argv[])
     krate::InstrumentContext context;
     context.transport = &transport;
     context.configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation); // ~/.config/kobalt
-    context.dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);     // ~/.local/share/kobalt
+    // ~/.local/share/kobalt, or where Krate's Settings put the instruments' folder (docs/SETTINGS.md)
+    context.dataDir = krate::locations::instrumentData(entry.id);
     const std::unique_ptr<krate::InstrumentInstance> instrument = entry.create(context);
 
     // ~/.config/kobalt/midimap.json: controls plus the entry's learnable buttons.

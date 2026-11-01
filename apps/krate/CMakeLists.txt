@@ -22,6 +22,8 @@ qt_add_qml_module(krate
         CrashReportsController.cpp
         UpdateController.h
         UpdateController.cpp
+        SettingsController.h
+        SettingsController.cpp
         PluginSlots.h
         PluginSlots.cpp
         PluginEditor.h
@@ -72,6 +74,9 @@ qt_add_qml_module(krate
         qml/PluginPanel.qml
         qml/SoundsScreen.qml
         qml/CrashReportsPopup.qml
+        qml/AudioSettings.qml
+        qml/KeysSettings.qml
+        qml/SettingsScreen.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(krate PROPERTIES ENABLE_EXPORTS ON) # -rdynamic: function names in crash reports
@@ -186,6 +191,13 @@ target_include_directories(tst_copies PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_copies PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_copies PRIVATE krate_rack krate_app Qt6::Qml Qt6::Test)
 add_test(NAME tst_copies COMMAND tst_copies)
+
+# Settings (docs/SETTINGS.md): folders moved at a start, all or nothing.
+add_executable(tst_settings tests/tst_settings.cpp SettingsController.h SettingsController.cpp)
+target_include_directories(tst_settings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_settings PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_settings PRIVATE krate_app krate_plugin Qt6::Qml Qt6::Test)
+add_test(NAME tst_settings COMMAND tst_settings)
 
 # Updates (docs/UPDATES.md): GitHub's answer, versions, the updater's status.
 add_executable(tst_updates tests/tst_updates.cpp UpdateController.h UpdateController.cpp)

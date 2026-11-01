@@ -28,7 +28,6 @@ public:
     // Applies the saved session (a missing or unreadable file leaves defaults).
     void load();
     void save();
-    QString midiInput() const { return m_midiInput; }
     // The capture port feeding each audio input, and the buffer size asked for (0 = the server's).
     QStringList audioInputs() const { return m_audioInputs; }
     void setAudioInputs(const QStringList &ports);
@@ -45,7 +44,6 @@ private:
     krate::Rack &m_rack;
     RackMidiLearn &m_learn;
     QStringList m_ids;
-    QString m_midiInput; // "" = every MIDI device (HostController::setMidiInputMatch)
     QStringList m_audioInputs;
     int m_bufferSize = 0;
     QString m_outputDevice;

@@ -62,6 +62,12 @@ public:
     int revision() const { return m_revision; }
     QVariantList available() const; // [{path, id, name, vendor, kind: "Instrument"|"Effect"|"Plugin"}]
     Q_INVOKABLE void rescan();
+    // Where plugins are looked for (Settings adds folders): looked through again.
+    void setSearchPaths(std::vector<std::string> paths)
+    {
+        m_searchPaths = std::move(paths);
+        rescan();
+    }
 
     Q_INVOKABLE int slotOf(int rackDevice) const; // -1: not a plugin slot
     Q_INVOKABLE bool load(int slot, const QString &path, const QString &id);

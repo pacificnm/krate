@@ -4,7 +4,7 @@ When Krate crashes, the kiosk on the player starts it again two seconds later, s
 
 ## Reading them
 
-- **On the screen**: after a crash, Krate starts with a red banner: *Krate started again after the last session went wrong*, with what happened. **VIEW** opens the report, **DISMISS** hides the banner (the report stays). Any time later: **AUDIO** (top right), then **CRASH REPORTS**: the list, newest first, and the one you pick. **DELETE** / **DELETE ALL** when done.
+- **On the screen**: after a crash, Krate starts with a red banner: *Krate started again after the last session went wrong*, with what happened. **VIEW** opens the report, **DISMISS** hides the banner (the report stays). Any time later: **⚙ Settings** (the last tab), **Crash reports**, **VIEW REPORTS**: the list, newest first, and the one you pick. **DELETE** / **DELETE ALL** when done.
 - **As files**: `~/.local/share/krate/crashes/<date>_<time>.txt` (the last 30). From another computer: `scp 'jaimie@krate.local:.local/share/krate/crashes/*.txt' .`
 - **The log**: `~/.local/share/krate/krate.log` is this session's, `krate.log.1` the one before. On the player, systemd's view too: `journalctl -u krate-kiosk@jaimie -b` (a crash shows as `code=dumped, status=11/SEGV` or `6/ABRT`).
 

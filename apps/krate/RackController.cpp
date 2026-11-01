@@ -191,6 +191,7 @@ void RackController::setFocus(int device)
     setSeqShown(false);
     setArrangeShown(false);
     setSoundsShown(false);
+    setSettingsShown(false);
 }
 
 int RackController::keysChannel() const
@@ -216,6 +217,7 @@ void RackController::setMixerShown(bool shown)
         setSeqShown(false);
         setArrangeShown(false);
         setSoundsShown(false);
+        setSettingsShown(false);
     }
     m_mixerShown = shown;
     emit mixerShownChanged();
@@ -230,6 +232,7 @@ void RackController::setSongShown(bool shown)
         setSeqShown(false);
         setArrangeShown(false);
         setSoundsShown(false);
+        setSettingsShown(false);
     }
     m_songShown = shown;
     emit songShownChanged();
@@ -244,6 +247,7 @@ void RackController::setSeqShown(bool shown)
         setSongShown(false);
         setArrangeShown(false);
         setSoundsShown(false);
+        setSettingsShown(false);
     }
     m_seqShown = shown;
     emit seqShownChanged();
@@ -258,6 +262,7 @@ void RackController::setArrangeShown(bool shown)
         setSongShown(false);
         setSeqShown(false);
         setSoundsShown(false);
+        setSettingsShown(false);
     }
     m_arrangeShown = shown;
     emit arrangeShownChanged();
@@ -272,9 +277,25 @@ void RackController::setSoundsShown(bool shown)
         setSongShown(false);
         setSeqShown(false);
         setArrangeShown(false);
+        setSettingsShown(false);
     }
     m_soundsShown = shown;
     emit soundsShownChanged();
+}
+
+void RackController::setSettingsShown(bool shown)
+{
+    if (shown == m_settingsShown)
+        return;
+    if (shown) {
+        setMixerShown(false);
+        setSongShown(false);
+        setSeqShown(false);
+        setArrangeShown(false);
+        setSoundsShown(false);
+    }
+    m_settingsShown = shown;
+    emit settingsShownChanged();
 }
 
 bool RackController::playing() const { return m_transport.playing(); }
@@ -770,6 +791,7 @@ void RackController::poll()
         setSeqShown(false);
         setArrangeShown(false);
         setSoundsShown(false);
+        setSettingsShown(false);
     }
     if (const bool playing = m_transport.playing(); playing != m_shownPlaying) { // an instrument's RUN, or a song's end
         m_shownPlaying = playing;

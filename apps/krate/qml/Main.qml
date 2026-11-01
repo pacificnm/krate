@@ -47,6 +47,10 @@ Window {
         onActivated: Rack.soundsShown = !Rack.soundsShown
     }
     Shortcut {
+        sequence: "Ctrl+,"
+        onActivated: Rack.settingsShown = !Rack.settingsShown
+    }
+    Shortcut {
         sequence: "L"
         onActivated: MidiLearn.active = !MidiLearn.active
     }
@@ -72,8 +76,8 @@ Window {
         readonly property int screenTabWidth: root.width >= 1500 ? 104 : root.width >= 1200 ? 92 : 80
         // Only the instruments in the rack have tabs (docs/DAW.md, D1).
         readonly property int instrumentTabs: Math.max(1, Rack.panelComponents.filter((c, i) => c !== "" && Rack.present[i]).length)
-        // Beside the instruments: ◂ ▸ +, a gap, the five screen tabs, and the spaces between them all.
-        readonly property real stripWidth: Math.max(80, root.width - 32 - 3 * 40 - 16 - 5 * screenTabWidth - 9 * spacing)
+        // Beside the instruments: ◂ ▸ +, a gap, the five screen tabs and Settings, and the spaces between them all.
+        readonly property real stripWidth: Math.max(80, root.width - 32 - 4 * 40 - 16 - 5 * screenTabWidth - 10 * spacing)
         // Wide enough to read "Kalliope 2"; more tabs than fit scroll.
         readonly property real tabWidth: Math.max(118, Math.min(150, (stripWidth - (instrumentTabs - 1) * spacing) / instrumentTabs))
 
@@ -122,7 +126,7 @@ Window {
                         required property int index
                         required property string modelData
                         readonly property bool focused: Rack.focus === index
-                        readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown && !Rack.soundsShown
+                        readonly property bool shown: focused && !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown && !Rack.soundsShown && !Rack.settingsShown
                         onFocusedChanged: if (focused) tabStrip.focusedTab = tab
                         onXChanged: if (focused) Qt.callLater(tabStrip.reveal)
                         Component.onCompleted: if (focused) tabStrip.focusedTab = tab
@@ -377,6 +381,41 @@ Window {
             Accessible.role: Accessible.PageTab
             Accessible.name: "Sound library" + (Rack.soundsShown ? " (shown)" : "")
         }
+
+        Rectangle { // Settings (learnable, Ctrl+,): folders, audio, MIDI, updates, crash reports
+            width: 40
+            height: 40
+            radius: 4
+            color: Rack.settingsShown ? Theme.silverLight : Theme.lowerDeck
+            border.color: Rack.settingsShown ? Theme.accentUi : Theme.deckLine
+            border.width: Rack.settingsShown ? 3 : 1
+            Text {
+                anchors.centerIn: parent
+                text: "⚙"
+                color: Theme.ink
+                font.pixelSize: 24
+            }
+            Rectangle { // something waits: a restart, or an update
+                x: parent.width - 12
+                y: 4
+                width: 8
+                height: 8
+                radius: 4
+                visible: Settings.restartNeeded || Updates.available
+                color: Theme.ledOn
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: Rack.settingsShown = !Rack.settingsShown
+            }
+            LearnOverlay {
+                anchors.fill: parent
+                paramKey: "rack:settings"
+                round: false
+            }
+            Accessible.role: Accessible.PageTab
+            Accessible.name: "Settings" + (Rack.settingsShown ? " (shown)" : "")
+        }
     }
 
     Item { // the focused instrument's panel, scaled to fit
@@ -385,7 +424,7 @@ Window {
         y: tabs.y + tabs.height + 10
         width: root.width - 32
         height: root.height - y - 16
-        visible: !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown && !Rack.soundsShown
+        visible: !Rack.mixerShown && !Rack.songShown && !Rack.seqShown && !Rack.arrangeShown && !Rack.soundsShown && !Rack.settingsShown
 
         Repeater {
             model: Rack.deviceCount
@@ -469,7 +508,7 @@ Window {
                 width: 100
                 height: 30
                 faceText: "DISMISS"
-                text: "Hide this (the report is kept: AUDIO, then CRASH REPORTS)"
+                text: "Hide this (the report is kept: Settings, then Crash reports)"
                 onClicked: Crashes.dismiss()
             }
         }
@@ -588,6 +627,14 @@ Window {
         width: root.width - 32
         height: panelArea.height
         visible: Rack.soundsShown
+    }
+
+    SettingsScreen {
+        x: 16
+        y: panelArea.y
+        width: root.width - 32
+        height: panelArea.height
+        visible: Rack.settingsShown
     }
 
     // ---- Instruments in the rack: add or remove (docs/DAW.md, D1)

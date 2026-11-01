@@ -47,6 +47,8 @@ public:
     QString message() const { return m_message; }
 
     Q_INVOKABLE void check();
+    // Asking by itself (soon after starting, then twice a day): Settings' switch.
+    void setAutoCheck(bool on);
     Q_INVOKABLE void install();
 
     // GitHub's latest-release answer: its version ("v0.3.0" -> "0.3.0") and

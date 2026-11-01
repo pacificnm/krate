@@ -20,6 +20,7 @@
 #include "SoundsController.h"
 #include "CrashReportsController.h"
 #include "ExportController.h"
+#include "SettingsController.h"
 #include "UpdateController.h"
 #include "InstrumentCopies.h"
 #include "BackingInstrument.h"
@@ -29,6 +30,7 @@
 #include "RackSession.h"
 #include "SongController.h"
 #include "app/CrashReports.h"
+#include "app/Locations.h"
 #include "app/HostController.h"
 #include "app/InstrumentRegistry.h"
 #include "app/KorrodeInstrument.h"
@@ -76,14 +78,6 @@ int main(int argc, char *argv[])
     QGuiApplication::setApplicationName(QStringLiteral("krate"));
     QGuiApplication::setDesktopFileName(QStringLiteral("krate")); // its menu entry and icon (packaging/)
     QGuiApplication::setApplicationVersion(QStringLiteral(PROJECT_VERSION_STRING));
-    // Crash reports (docs/CRASHES.md): this session's log, a crash's call
-    // stack, a report at the next start; SIGTERM quits properly.
-    const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    krate::crash::install(QStringLiteral("krate"), appData);
-    CrashReportsController crashReports(appData, nullptr);
-    // Updates from GitHub's releases (docs/UPDATES.md).
-    UpdateController updates(QGuiApplication::applicationVersion());
-
     // The instruments in this rack: one registry line each
     // (docs/SHARED_FOUNDATIONS.MD#adding-instruments).
     QList<krate::InstrumentEntry> entries = {
@@ -106,22 +100,51 @@ int main(int argc, char *argv[])
         entries = withCopies;
     }
 
+
+    // Settings (docs/SETTINGS.md), first: they say where everything is, and a
+    // folder moved on the Settings screen moves now, before anything opens it.
+    QStringList instrumentIds;
+    for (const auto &entry : std::as_const(entries))
+        instrumentIds << entry.id;
+    SettingsController settings(krate::locations::settingsFile(), instrumentIds);
+    using krate::locations::Folder;
+    // Crash reports (docs/CRASHES.md): this session's log, a crash's call
+    // stack, a report at the next start; SIGTERM quits properly.
+    const QString appData = settings.folder(Folder::Data);
+    krate::crash::install(QStringLiteral("krate"), appData);
+    CrashReportsController crashReports(appData, nullptr);
+    // Updates from GitHub's releases (docs/UPDATES.md).
+    UpdateController updates(QGuiApplication::applicationVersion());
+    updates.setAutoCheck(settings.autoCheckUpdates());
+    settings.onAutoCheckChanged = [&updates](bool on) { updates.setAutoCheck(on); };
+
     // Declaration order is destruction order in reverse: the QML engine first,
     // then the host (closing JACK), then the instruments, then rack and transport.
     krate::Transport transport;
     krate::Rack rack;
     krate::song::SongPlayer songPlayer; // plays a loaded song into the rack (docs/SONG_PLAYER.md)
     // The audio tracks (docs/DAW.md, D2): out of the rack until added from +;
-    // their takes in ~/.local/share/krate/recordings.
-    AudioTracksController audioTracks(
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/recordings"), nullptr);
+    // their takes in the recordings folder (~/.local/share/krate/recordings).
+    AudioTracksController audioTracks(settings.folder(Folder::Recordings), nullptr);
     const qsizetype firstTrack = entries.size();
     entries.append(audioTrackEntries(audioTracks));
     // CLAP plugins (docs/DAW.md, D7): sixteen slots, out of the rack until added;
     // which plugin each holds, and its state, in ~/.config/krate/plugins.json.
+    // Searched: the folders added in Settings, then the standard ones.
+    const auto pluginSearchPaths = [](const QStringList &extra) {
+        std::vector<std::string> dirs;
+        for (const QString &dir : extra)
+            dirs.push_back(dir.toStdString());
+        for (const std::string &dir : krate::clap::defaultSearchPaths())
+            dirs.push_back(dir);
+        return dirs;
+    };
     PluginSlotsController pluginSlots(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
                                           + QStringLiteral("/plugins.json"),
-                                      krate::clap::defaultSearchPaths(), nullptr);
+                                      pluginSearchPaths(settings.pluginFolders()), nullptr);
+    settings.onPluginFoldersChanged = [&pluginSlots, pluginSearchPaths](const QStringList &extra) {
+        pluginSlots.setSearchPaths(pluginSearchPaths(extra));
+    };
     const qsizetype firstPlugin = entries.size();
     entries.append(pluginSlotEntries(pluginSlots));
     // Last: the Song screen's backing track (a mixer strip, no panel).
@@ -135,10 +158,10 @@ int main(int argc, char *argv[])
     RackRunControl runControl(rack, transport, runIds, nullptr);
 
     // Each instrument keeps its own files, shared with its standalone app
-    // (~/.config/<id>, ~/.local/share/<id>), so patterns and knobs carry over;
-    // the rack's own settings are in rack.json.
+    // (~/.config/<id>, and <the instruments' folder>/<id>: ~/.local/share/<id>),
+    // so patterns and knobs carry over; the rack's own settings are in rack.json.
     const QString config = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-    const QString data = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    const QString data = settings.folder(Folder::Instruments);
     QHash<QString, krate::InstrumentInstance *> firsts; // each instrument, for its copies
     for (const auto &entry : entries) {
         krate::InstrumentContext context;
@@ -205,6 +228,8 @@ int main(int argc, char *argv[])
                                     rackController.setArrangeShown(!rackController.arrangeShown());
                                 else if (action == u"sounds")
                                     rackController.setSoundsShown(!rackController.soundsShown());
+                                else if (action == u"settings")
+                                    rackController.setSettingsShown(!rackController.settingsShown());
                                 else if (SequencerController *s = sequencerActions; s && action.startsWith(u"seq")) {
                                     if (action == u"seqrun")
                                         s->toggleRun();
@@ -235,7 +260,7 @@ int main(int argc, char *argv[])
     krate::seq::Sequencer sequencer;
     SequencerController sequencerController(
         sequencer, noteTargets(entries),
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/sequencer.json"), nullptr);
+        appData + QStringLiteral("/sequencer.json"), nullptr);
     sequencerController.load();
     sequencerActions = &sequencerController;
     // The arranger (docs/DAW.md, D3): the sequence's song, start, loop and punch.
@@ -246,8 +271,7 @@ int main(int argc, char *argv[])
     std::vector<SoundsController::Device> soundDevices;
     for (qsizetype i = 0; i < entries.size(); ++i)
         soundDevices.push_back({int(i), entries[i].name, instances[std::size_t(i)].get()});
-    SoundsController soundsController(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-                                          + QStringLiteral("/sounds.db"),
+    SoundsController soundsController(appData + QStringLiteral("/sounds.db"),
                                       previewer, rackController, std::move(soundDevices), nullptr);
     krate::MidiCapture midiCapture; // the keyboard's notes, for MIDI clips
     arrangeController.setMidiCapture(&midiCapture);
@@ -271,7 +295,7 @@ int main(int argc, char *argv[])
 
     // The Song screen and the song library (~/.local/share/krate/library: the
     // songs' files, library.db with each song's set-up and sounds).
-    SongLibrary library(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/library"));
+    SongLibrary library(settings.folder(Folder::Library));
     std::vector<krate::InstrumentInstance *> songInstances;
     for (const auto &instance : instances)
         songInstances.push_back(instance.get());
@@ -301,7 +325,7 @@ int main(int argc, char *argv[])
     // Export (docs/DAW.md, D6): the host hands the rack over while it renders.
     ExportController exporter(rack, processor, transport, sequencer, &automationPlayer, rackController,
                               sequencerController, arrangeController, &audioTracks,
-                              QStandardPaths::writableLocation(QStandardPaths::MusicLocation) + QStringLiteral("/Krate"),
+                              settings.folder(Folder::Exports),
                               nullptr);
     exporter.setHost({[&jack] { jack.suspend(); }, [&jack] { jack.resume(); }, [&jack] { return double(jack.sampleRate()); }});
     // The plugins as they were, at the host's rate.
@@ -312,7 +336,11 @@ int main(int argc, char *argv[])
     audioTracks.setRoundTrip([&jack] { return int(jack.roundTripFrames()); });
     // A device's own output port appears when it's added to the rack.
     QObject::connect(&rackController, &RackController::presenceChanged, &rackController, [&jack] { jack.updateOutputs(); });
-    host.setMidiInputMatch(session.midiInput());
+    host.setMidiInputMatch(settings.midiInputs());
+    settings.onMidiInputsChanged = [&host](const QString &pattern) { host.setMidiInputMatch(pattern); };
+    settings.onExportsChanged = [&exporter](const QString &folder) { exporter.setFolder(folder); };
+    rack.setProgramChangeFocus(settings.programChangeFocus());
+    settings.onProgramChangeFocusChanged = [&rack](bool on) { rack.setProgramChangeFocus(on); };
     host.setRequestedBufferSize(session.bufferSize());
     host.setInputPorts(session.audioInputs());
     host.setOutputDevice(session.outputDevice());

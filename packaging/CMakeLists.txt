@@ -26,7 +26,8 @@ install(FILES ${PROJECT_SOURCE_DIR}/docs/PLAYER.md DESTINATION ${CMAKE_INSTALL_D
 install(PROGRAMS update/krate-update DESTINATION libexec/krate)
 install(FILES update/krate-update.service DESTINATION lib/systemd/system)
 install(FILES update/50-krate-update.rules DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/rules.d)
-install(FILES ${PROJECT_SOURCE_DIR}/docs/UPDATES.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/docs/UPDATES.md ${PROJECT_SOURCE_DIR}/docs/SETTINGS.md ${PROJECT_SOURCE_DIR}/docs/CRASHES.md
+        DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
 # --- The .deb (cpack -G DEB; packaging/build-deb.sh does it all)
 set(CPACK_GENERATOR DEB)

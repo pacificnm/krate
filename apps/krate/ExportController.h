@@ -47,7 +47,7 @@ class ExportController : public QObject
     Q_PROPERTY(qreal progress READ progress NOTIFY progressChanged) // 0..1
     Q_PROPERTY(QString message READ message NOTIFY changed)         // the last export's outcome
     Q_PROPERTY(QStringList files READ files NOTIFY changed)         // what it wrote
-    Q_PROPERTY(QString folder READ folder CONSTANT)
+    Q_PROPERTY(QString folder READ folder NOTIFY changed) // Settings can move it
 
 public:
     struct Host
@@ -69,6 +69,11 @@ public:
     QString message() const { return m_message; }
     QStringList files() const { return m_files; }
     QString folder() const { return m_folder; }
+    void setFolder(const QString &folder)
+    {
+        m_folder = folder;
+        emit changed();
+    }
 
     // Starts an export: the whole song or the loop range; with stems; with
     // the metronome. false (and a message) if there's nothing to export.

@@ -14,10 +14,10 @@ Numbers: `major.minor.patch`. Bump the patch for fixes (0.2.1), the minor for ne
 
 ## Updating from inside Krate
 
-- Krate asks GitHub for the latest release 15 seconds after it starts, then twice a day. When there's a newer one, the top bar says **Krate 0.3.0 is out: AUDIO ▸ UPDATE**.
-- **AUDIO** (top right) shows the version you have, **CHECK** (ask now), and **UPDATE TO 0.3.0** with the release's notes. Press it: Krate says what's happening (downloading, installing), and on the player the kiosk starts the new Krate when it's done (about a minute). On a desktop, quit and start Krate again.
+- Krate asks GitHub for the latest release 15 seconds after it starts, then twice a day. When there's a newer one, the top bar says **Krate 0.3.0 is out: ⚙ ▸ UPDATE** (and the ⚙ tab has a red dot).
+- **⚙ Settings ▸ Updates** shows the version you have, a switch for checking by itself, **CHECK NOW**, and **UPDATE TO 0.3.0** with the release's notes. Press it: Krate says what's happening (downloading, installing), and on the player the kiosk starts the new Krate when it's done (about a minute). On a desktop, quit and start Krate again.
 - Your sounds, songs, patterns and settings stay: they're in your home folder, not in the package.
-- Without a network, or when something fails, it says so in AUDIO and nothing changes.
+- Without a network, or when something fails, it says so in Settings and nothing changes.
 
 ## How it's safe
 
@@ -30,7 +30,7 @@ The package now depends on `curl`, `jq` (the updater's) and `polkitd`.
 
 Trying the updater by hand without installing: `KRATE_UPDATE_DRY_RUN=1 KRATE_UPDATE_STATUS_DIR=/tmp /usr/libexec/krate/krate-update` (add `KRATE_UPDATE_INSTALLED=0.0.1` to pretend an old Krate).
 
-Code: `packaging/update/` (the script, the service, the rule), `apps/krate/UpdateController` (the `Updates` QML singleton), the AUDIO popup in `TransportBar.qml`. Tests: `tst_updates`.
+Code: `packaging/update/` (the script, the service, the rule), `apps/krate/UpdateController` (the `Updates` QML singleton), `SettingsScreen.qml`. Tests: `tst_updates`.
 
 ## From 0.1.0
 

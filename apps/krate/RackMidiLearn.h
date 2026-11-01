@@ -53,6 +53,7 @@ public:
         list << QStringLiteral("record");  // REC (docs/DAW.md, D2)
         list << QStringLiteral("arrange"); // the arranger (D3)
         list << QStringLiteral("sounds");  // the sound library
+        list << QStringLiteral("settings"); // the Settings screen
         return list;
     }();
     // Mixer controls, indexed by krate::Rack::MixerControl.

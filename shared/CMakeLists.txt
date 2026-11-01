@@ -152,6 +152,8 @@ add_library(krate_app STATIC
     app/ScreenshotHook.cpp
     app/CrashReports.h
     app/CrashReports.cpp
+    app/Locations.h
+    app/Locations.cpp
 )
 target_link_libraries(krate_app PUBLIC krate_core Qt6::Core Qt6::Gui Qt6::Quick)
 target_compile_options(krate_app PRIVATE -Wall -Wextra -Wpedantic)

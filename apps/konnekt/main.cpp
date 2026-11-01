@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 
 #include "app/HostController.h"
+#include "app/Locations.h"
 #include "app/ScreenshotHook.h"
 #include "core/Transport.h"
 #include "host/JackHost.h"
@@ -33,7 +34,8 @@ int main(int argc, char *argv[])
     krate::Transport transport; // unused: Konnekt keeps its own time (its Clock modules)
     krate::InstrumentContext context;
     context.configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation); // ~/.config/konnekt
-    context.dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);     // ~/.local/share/konnekt
+    // ~/.local/share/konnekt, or where Krate's Settings put the instruments' folder (docs/SETTINGS.md)
+    context.dataDir = krate::locations::instrumentData(entry.id);
     const std::unique_ptr<krate::InstrumentInstance> instrument = entry.create(context);
     krate::InstrumentProcessor processor(instrument->instrument(), transport);
     krate::JackHost jack(processor);

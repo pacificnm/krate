@@ -94,6 +94,14 @@ void UpdateController::set(const QString &state, const QString &message)
     emit changed();
 }
 
+void UpdateController::setAutoCheck(bool on)
+{
+    if (!on)
+        m_checkTimer.stop();
+    else if (!m_checkTimer.isActive())
+        m_checkTimer.start(kFirstCheckMs);
+}
+
 void UpdateController::check()
 {
     if (m_state == u"checking" || m_statusTimer.isActive())

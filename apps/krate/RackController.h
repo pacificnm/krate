@@ -60,6 +60,7 @@ class RackController : public QObject
     Q_PROPERTY(bool seqShown READ seqShown WRITE setSeqShown NOTIFY seqShownChanged)
     Q_PROPERTY(bool arrangeShown READ arrangeShown WRITE setArrangeShown NOTIFY arrangeShownChanged)
     Q_PROPERTY(bool soundsShown READ soundsShown WRITE setSoundsShown NOTIFY soundsShownChanged)
+    Q_PROPERTY(bool settingsShown READ settingsShown WRITE setSettingsShown NOTIFY settingsShownChanged)
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     Q_PROPERTY(qreal bpm READ bpm WRITE setBpm NOTIFY bpmChanged)
     Q_PROPERTY(bool beat READ beat NOTIFY beatChanged)
@@ -120,6 +121,8 @@ public:
     void setArrangeShown(bool shown);
     bool soundsShown() const { return m_soundsShown; } // the sound library (docs/SOUNDS.md)
     void setSoundsShown(bool shown);
+    bool settingsShown() const { return m_settingsShown; } // the Settings screen (docs/SETTINGS.md)
+    void setSettingsShown(bool shown);
     bool playing() const;
     void setPlaying(bool playing);
     qreal bpm() const;
@@ -205,6 +208,7 @@ signals:
     void seqShownChanged();
     void arrangeShownChanged();
     void soundsShownChanged();
+    void settingsShownChanged();
     void playingChanged();
     void bpmChanged();
     void beatChanged();
@@ -251,6 +255,7 @@ private:
     bool m_seqShown = false;
     bool m_arrangeShown = false;
     bool m_soundsShown = false;
+    bool m_settingsShown = false;
     double m_shownBpm = 0.0; // the tempo last announced (a song's tempo map moves it from the audio thread)
     bool m_beat = false;
     int m_mixerRevision = 0;

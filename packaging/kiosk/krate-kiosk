@@ -1,5 +1,8 @@
 #!/bin/sh
 # Krate full screen, for a dedicated player (docs/PLAYER.md): the rack through
 # PipeWire's JACK, as the menu entries start it. krate-kiosk@.service runs it
-# under cage, a kiosk compositor that shows just this one app.
+# under cage, a kiosk compositor that shows just this one app. KRATE_KIOSK
+# tells Krate the service starts it again (Settings' RESTART just quits).
+KRATE_KIOSK=1
+export KRATE_KIOSK
 exec pw-jack /usr/bin/krate "$@"

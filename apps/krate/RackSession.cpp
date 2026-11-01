@@ -49,9 +49,6 @@ void RackSession::load()
     }
 
     if (!json.isEmpty()) {
-        // "midiInputs" (a pattern, "" = every device); the older "midiInput" named one
-        // keyboard by default and is left behind, so a second one plugged in plays too.
-        m_midiInput = json.value(u"midiInputs").toString(m_midiInput);
         for (const auto &port : json.value(u"audioInputs").toArray())
             m_audioInputs << port.toString();
         m_bufferSize = json.value(u"bufferSize").toInt(0);
@@ -114,6 +111,7 @@ void RackSession::load()
         m_controller.setSeqShown(json.value(u"view").toString() == u"seq");
         m_controller.setArrangeShown(json.value(u"view").toString() == u"arrange");
         m_controller.setSoundsShown(json.value(u"view").toString() == u"sounds");
+        m_controller.setSettingsShown(json.value(u"view").toString() == u"settings");
 
         m_rack.clearMappings();
         m_learn.loadMappings(json.value(u"mappings").toArray());
@@ -127,6 +125,7 @@ void RackSession::load()
     connect(&m_controller, &RackController::seqShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::arrangeShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::soundsShownChanged, this, &RackSession::changed);
+    connect(&m_controller, &RackController::settingsShownChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::bpmChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::mixerChanged, this, &RackSession::changed);
     connect(&m_controller, &RackController::presenceChanged, this, &RackSession::changed);
@@ -187,8 +186,8 @@ void RackSession::save()
                                  : m_controller.seqShown()  ? QStringLiteral("seq")
                                  : m_controller.arrangeShown() ? QStringLiteral("arrange")
                                  : m_controller.soundsShown() ? QStringLiteral("sounds")
+                                 : m_controller.settingsShown() ? QStringLiteral("settings")
                                                             : QStringLiteral("instrument")},
-        {QStringLiteral("midiInputs"), m_midiInput},
         {QStringLiteral("audioInputs"), QJsonArray::fromStringList(m_audioInputs)},
         {QStringLiteral("bufferSize"), m_bufferSize},
         {QStringLiteral("keysChannel"), m_controller.keysChannel()},
