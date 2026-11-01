@@ -185,6 +185,10 @@ int main(int argc, char *argv[])
     sequencerActions = &sequencerController;
     // The arranger (docs/DAW.md, D3): the sequence's song, start, loop and punch.
     ArrangeController arrangeController(sequencerController, transport, &audioTracks, nullptr);
+    krate::MidiCapture midiCapture; // the keyboard's notes, for MIDI clips
+    arrangeController.setMidiCapture(&midiCapture);
+    QObject::connect(&audioTracks, &AudioTracksController::recordingChanged, &arrangeController,
+                     [&] { arrangeController.setRecording(audioTracks.recording()); }); // one REC for both
     sequencerController.setRunControl(&runControl);
 
     // The Song screen and the song library (~/.local/share/krate/library: the
@@ -211,6 +215,7 @@ int main(int argc, char *argv[])
     krate::EventMerge<2> eventSources({&songPlayer, &sequencer});
     krate::RackProcessor processor(rack, transport, ids);
     processor.setEventSource(&eventSources);
+    processor.setMidiCapture(&midiCapture);
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
     audioTracks.setRoundTrip([&jack] { return int(jack.roundTripFrames()); });

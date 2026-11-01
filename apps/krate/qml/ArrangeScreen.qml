@@ -10,7 +10,8 @@ import KrateRack
 // of the patterns. The ruler sets where play starts; the LOOP and PUNCH strips
 // under it are dragged to set those ranges. On a MIDI lane, a click places the
 // chosen pattern (drag for a longer clip), a click on a clip opens its pattern
-// in the Seq screen, a right click (or ERASE) removes it. On an audio lane,
+// in the Seq screen, a right click (or ERASE) removes it; R arms the lane for
+// recording what you play on the keyboard (SONG and REC on). On an audio lane,
 // the takes on it; a right click (or ERASE) takes one off.
 Item {
     id: screen
@@ -196,7 +197,8 @@ Item {
         width: parent.width - 32
         elide: Text.ElideRight
         text: Arrange.following ? "A DAW leads over JACK: its position and its loop play (start, LOOP and PUNCH here wait)."
-              : Arrange.songMode ? "SONG: the arrangement plays. Ruler: where play starts. Drag the LOOP and PUNCH strips to set them."
+              : Arrange.songMode && Arrange.recording && Arrange.playing ? "Recording: " + Arrange.takeNotes + " notes so far (armed lanes)."
+              : Arrange.songMode ? "SONG: the arrangement plays. Ruler: where play starts. Drag LOOP and PUNCH to set them. R + REC records the keyboard."
               : "Patterns play as the Seq screen says. Switch SONG on to play this arrangement."
         color: Theme.ink
         opacity: 0.75
@@ -252,10 +254,11 @@ Item {
                 radius: 3
                 color: Theme.silverLight
                 border.color: Theme.deckLine
+                readonly property bool armed: Arrange.revision >= 0 && Arrange.armed(index)
                 Text {
                     x: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 48
+                    width: parent.width - 84
                     elide: Text.ElideRight
                     text: (midiName.index + 1) + "  " + (midiName.info.label || "—")
                     color: Theme.ink
@@ -274,6 +277,25 @@ Item {
                     text: "Mute track " + (midiName.index + 1)
                     tint: midiName.info.mute ? Theme.labelOrange : "transparent"
                     onClicked: Sequencer.setMute(midiName.index, !midiName.info.mute)
+                }
+                PanelButton {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 40
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 32
+                    height: 24
+                    faceText: "R"
+                    text: "Arm track " + (midiName.index + 1) + " to record what you play into a MIDI clip"
+                    tint: midiName.armed ? Theme.ledOn : "transparent"
+                    onClicked: {
+                        Arrange.setArmed(midiName.index, !midiName.armed)
+                        // The keyboard plays the lane's instrument, so you hear what's recorded.
+                        const device = Sequencer.targetDevices[midiName.info.choice ?? 0] ?? -1
+                        if (midiName.armed && device >= 0) {
+                            Rack.focus = device
+                            Rack.arrangeShown = true
+                        }
+                    }
                 }
             }
         }

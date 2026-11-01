@@ -7,6 +7,7 @@
 
 #include "core/Transport.h"
 #include "host/JackProcessor.h"
+#include "rack/MidiCapture.h"
 #include "rack/Rack.h"
 
 namespace krate {
@@ -28,6 +29,8 @@ public:
 
     // Before the host starts.
     void setEventSource(IEventSource *source) { m_source = source; }
+    // Before the host starts: the keyboard's notes for the arranger to record.
+    void setMidiCapture(MidiCapture *capture) { m_capture = capture; }
 
     int outputCount() const override { return 2 + 2 * m_rack.deviceCount(); }
     std::string outputName(int index) const override
@@ -83,6 +86,8 @@ private:
         if (m_source)
             m_source->beforeTransport(m_transport);
         const TransportState transport = m_transport.advance(frames, sampleRate);
+        if (m_capture)
+            m_capture->capture(transport, midi, midiCount, sampleRate);
         RackBlock block;
         block.frames = frames;
         block.midi = midi;
@@ -104,6 +109,7 @@ private:
     Transport &m_transport;
     std::vector<std::string> m_ids;
     IEventSource *m_source = nullptr;
+    MidiCapture *m_capture = nullptr;
     std::array<DeviceEvent, 4096> m_sourceEvents{};
     // A split block's parts: the buffers from the split on, its MIDI.
     std::array<float *, 2 + 2 * Rack::kMaxDevices> m_outs{};

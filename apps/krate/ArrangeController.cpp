@@ -7,6 +7,7 @@
 #include "AudioTracks.h"
 #include "SequencerController.h"
 #include "core/Transport.h"
+#include "rack/MidiCapture.h"
 
 using namespace krate::seq;
 
@@ -214,8 +215,127 @@ QVariantList ArrangeController::clipNotes(int track, int index) const
     return list;
 }
 
+bool ArrangeController::armed(int track) const
+{
+    return track >= 0 && track < kTracks && m_armed[std::size_t(track)];
+}
+
+void ArrangeController::setArmed(int track, bool on)
+{
+    if (track < 0 || track >= kTracks || on == armed(track))
+        return;
+    m_armed[std::size_t(track)] = on;
+    ++m_revision;
+    emit changed();
+}
+
+void ArrangeController::setRecording(bool on)
+{
+    if (on == m_recording)
+        return;
+    m_recording = on;
+    ++m_revision;
+    emit changed();
+}
+
+void ArrangeController::takeCaptured()
+{
+    const bool anyArmed = std::find(m_armed.begin(), m_armed.end(), true) != m_armed.end();
+    const bool active = songMode() && m_recording && anyArmed && m_transport.playing();
+    const SequencerState &state = m_sequencer.state();
+    const double loopEnd = state.loopOn ? double(state.loopTo) * kBeatsPerBar : -1.0;
+    // A note's end before its start: the loop went round while it was held.
+    const auto endOf = [loopEnd](double on, double off) {
+        return off > on ? off : loopEnd > on ? loopEnd : on + 1.0 / kTicksPerBeat;
+    };
+    while (const auto e = m_capture ? m_capture->take() : std::nullopt) {
+        if (!active && !m_taking)
+            continue; // not recording: dropped
+        m_taking = true;
+        const int pitch = e->data1 & 0x7F;
+        Held &held = m_held[std::size_t(pitch)];
+        const bool on = (e->status & 0xF0) == 0x90 && e->data2 > 0;
+        if (on) {
+            if (state.punchOn && (e->beat < double(state.punchFrom) * kBeatsPerBar
+                                  || e->beat >= double(state.punchTo) * kBeatsPerBar))
+                continue; // outside the punch range
+            if (held.down) // pressed again without a release: the first one ends here
+                m_take.push_back({held.beat, endOf(held.beat, e->beat), pitch, held.velocity});
+            held = {true, e->beat, e->data2};
+        } else if (held.down) {
+            m_take.push_back({held.beat, endOf(held.beat, e->beat), pitch, held.velocity});
+            held.down = false;
+        }
+        m_lastBeat = e->beat;
+    }
+    if (active)
+        m_lastBeat = std::max(m_lastBeat, m_transport.beatPosition());
+    else if (m_taking)
+        finishTake();
+}
+
+void ArrangeController::finishTake()
+{
+    const SequencerState &state = m_sequencer.state();
+    const double loopEnd = state.loopOn ? double(state.loopTo) * kBeatsPerBar : -1.0;
+    for (int pitch = 0; pitch < 128; ++pitch) { // still held when play stopped
+        Held &held = m_held[std::size_t(pitch)];
+        if (held.down) {
+            const double off = m_lastBeat > held.beat ? m_lastBeat : loopEnd > held.beat ? loopEnd : held.beat + 1.0;
+            m_take.push_back({held.beat, off, pitch, held.velocity});
+            held.down = false;
+        }
+    }
+    m_taking = false;
+    if (m_take.empty())
+        return;
+    double first = m_take.front().on, last = 0.0;
+    for (const TakeNote &n : m_take) {
+        first = std::min(first, n.on);
+        last = std::max(last, n.off);
+    }
+    const int startBar = std::clamp(int(std::floor(first / kBeatsPerBar)), 0, kMaxBars - 1);
+    const int endBar = std::clamp(int(std::ceil(last / kBeatsPerBar - 1e-9)), startBar + 1, kMaxBars);
+    const double origin = double(startBar) * kBeatsPerBar;
+    MidiClip clip;
+    for (const TakeNote &n : m_take) {
+        const auto start = std::uint32_t(std::lround((n.on - origin) * kTicksPerBeat));
+        const auto length = std::uint32_t(std::max<long>(1, std::lround((n.off - n.on) * kTicksPerBeat)));
+        clip.notes.push_back({start, std::min<std::uint32_t>(length, std::uint32_t(endBar * kBeatsPerBar * kTicksPerBeat) - start),
+                              std::uint8_t(n.pitch), std::uint8_t(std::clamp(n.velocity, 1, 127))});
+    }
+    std::stable_sort(clip.notes.begin(), clip.notes.end(), [](const ClipNote &a, const ClipNote &b) { return a.start < b.start; });
+    m_take.clear();
+
+    Arrangement &song = m_sequencer.arrangerState().arrangement;
+    for (int t = 0; t < kTracks; ++t) {
+        if (!m_armed[std::size_t(t)])
+            continue;
+        // The clips it overlaps go (and their MIDI, if theirs).
+        auto &lane = song.lanes[std::size_t(t)];
+        for (int i = int(lane.size()) - 1; i >= 0; --i) {
+            const Clip c = lane[std::size_t(i)];
+            if (c.startBar >= endBar || c.endBar() <= startBar)
+                continue;
+            lane.erase(lane.begin() + i);
+            if (c.midi >= 0) {
+                song.midi.erase(song.midi.begin() + c.midi);
+                for (auto &l : song.lanes)
+                    for (Clip &other : l)
+                        if (other.midi > c.midi)
+                            --other.midi;
+            }
+        }
+        song.midi.push_back(clip);
+        const auto at = std::find_if(lane.begin(), lane.end(), [&](const Clip &c) { return c.startBar > startBar; });
+        lane.insert(at, Clip{startBar, endBar - startBar, -1, int(song.midi.size()) - 1});
+    }
+    edited(true);
+}
+
 void ArrangeController::poll()
 {
+    takeCaptured();
     const bool playing = m_transport.playing();
     const bool following = m_transport.following();
     const qreal position = playing ? m_transport.beatPosition() : (songMode() ? startBar() * kBeatsPerBar : 0.0);

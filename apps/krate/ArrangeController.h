@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <vector>
+
 #include <QObject>
 #include <QTimer>
 #include <QVariantList>
@@ -10,6 +13,7 @@ class QJSEngine;
 class SequencerController;
 class AudioTracksController;
 namespace krate {
+class MidiCapture;
 class Transport;
 }
 
@@ -21,6 +25,11 @@ class Transport;
 // it, play starts at the start bar, the loop range goes round and armed audio
 // tracks record only inside the punch range. All of it is kept with the
 // sequence (sequencer.json, saved sequences).
+//
+// Recording MIDI clips: with SONG and REC on, the keyboard's notes while the
+// transport plays go into the armed MIDI lanes (inside the punch range, when
+// PUNCH is on). When play stops they become a MIDI clip over the bars they
+// span, replacing the clips there; with LOOP, each pass adds to the take.
 class ArrangeController : public QObject
 {
     Q_OBJECT
@@ -41,6 +50,8 @@ class ArrangeController : public QObject
     Q_PROPERTY(qreal position READ position NOTIFY positionChanged) // beats: playing, or where play starts
     Q_PROPERTY(bool playing READ playing NOTIFY positionChanged)
     Q_PROPERTY(bool following READ following NOTIFY positionChanged) // a DAW leads over JACK: its position and loop
+    Q_PROPERTY(bool recording READ recording NOTIFY changed)          // REC (the transport bar's)
+    Q_PROPERTY(int takeNotes READ takeNotes NOTIFY positionChanged)   // notes in the MIDI take so far
 
 public:
     ArrangeController(SequencerController &sequencer, krate::Transport &transport, AudioTracksController *tracks,
@@ -64,6 +75,11 @@ public:
     int endBar() const;
     int maxBars() const;
     qreal position() const { return m_position; }
+    bool recording() const { return m_recording; }
+    void setRecording(bool on); // follows REC
+    int takeNotes() const { return int(m_take.size()); }
+    // Before the host starts: where the keyboard's notes come from.
+    void setMidiCapture(krate::MidiCapture *capture) { m_capture = capture; }
     bool playing() const { return m_playing; }
     bool following() const { return m_following; }
 
@@ -77,6 +93,9 @@ public:
     // shortened to end before the next clip; false if the bar is taken.
     Q_INVOKABLE bool placePattern(int track, int bar, int pattern, int bars = 0);
     Q_INVOKABLE void removeClip(int track, int index);
+    // A MIDI lane armed for recording (not kept).
+    Q_INVOKABLE bool armed(int track) const;
+    Q_INVOKABLE void setArmed(int track, bool on);
     // A clip's notes for drawing: [{x, w, pitch}] (beats from its start), the pattern repeated.
     Q_INVOKABLE QVariantList clipNotes(int track, int index) const;
 
@@ -88,6 +107,19 @@ signals:
     void positionChanged();
 
 private:
+    struct TakeNote
+    {
+        double on, off;
+        int pitch, velocity;
+    };
+    struct Held
+    {
+        bool down = false;
+        double beat = 0.0;
+        int velocity = 0;
+    };
+    void takeCaptured(); // the keyboard's notes since the last tick
+    void finishTake();   // the notes into a clip on each armed lane
     void apply(); // the transport's start and loop, the tracks' punch, from the state
     void edited(bool arrangement);
 
@@ -99,5 +131,12 @@ private:
     qreal m_position = 0.0;
     bool m_playing = false;
     bool m_following = false;
+    bool m_recording = false;
+    krate::MidiCapture *m_capture = nullptr;
+    std::array<bool, 8> m_armed{};
+    bool m_taking = false;
+    std::vector<TakeNote> m_take;
+    std::array<Held, 128> m_held{};
+    double m_lastBeat = 0.0;
     QTimer m_pollTimer;
 };

@@ -35,9 +35,12 @@ The rack hosts every instrument at once: one transport (play, stop, tempo), one 
 - **Seq**: an 8-track pattern sequencer for the whole rack: 16 patterns of up to 4 bars, a piano roll per track (drum lanes for Kessel), velocity, chains of patterns ([docs/SEQUENCER.md](docs/SEQUENCER.md)).
 - **Song**: open a Guitar Pro tab (`.gp`) and/or a MIDI file, put its tracks on Krate's instruments, leave your own part out and play along, with your part's tab scrolling by; a song library keeps every song with its setup and sounds ([docs/SONG_PLAYER.md](docs/SONG_PLAYER.md)).
 - **Your choice of instruments**: **+** next to the tabs adds or removes them; one you remove isn't shown or played (no CPU), and comes back with its sound, mixer strip and MIDI links as they were.
-- **Audio tracks**: add up to eight from **+**. Each records your interface's inputs (a guitar, a microphone) or any instrument's output: ARM it, press **REC**, then **PLAY**. Takes are 24-bit WAV files in `~/.local/share/krate/recordings`, play back in time with the rack, and you pick the one that plays. Krate is growing into a DAW from here: an arranger, editing, automation and export are next ([docs/DAW.md](docs/DAW.md)).
+- **Audio tracks**: add up to eight from **+**. Each records your interface's inputs (a guitar, a microphone) or any instrument's output: ARM it, press **REC**, then **PLAY**. Takes are 24-bit WAV files in `~/.local/share/krate/recordings` and go on the track's lane where they were recorded; the track panel puts any take on the lane or takes it off.
+- **Arranger**: the Arrange screen lays the song out across bars: the sequencer's 8 tracks as lanes of pattern clips and MIDI clips, and the audio tracks' takes. Switch **SONG** on and the arrangement plays; click the ruler to start from a bar, drag **LOOP** and **PUNCH** ranges, arm a lane with **R** and press **REC** to record what you play on the keyboard into a MIDI clip. Krate is growing into a DAW from here: clip editing with undo, automation and export are next ([docs/DAW.md](docs/DAW.md)).
 
 ![An audio track in the Krate rack: arm, monitor, input, source, the take's waveform and the takes](docs/screenshots/krate-audio.png)
+
+![The arranger: pattern clips on the sequencer's tracks, an audio track's takes, the loop and punch ranges](docs/screenshots/krate-arrange.png)
 
 - **MIDI Learn** across the rack: any knob, button or tab to a control on your keyboard.
 

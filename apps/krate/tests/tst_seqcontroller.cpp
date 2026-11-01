@@ -6,6 +6,7 @@
 #include "RackRunControl.h"
 #include "SequencerController.h"
 #include "core/Transport.h"
+#include "rack/MidiCapture.h"
 #include "rack/Rack.h"
 
 using namespace krate;
@@ -46,6 +47,81 @@ private slots:
     // The arranger (docs/DAW.md, D3): clips placed and removed, the song
     // played in SONG mode, start / loop / punch handed to the transport (only
     // in SONG mode), all of it kept in sequencer.json.
+    // Recording MIDI clips (docs/DAW.md, D3): the keyboard's notes, captured
+    // as the rack hears them, become a clip on the armed lane over the bars
+    // they span, replacing what was there; outside the punch range, or with
+    // REC off, nothing is kept.
+    void recordsMidiClips()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        Transport transport;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        ArrangeController arrange(c, transport, nullptr);
+        MidiCapture capture;
+        arrange.setMidiCapture(&capture);
+        QVERIFY(arrange.placePattern(1, 1, 0, 2)); // bars 2-3: replaced by the take
+        QVERIFY(arrange.placePattern(1, 6, 0, 1)); // bar 7: stays
+        arrange.setSongMode(true);
+        arrange.setArmed(1, true);
+        arrange.setRecording(true);
+        transport.setPlaying(true);
+        const auto at = [&](double beat, std::uint8_t status, std::uint8_t key, std::uint8_t velocity) {
+            TransportState t;
+            t.playing = true;
+            t.bpm = 120.0;
+            t.beatAtBlockStart = beat;
+            const MidiEvent e{24, 3, {status, key, velocity}};
+            capture.capture(t, &e, 1, 48000.0); // frame 24: 0.001 beats in
+        };
+        at(4.0, 0x90, 60, 90);
+        at(5.0, 0x80, 60, 0);
+        arrange.poll();
+        QCOMPARE(arrange.takeNotes(), 1);
+        at(6.0, 0x90, 64, 70); // still held when play stops
+        at(6.5, 0x90, 67, 0);  // a note-on at velocity 0 is a release (of nothing here)
+        arrange.poll();
+        transport.setPlaying(false);
+        arrange.poll();
+        const QVariantList lane = arrange.lane(1);
+        QCOMPARE(lane.size(), 2);
+        const QVariantMap clip = lane[0].toMap();
+        QCOMPARE(clip.value(u"startBar"_s).toInt(), 1);
+        QCOMPARE(clip.value(u"bars"_s).toInt(), 1);
+        QCOMPARE(clip.value(u"midi"_s).toInt(), 0);
+        QCOMPARE(lane[1].toMap().value(u"startBar"_s).toInt(), 6);
+        const MidiClip &notes = c.state().arrangement.midi[0];
+        QCOMPARE(notes.notes.size(), std::size_t(2));
+        QCOMPARE(notes.notes[0], (ClipNote{0, 96, 60, 90}));
+        QCOMPARE(notes.notes[1].start, std::uint32_t(192));
+        QCOMPARE(notes.notes[1].pitch, std::uint8_t(64));
+
+        // Punch on bar 3 only: the note on bar 2 isn't kept. REC off: nothing.
+        arrange.setPunch(2, 3);
+        arrange.setPunchOn(true);
+        transport.setPlaying(true);
+        at(4.0, 0x90, 50, 100);
+        at(4.5, 0x80, 50, 0);
+        at(8.0, 0x90, 52, 100);
+        at(9.0, 0x80, 52, 0);
+        arrange.poll();
+        transport.setPlaying(false);
+        arrange.poll();
+        QCOMPARE(c.state().arrangement.midi.size(), std::size_t(2)); // a new clip on bar 3, beside bar 2's
+        QCOMPARE(c.state().arrangement.midi[1].notes.size(), std::size_t(1));
+        QCOMPARE(c.state().arrangement.midi[1].notes[0].pitch, std::uint8_t(52));
+        QCOMPARE(arrange.lane(1)[1].toMap().value(u"startBar"_s).toInt(), 2);
+        arrange.setRecording(false);
+        transport.setPlaying(true);
+        at(20.0, 0x90, 40, 100);
+        at(21.0, 0x80, 40, 0);
+        arrange.poll();
+        transport.setPlaying(false);
+        arrange.poll();
+        QCOMPARE(arrange.lane(1).size(), 3);
+    }
+
     void arranger()
     {
         QTemporaryDir dir;
