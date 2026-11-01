@@ -80,6 +80,21 @@ add_library(krate_rack STATIC
 target_link_libraries(krate_rack PUBLIC krate_core krate_dsp)
 target_compile_options(krate_rack PRIVATE ${KRATE_WARNINGS})
 
+# --- krate_plugin: hosting CLAP plugins in the rack (docs/DAW.md, D7); no Qt.
+add_library(krate_plugin STATIC
+    plugin/Clap.h
+    plugin/Clap.cpp
+)
+target_include_directories(krate_plugin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/third_party/clap/include)
+target_link_libraries(krate_plugin PUBLIC krate_core ${CMAKE_DL_LIBS})
+target_compile_options(krate_plugin PRIVATE ${KRATE_WARNINGS})
+
+# A test plugin (two, in one .clap) for the host's tests.
+add_library(krate-test-clap MODULE plugin/testplugin/KrateTestPlugin.cpp)
+set_target_properties(krate-test-clap PROPERTIES PREFIX "" SUFFIX ".clap" OUTPUT_NAME "krate-test"
+                      LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/clap CXX_VISIBILITY_PRESET hidden)
+target_include_directories(krate-test-clap PRIVATE ${PROJECT_SOURCE_DIR}/third_party/clap/include)
+
 # --- krate_song: songs to play along with (tempo map, MIDI files, .gp tab files, the player); no Qt
 add_library(krate_song STATIC
     song/BackingTrack.h
@@ -251,3 +266,10 @@ add_executable(tst_tablayout tests/tst_tablayout.cpp)
 target_compile_options(tst_tablayout PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_tablayout PRIVATE krate_song Qt6::Test)
 add_test(NAME tst_tablayout COMMAND tst_tablayout)
+
+add_executable(tst_clap tests/tst_clap.cpp)
+target_compile_options(tst_clap PRIVATE ${KRATE_WARNINGS})
+target_compile_definitions(tst_clap PRIVATE KRATE_TEST_CLAP_DIR="${CMAKE_BINARY_DIR}/clap")
+target_link_libraries(tst_clap PRIVATE krate_plugin Qt6::Test)
+add_dependencies(tst_clap krate-test-clap)
+add_test(NAME tst_clap COMMAND tst_clap)
