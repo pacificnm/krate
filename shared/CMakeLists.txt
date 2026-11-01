@@ -62,6 +62,8 @@ add_library(krate_rec STATIC
     rec/Recorder.cpp
     rec/WavWriter.h
     rec/WavWriter.cpp
+    rec/Bounce.h
+    rec/Bounce.cpp
 )
 target_include_directories(krate_rec PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(krate_rec PUBLIC krate_core)
@@ -197,7 +199,7 @@ target_link_libraries(krate_testing INTERFACE krate_core)
 
 add_executable(tst_rack tests/tst_rack.cpp)
 target_compile_options(tst_rack PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_rack PRIVATE krate_rack krate_testing Qt6::Test)
+target_link_libraries(tst_rack PRIVATE krate_rack krate_rec krate_testing Qt6::Test)
 add_test(NAME tst_rack COMMAND tst_rack)
 
 # QML tests (shared controls), when Qt's qmltestrunner is installed.

@@ -24,6 +24,9 @@ import KrateRack
 // the tracks; a click on it adds a point, a point drags, a right click
 // removes it. With AUTO on (and SONG), knobs you turn while playing are
 // recorded into their lanes.
+//
+// EXPORT (D6): the song (or the loop range) rendered to a WAV file, and with
+// STEMS each track to its own, in ~/Music/Krate.
 Item {
     id: screen
 
@@ -291,6 +294,13 @@ Item {
             text: "Snap audio clips to beats"
             tint: screen.snap ? Theme.labelOrange : "transparent"
             onClicked: screen.snap = !screen.snap
+        }
+        PanelButton {
+            width: 90
+            height: 30
+            faceText: "EXPORT"
+            text: "Export the song to a WAV file (and each track, with stems)"
+            onClicked: exportPopup.open()
         }
         PanelButton {
             width: 130
@@ -1271,6 +1281,138 @@ Item {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // EXPORT: the song or the loop range to WAV, with stems if asked.
+    Popup {
+        id: exportPopup
+        x: (screen.width - width) / 2
+        y: tools.y + tools.height + 6
+        width: 560
+        padding: 20
+        modal: true
+        closePolicy: Export.busy ? Popup.NoAutoClose : Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        background: Rectangle { radius: 8; color: Theme.lowerDeck; border.color: Theme.deckLine; border.width: 2 }
+        property bool loopRange: false
+        property bool stems: false
+        property bool metronome: false
+
+        function lengthText(seconds) {
+            const s = Math.round(seconds)
+            return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0")
+        }
+
+        Column {
+            width: parent.width
+            spacing: 12
+            Text {
+                text: "EXPORT TO WAV"
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 16
+                font.bold: true
+            }
+            Row {
+                spacing: 8
+                PanelButton {
+                    width: 200
+                    height: 34
+                    faceText: "WHOLE SONG " + exportPopup.lengthText(exportPopup.opened ? Export.songSeconds() : 0)
+                    text: "Export the whole song, from its start to its last clip"
+                    tint: !exportPopup.loopRange ? Theme.labelOrange : "transparent"
+                    onClicked: exportPopup.loopRange = false
+                }
+                PanelButton {
+                    width: 200
+                    height: 34
+                    faceText: "LOOP RANGE " + (Arrange.loopFrom + 1) + "–" + Arrange.loopTo
+                    text: "Export the loop range only"
+                    tint: exportPopup.loopRange ? Theme.labelOrange : "transparent"
+                    onClicked: exportPopup.loopRange = true
+                }
+            }
+            Row {
+                spacing: 8
+                PanelButton {
+                    width: 200
+                    height: 34
+                    faceText: "STEMS"
+                    text: "Stems: each track to its own file too, as it sounds in the mix"
+                    tint: exportPopup.stems ? Theme.labelOrange : "transparent"
+                    onClicked: exportPopup.stems = !exportPopup.stems
+                }
+                PanelButton {
+                    width: 200
+                    height: 34
+                    faceText: "METRONOME"
+                    text: "Include the metronome"
+                    tint: exportPopup.metronome ? Theme.labelOrange : "transparent"
+                    onClicked: exportPopup.metronome = !exportPopup.metronome
+                }
+            }
+            Text {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "24-bit WAV, rendered faster than real time through the mixer, effects and automation as you hear them, into " + Export.folder
+                      + ". Live sound pauses while it renders."
+                color: Theme.ink
+                opacity: 0.75
+                font.family: Theme.labelFont
+                font.pixelSize: 13
+            }
+            Rectangle { // progress
+                visible: Export.busy
+                width: parent.width
+                height: 14
+                radius: 3
+                color: Theme.ledOff
+                Rectangle {
+                    width: parent.width * Export.progress
+                    height: parent.height
+                    radius: 3
+                    color: Theme.labelOrange
+                }
+            }
+            Text {
+                visible: Export.message !== ""
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: Export.message
+                color: Theme.ink
+                font.family: Theme.labelFont
+                font.pixelSize: 14
+                font.bold: true
+            }
+            Row {
+                spacing: 8
+                PanelButton {
+                    width: 120
+                    height: 36
+                    faceText: Export.busy ? "STOP" : "EXPORT"
+                    text: Export.busy ? "Stop exporting" : "Export now"
+                    tint: Export.busy ? Theme.ledOn : "transparent"
+                    onClicked: Export.busy ? Export.cancel() : Export.start(exportPopup.loopRange, exportPopup.stems, exportPopup.metronome)
+                }
+                PanelButton {
+                    width: 140
+                    height: 36
+                    faceText: "OPEN FOLDER"
+                    text: "Open the export folder"
+                    enabled: !Export.busy
+                    opacity: enabled ? 1 : 0.5
+                    onClicked: Export.openFolder()
+                }
+                PanelButton {
+                    width: 90
+                    height: 36
+                    faceText: "CLOSE"
+                    text: "Close"
+                    enabled: !Export.busy
+                    opacity: enabled ? 1 : 0.5
+                    onClicked: exportPopup.close()
                 }
             }
         }

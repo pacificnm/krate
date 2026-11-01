@@ -43,6 +43,12 @@ public:
     double syncBpm() const override { return m_syncBpm.load(std::memory_order_relaxed); }
 
     std::uint32_t sampleRate() const override { return m_sampleRate.load(std::memory_order_relaxed); }
+    // GUI thread: the processor is handed no more blocks (the outputs play
+    // silence) so another thread may run it, offline (exporting, docs/DAW.md
+    // D6); returns once the audio thread has let go of it. resume() hands
+    // blocks to it again.
+    void suspend();
+    void resume() { m_suspended.store(false, std::memory_order_release); }
     std::uint32_t bufferSize() const override { return m_bufferSize.load(std::memory_order_relaxed); }
     std::uint32_t xrunCount() const override { return m_xruns.load(std::memory_order_relaxed); }
 
@@ -91,6 +97,8 @@ private:
     std::atomic<std::uint32_t> m_sampleRate{0};
     std::atomic<std::uint32_t> m_bufferSize{0};
     std::atomic<std::uint32_t> m_xruns{0};
+    std::atomic<bool> m_suspended{false};
+    std::atomic<std::uint64_t> m_cycles{0}; // callbacks begun
     std::atomic<bool> m_serverGone{false};
     std::atomic<bool> m_portsChanged{false};
     std::atomic<double> m_syncBpm{0.0}; // the JACK timebase's tempo while following it, 0 = none

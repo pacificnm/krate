@@ -1,6 +1,8 @@
 #include "host/JackHost.h"
 
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include <cmath>
 
 #include <jack/midiport.h>
@@ -252,10 +254,28 @@ std::uint32_t JackHost::roundTripFrames() const
     return capture.max + playback.max;
 }
 
+void JackHost::suspend()
+{
+    m_suspended.store(true, std::memory_order_seq_cst);
+    if (!m_client)
+        return; // no callbacks running (one starting later sees the flag)
+    // Callbacks run one after another: once one has begun since the flag was
+    // set (it sees it), the one before has finished.
+    const std::uint64_t seen = m_cycles.load(std::memory_order_seq_cst);
+    for (int waited = 0; m_cycles.load(std::memory_order_seq_cst) == seen && waited < 500; ++waited)
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+}
+
 int JackHost::onProcess(jack_nframes_t frames, void *arg)
 {
     auto *self = static_cast<JackHost *>(arg);
     ScopedFlushDenormals ftz;
+    self->m_cycles.fetch_add(1, std::memory_order_seq_cst);
+    if (self->m_suspended.load(std::memory_order_seq_cst)) { // another thread has the processor (exporting)
+        for (int c = 0; c < self->m_channels; ++c)
+            std::fill_n(static_cast<float *>(jack_port_get_buffer(self->m_outs[std::size_t(c)], frames)), frames, 0.0f);
+        return 0;
+    }
 
     const std::uint32_t rate = self->m_sampleRate.load(std::memory_order_relaxed);
     if (rate != self->m_preparedRate) {

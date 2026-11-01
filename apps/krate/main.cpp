@@ -15,6 +15,7 @@
 
 #include "ArrangeController.h"
 #include "AudioTracks.h"
+#include "ExportController.h"
 #include "BackingInstrument.h"
 #include "RackController.h"
 #include "RackMidiLearn.h"
@@ -230,6 +231,12 @@ int main(int argc, char *argv[])
     processor.setAutomation(&automationPlayer);
     krate::JackHost jack(processor);
     krate::HostController host(jack, QStringLiteral("krate"), nullptr);
+    // Export (docs/DAW.md, D6): the host hands the rack over while it renders.
+    ExportController exporter(rack, processor, transport, sequencer, &automationPlayer, rackController,
+                              sequencerController, arrangeController, &audioTracks,
+                              QStandardPaths::writableLocation(QStandardPaths::MusicLocation) + QStringLiteral("/Krate"),
+                              nullptr);
+    exporter.setHost({[&jack] { jack.suspend(); }, [&jack] { jack.resume(); }, [&jack] { return double(jack.sampleRate()); }});
     audioTracks.setRoundTrip([&jack] { return int(jack.roundTripFrames()); });
     host.setMidiInputMatch(session.midiInput());
     host.setRequestedBufferSize(session.bufferSize());

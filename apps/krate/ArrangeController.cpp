@@ -810,6 +810,19 @@ void ArrangeController::finishWriting()
         m_player->releaseAll();
 }
 
+double ArrangeController::songEndBeat(double bpm) const
+{
+    double end = double(endBar()) * kBeatsPerBar;
+    if (m_tracks)
+        for (int t = 0; t < AudioTracksController::kTracks; ++t)
+            for (const QVariant &v : m_tracks->clips(t)) {
+                const QVariantMap clip = v.toMap();
+                end = std::max(end, clip.value(QStringLiteral("startBeat")).toDouble()
+                                        + clip.value(QStringLiteral("seconds")).toDouble() * bpm / 60.0);
+            }
+    return end;
+}
+
 void ArrangeController::poll()
 {
     // Recording automation: AUTO, SONG and playing (and Krate keeping its own time).

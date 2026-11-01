@@ -93,6 +93,23 @@ class TestVoices : public QObject
     Q_OBJECT
 
 private slots:
+    // prepare() starts it from scratch: the same hits after it sound the very
+    // same, noise and all, whatever played before (an export's passes, docs/DAW.md D6).
+    void prepareRepeats()
+    {
+        Engine engine;
+        engine.prepare(kRate, kBlock);
+        std::vector<std::array<int, 3>> hits;
+        for (int d = 0; d < DrumCount - 1; ++d) // every voice but the sample
+            hits.push_back({d * 2000, kNotes[d], 110});
+        const Render first = play(engine, hits, 48000);
+        play(engine, {{0, 38, 127}, {500, 42, 90}}, 4000); // something else in between
+        engine.prepare(kRate, kBlock);
+        const Render again = play(engine, hits, 48000);
+        QVERIFY(again.left == first.left);
+        QVERIFY(again.right == first.right);
+    }
+
     void notesMapToVoices()
     {
         QCOMPARE(Engine::drumForNote(36), DrumId::Bd);

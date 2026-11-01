@@ -55,6 +55,7 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
     for (SlotBus &bus : m_bus) {
         bus.decimateL.reset();
         bus.decimateR.reset();
+        bus.driveTone = {};
         bus.chorus.prepare(sampleRate);
         bus.delay.prepare(sampleRate);
         bus.reverb.prepare(sampleRate);
@@ -64,6 +65,9 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
         lfo.reset();
     m_vibrato.reset();
     m_sustained.fill(false);
+    m_started.fill(0); // from scratch: the same notes then go to the same voices
+    m_counter = 0;
+    m_voiceSlot.fill(0);
     for (auto &channel : m_keyShift)
         channel.fill(kKeyUp);
     for (int slot = 0; slot < SlotCount; ++slot) {

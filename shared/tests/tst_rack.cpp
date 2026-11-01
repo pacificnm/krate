@@ -13,6 +13,7 @@
 #include "rack/Rack.h"
 #include "rack/Automation.h"
 #include "rack/RackProcessor.h"
+#include "rec/Bounce.h"
 
 using namespace krate;
 using Kind = Rack::Mapping::Kind;
@@ -153,6 +154,97 @@ private slots:
     // Automation (docs/DAW.md, D5): played into a device's parameter at each
     // block's (part's) beat, as a learned knob's is (its panel told), only
     // when it changes, only while playing and on; a held lane is left alone.
+    // Bouncing (docs/DAW.md, D6): the range exactly (4 beats at 120 BPM:
+    // 96000 frames), then the tail, the transport stopped, until it's quiet
+    // for a quarter second (at most tailSeconds); stopped early on request.
+    // After prepare (a bounce's pass, docs/DAW.md D6), the mixer starts
+    // where its faders and solos are: nothing of a device soloed off before
+    // fades out over the first block.
+    // The master stage's soft clip, on by default, off for an export's stems.
+    void masterStageSwitches()
+    {
+        Rack rack;
+        FakeDevice loud(kParamsA, 0.9f);
+        rack.addDevice(loud, 0);
+        rack.prepare(48000.0);
+        rack.setLevel(0, 1.0f);
+        rack.setPan(0, 0.0f);
+        const float clipped = run(rack, 512).left[300];
+        QVERIFY(clipped < 0.85f && clipped > 0.5f);
+        rack.setMasterStage(false);
+        const float plain = run(rack, 512).left[300];
+        QVERIFY(plain > clipped);
+        QCOMPARE(MasterStage::shape(plain), clipped);
+    }
+
+    void prepareStartsFresh()
+    {
+        Rack rack;
+        FakeDevice a(kParamsA, 0.5f), b(kParamsB, 0.25f);
+        rack.addDevice(a, 0);
+        rack.addDevice(b, 1);
+        rack.prepare(48000.0);
+        rack.setSolo(0, true);
+        run(rack, 512);
+        rack.setSolo(0, false);
+        rack.setSolo(1, true);
+        rack.prepare(48000.0);
+        const Output out = run(rack, 512);
+        const Output steady = run(rack, 512);
+        QCOMPARE(out.left[0], steady.left[0]); // b alone from the first sample
+        QCOMPARE(out.left[511], steady.left[511]);
+    }
+
+    void bounces()
+    {
+        Rack rack;
+        FakeDevice dev(kParamsA, 0.5f);
+        dev.sineHz = 440.0;
+        dev.quietAfter = 96000 + 1000; // rings 1000 frames past the end
+        rack.addDevice(dev, 0);
+        rack.prepare(48000.0);
+        Transport transport;
+        transport.setStartBeat(8.0); // the bounce sets its own
+        transport.setLoop(true, 0, 1);
+        RackProcessor processor(rack, transport, {"a"});
+        std::vector<float> left;
+        double lastProgress = 0.0;
+        const std::int64_t frames = bounce(
+            processor, transport, 48000.0, BounceRange{0.0, 4.0, 8.0},
+            [&](const float *l, const float *, std::uint32_t n) {
+                left.insert(left.end(), l, l + n);
+                return true;
+            },
+            [&](double p) {
+                lastProgress = p;
+                return true;
+            });
+        QCOMPARE(frames, std::int64_t(left.size()));
+        QVERIFY(frames >= 96000 + 1000 + 12000 && frames <= 96000 + 1000 + 12000 + 1024);
+        QVERIFY(std::fabs(left[50]) > 0.0f);
+        QCOMPARE(left.back(), 0.0f);
+        QCOMPARE(lastProgress, 1.0);
+        QVERIFY(!transport.playing());
+        QVERIFY(dev.transports.front().restarted);
+        QCOMPARE(dev.transports.front().beatAtBlockStart, 0.0); // from where it was told, no loop
+        QVERIFY(!dev.transports.back().playing); // the tail: stopped
+
+        // A steady sound: the tail stops at tailSeconds. Stopping early: -1.
+        FakeDevice steady(kParamsA, 0.25f);
+        Rack rack2;
+        rack2.addDevice(steady, 0);
+        rack2.prepare(48000.0);
+        Transport t2;
+        RackProcessor p2(rack2, t2, {"b"});
+        const auto count = [](const float *, const float *, std::uint32_t) { return true; };
+        QCOMPARE(bounce(p2, t2, 48000.0, BounceRange{4.0, 6.0, 0.5}, count), std::int64_t(48000 + 24064));
+        int calls = 0;
+        QCOMPARE(bounce(p2, t2, 48000.0, BounceRange{0.0, 4.0},
+                        [&](const float *, const float *, std::uint32_t) { return ++calls < 3; }),
+                 std::int64_t(-1));
+        QVERIFY(!t2.playing());
+    }
+
     void processorPlaysAutomation()
     {
         Rack rack;

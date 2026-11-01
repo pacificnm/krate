@@ -181,6 +181,12 @@ void Voices::prepare(double sampleRate) noexcept
     m_active.fill(false);
     m_residual.fill(0.0);
     m_last.fill(0.0f);
+    // From scratch: the same hits then sound the same (an export's passes).
+    for (Noise *noise : {&m_bdNoise, &m_sdNoise, &m_sdCrackNoise, &m_cpNoise, &m_hatNoise, &m_cyNoise, &m_meNoise,
+                         &m_ckNoise, &m_nzNoise})
+        noise->reset();
+    for (Tom &tom : m_toms)
+        tom.noise.reset();
 
     m_bdClickFilter.set(3000.0, 0.8, sampleRate);
     m_sdHp.set(800.0, 0.707, sampleRate);

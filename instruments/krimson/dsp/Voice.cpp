@@ -100,6 +100,7 @@ void Voice::kill() noexcept
     m_gate = false;
     m_filter.reset();
     m_cutoff = -1.0;
+    m_osc2Value = 0.0;
     m_stealing = false;
     m_fade = 1.0;
 }

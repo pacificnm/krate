@@ -31,6 +31,9 @@ public:
     Voice();
 
     void setSampleRate(double sampleRate) noexcept;
+    // Silent and as new (the oscillator's phase, the filter, the envelopes):
+    // the same notes then make the same sound (an export's passes).
+    void reset() noexcept;
     void setParams(const VoiceParams &params) noexcept;
 
     // New note: pitch jumps, both envelopes retrigger.
@@ -61,6 +64,7 @@ private:
     double m_accentAmount = 0.0;
     double m_tuning = 0.0;
     double m_paramCoeff = 0.0;
+    bool m_snapParams = false; // after reset(): the next sample takes the knobs as they are
 
     // Pitch
     double m_pitch = 48.0;        // MIDI note, fractional while sliding

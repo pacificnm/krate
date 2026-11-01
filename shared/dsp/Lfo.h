@@ -15,7 +15,13 @@ class Lfo
 public:
     enum class Wave : std::uint8_t { Sine, UpSaw, DownSaw, Square, Random, Triangle, SoftRandom };
 
-    void reset(double phase = 0.0) noexcept { m_phase = phase; }
+    // From the top: the phase, and the random wave's sequence too (the same every time).
+    void reset(double phase = 0.0) noexcept
+    {
+        m_phase = phase;
+        m_held = m_previous = 0.0;
+        m_rng = kSeed;
+    }
     double next(double hz, Wave wave, double sampleRate) noexcept
     {
         double v = 0.0;
@@ -48,7 +54,8 @@ private:
     double m_phase = 0.0;
     double m_held = 0.0;
     double m_previous = 0.0;
-    std::uint32_t m_rng = 0x6C8E9CF5u;
+    static constexpr std::uint32_t kSeed = 0x6C8E9CF5u;
+    std::uint32_t m_rng = kSeed;
 };
 
 } // namespace krate

@@ -47,6 +47,10 @@ void Engine::prepare(double sampleRate, std::uint32_t /*maxFrames: korrode rende
 {
     m_sampleRate = sampleRate;
     m_voice.setSampleRate(sampleRate);
+    m_voice.reset(); // from silence, the same every time
+    m_held.fill(0);  // no keys down
+    m_heldCount = 0;
+    m_volume = 0.0f; // fades in from silence, as when new
     m_delay.prepare(sampleRate);
     m_reverb.prepare(sampleRate);
     m_delayOn = m_reverbOn = false;

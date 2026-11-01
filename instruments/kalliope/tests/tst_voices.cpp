@@ -54,6 +54,28 @@ class TestVoices : public QObject
     };
 
 private slots:
+    // prepare() starts it from scratch: the same notes after it make the very
+    // same sound, whatever played before (an export's passes, docs/DAW.md D6).
+    void prepareRepeats()
+    {
+        Rig rig;
+        const auto play = [&] {
+            rig.out.clear();
+            for (int n : {60, 64, 67})
+                rig.on(n);
+            rig.run(0.3);
+            for (int n : {60, 64, 67})
+                rig.off(n);
+            rig.run(0.1);
+            return rig.out;
+        };
+        const std::vector<float> first = play();
+        rig.on(72); // something else in between
+        rig.run(0.2);
+        rig.engine.prepare(kRate, kBlock);
+        QCOMPARE(play(), first);
+    }
+
     void chordUsesOneVoicePerNote()
     {
         Rig rig;

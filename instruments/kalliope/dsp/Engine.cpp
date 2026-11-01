@@ -45,6 +45,13 @@ void Engine::prepare(double sampleRate, std::uint32_t) noexcept
     m_heldCount = 0;
     m_keyShift.fill(kKeyUp);
     m_sustained.fill(false);
+    // From scratch: the same notes then sound the same (start phases, which voice, the arpeggio).
+    m_started.fill(0);
+    m_counter = 0;
+    m_phaseSeed = 0x9E3779B9u;
+    m_arpNote = -1;
+    m_arpPosition = 0;
+    m_arpRandom = 0x2F6B3A1Du;
     m_sustain = false;
     m_mode = keyMode();
     m_unisonDetune = -1.0f;

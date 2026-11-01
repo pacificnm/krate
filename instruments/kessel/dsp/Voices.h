@@ -19,7 +19,8 @@ inline constexpr int DrumCount = int(DrumId::Count);
 class Noise
 {
 public:
-    explicit Noise(std::uint32_t seed) noexcept : m_state(seed) {}
+    explicit Noise(std::uint32_t seed) noexcept : m_seed(seed), m_state(seed) {}
+    void reset() noexcept { m_state = m_seed; } // the same noise again, from the start
     float next() noexcept
     {
         m_state ^= m_state << 13;
@@ -29,6 +30,7 @@ public:
     }
 
 private:
+    std::uint32_t m_seed;
     std::uint32_t m_state;
 };
 

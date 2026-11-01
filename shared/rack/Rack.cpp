@@ -50,6 +50,7 @@ void Rack::prepare(double sampleRate) noexcept
     }
     m_reverb.prepare(sampleRate);
     m_delay.prepare(sampleRate);
+    m_primed = false; // the mixer starts where its faders and solos are, no ramp from before
 }
 
 // --- Any thread ---------------------------------------------------------------
@@ -501,7 +502,8 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
     }
     m_masterGain = masterTarget;
     float *const master[2] = {block.masterL + offset, block.masterR + offset};
-    m_master.process(master, 2, frames);
+    if (m_masterStage.load(std::memory_order_relaxed))
+        m_master.process(master, 2, frames);
 }
 
 void Rack::processDevice(int i, const RackBlock &block, std::uint32_t offset, std::uint32_t frames,

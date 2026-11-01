@@ -86,7 +86,13 @@ public:
     void setSpread(double detuneSemis, double pan, double gain = 1.0) noexcept;
     // Its own random sequence (analog drift): a different seed per voice, so
     // renders are the same every time.
-    void setSeed(std::uint32_t seed) noexcept { m_random = seed ? seed : 1u; }
+    // Its random sequence from the start, the wander at rest (the same notes then sound the same).
+    void setSeed(std::uint32_t seed) noexcept
+    {
+        m_random = seed ? seed : 1u;
+        m_drift1 = m_drift2 = m_driftTarget1 = m_driftTarget2 = 0.0;
+        m_driftCountdown = 0;
+    }
 
     // Adds 2 * frames samples to outL2x / outR2x. lfo2 and vibrato: one value per host frame.
     void render(float *outL2x, float *outR2x, std::uint32_t frames, const float *lfo2, const float *vibrato,

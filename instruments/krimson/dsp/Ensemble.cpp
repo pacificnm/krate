@@ -35,6 +35,8 @@ void Ensemble::reset() noexcept
     m_right.fill(0.0f);
     m_write = 0;
     m_toneL = m_toneR = 0.0;
+    m_slow = m_fast = 0.0; // the LFOs from the top too: the same sound every time
+    m_lastMode = 0;
 }
 
 float Ensemble::read(const std::array<float, kSize> &line, double delaySamples) const noexcept

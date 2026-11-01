@@ -146,6 +146,12 @@ public:
     // A clip's notes for drawing: [{x, w, pitch}] (beats from its start), the pattern repeated.
     Q_INVOKABLE QVariantList clipNotes(int track, int index) const;
 
+    // The transport's start and loop, the tracks' punch, put back from the
+    // sequence (after an export used the transport its own way).
+    void reapply() { apply(); }
+    // The beat the song ends on: its last clip, MIDI or audio (at the tempo).
+    double songEndBeat(double bpm) const;
+
     // The screen timer's tick: where the transport is (public for tests).
     void poll();
 

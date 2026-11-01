@@ -184,6 +184,9 @@ public:
     void setMasterLevel(float gain) noexcept { m_masterLevel.store(gain, std::memory_order_relaxed); }
     float takeDevicePeak(int device) noexcept; // post-fader, since last call
     float takeMasterPeak() noexcept { return m_master.takePeak(); }
+    // The master stage's soft clip on (the default) or off: an export's stems
+    // leave it out, so they add up to the mix before it (docs/DAW.md, D6).
+    void setMasterStage(bool on) noexcept { m_masterStage.store(on, std::memory_order_relaxed); }
 
     // Rack MIDI map. channel 0..15 or kAnyChannel.
     void setCcMapping(int channel, int cc, Mapping mapping) noexcept;
@@ -271,6 +274,7 @@ private:
     SpscQueue<MixerMove, 512> m_mixerMoves; // faders send many
 
     MasterStage m_master;
+    std::atomic<bool> m_masterStage{true};
 
     // Effects: the buses the strips send to, the effects, their settings.
     std::array<std::vector<float>, 2 * EffectCount> m_bus; // reverb L, R, delay L, R

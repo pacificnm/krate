@@ -59,6 +59,24 @@ Voice::Voice()
     setSampleRate(m_sampleRate);
 }
 
+void Voice::reset() noexcept
+{
+    m_osc.reset();
+    m_ladder.reset();
+    m_decimate4to2.reset();
+    m_decimate2to1.reset();
+    m_sliding = false;
+    m_pitch = m_pitchTarget = 48.0;
+    m_snapParams = true; // the knobs as they are, not a glide from before
+    m_noteAccent = false;
+    m_meg = 0.0;
+    m_veg = 0.0;
+    m_vegStage = VegStage::Release;
+    m_sweep = 0.0;
+    m_accentGain = 1.0;
+    m_hpfIn = m_hpfOut = 0.0;
+}
+
 void Voice::setSampleRate(double sampleRate) noexcept
 {
     m_sampleRate = sampleRate;
@@ -120,6 +138,14 @@ void Voice::gateOff() noexcept
 float Voice::next() noexcept
 {
     // --- Control rate (base sample rate) ---------------------------------------
+    if (m_snapParams) {
+        m_snapParams = false;
+        m_cutoffLog2 = std::log2(m_target.cutoffHz);
+        m_resonance = m_target.resonance;
+        m_envMod = m_target.envModOctaves;
+        m_accentAmount = m_target.accent;
+        m_tuning = m_target.tuningSemitones;
+    }
     m_cutoffLog2 += (std::log2(m_target.cutoffHz) - m_cutoffLog2) * m_paramCoeff;
     m_resonance += (m_target.resonance - m_resonance) * m_paramCoeff;
     m_envMod += (m_target.envModOctaves - m_envMod) * m_paramCoeff;
