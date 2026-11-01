@@ -648,7 +648,7 @@ QString SongController::copyToSequencer(int track, int from, int to, int pattern
     const NoteTarget *target = choice > 0 && choice <= int(m_choices.size()) ? &m_choices[std::size_t(choice - 1)] : nullptr;
     songimport::Options options;
     options.drumMap = target && target->drumMap;
-    options.mono = target && (target->key == u"korrode" || target->key == u"kobalt"); // the monosynths
+    options.mono = target && (target->kind == u"korrode" || target->kind == u"kobalt"); // the monosynths
     const auto spans = songimport::barSpans(*m_song, score(), from, to);
     const songimport::Result r = songimport::convert(*m_song, track, spans, options);
     if (r.chunks.empty())

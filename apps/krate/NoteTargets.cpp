@@ -10,14 +10,14 @@ std::vector<NoteTarget> noteTargets(const QList<krate::InstrumentEntry> &entries
         if (!e.playsNotes)
             continue;
         if (e.extraMidiChannels.isEmpty()) {
-            targets.push_back({e.name, e.id, int(i), std::max(0, e.defaultMidiChannel), e.id == u"kessel"});
+            targets.push_back({e.name, e.id, int(i), std::max(0, e.defaultMidiChannel), e.kindOrId() == u"kessel", e.kindOrId()});
             continue;
         }
         QList<int> channels{e.defaultMidiChannel};
         channels += e.extraMidiChannels;
         for (qsizetype k = 0; k < channels.size(); ++k) {
             const QChar slot(char16_t(u'A' + k));
-            targets.push_back({e.name + u' ' + slot, e.id + u':' + slot, int(i), std::max(0, channels[k]), false});
+            targets.push_back({e.name + u' ' + slot, e.id + u':' + slot, int(i), std::max(0, channels[k]), false, e.kindOrId()});
         }
     }
     return targets;

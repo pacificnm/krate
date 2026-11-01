@@ -23,6 +23,9 @@ struct InstrumentContext
     Transport *transport = nullptr;
     QString configDir; // e.g. ~/.config/<id>: panel.json, midimap.json
     QString dataDir;   // e.g. ~/.local/share/<id>: patterns and other user data
+    // Its device id in the rack ("korrode", or a copy's: "korrode2"), for the
+    // rack's RUN / STOP; "" standalone.
+    QString id{};
     // In the rack: starts and stops just this instrument's sequencer on the
     // rack's transport (its own RUN / STOP). Standalone: nullptr.
     RunControl *run = nullptr;
@@ -77,6 +80,14 @@ struct InstrumentEntry
     QList<int> extraMidiChannels; // more channels (0..15) the rack routes to it (Krimson's slots B-D)
     bool playsNotes = true;      // false: a song's tracks can't play it (the metronome, the guitar amp)
     bool inRackByDefault = true; // false: in the Krate rack only once added (audio tracks: docs/DAW.md)
+    // Copies (docs/DAW.md#copies): how many of it the Krate rack can hold (the
+    // metronome: one). The rack makes the rest from this entry: "korrode2"
+    // .. "korrode16", each its own device, with `kind` the first one's id and
+    // `copy` its number (1: the instrument itself).
+    int maxCopies = 1;
+    QString kind; // "" = id
+    int copy = 1;
+    QString kindOrId() const { return kind.isEmpty() ? id : kind; }
     QString qmlModule;           // QML module holding the panel, e.g. "Korrode"
     QString panelComponent;      // the panel inside it, e.g. "Panel"
     QStringList actions;         // learnable buttons, e.g. "pattern1", "runstop"

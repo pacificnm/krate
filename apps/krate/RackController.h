@@ -42,6 +42,12 @@ class RackController : public QObject
     // device list never changes (every instrument is built at startup): one
     // not in the rack is only hidden and skipped.
     Q_PROPERTY(QVariantList present READ present NOTIFY presenceChanged)
+    // The devices in the rack, in order (what the tabs, panels and mixer strips show).
+    Q_PROPERTY(QVariantList presentDevices READ presentDevices NOTIFY presenceChanged)
+    // Copies (docs/DAW.md#copies): what each device is ("korrode" for Korrode 2
+    // too) and which copy (1: the instrument itself).
+    Q_PROPERTY(QStringList deviceKinds READ deviceKinds CONSTANT)
+    Q_PROPERTY(QVariantList deviceCopies READ deviceCopies CONSTANT)
     Q_PROPERTY(int focus READ focus WRITE setFocus NOTIFY focusChanged)
     // Your keyboard plays the focused instrument: notes on this channel (0..15),
     // or any channel (16), go to the focused instrument whatever the mixer's
@@ -75,7 +81,12 @@ public:
     QStringList deviceNames() const { return m_names; }
     QStringList panelModules() const { return m_modules; }
     QStringList panelComponents() const { return m_components; }
-    QStringList deviceIds() const;
+    QStringList deviceIds() const { return m_ids; }
+    QStringList deviceKinds() const { return m_kinds; }
+    QVariantList deviceCopies() const { return m_copies; }
+    QVariantList presentDevices() const { return m_presentDevices; }
+    // Called with a device just before it goes into the rack: a copy is built then.
+    void setBeforeAdding(std::function<void(int)> build) { m_beforeAdding = std::move(build); }
     // What a device's panel is made with: its own controllers (InstrumentInstance::panelProperties).
     Q_INVOKABLE QVariantMap panelProperties(int device) const;
     void setPanelProperties(std::function<QVariantMap(int)> properties) { m_panelProperties = std::move(properties); }
@@ -229,6 +240,11 @@ private:
     int m_focus = 0;
     RackRunControl *m_run = nullptr;
     std::function<QVariantMap(int)> m_panelProperties;
+    std::function<void(int)> m_beforeAdding;
+    QStringList m_ids, m_kinds;
+    QVariantList m_copies;
+    QVariantList m_present, m_presentDevices; // kept as the rack changes (QML reads them per device)
+    void presenceUpdated();
     bool m_shownPlaying = false; // the play state last announced
     bool m_mixerShown = false;
     bool m_songShown = false;

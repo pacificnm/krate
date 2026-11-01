@@ -8,7 +8,7 @@ Instance::Instance(const krate::InstrumentContext &context)
     , patterns(engine, context.dataDir + QStringLiteral("/patterns.json"), nullptr)
 {
     if (context.run)
-        controller.setRunControl(context.run, QStringLiteral("klang"));
+        controller.setRunControl(context.run, context.id.isEmpty() ? QStringLiteral("klang") : context.id);
 }
 
 void Instance::triggerAction(const QString &action)
@@ -31,6 +31,7 @@ krate::InstrumentEntry registryEntry()
 {
     krate::InstrumentEntry entry;
     entry.id = QStringLiteral("klang");
+    entry.maxCopies = 16; // the Krate rack: up to 16 of it
     entry.name = QStringLiteral("Klang");
     entry.defaultMidiChannel = 10; // channel 11
     entry.qmlModule = QStringLiteral("Klang");

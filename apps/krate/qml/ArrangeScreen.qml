@@ -1255,7 +1255,7 @@ Item {
         modal: true
         background: Rectangle { radius: 8; color: Theme.lowerDeck; border.color: Theme.deckLine; border.width: 2 }
         property int device: -1
-        readonly property var devices: opened ? Arrange.automatableDevices() : []
+        readonly property var devices: opened ? Arrange.automatableDevices().filter(d => Rack.present[d.device] === true) : []
         onOpened: device = devices.length > 0 ? devices[0].device : -1
 
         Row {

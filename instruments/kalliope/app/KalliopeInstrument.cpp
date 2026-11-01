@@ -12,7 +12,7 @@ Instance::Instance(const krate::InstrumentContext &context)
     , sequencer(controller, engine, context.dataDir + QStringLiteral("/sequences.json"), nullptr)
 {
     if (context.run)
-        controller.setRunControl(context.run, QStringLiteral("kalliope"));
+        controller.setRunControl(context.run, context.id.isEmpty() ? QStringLiteral("kalliope") : context.id);
 }
 
 void Instance::triggerAction(const QString &action)
@@ -53,6 +53,7 @@ krate::InstrumentEntry registryEntry()
 {
     krate::InstrumentEntry entry;
     entry.id = QStringLiteral("kalliope");
+    entry.maxCopies = 16; // the Krate rack: up to 16 of it
     entry.name = QStringLiteral("Kalliope");
     entry.defaultMidiChannel = 1; // channel 2
     entry.qmlModule = QStringLiteral("Kalliope");

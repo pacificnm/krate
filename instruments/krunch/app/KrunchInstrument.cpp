@@ -52,6 +52,7 @@ krate::InstrumentEntry registryEntry()
 {
     krate::InstrumentEntry entry;
     entry.id = QStringLiteral("krunch");
+    entry.maxCopies = 16; // the Krate rack: up to 16 of it
     entry.name = QStringLiteral("Krunch");
     entry.defaultMidiChannel = -1; // plays the guitar input, not notes
     entry.playsNotes = false;

@@ -446,9 +446,9 @@ private slots:
         rack.setPresent(1, false);
         rack.setFocus(1);
         QCOMPARE(rack.focus(), 0);
-        run(rack, 64, {program(0, 1)});
+        run(rack, 64, {program(0, 2)}); // a third device in the rack: there are two
         QCOMPARE(rack.focus(), 0);
-        QCOMPARE(a.received.size(), std::size_t(1)); // not a device in the rack: passed on
+        QCOMPARE(a.received.size(), std::size_t(1)); // passed on
         rack.setCcMapping(0, 20, {Kind::FocusAction, -1, Rack::kFocusNext});
         run(rack, 64, {cc(0, 20, 127)});
         QCOMPARE(rack.focus(), 2); // past the absent one
@@ -562,6 +562,25 @@ private slots:
         run(rack, 64, {program(0, 0)});
         QCOMPARE(rack.focus(), 1);
         QCOMPARE(b.received.size(), std::size_t(2));
+    }
+
+    // Program n counts the devices in the rack only: copies not added (and a
+    // backing track with no panel) don't shift it.
+    void programChangeCountsTheRack()
+    {
+        FakeDevice a(kParamsA, 0.0f), copy(kParamsA, 0.0f), b(kParamsB, 0.0f), backing(kParamsB, 0.0f);
+        Rack rack;
+        rack.addDevice(a);
+        rack.addDevice(copy);
+        rack.addDevice(backing);
+        rack.addDevice(b);
+        rack.setPresent(1, false);
+        rack.setFocusable(2, false);
+        run(rack, 64, {program(0, 1)});
+        QCOMPARE(rack.focus(), 3);
+        rack.setPresent(1, true);
+        run(rack, 64, {program(0, 1)});
+        QCOMPARE(rack.focus(), 1);
     }
 
     // --- Focus actions -----------------------------------------------------------

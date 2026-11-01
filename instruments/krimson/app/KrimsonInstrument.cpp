@@ -56,6 +56,7 @@ krate::InstrumentEntry registryEntry()
 {
     krate::InstrumentEntry entry;
     entry.id = QStringLiteral("krimson");
+    entry.maxCopies = 16; // the Krate rack: up to 16 of it
     entry.name = QStringLiteral("Krimson");
     entry.defaultMidiChannel = 2;     // channel 3: slot A
     entry.extraMidiChannels = {3, 4, 5}; // channels 4-6: slots B-D

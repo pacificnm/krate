@@ -18,6 +18,7 @@ struct NoteTarget
     int device = -1;
     int channel = 0;
     bool drumMap = false; // Kessel: a song's drum notes are mapped to its voices
+    QString kind{};       // the instrument ("korrode" for Korrode 2 too)
 };
 
 std::vector<NoteTarget> noteTargets(const QList<krate::InstrumentEntry> &entries);

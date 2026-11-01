@@ -246,7 +246,7 @@ Decided: **per-channel routing plus a focus**, so one controller can play one in
 
 Rack-level MIDI map (in `rack.json`): entries keyed by **(channel, CC)** → (device, parameter key) for fixed mappings, or → parameter key for follow-focus mappings; channel can be "any". Learning in the rack: arm a control on any device panel, move a hardware knob; the rack records the channel too, so the same CC number on different channels can drive different instruments.
 
-Focus switching from the controller: a rack action that is MIDI-learnable like a parameter. Learn "focus korrode", "focus Kessel", "focus next" etc. to a button's CC or note, or use Program Change n → device n. The Nektar's buttons and its preset/program features can send these; the exact messages are checked on the hardware when the rack is built.
+Focus switching from the controller: a rack action that is MIDI-learnable like a parameter. Learn "focus korrode", "focus Kessel", "focus next" etc. to a button's CC or note, or use Program Change n → the nth instrument in the rack. The Nektar's buttons and its preset/program features can send these; the exact messages are checked on the hardware when the rack is built.
 
 Standalone apps keep their own `midimap.json` as today (one device, so no channel or focus logic).
 

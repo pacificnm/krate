@@ -43,9 +43,13 @@ RackController::RackController(krate::Rack &rack, krate::Transport &transport,
             rack.setFocusable(int(m_modules.size() - 1), false);
         m_strips.append(Strip{});
         m_meters.append(0.0);
-        if (!e.inRackByDefault) // added from + when wanted (an audio track)
+        if (!e.inRackByDefault) // added from + when wanted (an audio track, a copy)
             rack.setPresent(int(m_modules.size() - 1), false);
+        m_ids << e.id;
+        m_kinds << e.kindOrId();
+        m_copies << e.copy;
     }
+    presenceUpdated();
     m_focus = m_rack.focus();
     applyEffects(); // the returns' defaults
 
@@ -66,20 +70,20 @@ RackController *RackController::create(QQmlEngine *, QJSEngine *)
     return s_instance;
 }
 
-QStringList RackController::deviceIds() const
-{
-    QStringList ids;
-    for (const auto &e : m_entries)
-        ids << e.id;
-    return ids;
-}
-
 QVariantList RackController::present() const
 {
-    QVariantList out;
-    for (int d = 0; d < deviceCount(); ++d)
-        out << m_rack.present(d);
-    return out;
+    return m_present;
+}
+
+void RackController::presenceUpdated()
+{
+    m_present.clear();
+    m_presentDevices.clear();
+    for (int d = 0; d < deviceCount(); ++d) {
+        m_present << m_rack.present(d);
+        if (m_rack.present(d))
+            m_presentDevices << d;
+    }
 }
 
 bool RackController::isPresent(int device) const
@@ -96,7 +100,10 @@ void RackController::setPresent(int device, bool present)
 {
     if (!removable(device) || present == isPresent(device))
         return;
+    if (present && m_beforeAdding)
+        m_beforeAdding(device);
     m_rack.setPresent(device, present);
+    presenceUpdated();
     if (!present) {
         setSolo(device, false); // a soloed strip that's gone would leave the rest silent
         for (int d = 0; d < deviceCount(); ++d)
@@ -564,6 +571,10 @@ void RackController::restoreMidiChannels(int device)
     if (device < 0 || device >= m_strips.size() || device >= m_entries.size())
         return;
     const krate::InstrumentEntry &entry = m_entries[device];
+    if (entry.copy > 1) { // a copy has none of its own (they're the first one's)
+        setMidiChannel(device, 0);
+        return;
+    }
     setMidiChannel(device, entry.defaultMidiChannel + 1);
     for (int channel : entry.extraMidiChannels)
         m_rack.setChannelDevice(channel, device);

@@ -9,7 +9,7 @@ Instance::Instance(const krate::InstrumentContext &context)
     , kits(drums, samples, context.dataDir + QStringLiteral("/kits.json"), nullptr)
 {
     if (context.run)
-        drums.setRunControl(context.run, QStringLiteral("kessel"));
+        drums.setRunControl(context.run, context.id.isEmpty() ? QStringLiteral("kessel") : context.id);
 }
 
 void Instance::triggerAction(const QString &action)
@@ -24,6 +24,7 @@ krate::InstrumentEntry registryEntry()
 {
     krate::InstrumentEntry entry;
     entry.id = QStringLiteral("kessel");
+    entry.maxCopies = 16; // the Krate rack: up to 16 of it
     entry.name = QStringLiteral("Kessel");
     entry.defaultMidiChannel = 9; // channel 10, the usual drum channel
     entry.qmlModule = QStringLiteral("Kessel");

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <QDir>
+#include <QHash>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -18,6 +19,7 @@
 #include "PluginSlots.h"
 #include "SoundsController.h"
 #include "ExportController.h"
+#include "InstrumentCopies.h"
 #include "BackingInstrument.h"
 #include "RackController.h"
 #include "RackMidiLearn.h"
@@ -82,6 +84,14 @@ int main(int argc, char *argv[])
         krunch::registryEntry(),
         klick::registryEntry(),
     };
+    // Copies (docs/DAW.md#copies): up to 16 of each instrument, each copy a
+    // device right after the instrument itself, built once it's first added.
+    {
+        QList<krate::InstrumentEntry> withCopies;
+        for (const auto &entry : std::as_const(entries))
+            withCopies << entry << copyEntries(entry);
+        entries = withCopies;
+    }
 
     // Declaration order is destruction order in reverse: the QML engine first,
     // then the host (closing JACK), then the instruments, then rack and transport.
@@ -116,19 +126,30 @@ int main(int argc, char *argv[])
     // the rack's own settings are in rack.json.
     const QString config = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
     const QString data = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QHash<QString, krate::InstrumentInstance *> firsts; // each instrument, for its copies
     for (const auto &entry : entries) {
         krate::InstrumentContext context;
         context.transport = nullptr; // the transport bar owns play and tempo
         context.run = &runControl;
         context.configDir = QDir(config).filePath(entry.id);
         context.dataDir = QDir(data).filePath(entry.id);
-        instances.push_back(entry.create(context));
-        const int device = rack.addDevice(instances.back()->instrument(), entry.defaultMidiChannel);
+        context.id = entry.id;
+        const bool copy = entry.copy > 1;
+        if (copy) // built when first added; its files start as the first one's
+            instances.push_back(std::make_unique<CopyInstance>(entry, context, *firsts.value(entry.kind),
+                                                               QDir(config).filePath(entry.kind),
+                                                               QDir(data).filePath(entry.kind)));
+        else
+            instances.push_back(entry.create(context));
+        firsts.insert(entry.id, instances.back().get());
+        // A copy takes no MIDI channel of its own: those are the first one's.
+        const int device = rack.addDevice(instances.back()->instrument(), copy ? -1 : entry.defaultMidiChannel);
         if (device < 0) // a device left out would be silent with nothing said (the backing track was, at 9 devices)
             qFatal("krate: the rack holds at most %d devices; %s doesn't fit", krate::Rack::kMaxDevices,
                    qPrintable(entry.name));
-        for (int channel : entry.extraMidiChannels)
-            rack.setChannelDevice(channel, device);
+        if (!copy)
+            for (int channel : entry.extraMidiChannels)
+                rack.setChannelDevice(channel, device);
         ids.push_back(entry.id.toStdString());
     }
 
@@ -138,6 +159,10 @@ int main(int argc, char *argv[])
         pluginSlots.setDevice(i, int(firstPlugin) + i);
 
     RackController rackController(rack, transport, entries, nullptr);
+    rackController.setBeforeAdding([&instances](int device) {
+        if (auto *copy = dynamic_cast<CopyInstance *>(instances[std::size_t(device)].get()))
+            copy->build();
+    });
     rackController.setPanelProperties([&instances](int device) {
         return device >= 0 && device < int(instances.size()) ? instances[std::size_t(device)]->panelProperties() : QVariantMap{};
     });

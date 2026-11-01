@@ -16,6 +16,8 @@ qt_add_qml_module(krate
         SoundLibrary.cpp
         SoundsController.h
         SoundsController.cpp
+        InstrumentCopies.h
+        InstrumentCopies.cpp
         PluginSlots.h
         PluginSlots.cpp
         PluginEditor.h
@@ -168,6 +170,15 @@ target_include_directories(tst_audiotracks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_audiotracks PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_audiotracks PRIVATE krate_rec krate_rack krate_app Qt6::Qml Qt6::Test)
 add_test(NAME tst_audiotracks COMMAND tst_audiotracks)
+
+# Copies of an instrument (docs/DAW.md#copies): entries, the stand-in device,
+# building one with the first one's files, the rack controller, the targets.
+add_executable(tst_copies tests/tst_copies.cpp InstrumentCopies.h InstrumentCopies.cpp NoteTargets.h NoteTargets.cpp
+               RackController.h RackController.cpp RackRunControl.h RackRunControl.cpp)
+target_include_directories(tst_copies PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_copies PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_copies PRIVATE krate_rack krate_app Qt6::Qml Qt6::Test)
+add_test(NAME tst_copies COMMAND tst_copies)
 
 # The sound library: categories, WAV headers, folders indexed in place.
 add_executable(tst_sounds tests/tst_sounds.cpp SoundIndex.h SoundIndex.cpp SoundLibrary.h SoundLibrary.cpp)

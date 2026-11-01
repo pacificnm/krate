@@ -7,7 +7,7 @@ Instance::Instance(const krate::InstrumentContext &context)
     , pattern(synth.engine(), context.dataDir + QStringLiteral("/patterns.json"), nullptr)
 {
     if (context.run)
-        synth.setRunControl(context.run, QStringLiteral("korrode"));
+        synth.setRunControl(context.run, context.id.isEmpty() ? QStringLiteral("korrode") : context.id);
 }
 
 void Instance::triggerAction(const QString &action)
@@ -24,6 +24,7 @@ krate::InstrumentEntry registryEntry()
 {
     krate::InstrumentEntry entry;
     entry.id = QStringLiteral("korrode");
+    entry.maxCopies = 16; // the Krate rack: up to 16 of it
     entry.name = QStringLiteral("Korrode");
     // None of its own: with one keyboard, the keys play whichever instrument has
     // focus (Kalliope keeps channel 2, Kessel channel 10 for pads).

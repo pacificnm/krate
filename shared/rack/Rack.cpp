@@ -390,13 +390,23 @@ void Rack::route(MidiEvent event) noexcept
         }
         break;
     }
-    case MidiMessage::Type::ProgramChange:
-        // Program n focuses device n (one in the rack); anything else is passed on.
-        if (m_programFocus.load(std::memory_order_relaxed) && m.data1 < m_count && present(m.data1))
-            m_focus.store(m.data1, std::memory_order_relaxed);
+    case MidiMessage::Type::ProgramChange: {
+        // Program n focuses the nth device in the rack that can have focus (the
+        // ones not in the rack, a copy not added, don't count); past the last,
+        // it's passed on.
+        int device = -1;
+        if (m_programFocus.load(std::memory_order_relaxed))
+            for (int i = 0, n = 0; i < m_count; ++i)
+                if (present(i) && focusable(i) && n++ == m.data1) {
+                    device = i;
+                    break;
+                }
+        if (device >= 0)
+            m_focus.store(device, std::memory_order_relaxed);
         else
             forward(target, event);
         break;
+    }
     case MidiMessage::Type::Other:
         forward(target, event);
         break;

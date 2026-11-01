@@ -74,7 +74,8 @@ Window {
         readonly property int instrumentTabs: Math.max(1, Rack.panelComponents.filter((c, i) => c !== "" && Rack.present[i]).length)
         // Beside the instruments: ◂ ▸ +, a gap, the five screen tabs, and the spaces between them all.
         readonly property real stripWidth: Math.max(80, root.width - 32 - 3 * 40 - 16 - 5 * screenTabWidth - 9 * spacing)
-        readonly property real tabWidth: Math.max(64, Math.min(150, (stripWidth - (instrumentTabs - 1) * spacing) / instrumentTabs))
+        // Wide enough to read "Kalliope 2"; more tabs than fit scroll.
+        readonly property real tabWidth: Math.max(118, Math.min(150, (stripWidth - (instrumentTabs - 1) * spacing) / instrumentTabs))
 
         PanelButton { // focus previous (learnable)
             width: 40
@@ -143,12 +144,17 @@ Window {
                         }
                         Text {
                             x: 34
-                            anchors.verticalCenter: parent.verticalCenter
+                            width: tab.width - x - 6
+                            height: tab.height
+                            verticalAlignment: Text.AlignVCenter
                             text: tab.modelData
                             color: Theme.ink
                             font.family: Theme.labelFont
                             font.pixelSize: 18
                             font.bold: tab.focused
+                            fontSizeMode: Text.HorizontalFit // "Korrode 2" whole: smaller, not cut
+                            minimumPixelSize: 12
+                            elide: Text.ElideMiddle
                         }
                         MouseArea {
                             anchors.fill: parent
@@ -433,35 +439,61 @@ Window {
         height: panelArea.height
         visible: Rack.mixerShown
 
-        Row {
-            id: mixer
-            // Grow up to 1.5x while the strips fit across; the strips fill the height.
-            readonly property real s: Math.max(1, Math.min(1.5, mixerArea.width / (implicitWidth + 40)))
-            readonly property real stripHeight: Math.min(mixerArea.height / s, 600)
-            x: (mixerArea.width - implicitWidth * s) / 2
-            y: (mixerArea.height - stripHeight * s) / 2
-            spacing: 10
-            transform: Scale { xScale: mixer.s; yScale: mixer.s }
+        // Grow up to 1.5x while the strips fit across; the strips fill the height.
+        // More strips than fit scroll sideways (the master stays at the right).
+        readonly property real s: Math.max(1, Math.min(1.5, width / (strips.implicitWidth + 132 + 40)))
+        readonly property real masterWidth: (10 + 2 + 10 + 110) * s
+        readonly property bool scrolling: strips.implicitWidth * s > width - masterWidth
+        readonly property real stripHeight: Math.min((height - (scrolling ? 16 : 0)) / s, 600)
 
-            Repeater {
-                model: Rack.deviceNames
+        Flickable {
+            id: mixerScroll
+            readonly property real stripsWidth: strips.implicitWidth * mixerArea.s
+            width: Math.min(stripsWidth, mixerArea.width - mixerArea.masterWidth)
+            x: (mixerArea.width - width - mixerArea.masterWidth) / 2
+            y: (mixerArea.height - height) / 2
+            height: mixerArea.stripHeight * mixerArea.s + (mixerArea.scrolling ? 16 : 0)
+            contentWidth: stripsWidth
+            contentHeight: height
+            flickableDirection: Flickable.HorizontalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+            ScrollBar.horizontal: ScrollBar { policy: mixerArea.scrolling ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff }
 
-                MixerStrip {
-                    required property int index
-                    required property string modelData
-                    visible: Rack.present[index] === true // not in the rack: no strip
-                    device: index
-                    name: modelData
-                    height: mixer.stripHeight
+            Row {
+                id: strips
+                spacing: 10
+                transform: Scale { xScale: mixerArea.s; yScale: mixerArea.s }
+
+                Repeater {
+                    model: Rack.deviceNames
+
+                    Loader { // a strip only for a device in the rack
+                        id: stripSlot
+                        required property int index
+                        required property string modelData
+                        active: Rack.present[index] === true
+                        visible: active
+                        sourceComponent: MixerStrip {
+                            device: stripSlot.index
+                            name: stripSlot.modelData
+                            height: mixerArea.stripHeight
+                        }
+                    }
                 }
             }
+        }
 
-            Rectangle { width: 2; height: mixer.stripHeight; color: Theme.deckLine }
-
+        Row {
+            x: mixerScroll.x + mixerScroll.width + 10 * mixerArea.s
+            y: mixerScroll.y
+            spacing: 10
+            transform: Scale { xScale: mixerArea.s; yScale: mixerArea.s }
+            Rectangle { width: 2; height: mixerArea.stripHeight; color: Theme.deckLine }
             MixerStrip {
                 device: -1
                 name: "Master"
-                height: mixer.stripHeight
+                height: mixerArea.stripHeight
             }
         }
     }
@@ -503,7 +535,7 @@ Window {
         id: instrumentsPopup
         x: (root.width - width) / 2
         y: tabs.y + tabs.height + 6
-        width: 620
+        width: Math.min(root.width - 32, 780)
         padding: 16
         modal: true
         background: Rectangle { radius: 8; color: Theme.lowerDeck; border.color: Theme.deckLine; border.width: 2 }
@@ -525,46 +557,60 @@ Window {
             Text {
                 width: parent.width
                 wrapMode: Text.WordWrap
-                text: "INSTRUMENTS IN THE RACK. Removing one keeps its sound, mixer settings and MIDI links for when you add it back; it isn't played or shown meanwhile."
+                text: "INSTRUMENTS IN THE RACK: up to 16 of each, numbered (2 and on are copies, each with its own sound). Lit: in the rack. Removing one keeps its sound, mixer settings and MIDI links for when you add it back; it isn't played or shown meanwhile."
                 color: Theme.ink
                 font.family: Theme.labelFont
                 font.pixelSize: 13
                 font.bold: true
             }
+            // Each instrument, and its copies (docs/DAW.md#copies): 1 is the
+            // instrument itself, 2.. "Korrode 2" and on. Lit: in the rack.
             Repeater {
-                model: Rack.deviceNames
+                model: Rack.deviceKinds.filter((kind, i) => Rack.deviceCopies[i] === 1 && Rack.removable(i)
+                                                            && !kind.startsWith("audio") && !kind.startsWith("plugin"))
                 Row {
-                    id: instrumentRow
-                    required property int index
+                    id: kindRow
                     required property string modelData
-                    readonly property bool inRack: Rack.present[index] === true
-                    visible: Rack.removable(index) && !Rack.deviceIds[index].startsWith("audio")
-                             && !Rack.deviceIds[index].startsWith("plugin") // the tracks and plugin slots: below
+                    readonly property var devices: Rack.deviceKinds.map((kind, i) => kind === modelData ? i : -1).filter(i => i >= 0)
                     spacing: 12
-                    PanelButton {
-                        width: 110
-                        height: 32
-                        faceText: instrumentRow.inRack ? "REMOVE" : "ADD"
-                        text: (instrumentRow.inRack ? "Remove " : "Add ") + instrumentRow.modelData + (instrumentRow.inRack ? " from the rack" : " to the rack")
-                        onClicked: Rack.setPresent(instrumentRow.index, !instrumentRow.inRack)
-                    }
                     Column {
+                        width: instrumentsPopup.availableWidth - copyButtons.width - 12
                         anchors.verticalCenter: parent.verticalCenter
                         Text {
-                            text: instrumentRow.modelData
+                            text: Rack.deviceNames[kindRow.devices[0]]
                             color: Theme.ink
                             font.family: Theme.labelFont
                             font.pixelSize: 16
-                            font.bold: instrumentRow.inRack
+                            font.bold: kindRow.devices.some(d => Rack.present[d] === true)
                         }
                         Text {
-                            width: 460
+                            width: parent.width
                             elide: Text.ElideRight
-                            text: instrumentsPopup.about[Rack.deviceIds[instrumentRow.index]] ?? ""
+                            text: instrumentsPopup.about[kindRow.modelData] ?? ""
                             color: Theme.ink
                             opacity: 0.7
                             font.family: Theme.labelFont
                             font.pixelSize: 12
+                        }
+                    }
+                    Flow {
+                        id: copyButtons
+                        width: 8 * 34
+                        spacing: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        Repeater {
+                            model: kindRow.devices
+                            PanelButton {
+                                id: copyButton
+                                required property int modelData
+                                readonly property bool inRack: Rack.present[modelData] === true
+                                width: 30
+                                height: 28
+                                faceText: Rack.deviceCopies[modelData]
+                                text: (inRack ? "Remove " : "Add ") + Rack.deviceNames[modelData] + (inRack ? " from the rack" : " to the rack")
+                                tint: inRack ? Theme.labelOrange : "transparent"
+                                onClicked: Rack.setPresent(modelData, !inRack)
+                            }
                         }
                     }
                 }
@@ -579,15 +625,16 @@ Window {
                 font.pixelSize: 13
                 font.bold: true
             }
-            Row {
-                spacing: 8
+            Flow {
+                width: parent.width
+                spacing: 6
                 Repeater {
                     model: Rack.deviceIds.map((id, i) => id.startsWith("audio") ? i : -1).filter(i => i >= 0)
                     PanelButton {
                         id: trackButton
                         required property int modelData
                         readonly property bool inRack: Rack.present[modelData] === true
-                        width: 64
+                        width: 40
                         height: 36
                         faceText: Rack.deviceNames[modelData].replace("Audio ", "")
                         text: (inRack ? "Remove " : "Add ") + Rack.deviceNames[modelData] + (inRack ? " from the rack" : " to the rack")
@@ -606,15 +653,16 @@ Window {
                 font.pixelSize: 13
                 font.bold: true
             }
-            Row {
-                spacing: 8
+            Flow {
+                width: parent.width
+                spacing: 6
                 Repeater {
                     model: Rack.deviceIds.map((id, i) => id.startsWith("plugin") ? i : -1).filter(i => i >= 0)
                     PanelButton {
                         id: slotButton
                         required property int modelData
                         readonly property bool inRack: Rack.present[modelData] === true
-                        width: 64
+                        width: 40
                         height: 36
                         faceText: Rack.deviceNames[modelData].replace("Plugin ", "")
                         text: (inRack ? "Remove " : "Add ") + Rack.deviceNames[modelData] + (inRack ? " from the rack" : " to the rack")
