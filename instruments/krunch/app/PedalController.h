@@ -15,14 +15,14 @@ namespace krunch {
 class Krunch;
 }
 
-// QML singleton "Pedals": the pedalboard (docs/PEDALS.md): add, remove and
+// QML type "Pedals" (one per instrument, given to its panel): the pedalboard (docs/PEDALS.md): add, remove and
 // reorder pedals, put each in front of the amp or in its effects loop, their
 // knobs and footswitches. Kept in pedals.json, and in songs' sounds.
 class PedalController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Pedals)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     // Bumped when anything on the board changes (a knob, a footswitch)...
     Q_PROPERTY(int revision READ revision NOTIFY changed)
@@ -38,7 +38,6 @@ public:
     PedalController(krunch::Krunch &engine, const QString &filePath, QObject *parent);
     ~PedalController() override;
 
-    static PedalController *create(QQmlEngine *, QJSEngine *);
 
     int revision() const { return m_revision; }
     int layoutRevision() const { return m_layoutRevision; }
@@ -76,7 +75,6 @@ private:
     void bumpLayout();
     void saveFile();
 
-    static inline PedalController *s_instance = nullptr;
 
     krunch::Krunch &m_engine;
     krunch::Pedalboard m_board;

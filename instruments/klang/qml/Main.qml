@@ -4,6 +4,9 @@ import Krate
 // The standalone Klang window: the panel at its design size, scaled to fit.
 Window {
     id: root
+    required property Klang klang
+    required property Pads pads
+    required property Patterns patterns
 
     width: 1200
     height: 825
@@ -16,6 +19,9 @@ Window {
     readonly property real panelScale: Math.min(width / panel.width, height / panel.height)
 
     Panel {
+        klang: root.klang
+        pads: root.pads
+        patterns: root.patterns
         id: panel
         focus: true
         x: (root.width - width * root.panelScale) / 2

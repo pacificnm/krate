@@ -9,6 +9,9 @@ import Krate
 // on-screen keyboard, utilities). Every control is bound to Kalliope by key.
 Item {
     id: panel
+    required property Kalliope kalliope
+    required property Patches patches
+    required property Sequencer sequencer
 
     width: 1600
     height: 1100
@@ -83,11 +86,11 @@ Item {
     component ParamSlider: PanelSlider {
         id: paramSlider
         required property string key
-        name: Kalliope.label(key)
-        value: Kalliope.revision >= 0 ? Kalliope.value(key) : 0
-        defaultValue: Kalliope.defaultValue(key)
-        displayText: Kalliope.displayText(key, value)
-        onMoved: v => Kalliope.setValue(key, v)
+        name: panel.kalliope.label(key)
+        value: panel.kalliope.revision >= 0 ? panel.kalliope.value(key) : 0
+        defaultValue: panel.kalliope.defaultValue(key)
+        displayText: panel.kalliope.displayText(key, value)
+        onMoved: v => panel.kalliope.setValue(key, v)
 
         LearnOverlay {
             anchors.fill: parent
@@ -99,11 +102,11 @@ Item {
     component ParamSwitch: PanelSwitch {
         id: paramSwitch
         required property string key
-        name: Kalliope.label(key)
-        positions: Kalliope.detents(key)
-        value: Kalliope.revision >= 0 ? Kalliope.value(key) : 0
-        displayText: Kalliope.displayText(key, value)
-        onMoved: v => Kalliope.setValue(key, v)
+        name: panel.kalliope.label(key)
+        positions: panel.kalliope.detents(key)
+        value: panel.kalliope.revision >= 0 ? panel.kalliope.value(key) : 0
+        displayText: panel.kalliope.displayText(key, value)
+        onMoved: v => panel.kalliope.setValue(key, v)
 
         LearnOverlay {
             anchors.fill: parent
@@ -116,12 +119,12 @@ Item {
     component ParamKnob: Knob {
         id: paramKnob
         required property string key
-        name: Kalliope.label(key)
-        detents: Kalliope.detents(key)
-        value: Kalliope.revision >= 0 ? Kalliope.value(key) : 0
-        defaultValue: Kalliope.defaultValue(key)
-        displayText: Kalliope.displayText(key, value)
-        onMoved: v => Kalliope.setValue(key, v)
+        name: panel.kalliope.label(key)
+        detents: panel.kalliope.detents(key)
+        value: panel.kalliope.revision >= 0 ? panel.kalliope.value(key) : 0
+        defaultValue: panel.kalliope.defaultValue(key)
+        displayText: panel.kalliope.displayText(key, value)
+        onMoved: v => panel.kalliope.setValue(key, v)
         capColor: "#2C2D30"
         capShadeColor: "#101112"
         capBorderColor: "#060607"
@@ -141,7 +144,7 @@ Item {
         required property string key
         property real size: 56
         property bool ring: true
-        readonly property int count: Kalliope.detents(key)
+        readonly property int count: panel.kalliope.detents(key)
 
         width: size
         height: size
@@ -155,7 +158,7 @@ Item {
             x: selector.size / 2 - width / 2
             y: selector.size + 4
             width: selector.size + 20
-            text: Kalliope.revision >= 0 ? Kalliope.displayText(selector.key, Kalliope.value(selector.key)) : ""
+            text: panel.kalliope.revision >= 0 ? panel.kalliope.displayText(selector.key, panel.kalliope.value(selector.key)) : ""
         }
         Repeater {
             model: selector.ring ? selector.count : 0
@@ -166,7 +169,7 @@ Item {
                 readonly property real radius: selector.size / 2 + 13
                 x: selector.size / 2 + radius * Math.sin(angle) - width / 2
                 y: selector.size / 2 - radius * Math.cos(angle) - height / 2
-                text: Kalliope.displayText(selector.key, index / (selector.count - 1))
+                text: panel.kalliope.displayText(selector.key, index / (selector.count - 1))
                 color: panel.silk
                 font.family: Theme.labelFont
                 font.pixelSize: 10
@@ -310,7 +313,7 @@ Item {
                 Item {
                     id: knobSlot
                     required property var modelData
-                    readonly property bool selector: Kalliope.detents(modelData.key) > 1
+                    readonly property bool selector: panel.kalliope.detents(modelData.key) > 1
                     readonly property real size: 52
                     x: (modelData.col + 0.5) * panel.column - size / 2
                     y: 92 + (modelData.row ?? 0) * 124
@@ -374,12 +377,12 @@ Item {
 
     // ---- Function deck: play mode (note / arpeggio / sequencer), key mode, patches or steps, effects
 
-    readonly property bool seqMode: Kalliope.revision >= 0 && Kalliope.value("play_mode") > 0.75
+    readonly property bool seqMode: panel.kalliope.revision >= 0 && panel.kalliope.value("play_mode") > 0.75
     property bool blink: false
     Timer {
         interval: 250
         repeat: true
-        running: Patches.writing || Patches.pendingBank >= 0 || Sequencer.cursor >= 0
+        running: panel.patches.writing || panel.patches.pendingBank >= 0 || panel.sequencer.cursor >= 0
         onTriggered: panel.blink = !panel.blink
         onRunningChanged: panel.blink = false
     }
@@ -425,10 +428,10 @@ Item {
     component ToggleButton: PanelButton {
         id: toggle
         required property string key
-        text: Kalliope.label(key)
+        text: panel.kalliope.label(key)
         hasLed: true
-        ledOn: Kalliope.revision >= 0 && Kalliope.value(key) > 0.5
-        onClicked: Kalliope.setValue(key, ledOn ? 0 : 1)
+        ledOn: panel.kalliope.revision >= 0 && panel.kalliope.value(key) > 0.5
+        onClicked: panel.kalliope.setValue(key, ledOn ? 0 : 1)
         width: 56
         height: 40
 
@@ -487,14 +490,14 @@ Item {
             required property int index
             required property var modelData
             readonly property real position: index / 2
-            readonly property bool lit: Kalliope.revision >= 0 && Math.abs(Kalliope.value("play_mode") - position) < 0.01
+            readonly property bool lit: panel.kalliope.revision >= 0 && Math.abs(panel.kalliope.value("play_mode") - position) < 0.01
             x: 52 + index * 62
             y: 614
             width: 56
             height: 40
             text: "Play mode " + modelData.label
             tint: lit ? Qt.lighter(modelData.tint, 1.25) : Qt.darker(modelData.tint, 1.6)
-            onClicked: Kalliope.setValue("play_mode", position)
+            onClicked: panel.kalliope.setValue("play_mode", position)
 
             DeckLabel { x: playButton.width / 2 - width / 2; y: -18; text: playButton.modelData.label }
         }
@@ -511,18 +514,18 @@ Item {
     }
     DeckLabel { x: 248; y: 596; width: 56; text: "HOLD" }
     ToggleButton { key: "arp_hold"; x: 248; y: 614; tint: "#E8C12A" }
-    DeckLabel { x: 330; y: 596; width: 56; text: "START"; visible: Kalliope.canRun }
+    DeckLabel { x: 330; y: 596; width: 56; text: "START"; visible: panel.kalliope.canRun }
     ActionButton {
         action: "start"
-        visible: Kalliope.canRun
+        visible: panel.kalliope.canRun
         x: 330
         y: 614
         height: 40
         text: "Start or stop"
         tint: "#F0F0EE"
         hasLed: true
-        ledOn: Kalliope.playing
-        onClicked: Kalliope.playing = !Kalliope.playing
+        ledOn: panel.kalliope.playing
+        onClicked: panel.kalliope.playing = !panel.kalliope.playing
     }
     DeckLabel { x: 400; y: 596; width: 56; text: "CLEAR"; visible: panel.seqMode }
     PanelButton {
@@ -533,7 +536,7 @@ Item {
         height: 40
         dark: true
         text: "Clear the sequencer pattern"
-        onClicked: Sequencer.clear()
+        onClicked: panel.sequencer.clear()
     }
 
     // Arpeggio and generator knobs; generator and step-entry buttons
@@ -558,11 +561,11 @@ Item {
             opacity: enabled ? 1.0 : 0.35
             onClicked: {
                 if (modelData.action === "generate")
-                    Sequencer.generate()
+                    panel.sequencer.generate()
                 else if (modelData.action === "rest")
-                    Sequencer.rest()
+                    panel.sequencer.rest()
                 else
-                    Sequencer.tie()
+                    panel.sequencer.tie()
             }
 
             DeckLabel { x: seqButton.width / 2 - width / 2; y: -18; text: seqButton.modelData.label }
@@ -585,8 +588,8 @@ Item {
             text: "Key mode " + modelData
             tint: "#3F7FD0"
             hasLed: true
-            ledOn: Kalliope.revision >= 0 && Math.abs(Kalliope.value("key_mode") - position) < 0.01
-            onClicked: Kalliope.setValue("key_mode", position)
+            ledOn: panel.kalliope.revision >= 0 && Math.abs(panel.kalliope.value("key_mode") - position) < 0.01
+            onClicked: panel.kalliope.setValue("key_mode", position)
 
             DeckLabel {
                 x: modeButton.width / 2 - width / 2
@@ -622,16 +625,16 @@ Item {
         border.width: 2
 
         Accessible.role: Accessible.StaticText
-        Accessible.name: panel.seqMode ? "Sequencer pattern " + (Sequencer.patternIndex + 1)
-                                       : "Patch " + patchDigits.text + ", " + Patches.name
+        Accessible.name: panel.seqMode ? "Sequencer pattern " + (panel.sequencer.patternIndex + 1)
+                                       : "Patch " + patchDigits.text + ", " + panel.patches.name
 
         Text {
             id: patchDigits
             anchors.centerIn: parent
-            text: panel.seqMode ? "P" + (Sequencer.patternIndex + 1)
-                : Patches.manual ? "--"
-                : (Patches.pendingBank >= 0 ? (panel.blink ? " " : String(Patches.pendingBank + 1)) : String(Patches.bank + 1))
-                  + String(Patches.number + 1) + (Patches.edited ? "." : "")
+            text: panel.seqMode ? "P" + (panel.sequencer.patternIndex + 1)
+                : panel.patches.manual ? "--"
+                : (panel.patches.pendingBank >= 0 ? (panel.blink ? " " : String(panel.patches.pendingBank + 1)) : String(panel.patches.bank + 1))
+                  + String(panel.patches.number + 1) + (panel.patches.edited ? "." : "")
             color: "#FF3A26"
             font.family: "monospace"
             font.pixelSize: 38
@@ -644,10 +647,10 @@ Item {
         width: 92
         elide: Text.ElideRight
         wrapMode: Text.NoWrap
-        text: !panel.seqMode ? Patches.name
-            : Sequencer.cursor >= 0 ? "Step " + (Sequencer.cursor + 1) + ": "
-                                      + (Sequencer.revision >= 0 ? Sequencer.stepText(Sequencer.cursor) : "")
-            : Sequencer.length + " steps"
+        text: !panel.seqMode ? panel.patches.name
+            : panel.sequencer.cursor >= 0 ? "Step " + (panel.sequencer.cursor + 1) + ": "
+                                      + (panel.sequencer.revision >= 0 ? panel.sequencer.stepText(panel.sequencer.cursor) : "")
+            : panel.sequencer.length + " steps"
         color: panel.silk
         font.pixelSize: 11
     }
@@ -660,14 +663,14 @@ Item {
             height: 29
             faceText: "▲"
             text: panel.seqMode ? "Next pattern" : "Next patch"
-            onClicked: panel.seqMode ? Sequencer.patternIndex = (Sequencer.patternIndex + 1) % 8 : Patches.step(1)
+            onClicked: panel.seqMode ? panel.sequencer.patternIndex = (panel.sequencer.patternIndex + 1) % 8 : panel.patches.step(1)
         }
         PanelButton {
             width: 24
             height: 29
             faceText: "▼"
             text: panel.seqMode ? "Previous pattern" : "Previous patch"
-            onClicked: panel.seqMode ? Sequencer.patternIndex = (Sequencer.patternIndex + 7) % 8 : Patches.step(-1)
+            onClicked: panel.seqMode ? panel.sequencer.patternIndex = (panel.sequencer.patternIndex + 7) % 8 : panel.patches.step(-1)
         }
     }
     ActionButton {
@@ -679,8 +682,8 @@ Item {
         height: 34
         faceText: "WRITE"
         text: "Write: then press a patch number to store the panel there"
-        tint: Patches.writing && panel.blink ? "#FF6A55" : "#B8302A"
-        onClicked: Patches.toggleWrite()
+        tint: panel.patches.writing && panel.blink ? "#FF6A55" : "#B8302A"
+        onClicked: panel.patches.toggleWrite()
     }
     PanelButton {
         visible: !panel.seqMode
@@ -690,11 +693,11 @@ Item {
         height: 34
         faceText: "MANUAL"
         text: "Manual: the panel as set, not tied to a patch"
-        tint: Patches.manual ? "#5FCB52" : "#3C8F35"
-        onClicked: Patches.pressManual()
+        tint: panel.patches.manual ? "#5FCB52" : "#3C8F35"
+        onClicked: panel.patches.pressManual()
     }
     Text { // WRITE armed
-        visible: Patches.writing && !panel.seqMode
+        visible: panel.patches.writing && !panel.seqMode
         x: 662
         y: 692
         text: "WRITE: press a patch number"
@@ -704,7 +707,7 @@ Item {
         font.bold: true
     }
     Text { // recording
-        visible: panel.seqMode && Sequencer.cursor >= 0
+        visible: panel.seqMode && panel.sequencer.cursor >= 0
         x: 662
         y: 692
         width: 190
@@ -734,10 +737,10 @@ Item {
             faceText: String(index + 1)
             text: "Bank " + (index + 1)
             // Lit (bright) = the current bank; blinking = chosen, waiting for a patch number.
-            readonly property bool lit: Patches.pendingBank === index ? panel.blink
-                                      : Patches.pendingBank < 0 && !Patches.manual && Patches.bank === index
+            readonly property bool lit: panel.patches.pendingBank === index ? panel.blink
+                                      : panel.patches.pendingBank < 0 && !panel.patches.manual && panel.patches.bank === index
             tint: lit ? "#FFFFFF" : "#9A9B9E"
-            onClicked: Patches.pressBank(index)
+            onClicked: panel.patches.pressBank(index)
         }
     }
     Repeater {
@@ -754,9 +757,9 @@ Item {
             height: 34
             faceText: String(index + 1)
             text: "Patch " + (index + 1)
-            readonly property bool lit: !Patches.manual && Patches.number === index && Patches.pendingBank < 0
+            readonly property bool lit: !panel.patches.manual && panel.patches.number === index && panel.patches.pendingBank < 0
             tint: lit ? "#FFE45C" : "#A88A1E"
-            onClicked: Patches.pressPatch(index)
+            onClicked: panel.patches.pressPatch(index)
         }
     }
     Repeater { // the sequencer's steps
@@ -765,10 +768,10 @@ Item {
         Rectangle {
             id: stepButton
             required property int index
-            readonly property int state: Sequencer.revision >= 0 ? Sequencer.stepState(index) : 0
-            readonly property bool inPattern: index < Sequencer.length
-            readonly property bool playing: Sequencer.playingStep === index
-            readonly property bool recording: Sequencer.cursor === index
+            readonly property int state: panel.sequencer.revision >= 0 ? panel.sequencer.stepState(index) : 0
+            readonly property bool inPattern: index < panel.sequencer.length
+            readonly property bool playing: panel.sequencer.playingStep === index
+            readonly property bool recording: panel.sequencer.cursor === index
             visible: panel.seqMode
             x: 930 + (index % 8) * 39
             y: index < 8 ? 610 : 666
@@ -782,7 +785,7 @@ Item {
                  : state === 1 ? "#FFE45C" : state === 2 ? "#C8892A" : "#4A4B4E"
 
             Accessible.role: Accessible.Button
-            Accessible.name: "Step " + (index + 1) + ": " + (Sequencer.revision >= 0 ? Sequencer.stepText(index) : "")
+            Accessible.name: "Step " + (index + 1) + ": " + (panel.sequencer.revision >= 0 ? panel.sequencer.stepText(index) : "")
 
             Text {
                 anchors.centerIn: parent
@@ -794,7 +797,7 @@ Item {
             }
             MouseArea {
                 anchors.fill: parent
-                onClicked: mouse => Sequencer.pressStep(stepButton.index, (mouse.modifiers & Qt.ShiftModifier) !== 0)
+                onClicked: mouse => panel.sequencer.pressStep(stepButton.index, (mouse.modifiers & Qt.ShiftModifier) !== 0)
             }
         }
     }
@@ -803,7 +806,7 @@ Item {
     DeckLabel { x: 1300 - width / 2; y: 598; text: "CHORUS" }
     PanelButton {
         id: chorusButton
-        readonly property int position: Kalliope.revision >= 0 ? Math.round(Kalliope.value("chorus") * 2) : 0
+        readonly property int position: panel.kalliope.revision >= 0 ? Math.round(panel.kalliope.value("chorus") * 2) : 0
         x: 1300 - width / 2
         y: 614
         width: 56
@@ -812,7 +815,7 @@ Item {
         text: "Chorus"
         hasLed: true
         ledOn: position > 0
-        onClicked: Kalliope.setValue("chorus", ((position + 1) % 3) / 2)
+        onClicked: panel.kalliope.setValue("chorus", ((position + 1) % 3) / 2)
 
         LearnOverlay {
             anchors.fill: parent
@@ -820,7 +823,7 @@ Item {
             round: false
         }
     }
-    ValueText { x: 1300 - width / 2; y: 652; width: 58; text: Kalliope.displayText("chorus", chorusButton.position / 2) }
+    ValueText { x: 1300 - width / 2; y: 652; width: 58; text: panel.kalliope.displayText("chorus", chorusButton.position / 2) }
     DeckKnob { key: "reverb_level"; label: "REVERB"; cx: 1440; knobY: 614 }
     DeckKnob { key: "reverb_size"; label: "SIZE"; cx: 1520; knobY: 614 }
     DeckKnob { key: "delay_level"; label: "DELAY"; cx: 1360 }
@@ -840,13 +843,13 @@ Item {
 
     DeckLabel { x: 100 - width / 2; y: 800; text: "VOLUME" }
     ParamKnob { key: "volume"; x: 60; y: 822; width: 80; height: 80 }
-    DeckLabel { x: 225 - width / 2; y: 800; text: "TEMPO"; visible: Kalliope.ownsTransport }
-    ParamKnob { key: "tempo"; x: 195; y: 828; width: 60; height: 60; visible: Kalliope.ownsTransport }
+    DeckLabel { x: 225 - width / 2; y: 800; text: "TEMPO"; visible: panel.kalliope.ownsTransport }
+    ParamKnob { key: "tempo"; x: 195; y: 828; width: 60; height: 60; visible: panel.kalliope.ownsTransport }
 
     // Octave (Z / X): shifts the keys, the LX49's and the on-screen keyboard's, -3..+3
-    readonly property int octave: Kalliope.revision >= 0 ? Math.round(Kalliope.value("octave") * 6) - 3 : 0
+    readonly property int octave: panel.kalliope.revision >= 0 ? Math.round(panel.kalliope.value("octave") * 6) - 3 : 0
     function shiftOctave(delta) {
-        Kalliope.setValue("octave", (Math.max(-3, Math.min(3, octave + delta)) + 3) / 6)
+        panel.kalliope.setValue("octave", (Math.max(-3, Math.min(3, octave + delta)) + 3) / 6)
     }
     DeckLabel { x: 160 - width / 2; y: 940; text: "OCTAVE" }
     ActionButton {
@@ -881,7 +884,7 @@ Item {
         font.bold: true
 
         Accessible.role: Accessible.StaticText
-        Accessible.name: "Octave " + Kalliope.displayText("octave", Kalliope.value("octave"))
+        Accessible.name: "Octave " + panel.kalliope.displayText("octave", panel.kalliope.value("octave"))
     }
     Item {
         LearnOverlay { // a knob or slider can drive Octave as a selector
@@ -896,7 +899,7 @@ Item {
 
     ControllerPianoKeyboard { // key for key with your MIDI keyboard (the rack's KEYS setting)
         id: keys
-        instrument: Kalliope
+        instrument: panel.kalliope
         x: 320
         y: 806
         width: 960
@@ -975,7 +978,7 @@ Item {
     }
 
     // Keyboard (docs/UI.md): Space run/stop, Z / X octave, L learn, Esc leaves learn.
-    Keys.onSpacePressed: Kalliope.playing = !Kalliope.playing // no-op in the rack
+    Keys.onSpacePressed: panel.kalliope.playing = !panel.kalliope.playing // no-op in the rack
     Keys.onPressed: event => {
         if (event.modifiers !== Qt.NoModifier && event.modifiers !== Qt.KeypadModifier)
             return

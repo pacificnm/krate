@@ -16,8 +16,6 @@ KalliopeController::KalliopeController(kalliope::Engine &engine, const QString &
     , m_engine(engine)
     , m_transport(transport)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     m_pollTimer.setInterval(16); // ~60 Hz
     connect(&m_pollTimer, &QTimer::timeout, this, &KalliopeController::poll);
@@ -31,15 +29,8 @@ KalliopeController::KalliopeController(kalliope::Engine &engine, const QString &
 
 KalliopeController::~KalliopeController()
 {
-    s_instance = nullptr;
 }
 
-KalliopeController *KalliopeController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 bool KalliopeController::playing() const
 {

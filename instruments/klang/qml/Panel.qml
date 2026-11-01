@@ -9,6 +9,9 @@ import Krate
 // with the step grid and the trance gate's steps, Klang's own knobs.
 Item {
     id: panel
+    required property Klang klang
+    required property Pads pads
+    required property Patterns patterns
 
     width: 1600
     height: 1100
@@ -22,19 +25,19 @@ Item {
     readonly property color dim: "#8A8780"
     readonly property color cell: "#2E2F33"
 
-    readonly property int pad: Klang.editedPad
+    readonly property int pad: panel.klang.editedPad
 
     // ---- Controls bound to Klang's parameters by key; all MIDI-learnable.
 
     component ParamKnob: Knob {
         id: paramKnob
         required property string key
-        name: Klang.label(key)
-        detents: Klang.detents(key)
-        value: Klang.revision >= 0 ? Klang.value(key) : 0
-        defaultValue: Klang.defaultValue(key)
-        displayText: Klang.displayText(key, value)
-        onMoved: v => Klang.setValue(key, v)
+        name: panel.klang.label(key)
+        detents: panel.klang.detents(key)
+        value: panel.klang.revision >= 0 ? panel.klang.value(key) : 0
+        defaultValue: panel.klang.defaultValue(key)
+        displayText: panel.klang.displayText(key, value)
+        onMoved: v => panel.klang.setValue(key, v)
         capColor: "#2A2B2F"
         capShadeColor: "#0E0F11"
         capBorderColor: "#050506"
@@ -224,7 +227,7 @@ Item {
         dark: true
         faceText: "STARTER KIT"
         text: "Put the starter kit (Klang's own sounds) back on the pads"
-        onClicked: Pads.installStarterKit()
+        onClicked: panel.pads.installStarterKit()
     }
     Grid {
         x: 40
@@ -239,7 +242,7 @@ Item {
                 required property int index
                 // Pad 1 at the bottom left, as on a pad controller.
                 readonly property int number: (3 - Math.floor(index / 4)) * 4 + index % 4
-                readonly property bool lit: Klang.lights >= 0 && Klang.sounding(number)
+                readonly property bool lit: panel.klang.lights >= 0 && panel.klang.sounding(number)
                 readonly property bool edited: panel.pad === number
                 width: 107
                 height: 92
@@ -249,7 +252,7 @@ Item {
                 border.width: edited ? 3 : 2
 
                 Accessible.role: Accessible.Button
-                Accessible.name: "Pad " + (number + 1) + (Pads.revision >= 0 && Pads.name(number) ? ": " + Pads.name(number) : "")
+                Accessible.name: "Pad " + (number + 1) + (panel.pads.revision >= 0 && panel.pads.name(number) ? ": " + panel.pads.name(number) : "")
 
                 Text {
                     x: 8
@@ -261,7 +264,7 @@ Item {
                     font.bold: true
                 }
                 Rectangle { // used in the pattern shown
-                    visible: Patterns.revision >= 0 && Patterns.padUsed(padButton.number)
+                    visible: panel.patterns.revision >= 0 && panel.patterns.padUsed(padButton.number)
                     x: parent.width - 16
                     y: 10
                     width: 8
@@ -274,22 +277,22 @@ Item {
                     y: parent.height - 24
                     width: parent.width - 16
                     elide: Text.ElideMiddle
-                    text: Pads.revision >= 0 ? (Pads.name(padButton.number) || "empty") : ""
-                    color: Pads.revision >= 0 && Pads.name(padButton.number) ? panel.silk : panel.dim
+                    text: panel.pads.revision >= 0 ? (panel.pads.name(padButton.number) || "empty") : ""
+                    color: panel.pads.revision >= 0 && panel.pads.name(padButton.number) ? panel.silk : panel.dim
                     font.family: Theme.labelFont
                     font.pixelSize: 11
                 }
                 MouseArea {
                     id: pressArea
                     anchors.fill: parent
-                    onPressed: Klang.pressPad(padButton.number)
-                    onReleased: Klang.releasePad(padButton.number)
+                    onPressed: panel.klang.pressPad(padButton.number)
+                    onReleased: panel.klang.releasePad(padButton.number)
                 }
                 DropArea { // a file dropped on a pad loads onto it
                     anchors.fill: parent
                     onDropped: drop => {
                         if (drop.hasUrls)
-                            Pads.loadUrls(padButton.number, drop.urls)
+                            panel.pads.loadUrls(padButton.number, drop.urls)
                     }
                 }
                 LearnOverlay {
@@ -307,16 +310,16 @@ Item {
         title: "Load samples onto pad " + (panel.pad + 1) + " (and the pads after it)"
         fileMode: FileDialog.OpenFiles
         nameFilters: ["Audio files (*.wav *.WAV *.mp3 *.MP3)"]
-        onAccepted: Pads.loadUrls(panel.pad, selectedFiles)
+        onAccepted: panel.pads.loadUrls(panel.pad, selectedFiles)
     }
     Row {
         x: 40
         y: 548
         spacing: 6
         SmallButton { width: 64; faceText: "LOAD"; text: "Load WAV or MP3 files onto the pad"; onClicked: loadDialog.open() }
-        SmallButton { width: 30; faceText: "◂"; text: "Previous sample in the library"; onClicked: Pads.step(panel.pad, -1) }
-        SmallButton { width: 30; faceText: "▸"; text: "Next sample in the library"; onClicked: Pads.step(panel.pad, 1) }
-        SmallButton { width: 58; faceText: "CLEAR"; text: "No sample on the pad"; onClicked: Pads.clear(panel.pad) }
+        SmallButton { width: 30; faceText: "◂"; text: "Previous sample in the library"; onClicked: panel.pads.step(panel.pad, -1) }
+        SmallButton { width: 30; faceText: "▸"; text: "Next sample in the library"; onClicked: panel.pads.step(panel.pad, 1) }
+        SmallButton { width: 58; faceText: "CLEAR"; text: "No sample on the pad"; onClicked: panel.pads.clear(panel.pad) }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: "SLICE"
@@ -332,17 +335,17 @@ Item {
                 width: 36
                 faceText: String(modelData)
                 text: "Slice the pad's sample into " + modelData + " pads"
-                onClicked: Pads.slice(panel.pad, modelData)
+                onClicked: panel.pads.slice(panel.pad, modelData)
             }
         }
-        SmallButton { width: 52; faceText: "HITS"; text: "Slice the pad's sample at its hits"; onClicked: Pads.sliceAtHits(panel.pad) }
+        SmallButton { width: 52; faceText: "HITS"; text: "Slice the pad's sample at its hits"; onClicked: panel.pads.sliceAtHits(panel.pad) }
     }
     Text {
         x: 40
         y: 586
         width: 470
         elide: Text.ElideRight
-        text: Pads.message
+        text: panel.pads.message
         color: panel.dim
         font.family: Theme.labelFont
         font.pixelSize: 11
@@ -354,7 +357,7 @@ Item {
         height: 500
         onDropped: drop => {
             if (drop.hasUrls)
-                Pads.loadUrls(panel.pad, drop.urls)
+                panel.pads.loadUrls(panel.pad, drop.urls)
         }
     }
 
@@ -371,8 +374,8 @@ Item {
     SectionTitle {
         x: 556
         y: 128
-        text: "PAD " + (panel.pad + 1) + (Pads.revision >= 0 && Pads.name(panel.pad) ? "  ·  " + Pads.name(panel.pad) : "  ·  empty")
-                  + (Pads.revision >= 0 && Pads.seconds(panel.pad) > 0 ? "  (" + Pads.seconds(panel.pad).toFixed(2) + " s)" : "")
+        text: "PAD " + (panel.pad + 1) + (panel.pads.revision >= 0 && panel.pads.name(panel.pad) ? "  ·  " + panel.pads.name(panel.pad) : "  ·  empty")
+                  + (panel.pads.revision >= 0 && panel.pads.seconds(panel.pad) > 0 ? "  (" + panel.pads.seconds(panel.pad).toFixed(2) + " s)" : "")
     }
     Rectangle { // the waveform, the region played lit
         id: wave
@@ -382,9 +385,9 @@ Item {
         height: 96
         radius: 3
         color: "#0E0F11"
-        readonly property var peaks: Pads.revision >= 0 ? Pads.waveform(panel.pad, 250) : []
-        readonly property real start: Klang.revision >= 0 ? Klang.value("start") : 0
-        readonly property real end: Klang.revision >= 0 ? Klang.value("end") : 1
+        readonly property var peaks: panel.pads.revision >= 0 ? panel.pads.waveform(panel.pad, 250) : []
+        readonly property real start: panel.klang.revision >= 0 ? panel.klang.value("start") : 0
+        readonly property real end: panel.klang.revision >= 0 ? panel.klang.value("end") : 1
 
         Rectangle {
             x: wave.width * Math.min(wave.start, wave.end)
@@ -468,7 +471,7 @@ Item {
         radius: 4
         color: panel.deck
     }
-    SectionTitle { x: 40; y: 644; text: "PATTERN " + String.fromCharCode(65 + Patterns.current) }
+    SectionTitle { x: 40; y: 644; text: "PATTERN " + String.fromCharCode(65 + panel.patterns.current) }
 
     Grid { // A-P: choose (and cue) a pattern
         x: 40
@@ -484,10 +487,10 @@ Item {
                 height: 32
                 faceText: String.fromCharCode(65 + index)
                 text: "Pattern " + faceText
-                readonly property bool playingNow: Klang.playing && Patterns.playing === index
-                tint: Patterns.current === index ? panel.hot : playingNow ? "#7A3A22"
-                    : Patterns.revision >= 0 && Patterns.used(index) ? "#5A5B60" : "#3A3B40"
-                onClicked: Patterns.current = index
+                readonly property bool playingNow: panel.klang.playing && panel.patterns.playing === index
+                tint: panel.patterns.current === index ? panel.hot : playingNow ? "#7A3A22"
+                    : panel.patterns.revision >= 0 && panel.patterns.used(index) ? "#5A5B60" : "#3A3B40"
+                onClicked: panel.patterns.current = index
 
                 LearnOverlay {
                     anchors.fill: parent
@@ -500,7 +503,7 @@ Item {
     Text {
         x: 40
         y: 820
-        visible: Klang.canRun
+        visible: panel.klang.canRun
         text: "START"
         color: panel.silk
         font.family: Theme.labelFont
@@ -514,10 +517,10 @@ Item {
         width: 120
         height: 36
         text: "Start or stop"
-        visible: Klang.canRun
+        visible: panel.klang.canRun
         hasLed: true
-        ledOn: Klang.playing
-        onClicked: Klang.playing = !Klang.playing
+        ledOn: panel.klang.playing
+        onClicked: panel.klang.playing = !panel.klang.playing
 
         LearnOverlay {
             anchors.fill: parent
@@ -532,18 +535,18 @@ Item {
         Text { text: "LENGTH"; color: panel.silk; font.family: Theme.labelFont; font.pixelSize: 11; font.bold: true }
         Row {
             spacing: 4
-            SmallButton { width: 26; faceText: "−"; text: "Shorter"; onClicked: Patterns.length = Patterns.length - 1 }
+            SmallButton { width: 26; faceText: "−"; text: "Shorter"; onClicked: panel.patterns.length = panel.patterns.length - 1 }
             Text {
                 width: 30
                 horizontalAlignment: Text.AlignHCenter
                 anchors.verticalCenter: parent.verticalCenter
-                text: Patterns.length
+                text: panel.patterns.length
                 color: panel.hot
                 font.family: "monospace"
                 font.pixelSize: 16
                 font.bold: true
             }
-            SmallButton { width: 26; faceText: "+"; text: "Longer"; onClicked: Patterns.length = Patterns.length + 1 }
+            SmallButton { width: 26; faceText: "+"; text: "Longer"; onClicked: panel.patterns.length = panel.patterns.length + 1 }
         }
     }
     Row { // pages of 16 steps
@@ -558,10 +561,10 @@ Item {
                 height: 28
                 faceText: (index * 16 + 1) + "–" + (index * 16 + 16)
                 text: "Steps " + faceText
-                enabled: index * 16 < Patterns.length
+                enabled: index * 16 < panel.patterns.length
                 opacity: enabled ? 1.0 : 0.35
-                tint: Patterns.page === index ? panel.hot : "#3A3B40"
-                onClicked: Patterns.page = index
+                tint: panel.patterns.page === index ? panel.hot : "#3A3B40"
+                onClicked: panel.patterns.page = index
             }
         }
     }
@@ -579,8 +582,8 @@ Item {
                 height: 28
                 faceText: modelData
                 text: "Clicking a step: " + modelData
-                tint: Patterns.tool === index ? panel.hot : "#3A3B40"
-                onClicked: Patterns.tool = index
+                tint: panel.patterns.tool === index ? panel.hot : "#3A3B40"
+                onClicked: panel.patterns.tool = index
             }
         }
     }
@@ -588,9 +591,9 @@ Item {
         x: 40
         y: 1000
         spacing: 6
-        SmallButton { width: 80; faceText: "COPY"; text: "Copy this pattern"; onClicked: Patterns.copy() }
-        SmallButton { width: 80; faceText: "PASTE"; text: "Paste over this pattern"; enabled: Patterns.hasCopy; onClicked: Patterns.paste() }
-        SmallButton { width: 80; faceText: "CLEAR"; text: "Clear this pattern"; onClicked: Patterns.clear() }
+        SmallButton { width: 80; faceText: "COPY"; text: "Copy this pattern"; onClicked: panel.patterns.copy() }
+        SmallButton { width: 80; faceText: "PASTE"; text: "Paste over this pattern"; enabled: panel.patterns.hasCopy; onClicked: panel.patterns.paste() }
+        SmallButton { width: 80; faceText: "CLEAR"; text: "Clear this pattern"; onClicked: panel.patterns.clear() }
     }
     Text {
         x: 40
@@ -625,7 +628,7 @@ Item {
             font.bold: true
             MouseArea {
                 anchors.fill: parent
-                onClicked: Klang.editedPad = parent.number
+                onClicked: panel.klang.editedPad = parent.number
             }
         }
     }
@@ -636,14 +639,14 @@ Item {
             required property int index
             readonly property int pad: 15 - Math.floor(index / 16)
             readonly property int column: index % 16
-            readonly property int step: Patterns.page * 16 + column
-            readonly property bool inPattern: step < Patterns.length
-            readonly property bool on: Patterns.revision >= 0 && Patterns.stepOn(pad, step)
-            readonly property bool accent: on && Patterns.stepAccent(pad, step)
-            readonly property int repeat: on ? Patterns.stepRepeat(pad, step) : 1
-            readonly property bool reversed: on && Patterns.stepReverse(pad, step)
-            readonly property int pitch: on ? Patterns.stepPitch(pad, step) : 0
-            readonly property bool playingHere: Patterns.playingStep === step && Patterns.playing === Patterns.current
+            readonly property int step: panel.patterns.page * 16 + column
+            readonly property bool inPattern: step < panel.patterns.length
+            readonly property bool on: panel.patterns.revision >= 0 && panel.patterns.stepOn(pad, step)
+            readonly property bool accent: on && panel.patterns.stepAccent(pad, step)
+            readonly property int repeat: on ? panel.patterns.stepRepeat(pad, step) : 1
+            readonly property bool reversed: on && panel.patterns.stepReverse(pad, step)
+            readonly property int pitch: on ? panel.patterns.stepPitch(pad, step) : 0
+            readonly property bool playingHere: panel.patterns.playingStep === step && panel.patterns.playing === panel.patterns.current
             x: panel.gridX + column * panel.cellW + Math.floor(column / 4) * 4
             y: panel.gridY + Math.floor(index / 16) * panel.cellH
             width: panel.cellW - 3
@@ -665,14 +668,14 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 enabled: stepCell.inPattern
-                onClicked: Patterns.pressStep(stepCell.pad, stepCell.step)
+                onClicked: panel.patterns.pressStep(stepCell.pad, stepCell.step)
             }
         }
     }
     Rectangle { // the playhead
-        visible: Klang.playing && Patterns.playing === Patterns.current && Patterns.playingStep >= Patterns.page * 16
-                 && Patterns.playingStep < Patterns.page * 16 + 16
-        readonly property int column: Patterns.playingStep - Patterns.page * 16
+        visible: panel.klang.playing && panel.patterns.playing === panel.patterns.current && panel.patterns.playingStep >= panel.patterns.page * 16
+                 && panel.patterns.playingStep < panel.patterns.page * 16 + 16
+        readonly property int column: panel.patterns.playingStep - panel.patterns.page * 16
         x: panel.gridX + column * panel.cellW + Math.floor(column / 4) * 4 - 2
         y: panel.gridY - 4
         width: panel.cellW + 1
@@ -698,7 +701,7 @@ Item {
         Rectangle {
             id: gateCell
             required property int index
-            readonly property bool open: Patterns.revision >= 0 && Patterns.gateStep(index)
+            readonly property bool open: panel.patterns.revision >= 0 && panel.patterns.gateStep(index)
             x: panel.gridX + index * panel.cellW + Math.floor(index / 4) * 4
             y: panel.gridY + 16 * panel.cellH + 8
             width: panel.cellW - 3
@@ -709,7 +712,7 @@ Item {
             Accessible.name: "Gate step " + (index + 1) + (open ? " open" : " closed")
             MouseArea {
                 anchors.fill: parent
-                onClicked: Patterns.toggleGateStep(gateCell.index)
+                onClicked: panel.patterns.toggleGateStep(gateCell.index)
             }
         }
     }
@@ -740,20 +743,20 @@ Item {
                 key: modelData[0]
                 label: modelData[1]
                 size: 40
-                visible: modelData[0] !== "tempo" || Klang.ownsTransport
+                visible: modelData[0] !== "tempo" || panel.klang.ownsTransport
             }
         }
     }
 
     // Keyboard: Space run/stop, L learn, Esc leaves learn, ← → the edited pad.
-    Keys.onSpacePressed: Klang.playing = !Klang.playing
+    Keys.onSpacePressed: panel.klang.playing = !panel.klang.playing
     Keys.onPressed: event => {
         if (event.modifiers !== Qt.NoModifier && event.modifiers !== Qt.KeypadModifier)
             return
         switch (event.key) {
         case Qt.Key_L: MidiLearn.active = !MidiLearn.active; break
-        case Qt.Key_Left: Klang.editedPad = (Klang.editedPad + 15) % 16; break
-        case Qt.Key_Right: Klang.editedPad = (Klang.editedPad + 1) % 16; break
+        case Qt.Key_Left: panel.klang.editedPad = (panel.klang.editedPad + 15) % 16; break
+        case Qt.Key_Right: panel.klang.editedPad = (panel.klang.editedPad + 1) % 16; break
         case Qt.Key_Escape:
             if (!MidiLearn.active)
                 return

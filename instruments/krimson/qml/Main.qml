@@ -4,6 +4,9 @@ import Krate
 // The standalone Krimson window: the panel at its design size, scaled to fit.
 Window {
     id: root
+    required property Krimson krimson
+    required property Programs programs
+    required property Slots slots
 
     width: 1200
     height: 675
@@ -16,6 +19,9 @@ Window {
     readonly property real panelScale: Math.min(width / panel.width, height / panel.height)
 
     Panel {
+        krimson: root.krimson
+        programs: root.programs
+        slots: root.slots
         id: panel
         focus: true
         x: (root.width - width * root.panelScale) / 2

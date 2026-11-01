@@ -26,8 +26,6 @@ KlangPatternController::KlangPatternController(klang::Engine &engine, const QStr
     , m_engine(engine)
     , m_filePath(filePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     QJsonObject json;
     switch (krate::files::readVersionedJson(m_filePath, kFileVersion, &json)) {
     case krate::files::LoadResult::Loaded:
@@ -60,15 +58,8 @@ KlangPatternController::~KlangPatternController()
 {
     if (m_saveTimer.isActive())
         save();
-    s_instance = nullptr;
 }
 
-KlangPatternController *KlangPatternController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 void KlangPatternController::poll()
 {

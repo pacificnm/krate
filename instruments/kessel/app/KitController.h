@@ -12,7 +12,7 @@ class QJSEngine;
 class DrumsController;
 class SampleController;
 
-// QML singleton "Kits": Kessel's 16 kits (docs/KITS.md). Choosing a kit loads
+// QML type "Kits" (one per instrument, given to its panel): Kessel's 16 kits (docs/KITS.md). Choosing a kit loads
 // its sound and mix knobs into the panel; any edit after that shows the edited
 // dot. WRITE arms a store: the arrows then choose the slot, WRITE again
 // stores the panel there (cancel() drops it). kits.json is saved on every
@@ -21,7 +21,7 @@ class KitController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Kits)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int index READ index NOTIFY changed)          // 0..15, the kit loaded
     Q_PROPERTY(QString name READ name NOTIFY changed)
@@ -36,7 +36,6 @@ public:
     KitController(DrumsController &panel, SampleController &samples, const QString &filePath, QObject *parent);
     ~KitController() override;
 
-    static KitController *create(QQmlEngine *, QJSEngine *);
 
     int index() const { return m_bank.current; }
     QString name() const { return m_bank.kits[std::size_t(m_bank.current)].name; }
@@ -59,7 +58,6 @@ signals:
 private:
     void updateEdited();
 
-    static inline KitController *s_instance = nullptr;
 
     DrumsController &m_panel;
     SampleController &m_samples;

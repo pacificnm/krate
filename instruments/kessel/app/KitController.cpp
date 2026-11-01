@@ -24,8 +24,6 @@ KitController::KitController(DrumsController &panel, SampleController &samples, 
     , m_samples(samples)
     , m_filePath(filePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     switch (loadKits(m_filePath, &m_bank)) {
     case LoadResult::Loaded:
@@ -54,15 +52,8 @@ KitController::~KitController()
 {
     if (m_saveTimer.isActive())
         save();
-    s_instance = nullptr;
 }
 
-KitController *KitController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 void KitController::save()
 {

@@ -13,8 +13,6 @@ KlangController::KlangController(klang::Engine &engine, const QString &panelFile
     , m_engine(engine)
     , m_transport(transport)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     m_pollTimer.setInterval(16);
     connect(&m_pollTimer, &QTimer::timeout, this, &KlangController::poll);
     m_pollTimer.start();
@@ -24,15 +22,8 @@ KlangController::KlangController(klang::Engine &engine, const QString &panelFile
 
 KlangController::~KlangController()
 {
-    s_instance = nullptr;
 }
 
-KlangController *KlangController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 int KlangController::editedPad() const
 {

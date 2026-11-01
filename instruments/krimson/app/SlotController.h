@@ -14,7 +14,7 @@ namespace krimson {
 class Engine;
 }
 
-// QML singleton "Slots": the four slots' setup (docs/PLAY.md#slots): which are
+// QML type "Slots" (one per instrument, given to its panel): the four slots' setup (docs/PLAY.md#slots): which are
 // lit (the keyboard plays them, the panel edits the pressed one), each slot's
 // MIDI channel, on/off and keyboard zone, and the split key. Saves every slot's
 // sound and setup to slots.json (2 s after a change and on destruction), since
@@ -23,7 +23,7 @@ class SlotController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Slots)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     // Bumped on every change; bind like `Slots.revision >= 0 && Slots.isLit(i)`.
     Q_PROPERTY(int revision READ revision NOTIFY changed)
@@ -35,7 +35,6 @@ public:
     SlotController(KrimsonController &panel, krimson::Engine &engine, const QString &filePath, QObject *parent);
     ~SlotController() override;
 
-    static SlotController *create(QQmlEngine *, QJSEngine *);
 
     int revision() const { return m_revision; }
 
@@ -68,7 +67,6 @@ private:
     void load();
     void edited(); // notify and save in 2 s
 
-    static inline SlotController *s_instance = nullptr;
 
     KrimsonController &m_panel;
     krimson::Engine &m_engine;

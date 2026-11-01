@@ -13,7 +13,7 @@ namespace krate {
 class RunControl;
 }
 
-// QML singleton "Synth": the GUI's view of Korrode's engine. Owns the Engine and
+// QML type "Synth" (one per instrument, given to its panel): the GUI's view of Korrode's engine. Owns the Engine and
 // saves its knob positions; polls the playhead and MIDI-changed knobs at 60 Hz.
 // Knows nothing about the audio host (that's krate::HostController, "Host").
 // RUN/STOP and the Tempo knob drive the transport it is given; in the Krate rack
@@ -22,7 +22,7 @@ class SynthController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Synth)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     // False in the rack: the panel hides RUN/STOP and Tempo then.
@@ -48,19 +48,16 @@ class SynthController : public QObject
     // True while the playing step starts a beat (beat LED). Display only.
     Q_PROPERTY(bool beat READ beat NOTIFY currentStepChanged)
     // Bumped whenever any parameter changes; QML binds key-based values like
-    //     Synth.revision >= 0 ? Synth.paramByKey("drive") : 0
+    //     synth.revision >= 0 ? synth.paramByKey("drive") : 0
     Q_PROPERTY(int revision READ revision NOTIFY paramsChanged)
 
 public:
-    // Deliberately not default-constructible: Qt prefers a default constructor
-    // over create(), which would give QML a second instance.
     // panelFilePath: where knob positions are saved (docs/ARCHITECTURE.md).
     // transport: driven by RUN/STOP and Tempo; nullptr in the rack.
     SynthController(const QString &panelFilePath, krate::Transport *transport, QObject *parent);
     ~SynthController() override;
 
     // The instance main() created; QML gets this one rather than a new object.
-    static SynthController *create(QQmlEngine *, QJSEngine *);
 
     // C++ only: for the other controllers that send commands to the engine.
     korrode::Engine &engine() { return m_engine; }
@@ -119,7 +116,6 @@ private:
     void poll();
     void savePanel();
 
-    static inline SynthController *s_instance = nullptr;
 
     mutable korrode::Engine m_engine; // mutable: ParamStore reads are const in spirit
     krate::Transport *m_transport = nullptr;

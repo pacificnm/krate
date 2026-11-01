@@ -12,6 +12,10 @@ class Instance final : public krate::InstrumentInstance
 public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
+    QVariantMap panelProperties() override
+    {
+        return {{QStringLiteral("klick"), QVariant::fromValue(&controller)}};
+    }
 
     Klick engine;
     KlickController controller;

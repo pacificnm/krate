@@ -21,8 +21,6 @@ PedalController::PedalController(krunch::Krunch &engine, const QString &filePath
     , m_board(engine.frontPedals(), engine.loopPedals())
     , m_filePath(filePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     m_collectTimer.setInterval(250);
     connect(&m_collectTimer, &QTimer::timeout, this, [this] { m_board.collect(m_engine.blocksProcessed()); });
     m_collectTimer.start();
@@ -41,15 +39,8 @@ PedalController::~PedalController()
 {
     if (m_saveTimer.isActive())
         saveFile();
-    s_instance = nullptr;
 }
 
-PedalController *PedalController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 QVariantList PedalController::types() const
 {

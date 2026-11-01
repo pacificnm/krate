@@ -16,6 +16,13 @@ class Instance final : public krate::InstrumentInstance
 public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
+    QVariantMap panelProperties() override
+    {
+        return {{QStringLiteral("krunch"), QVariant::fromValue(&controller)},
+                {QStringLiteral("presets"), QVariant::fromValue(&presets)},
+                {QStringLiteral("cabinets"), QVariant::fromValue(&cabinets)},
+                {QStringLiteral("pedals"), QVariant::fromValue(&pedals)}};
+    }
     // "channel1".."channel4", "loop" (the playing channel's effects loop),
     // "pedal1".."pedal8" (the footswitches, by position on the board),
     // "presetNext", "presetPrevious".

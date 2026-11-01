@@ -32,8 +32,6 @@ PatternModel::PatternModel(korrode::Engine &engine, const QString &filePath, QOb
     , m_engine(engine)
     , m_filePath(filePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     using korrode::persistence::LoadResult;
     switch (korrode::persistence::loadPatterns(m_filePath, &m_bank)) {
@@ -64,15 +62,8 @@ PatternModel::~PatternModel()
 {
     if (m_dirty)
         save();
-    s_instance = nullptr;
 }
 
-PatternModel *PatternModel::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 int PatternModel::rowCount(const QModelIndex &parent) const
 {

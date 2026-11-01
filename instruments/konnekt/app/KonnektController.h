@@ -18,7 +18,7 @@
 class QQmlEngine;
 class QJSEngine;
 
-// QML singleton "Konnekt": the patch on screen and in the engine
+// QML type "Konnekt" (one per instrument, given to its panel): the patch on screen and in the engine
 // (docs/BRIEF.md#scope-v1): modules (made and freed here, run by the engine),
 // where they sit, their knobs, the cables, voices, MIDI Learn, the live traces
 // and the scope, the help bar's text. The patch in use is saved to

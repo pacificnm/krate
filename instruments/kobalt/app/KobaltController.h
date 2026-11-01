@@ -16,7 +16,7 @@ namespace kobalt {
 class Engine;
 }
 
-// QML singleton "Kobalt": the synth's sliders, selectors and switches
+// QML type "Kobalt" (one per instrument, given to its panel): the synth's sliders, selectors and switches
 // (krate::ParamController by key), plus Tempo and run/stop. Standalone, those
 // drive the transport it is given (the arpeggiator follows it); in the Krate
 // rack it is given none, because the rack's transport bar owns them.
@@ -24,7 +24,7 @@ class KobaltController : public krate::ParamController
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Kobalt)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     // False in the rack: the panel hides Tempo then.
@@ -32,7 +32,7 @@ class KobaltController : public krate::ParamController
     // RUN / STOP works: its own transport (standalone) or the rack's run control.
     Q_PROPERTY(bool canRun READ canRun NOTIFY playingChanged)
     // Bumped when the held keys change (MIDI or the on-screen keyboard); bind
-    //     Kobalt.notesRevision >= 0 && Kobalt.noteHeld(n)
+    //     kobalt.notesRevision >= 0 && kobalt.noteHeld(n)
     Q_PROPERTY(int notesRevision READ notesRevision NOTIFY notesChanged)
 
 public:
@@ -41,7 +41,6 @@ public:
                        QObject *parent);
     ~KobaltController() override;
 
-    static KobaltController *create(QQmlEngine *, QJSEngine *);
 
     bool ownsTransport() const { return m_transport != nullptr; }
     bool canRun() const { return m_transport != nullptr || m_run != nullptr; }
@@ -65,7 +64,6 @@ private:
     void syncArp();   // standalone: Play Mode Arpeggio starts the transport, leaving it stops what it started
     void poll();
 
-    static inline KobaltController *s_instance = nullptr;
 
     kobalt::Engine &m_engine;
     krate::Transport *m_transport = nullptr;

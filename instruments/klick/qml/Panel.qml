@@ -6,6 +6,7 @@ import Krate
 // Klick's panel at design size 900 x 360: four knobs on a silver plate.
 Item {
     id: panel
+    required property Klick klick
 
     width: 900
     height: 360
@@ -63,16 +64,16 @@ Item {
                 height: 120
                 name: knobSlot.modelData.label
                 detents: knobSlot.modelData.detents ?? 0
-                value: Klick.revision >= 0 ? Klick.value(knobSlot.modelData.key) : 0
-                defaultValue: Klick.defaultValue(knobSlot.modelData.key)
-                displayText: Klick.displayText(knobSlot.modelData.key, value)
-                onMoved: v => Klick.setValue(knobSlot.modelData.key, v)
+                value: panel.klick.revision >= 0 ? panel.klick.value(knobSlot.modelData.key) : 0
+                defaultValue: panel.klick.defaultValue(knobSlot.modelData.key)
+                displayText: panel.klick.displayText(knobSlot.modelData.key, value)
+                onMoved: v => panel.klick.setValue(knobSlot.modelData.key, v)
             }
 
             PanelLabel {
                 centerX: knobSlot.modelData.cx
                 y: 312
-                text: Klick.displayText(knobSlot.modelData.key, Klick.revision >= 0 ? Klick.value(knobSlot.modelData.key) : 0)
+                text: panel.klick.displayText(knobSlot.modelData.key, panel.klick.revision >= 0 ? panel.klick.value(knobSlot.modelData.key) : 0)
                 font.pixelSize: 13
                 font.bold: false
             }

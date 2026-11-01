@@ -32,8 +32,6 @@ KobaltSequenceController::KobaltSequenceController(KobaltController &panel, koba
     , m_engine(engine)
     , m_filePath(filePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     switch (loadSequences(m_filePath, &m_bank)) {
     case LoadResult::Loaded:
@@ -68,15 +66,8 @@ KobaltSequenceController::~KobaltSequenceController()
 {
     if (m_saveTimer.isActive())
         save();
-    s_instance = nullptr;
 }
 
-KobaltSequenceController *KobaltSequenceController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 bool KobaltSequenceController::active() const
 {

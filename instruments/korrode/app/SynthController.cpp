@@ -19,8 +19,6 @@ SynthController::SynthController(const QString &panelFilePath, krate::Transport 
     , m_transport(transport)
     , m_panelFilePath(panelFilePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     // Knob positions from last time (missing or unreadable file: defaults).
     krate::files::PanelValues values;
@@ -47,15 +45,8 @@ SynthController::~SynthController()
     poll(); // a change the host made just now is saved too
     if (m_saveTimer.isActive())
         savePanel();
-    s_instance = nullptr;
 }
 
-SynthController *SynthController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 bool SynthController::playing() const
 {

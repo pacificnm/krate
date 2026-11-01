@@ -23,7 +23,7 @@ namespace klang {
 class Engine;
 }
 
-// QML singleton "Pads": the 16 pads' samples and settings
+// QML type "Pads" (one per instrument, given to its panel): the 16 pads' samples and settings
 // (docs/BRIEF.md#scope-v1). Loaded files (WAV or MP3) are copied into Klang's
 // sample library (~/.local/share/klang/samples) so the pads keep working if the
 // originals move; each is decoded once, off the audio thread, and shared by the
@@ -34,7 +34,7 @@ class KlangPadController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Pads)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int revision READ revision NOTIFY changed)        // bumped on every change
     Q_PROPERTY(QStringList library READ library NOTIFY changed)  // the library's files, sorted
@@ -47,7 +47,6 @@ public:
     KlangPadController(KlangController &panel, klang::Engine &engine, const QString &dataDir, QObject *parent);
     ~KlangPadController() override;
 
-    static KlangPadController *create(QQmlEngine *, QJSEngine *);
 
     int revision() const { return m_revision; }
     QStringList library() const { return m_library; }
@@ -91,7 +90,6 @@ private:
     void edited(); // notify, save in 2 s
     void freeRetired();
 
-    static inline KlangPadController *s_instance = nullptr;
 
     KlangController &m_panel;
     klang::Engine &m_engine;

@@ -16,7 +16,7 @@ namespace kalliope {
 class Engine;
 }
 
-// QML singleton "Patches": Kalliope's 64 patches (docs/PLAY.md#patches).
+// QML type "Patches" (one per instrument, given to its panel): Kalliope's 64 patches (docs/PLAY.md#patches).
 // Selecting a patch loads its values into the panel; any edit after that shows
 // the edited dot; WRITE then a PATCH button stores the panel into that slot;
 // MANUAL frees the panel from the patch. Program Change selects patches.
@@ -25,7 +25,7 @@ class PatchController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Patches)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int bank READ bank NOTIFY changed)               // 0..7, of the current patch
     Q_PROPERTY(int number READ number NOTIFY changed)           // 0..7
@@ -40,7 +40,6 @@ public:
     PatchController(KalliopeController &panel, kalliope::Engine &engine, const QString &filePath, QObject *parent);
     ~PatchController() override;
 
-    static PatchController *create(QQmlEngine *, QJSEngine *);
 
     int bank() const { return m_bank.current / kalliope::persistence::kPatchesPerBank; }
     int number() const { return m_bank.current % kalliope::persistence::kPatchesPerBank; }
@@ -69,7 +68,6 @@ private:
     void selectionChanged(); // notify, and save in 2 s
     void takeInbox();        // presets sent from another app (Konnekt): stored, the newest selected
 
-    static inline PatchController *s_instance = nullptr;
 
     KalliopeController &m_panel;
     kalliope::Engine &m_engine;

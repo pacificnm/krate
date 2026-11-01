@@ -19,7 +19,7 @@ class Engine;
 struct Command;
 }
 
-// QML singleton "Drums": Kessel's knobs (krate::ParamController by key), the
+// QML type "Drums" (one per instrument, given to its panel): Kessel's knobs (krate::ParamController by key), the
 // pattern bank A..P (edited live, saved to patterns.json 2 s after an edit and
 // on destruction), plus START/STOP and Tempo. Standalone, those drive the
 // transport it is given; in the Krate rack it is given none, because the
@@ -28,7 +28,7 @@ class DrumsController : public krate::ParamController
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Drums)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     // False in the rack: the panel hides START/STOP and Tempo then.
@@ -47,7 +47,7 @@ class DrumsController : public krate::ParamController
     Q_PROPERTY(int playingPattern READ playingPattern NOTIFY playingPatternChanged)
     Q_PROPERTY(int queuedPattern READ queuedPattern NOTIFY playingPatternChanged)
     // Bumped on every pattern edit; QML binds steps like
-    //     Drums.patternRevision >= 0 ? Drums.stepState(track, step) : 0
+    //     drums.patternRevision >= 0 ? drums.stepState(track, step) : 0
     Q_PROPERTY(int patternRevision READ patternRevision NOTIFY patternChanged)
     Q_PROPERTY(int length READ length WRITE setLength NOTIFY patternChanged)              // 1..16
     Q_PROPERTY(int scaleIndex READ scaleIndex WRITE setScaleIndex NOTIFY patternChanged)  // see scaleNames
@@ -63,7 +63,6 @@ public:
                     krate::Transport *transport, QObject *parent);
     ~DrumsController() override;
 
-    static DrumsController *create(QQmlEngine *, QJSEngine *);
 
     bool ownsTransport() const { return m_transport != nullptr; }
     bool canRun() const { return m_transport != nullptr || m_run != nullptr; }
@@ -136,7 +135,6 @@ private:
     void syncTempo();                 // the Tempo knob drives the transport, if we have one
     void poll();
 
-    static inline DrumsController *s_instance = nullptr;
 
     kessel::Engine &m_engine;
     krate::Transport *m_transport = nullptr;

@@ -15,6 +15,12 @@ class Instance final : public krate::InstrumentInstance
 public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
+    QVariantMap panelProperties() override
+    {
+        return {{QStringLiteral("krimson"), QVariant::fromValue(&controller)},
+                {QStringLiteral("programs"), QVariant::fromValue(&programs)},
+                {QStringLiteral("slots"), QVariant::fromValue(&slotSetup)}};
+    }
     void triggerAction(const QString &action) override;
     // The instrument parameters plus all four slots (sounds, morph targets, set-up).
     QJsonObject saveSound() override;

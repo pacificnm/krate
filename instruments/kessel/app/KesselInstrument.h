@@ -15,6 +15,12 @@ class Instance final : public krate::InstrumentInstance
 public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
+    QVariantMap panelProperties() override
+    {
+        return {{QStringLiteral("drums"), QVariant::fromValue(&drums)},
+                {QStringLiteral("kits"), QVariant::fromValue(&kits)},
+                {QStringLiteral("samples"), QVariant::fromValue(&samples)}};
+    }
     void triggerAction(const QString &action) override;
     // Sounds from the library go onto the drums (instead of their synth).
     QStringList sampleTargets() const override;

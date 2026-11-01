@@ -25,8 +25,6 @@ CabinetController::CabinetController(krunch::Krunch &engine, const QString &libr
     , m_library(libraryDirectory)
     , m_filePath(filePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(2000);
     connect(&m_saveTimer, &QTimer::timeout, this, &CabinetController::saveFile);
@@ -43,15 +41,8 @@ CabinetController::~CabinetController()
     // The engine outlives this (it's the instance's); empty its slots first.
     for (int s = 0; s < 2 * kChannels; ++s)
         m_engine.cabinet().setKernel(s, nullptr);
-    s_instance = nullptr;
 }
 
-CabinetController *CabinetController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 int CabinetController::libraryCount() const { return int(m_library.list().size()); }
 

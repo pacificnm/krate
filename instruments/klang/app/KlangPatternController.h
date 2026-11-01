@@ -18,7 +18,7 @@ namespace klang {
 class Engine;
 }
 
-// QML singleton "Patterns": Klang's 16 patterns (docs/BRIEF.md#scope-v1).
+// QML type "Patterns" (one per instrument, given to its panel): Klang's 16 patterns (docs/BRIEF.md#scope-v1).
 // Choosing a pattern shows it for editing and cues it (stopped: at once;
 // playing: from the end of the pass). A click on a step does what the tool
 // says: switch it on or off, accent it, roll it (1-4 hits), reverse it, or
@@ -28,7 +28,7 @@ class KlangPatternController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Patterns)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int revision READ revision NOTIFY changed)
     Q_PROPERTY(int current READ current WRITE select NOTIFY changed)      // 0..15, the one shown
@@ -46,7 +46,6 @@ public:
     KlangPatternController(klang::Engine &engine, const QString &filePath, QObject *parent);
     ~KlangPatternController() override;
 
-    static KlangPatternController *create(QQmlEngine *, QJSEngine *);
 
     int revision() const { return m_revision; }
     int current() const { return m_current; }
@@ -95,7 +94,6 @@ private:
     void edited();
     void poll();
 
-    static inline KlangPatternController *s_instance = nullptr;
 
     klang::Engine &m_engine;
     QString m_filePath;

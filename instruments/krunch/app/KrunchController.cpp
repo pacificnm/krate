@@ -25,8 +25,6 @@ KrunchController::KrunchController(krunch::Krunch &engine, const QString &panelF
     : krate::ParamController(engine, panelFilePath, parent)
     , m_engine(engine)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     m_meterTimer.setInterval(kPollIntervalMs);
     connect(&m_meterTimer, &QTimer::timeout, this, &KrunchController::pollMeters);
     m_meterTimer.start();
@@ -34,15 +32,8 @@ KrunchController::KrunchController(krunch::Krunch &engine, const QString &panelF
 
 KrunchController::~KrunchController()
 {
-    s_instance = nullptr;
 }
 
-KrunchController *KrunchController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 void KrunchController::pollMeters()
 {

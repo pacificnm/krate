@@ -25,8 +25,6 @@ KobaltPatchController::KobaltPatchController(KobaltController &panel, kobalt::En
     , m_filePath(filePath)
     , m_inbox(filePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     switch (loadPatches(m_filePath, &m_bank)) {
     case LoadResult::Loaded:
@@ -87,15 +85,8 @@ KobaltPatchController::~KobaltPatchController()
 {
     if (m_saveTimer.isActive())
         save();
-    s_instance = nullptr;
 }
 
-KobaltPatchController *KobaltPatchController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 QString KobaltPatchController::name() const
 {

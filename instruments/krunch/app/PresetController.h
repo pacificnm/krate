@@ -12,7 +12,7 @@
 class QQmlEngine;
 class QJSEngine;
 
-// QML singleton "Presets": Krunch's presets (docs/PRESETS.md). A preset is
+// QML type "Presets" (one per instrument, given to its panel): Krunch's presets (docs/PRESETS.md). A preset is
 // the whole amp: every knob of all four channels and the power amp, each
 // channel's IRs, the pedalboard (pedals, order, places, footswitches, knobs):
 // the instance's saveSound(), the same snapshot songs keep. Kept in
@@ -21,7 +21,7 @@ class PresetController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Presets)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(QStringList names READ names NOTIFY changed)
     // The preset last loaded or saved ("" = none), and whether the amp has changed since.
@@ -37,7 +37,6 @@ public:
     PresetController(const QString &filePath, Save save, Load load, QObject *parent);
     ~PresetController() override;
 
-    static PresetController *create(QQmlEngine *, QJSEngine *);
 
     QStringList names() const;
     QString current() const { return m_current; }
@@ -68,7 +67,6 @@ private:
     void readFile();
     void writeFile() const;
 
-    static inline PresetController *s_instance = nullptr;
 
     QString m_filePath;
     Save m_save;

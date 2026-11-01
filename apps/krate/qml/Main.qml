@@ -392,9 +392,17 @@ Window {
 
                 Loader {
                     id: loader
-                    // Only an instrument in the rack has its panel made.
-                    active: Rack.panelComponents[slot.index] !== "" && Rack.present[slot.index] === true
-                    sourceComponent: Qt.createComponent(Rack.panelModules[slot.index], Rack.panelComponents[slot.index])
+                    // Only an instrument in the rack has its panel made, with its own controllers.
+                    readonly property bool wanted: Rack.panelComponents[slot.index] !== "" && Rack.present[slot.index] === true
+                    onWantedChanged: load()
+                    Component.onCompleted: load()
+                    function load() {
+                        if (!wanted)
+                            source = ""
+                        else if (!item)
+                            setSource(Qt.createComponent(Rack.panelModules[slot.index], Rack.panelComponents[slot.index]).url,
+                                      Rack.panelProperties(slot.index))
+                    }
                     readonly property Item panel: item as Item
                     // Fit, but don't blow small panels up past 1.25x.
                     readonly property real s: panel ? Math.min(slot.width / panel.width, slot.height / panel.height, 1.25) : 1

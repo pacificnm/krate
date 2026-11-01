@@ -18,8 +18,6 @@ PresetController::PresetController(const QString &filePath, Save save, Load load
     , m_save(std::move(save))
     , m_load(std::move(load))
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     m_check.setSingleShot(true);
     m_check.setInterval(100);
     connect(&m_check, &QTimer::timeout, this, [this] {
@@ -34,15 +32,8 @@ PresetController::PresetController(const QString &filePath, Save save, Load load
 
 PresetController::~PresetController()
 {
-    s_instance = nullptr;
 }
 
-PresetController *PresetController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 QStringList PresetController::names() const
 {

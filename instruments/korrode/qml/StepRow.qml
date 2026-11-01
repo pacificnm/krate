@@ -10,6 +10,7 @@ import Krate
 Item {
     id: row
 
+    required property Pattern pattern
     property int selectedStep: 0
     property int playStep: -1
 
@@ -21,7 +22,7 @@ Item {
     readonly property real pitch: width / 16
 
     Repeater {
-        model: Pattern
+        model: row.pattern
 
         Item {
             id: cell

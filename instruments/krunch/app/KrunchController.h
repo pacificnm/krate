@@ -12,13 +12,13 @@ namespace krunch {
 class Krunch;
 }
 
-// QML singleton "Krunch": the amp's knobs (krate::ParamController by key) and
+// QML type "Krunch" (one per instrument, given to its panel): the amp's knobs (krate::ParamController by key) and
 // its meters, polled at 60 Hz.
 class KrunchController : public krate::ParamController
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Krunch)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     // 0..1 over -60..0 dB, with a steady fall: the input as it arrives, the output.
     Q_PROPERTY(qreal inputLevel READ inputLevel NOTIFY metersChanged)
@@ -33,7 +33,6 @@ public:
     KrunchController(krunch::Krunch &engine, const QString &panelFilePath, QObject *parent);
     ~KrunchController() override;
 
-    static KrunchController *create(QQmlEngine *, QJSEngine *);
 
     qreal inputLevel() const { return m_inputLevel; }
     qreal outputLevel() const { return m_outputLevel; }
@@ -46,7 +45,6 @@ signals:
 private:
     void pollMeters();
 
-    static inline KrunchController *s_instance = nullptr;
 
     krunch::Krunch &m_engine;
     QTimer m_meterTimer;

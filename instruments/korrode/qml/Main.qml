@@ -3,6 +3,8 @@ import Krate
 
 Window {
     id: root
+    required property Synth synth
+    required property Pattern pattern
 
     width: 1200
     height: 519
@@ -16,6 +18,8 @@ Window {
                                                 height / Theme.designHeight)
 
     Panel {
+        synth: root.synth
+        pattern: root.pattern
         focus: true
         x: (root.width - width * root.panelScale) / 2
         y: (root.height - height * root.panelScale) / 2

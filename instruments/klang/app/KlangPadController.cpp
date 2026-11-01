@@ -50,8 +50,6 @@ KlangPadController::KlangPadController(KlangController &panel, klang::Engine &en
     , m_libraryDir(dataDir + QStringLiteral("/samples"))
     , m_path(dataDir + QStringLiteral("/pads.json"))
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     rescan();
     load();
 
@@ -71,15 +69,8 @@ KlangPadController::~KlangPadController()
         save();
     for (int pad = 0; pad < kPads; ++pad)
         m_engine.setSample(pad, nullptr); // the host has stopped processing by now
-    s_instance = nullptr;
 }
 
-KlangPadController *KlangPadController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 // --- Files ----------------------------------------------------------------------------
 

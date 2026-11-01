@@ -17,7 +17,7 @@ namespace kalliope {
 class Engine;
 }
 
-// QML singleton "Sequencer": the step sequencer's 8 patterns, step recording
+// QML type "Sequencer" (one per instrument, given to its panel): the step sequencer's 8 patterns, step recording
 // from the keys, REST / TIE / CLEAR and the pattern generator
 // (docs/SEQUENCER.md). Every edit goes to the engine as a whole pattern;
 // sequences.json is saved 2 s after an edit and on destruction.
@@ -25,7 +25,7 @@ class SequenceController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Sequencer)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int patternIndex READ patternIndex WRITE setPatternIndex NOTIFY changed) // 0..7
     Q_PROPERTY(int length READ length NOTIFY changed)                                   // 1..16
@@ -41,7 +41,6 @@ public:
     SequenceController(KalliopeController &panel, kalliope::Engine &engine, const QString &filePath, QObject *parent);
     ~SequenceController() override;
 
-    static SequenceController *create(QQmlEngine *, QJSEngine *);
 
     int patternIndex() const { return m_bank.current; }
     void setPatternIndex(int index);
@@ -78,7 +77,6 @@ private:
     void poll();        // playing step, recording from held keys
     QList<int> heldNotes() const;
 
-    static inline SequenceController *s_instance = nullptr;
 
     KalliopeController &m_panel;
     kalliope::Engine &m_engine;

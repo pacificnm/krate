@@ -15,8 +15,6 @@ KrimsonController::KrimsonController(krimson::Engine &engine, const QString &pan
     , m_engine(engine)
     , m_transport(transport)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     m_pollTimer.setInterval(16);
     connect(&m_pollTimer, &QTimer::timeout, this, &KrimsonController::poll);
@@ -30,15 +28,8 @@ KrimsonController::KrimsonController(krimson::Engine &engine, const QString &pan
 
 KrimsonController::~KrimsonController()
 {
-    s_instance = nullptr;
 }
 
-KrimsonController *KrimsonController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 bool KrimsonController::playing() const
 {

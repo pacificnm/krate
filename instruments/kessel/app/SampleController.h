@@ -21,7 +21,7 @@ namespace kessel {
 class Engine;
 }
 
-// QML singleton "Samples": the SAMPLE voice's sample library (docs/KITS.md#samples).
+// QML type "Samples" (one per instrument, given to its panel): the SAMPLE voice's sample library (docs/KITS.md#samples).
 // Imported WAV files are copied into Kessel's samples folder (so kits keep
 // working if the originals move); the arrows step through them; the choice is
 // saved in samples.json. Decoding happens here, off the audio thread; a
@@ -34,7 +34,7 @@ class SampleController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Samples)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(QString name READ name NOTIFY changed)         // the file playing, "" = none
     Q_PROPERTY(QStringList names READ names NOTIFY changed)   // the library, sorted
@@ -47,7 +47,6 @@ public:
     SampleController(kessel::Engine &engine, const QString &dataDir, QObject *parent);
     ~SampleController() override;
 
-    static SampleController *create(QQmlEngine *, QJSEngine *);
 
     QString name() const { return m_name; }
     QStringList names() const { return m_names; }
@@ -78,7 +77,6 @@ private:
     void freeRetired();
     void saveState() const;
 
-    static inline SampleController *s_instance = nullptr;
 
     kessel::Engine &m_engine;
     QString m_libraryDir;

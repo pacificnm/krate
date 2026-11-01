@@ -4,6 +4,9 @@ import Krate
 // The standalone Kalliope window: the panel at its design size, scaled to fit.
 Window {
     id: root
+    required property Kalliope kalliope
+    required property Patches patches
+    required property Sequencer sequencer
 
     width: 1200
     height: 825
@@ -16,6 +19,9 @@ Window {
     readonly property real panelScale: Math.min(width / panel.width, height / panel.height)
 
     Panel {
+        kalliope: root.kalliope
+        patches: root.patches
+        sequencer: root.sequencer
         id: panel
         focus: true
         x: (root.width - width * root.panelScale) / 2

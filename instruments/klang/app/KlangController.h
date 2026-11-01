@@ -16,7 +16,7 @@ namespace klang {
 class Engine;
 }
 
-// QML singleton "Klang": the panel's controls (krate::ParamController by key;
+// QML type "Klang" (one per instrument, given to its panel): the panel's controls (krate::ParamController by key;
 // the pad controls show the edited pad), the edited pad, hitting pads from the
 // screen, their lights, and Tempo and run/stop (standalone they drive the
 // transport it is given; in the Krate rack, the rack's run control).
@@ -24,20 +24,19 @@ class KlangController : public krate::ParamController
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Klang)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int editedPad READ editedPad WRITE setEditedPad NOTIFY editedPadChanged)
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     Q_PROPERTY(bool ownsTransport READ ownsTransport CONSTANT)
     Q_PROPERTY(bool canRun READ canRun NOTIFY playingChanged)
-    // Bumped when the pads' lights change; bind `Klang.lights >= 0 && Klang.sounding(n)`.
+    // Bumped when the pads' lights change; bind `klang.lights >= 0 && klang.sounding(n)`.
     Q_PROPERTY(int lights READ lights NOTIFY lightsChanged)
 
 public:
     KlangController(klang::Engine &engine, const QString &panelFilePath, krate::Transport *transport, QObject *parent);
     ~KlangController() override;
 
-    static KlangController *create(QQmlEngine *, QJSEngine *);
 
     int editedPad() const;
     void setEditedPad(int pad);
@@ -62,7 +61,6 @@ private:
     void syncTempo();
     void poll();
 
-    static inline KlangController *s_instance = nullptr;
 
     klang::Engine &m_engine;
     krate::Transport *m_transport = nullptr;

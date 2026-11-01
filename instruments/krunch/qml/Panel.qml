@@ -11,12 +11,16 @@ import Krate
 // amp, the pedalboard.
 Item {
     id: panel
+    required property Krunch krunch
+    required property Presets presets
+    required property Cabinets cabinets
+    required property Pedals pedals
 
     width: 1400
     height: 990
 
-    readonly property int input: Krunch.revision >= 0 && Krunch.value("input") >= 0.5 ? 1 : 0
-    readonly property int channel: Krunch.revision >= 0 ? Math.round(Krunch.value("channel") * 3) : 0
+    readonly property int input: panel.krunch.revision >= 0 && panel.krunch.value("input") >= 0.5 ? 1 : 0
+    readonly property int channel: panel.krunch.revision >= 0 ? Math.round(panel.krunch.value("channel") * 3) : 0
     readonly property string inputPort: Host.inputPorts[input] ?? ""
     readonly property bool inputConnected: Host.inputsConnected[input] ?? false
     readonly property color cream: "#E9DFC4"
@@ -24,7 +28,7 @@ Item {
     readonly property var channelColors: ["#5FB0E8", "#F2C230", "#F08A2B", "#E2412E"]
 
     function chKey(name) { return "ch" + (channel + 1) + "_" + name }
-    function voiceOf(c) { return Krunch.revision >= 0 ? Math.round(Krunch.value("ch" + (c + 1) + "_voice") * 3) : 0 }
+    function voiceOf(c) { return panel.krunch.revision >= 0 ? Math.round(panel.krunch.value("ch" + (c + 1) + "_voice") * 3) : 0 }
 
     component Meter: Rectangle { // vertical, -60..0 dB
         property real level: 0
@@ -75,19 +79,19 @@ Item {
             y: 22
             width: ampKnob.size
             height: ampKnob.size
-            name: Krunch.label(ampKnob.key)
+            name: panel.krunch.label(ampKnob.key)
             detents: ampKnob.detents
-            value: Krunch.revision >= 0 ? Krunch.value(ampKnob.key) : 0
-            defaultValue: Krunch.defaultValue(ampKnob.key)
-            displayText: Krunch.displayText(ampKnob.key, value)
-            onMoved: v => Krunch.setValue(ampKnob.key, v)
+            value: panel.krunch.revision >= 0 ? panel.krunch.value(ampKnob.key) : 0
+            defaultValue: panel.krunch.defaultValue(ampKnob.key)
+            displayText: panel.krunch.displayText(ampKnob.key, value)
+            onMoved: v => panel.krunch.setValue(ampKnob.key, v)
 
             LearnOverlay { anchors.fill: parent; paramKey: ampKnob.key }
         }
         Label {
             y: ampKnob.size + 28
             width: parent.width
-            text: Krunch.displayText(ampKnob.key, Krunch.revision >= 0 ? Krunch.value(ampKnob.key) : 0)
+            text: panel.krunch.displayText(ampKnob.key, panel.krunch.revision >= 0 ? panel.krunch.value(ampKnob.key) : 0)
             font.pixelSize: 12
             font.bold: false
         }
@@ -157,8 +161,8 @@ Item {
                     anchors.leftMargin: 10
                     anchors.rightMargin: 10
                     verticalAlignment: Text.AlignVCenter
-                    text: Presets.current === "" ? "NO PRESET" : Presets.current + (Presets.modified ? " *" : "")
-                    color: Presets.current === "" ? "#6A7A6A" : "#9CFF9C"
+                    text: panel.presets.current === "" ? "NO PRESET" : panel.presets.current + (panel.presets.modified ? " *" : "")
+                    color: panel.presets.current === "" ? "#6A7A6A" : "#9CFF9C"
                     font.family: "monospace"
                     font.pixelSize: 17
                     font.bold: true
@@ -169,7 +173,7 @@ Item {
                     onClicked: presetList.open()
                 }
                 Accessible.role: Accessible.Button
-                Accessible.name: "Preset: " + (Presets.current || "none") + (Presets.modified ? ", modified" : "") + ". Open the list"
+                Accessible.name: "Preset: " + (panel.presets.current || "none") + (panel.presets.modified ? ", modified" : "") + ". Open the list"
             }
             Repeater {
                 model: [{ face: "◂", by: -1, action: "presetPrevious", name: "Previous preset" },
@@ -181,7 +185,7 @@ Item {
                     dark: true
                     faceText: modelData.face
                     text: modelData.name
-                    onClicked: Presets.step(modelData.by)
+                    onClicked: panel.presets.step(modelData.by)
                     LearnOverlay { anchors.fill: parent; paramKey: parent.modelData.action; round: false }
                 }
             }
@@ -190,9 +194,9 @@ Item {
                 height: 40
                 dark: true
                 faceText: "SAVE"
-                text: Presets.current === "" ? "Save the amp as a new preset" : "Save the amp over " + Presets.current
-                tint: Presets.modified ? Theme.labelOrange : "transparent"
-                onClicked: Presets.current === "" ? saveAsPopup.open() : Presets.save()
+                text: panel.presets.current === "" ? "Save the amp as a new preset" : "Save the amp over " + panel.presets.current
+                tint: panel.presets.modified ? Theme.labelOrange : "transparent"
+                onClicked: panel.presets.current === "" ? saveAsPopup.open() : panel.presets.save()
             }
             PanelButton {
                 width: 84
@@ -268,8 +272,8 @@ Item {
         AmpKnob { y: 14; cx: 70; key: "input"; label: "INPUT"; size: 64; detents: 2 }
 
         Label { x: 128; y: 14; width: 40; text: "IN" }
-        Meter { x: 140; y: 38; height: 96; level: Krunch.inputLevel }
-        Led { x: 142; y: 142; width: 12; height: 12; on: Krunch.clipping }
+        Meter { x: 140; y: 38; height: 96; level: panel.krunch.inputLevel }
+        Led { x: 142; y: 142; width: 12; height: 12; on: panel.krunch.clipping }
         Label { x: 118; y: 158; width: 60; text: "CLIP"; font.pixelSize: 10 }
 
         Label { x: 210; y: 14; width: 440; text: "CHANNEL" }
@@ -290,7 +294,7 @@ Item {
                     hasLed: true
                     ledOn: panel.channel === channelButton.index
                     tint: panel.channel === channelButton.index ? panel.channelColors[channelButton.index] : "transparent"
-                    onClicked: Krunch.setValue("channel", channelButton.index / 3)
+                    onClicked: panel.krunch.setValue("channel", channelButton.index / 3)
 
                     LearnOverlay {
                         anchors.fill: parent
@@ -312,7 +316,7 @@ Item {
             y: 40
             width: 60
             height: 80
-            Led { x: 24; y: 18; width: 12; height: 12; on: Krunch.gateClosed }
+            Led { x: 24; y: 18; width: 12; height: 12; on: panel.krunch.gateClosed }
             Label { y: 40; width: parent.width; text: "GATE\nSHUT"; font.pixelSize: 10 }
         }
 
@@ -332,7 +336,7 @@ Item {
 
         AmpKnob { y: 14; cx: 1240; key: "level"; label: "LEVEL" }
         Label { x: 1296; y: 14; width: 40; text: "OUT" }
-        Meter { x: 1308; y: 38; height: 116; level: Krunch.outputLevel }
+        Meter { x: 1308; y: 38; height: 116; level: panel.krunch.outputLevel }
 
         // --- The playing channel ----------------------------------------------------
 
@@ -387,8 +391,8 @@ Item {
                 faceText: "LOOP"
                 text: "Effects loop for this channel"
                 hasLed: true
-                ledOn: Krunch.revision >= 0 && Krunch.value(panel.chKey("loop")) >= 0.5
-                onClicked: Krunch.setValue(panel.chKey("loop"), ledOn ? 0 : 1)
+                ledOn: panel.krunch.revision >= 0 && panel.krunch.value(panel.chKey("loop")) >= 0.5
+                onClicked: panel.krunch.setValue(panel.chKey("loop"), ledOn ? 0 : 1)
 
                 LearnOverlay { anchors.fill: parent; paramKey: "loop"; round: false }
             }
@@ -397,8 +401,8 @@ Item {
                 width: 104
                 readonly property int pedals: {
                     let n = 0
-                    for (let i = 0; Pedals.revision >= 0 && i < Pedals.count; ++i)
-                        if (Pedals.inLoop(i))
+                    for (let i = 0; panel.pedals.revision >= 0 && i < panel.pedals.count; ++i)
+                        if (panel.pedals.inLoop(i))
                             ++n
                     return n
                 }
@@ -418,7 +422,7 @@ Item {
                 id: cabSlot
                 required property int index
                 readonly property bool isB: index === 1
-                readonly property string irName: Cabinets.revision >= 0 ? Cabinets.irName(panel.channel, isB) : ""
+                readonly property string irName: panel.cabinets.revision >= 0 ? panel.cabinets.irName(panel.channel, isB) : ""
                 x: 40 + index * 470
                 y: 422
                 spacing: 4
@@ -441,7 +445,7 @@ Item {
             x: 1140
             y: 420
             width: 190
-            text: Cabinets.libraryCount + " IRs in the library"
+            text: panel.cabinets.libraryCount + " IRs in the library"
             color: "#8F897A"
             font.family: Theme.labelFont
             font.pixelSize: 12
@@ -450,6 +454,7 @@ Item {
     }
 
     Pedalboard {
+        pedals: panel.pedals
         x: 0
         y: 712
         width: parent.width
@@ -465,7 +470,7 @@ Item {
         padding: 14
         modal: true
         onOpened: {
-            nameField.text = Presets.current
+            nameField.text = panel.presets.current
             nameField.selectAll()
             nameField.forceActiveFocus()
         }
@@ -478,12 +483,12 @@ Item {
                 id: nameField
                 width: parent.width
                 placeholderText: "Preset name"
-                onAccepted: if (Presets.saveAs(text)) saveAsPopup.close()
+                onAccepted: if (panel.presets.saveAs(text)) saveAsPopup.close()
                 Accessible.name: "Preset name"
             }
             Text {
                 width: parent.width
-                visible: Presets.names.indexOf(nameField.text.trim()) >= 0
+                visible: panel.presets.names.indexOf(nameField.text.trim()) >= 0
                 text: "There's a preset of that name: saving replaces it."
                 color: Theme.labelOrange
                 font.family: Theme.labelFont
@@ -497,7 +502,7 @@ Item {
                     height: 32
                     faceText: "SAVE"
                     text: "Save the preset"
-                    onClicked: if (Presets.saveAs(nameField.text)) saveAsPopup.close()
+                    onClicked: if (panel.presets.saveAs(nameField.text)) saveAsPopup.close()
                 }
                 PanelButton {
                     width: 90
@@ -516,7 +521,7 @@ Item {
         x: 400
         y: 110
         width: 460
-        height: Math.min(520, 90 + Math.max(1, Presets.names.length) * 44)
+        height: Math.min(520, 90 + Math.max(1, panel.presets.names.length) * 44)
         padding: 14
         modal: true
         property string renaming: ""
@@ -531,7 +536,7 @@ Item {
             spacing: 8
             Label { text: "PRESETS"; horizontalAlignment: Text.AlignLeft }
             Text {
-                visible: Presets.names.length === 0
+                visible: panel.presets.names.length === 0
                 width: parent.width
                 text: "No presets yet: set the amp, the pedals and the cabinets up, then SAVE AS…"
                 color: "#B9B2A0"
@@ -543,12 +548,12 @@ Item {
                 width: parent.width
                 height: parent.height - 30
                 clip: true
-                model: Presets.names
+                model: panel.presets.names
                 ScrollBar.vertical: ScrollBar {}
                 delegate: Rectangle {
                     id: presetRow
                     required property string modelData
-                    readonly property bool chosen: modelData === Presets.current
+                    readonly property bool chosen: modelData === panel.presets.current
                     width: ListView.view.width - 12
                     height: 40
                     radius: 4
@@ -558,7 +563,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: {
-                            Presets.load(presetRow.modelData)
+                            panel.presets.load(presetRow.modelData)
                             presetList.close()
                         }
                     }
@@ -583,7 +588,7 @@ Item {
                         text: presetRow.modelData
                         onVisibleChanged: if (visible) { selectAll(); forceActiveFocus() }
                         onAccepted: {
-                            if (Presets.rename(presetRow.modelData, text))
+                            if (panel.presets.rename(presetRow.modelData, text))
                                 presetList.renaming = ""
                         }
                         Accessible.name: "New name for " + presetRow.modelData
@@ -608,7 +613,7 @@ Item {
                             tint: presetList.deleting === presetRow.modelData ? Theme.labelOrange : "transparent"
                             onClicked: {
                                 if (presetList.deleting === presetRow.modelData) {
-                                    Presets.remove(presetRow.modelData)
+                                    panel.presets.remove(presetRow.modelData)
                                     presetList.deleting = ""
                                 } else {
                                     presetList.deleting = presetRow.modelData
@@ -622,6 +627,7 @@ Item {
     }
 
     IrPicker {
+        cabinets: panel.cabinets
         id: irPicker
         x: (panel.width - width) / 2
         y: 40
@@ -631,7 +637,7 @@ Item {
         anchors.fill: parent
         keys: ["text/uri-list"]
         onDropped: event => {
-            Cabinets.importUrls(event.urls)
+            panel.cabinets.importUrls(event.urls)
             event.accept()
         }
     }

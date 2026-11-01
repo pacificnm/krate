@@ -138,6 +138,9 @@ int main(int argc, char *argv[])
         pluginSlots.setDevice(i, int(firstPlugin) + i);
 
     RackController rackController(rack, transport, entries, nullptr);
+    rackController.setPanelProperties([&instances](int device) {
+        return device >= 0 && device < int(instances.size()) ? instances[std::size_t(device)]->panelProperties() : QVariantMap{};
+    });
     audioTracks.setRack(&rackController);
     rackController.setRunControl(&runControl);
     QObject::connect(&rackController, &RackController::playingChanged, &runControl, &RackRunControl::transportChanged);

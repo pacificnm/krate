@@ -15,14 +15,14 @@ namespace krimson {
 class Engine;
 }
 
-// QML singleton "Krimson": the edited slot's controls (krate::ParamController
+// QML type "Krimson" (one per instrument, given to its panel): the edited slot's controls (krate::ParamController
 // by key), which slot is edited, plus Tempo and run/stop. Standalone, those
 // drive the transport it is given; in the Krate rack it is given none.
 class KrimsonController : public krate::ParamController
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Krimson)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(bool playing READ playing WRITE setPlaying NOTIFY playingChanged)
     Q_PROPERTY(bool ownsTransport READ ownsTransport CONSTANT)
@@ -44,7 +44,6 @@ public:
                       QObject *parent);
     ~KrimsonController() override;
 
-    static KrimsonController *create(QQmlEngine *, QJSEngine *);
 
     bool ownsTransport() const { return m_transport != nullptr; }
     bool playing() const;
@@ -86,7 +85,6 @@ private:
     void syncArp(); // standalone: the edited slot's ARP on starts the transport, off stops what it started
     void poll();
 
-    static inline KrimsonController *s_instance = nullptr;
 
     krimson::Engine &m_engine;
     krate::Transport *m_transport = nullptr;

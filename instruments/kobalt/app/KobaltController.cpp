@@ -16,8 +16,6 @@ KobaltController::KobaltController(kobalt::Engine &engine, const QString &panelF
     , m_engine(engine)
     , m_transport(transport)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     m_pollTimer.setInterval(16); // ~60 Hz
     connect(&m_pollTimer, &QTimer::timeout, this, &KobaltController::poll);
@@ -31,15 +29,8 @@ KobaltController::KobaltController(kobalt::Engine &engine, const QString &panelF
 
 KobaltController::~KobaltController()
 {
-    s_instance = nullptr;
 }
 
-KobaltController *KobaltController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 bool KobaltController::playing() const
 {

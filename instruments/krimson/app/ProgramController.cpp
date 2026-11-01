@@ -44,8 +44,6 @@ ProgramController::ProgramController(KrimsonController &panel, SlotController &s
     , m_performancesPath(performancesPath)
     , m_inbox(programsPath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     const LoadResult programs = loadPrograms(m_programsPath, &m_bank);
     report(programs, m_programsPath);
     if (programs == LoadResult::NewerVersion)
@@ -103,15 +101,8 @@ ProgramController::~ProgramController()
 {
     if (m_saveTimer.isActive())
         save();
-    s_instance = nullptr;
 }
 
-ProgramController *ProgramController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 int ProgramController::number() const
 {

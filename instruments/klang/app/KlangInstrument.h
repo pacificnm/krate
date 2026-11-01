@@ -15,6 +15,12 @@ class Instance final : public krate::InstrumentInstance
 public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
+    QVariantMap panelProperties() override
+    {
+        return {{QStringLiteral("klang"), QVariant::fromValue(&controller)},
+                {QStringLiteral("pads"), QVariant::fromValue(&pads)},
+                {QStringLiteral("patterns"), QVariant::fromValue(&patterns)}};
+    }
     void triggerAction(const QString &action) override;
     // Sounds from the library go onto the pads.
     QStringList sampleTargets() const override;

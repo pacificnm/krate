@@ -10,6 +10,9 @@ import Krate
 // and the LCD block, the effects, UNMAP/AUDIO/LEARN with the status line and meter.
 Item {
     id: panel
+    required property Drums drums
+    required property Kits kits
+    required property Samples samples
 
     width: 1800
     height: 1000
@@ -119,12 +122,12 @@ Item {
         required property string key
         width: panel.knobSize
         height: panel.knobSize
-        name: Drums.label(key)
+        name: panel.drums.label(key)
         Accessible.description: displayText
-        value: Drums.revision >= 0 ? Drums.value(key) : 0
-        defaultValue: Drums.defaultValue(key)
-        displayText: Drums.displayText(key, value)
-        onMoved: v => Drums.setValue(key, v)
+        value: panel.drums.revision >= 0 ? panel.drums.value(key) : 0
+        defaultValue: panel.drums.defaultValue(key)
+        displayText: panel.drums.displayText(key, value)
+        onMoved: v => panel.drums.setValue(key, v)
         capColor: "#3A3B3E"
         capShadeColor: "#111213"
         capBorderColor: "#08080A"
@@ -289,15 +292,15 @@ Item {
     readonly property string letters: "ABCDEFGHIJKLMNOP"
     property int patternPage: 0 // the buttons show A-H (0) or I-P (1); follows the pattern chosen
     Connections {
-        target: Drums
-        function onPatternChanged() { panel.patternPage = Drums.patternIndex >= 8 ? 1 : 0 }
+        target: panel.drums
+        function onPatternChanged() { panel.patternPage = panel.drums.patternIndex >= 8 ? 1 : 0 }
     }
-    Component.onCompleted: patternPage = Drums.patternIndex >= 8 ? 1 : 0
+    Component.onCompleted: patternPage = panel.drums.patternIndex >= 8 ? 1 : 0
     property bool blink: false
     Timer {
         interval: 220
         repeat: true
-        running: Drums.queuedPattern >= 0 || Kits.writing
+        running: panel.drums.queuedPattern >= 0 || panel.kits.writing
         onTriggered: panel.blink = !panel.blink
         onRunningChanged: panel.blink = false
     }
@@ -332,10 +335,10 @@ Item {
             height: 50
             faceText: panel.letters[slot]
             text: "Pattern " + panel.letters[slot]
-            dark: Drums.patternIndex === slot
+            dark: panel.drums.patternIndex === slot
             hasLed: true
-            ledOn: Drums.queuedPattern === slot ? panel.blink : Drums.playingPattern === slot
-            onClicked: Drums.patternIndex = slot
+            ledOn: panel.drums.queuedPattern === slot ? panel.blink : panel.drums.playingPattern === slot
+            onClicked: panel.drums.patternIndex = slot
 
             LearnOverlay {
                 anchors.fill: parent
@@ -376,12 +379,12 @@ Item {
         y: 616
         width: 316
         height: 24
-        text: "Pattern " + panel.letters[Drums.patternIndex]
-              + (Drums.queuedPattern === Drums.patternIndex ? "  (next)"
-                 : Drums.playing && Drums.playingPattern !== Drums.patternIndex
-                   ? "  (" + panel.letters[Drums.playingPattern] + " playing)" : "")
-        onUp: Drums.patternIndex = Math.min(15, Drums.patternIndex + 1)
-        onDown: Drums.patternIndex = Math.max(0, Drums.patternIndex - 1)
+        text: "Pattern " + panel.letters[panel.drums.patternIndex]
+              + (panel.drums.queuedPattern === panel.drums.patternIndex ? "  (next)"
+                 : panel.drums.playing && panel.drums.playingPattern !== panel.drums.patternIndex
+                   ? "  (" + panel.letters[panel.drums.playingPattern] + " playing)" : "")
+        onUp: panel.drums.patternIndex = Math.min(15, panel.drums.patternIndex + 1)
+        onDown: panel.drums.patternIndex = Math.max(0, panel.drums.patternIndex - 1)
     }
     LcdField {
         name: "Length"
@@ -389,9 +392,9 @@ Item {
         y: 644
         width: 316
         height: 24
-        text: Drums.length + (Drums.length === 1 ? " step" : " steps")
-        onUp: Drums.length = Drums.length + 1
-        onDown: Drums.length = Drums.length - 1
+        text: panel.drums.length + (panel.drums.length === 1 ? " step" : " steps")
+        onUp: panel.drums.length = panel.drums.length + 1
+        onDown: panel.drums.length = panel.drums.length - 1
     }
     LcdField {
         name: "Scale"
@@ -399,9 +402,9 @@ Item {
         y: 672
         width: 316
         height: 24
-        text: Drums.scaleNames[Drums.scaleIndex]
-        onUp: Drums.scaleIndex = Math.min(Drums.scaleNames.length - 1, Drums.scaleIndex + 1)
-        onDown: Drums.scaleIndex = Math.max(0, Drums.scaleIndex - 1)
+        text: panel.drums.scaleNames[panel.drums.scaleIndex]
+        onUp: panel.drums.scaleIndex = Math.min(panel.drums.scaleNames.length - 1, panel.drums.scaleIndex + 1)
+        onDown: panel.drums.scaleIndex = Math.max(0, panel.drums.scaleIndex - 1)
     }
     LcdField {
         name: "Play order"
@@ -409,9 +412,9 @@ Item {
         y: 700
         width: 316
         height: 24
-        text: Drums.orderNames[Drums.orderIndex]
-        onUp: Drums.orderIndex = Math.min(Drums.orderNames.length - 1, Drums.orderIndex + 1)
-        onDown: Drums.orderIndex = Math.max(0, Drums.orderIndex - 1)
+        text: panel.drums.orderNames[panel.drums.orderIndex]
+        onUp: panel.drums.orderIndex = Math.min(panel.drums.orderNames.length - 1, panel.drums.orderIndex + 1)
+        onDown: panel.drums.orderIndex = Math.max(0, panel.drums.orderIndex - 1)
     }
     // Kits (docs/KITS.md): the kit loaded (a dot: edited), or while writing the slot to store into
     LcdField {
@@ -420,10 +423,10 @@ Item {
         y: 728
         width: 240
         height: 24
-        text: Kits.writing ? "WRITE to " + (Kits.target + 1) + " " + Kits.targetName
-                           : (Kits.index + 1) + " " + Kits.name + (Kits.edited ? "  •" : "")
-        onUp: Kits.step(1)
-        onDown: Kits.step(-1)
+        text: panel.kits.writing ? "WRITE to " + (panel.kits.target + 1) + " " + panel.kits.targetName
+                           : (panel.kits.index + 1) + " " + panel.kits.name + (panel.kits.edited ? "  •" : "")
+        onUp: panel.kits.step(1)
+        onDown: panel.kits.step(-1)
     }
     PanelButton {
         x: 762
@@ -432,8 +435,8 @@ Item {
         height: 24
         faceText: "WRITE"
         text: "Write the kit: press, choose the slot with the arrows, press again (Esc cancels)"
-        dark: Kits.writing && panel.blink
-        onClicked: Kits.pressWrite()
+        dark: panel.kits.writing && panel.blink
+        onClicked: panel.kits.pressWrite()
     }
 
     // The SAMPLE voice's sample (docs/KITS.md#samples): the arrows step through
@@ -441,9 +444,9 @@ Item {
     // import's result shows here for a few seconds.
     property string sampleMessage: ""
     Connections {
-        target: Samples
+        target: panel.samples
         function onChanged() {
-            panel.sampleMessage = Samples.message
+            panel.sampleMessage = panel.samples.message
             sampleMessageTimer.restart()
         }
     }
@@ -459,10 +462,10 @@ Item {
         width: 240
         height: 24
         text: panel.sampleMessage !== "" ? panel.sampleMessage
-            : Samples.name === "" ? "No sample: LOAD a WAV"
-            : Samples.name + "  " + Samples.seconds.toFixed(2) + " s"
-        onUp: Samples.step(1)
-        onDown: Samples.step(-1)
+            : panel.samples.name === "" ? "No sample: LOAD a WAV"
+            : panel.samples.name + "  " + panel.samples.seconds.toFixed(2) + " s"
+        onUp: panel.samples.step(1)
+        onDown: panel.samples.step(-1)
     }
     PanelButton {
         x: 762
@@ -478,13 +481,13 @@ Item {
         title: "Load samples (WAV)"
         fileMode: FileDialog.OpenFiles
         nameFilters: ["WAV files (*.wav *.WAV)"]
-        onAccepted: Samples.importUrls(selectedFiles)
+        onAccepted: panel.samples.importUrls(selectedFiles)
     }
     DropArea { // WAV files dropped anywhere on the panel
         anchors.fill: parent
         onDropped: drop => {
             if (drop.hasUrls)
-                Samples.importUrls(drop.urls)
+                panel.samples.importUrls(drop.urls)
         }
     }
 
@@ -518,12 +521,12 @@ Item {
         }
     }
 
-    PanelLabel { centerX: 1330; y: 614; text: "TEMPO"; visible: Drums.ownsTransport }
+    PanelLabel { centerX: 1330; y: 614; text: "TEMPO"; visible: panel.drums.ownsTransport }
     PanelLabel { centerX: 1440; y: 614; text: "VOLUME" }
     PanelLabel { centerX: 1550; y: 614; text: "SHUFFLE" }
     DrumKnob {
         key: "tempo"
-        visible: Drums.ownsTransport
+        visible: panel.drums.ownsTransport
         x: 1330 - width / 2
         y: 642
         width: 84
@@ -619,7 +622,7 @@ Item {
     }
     // START / STOP (standalone only: the rack's transport bar owns them) and CLEAR
     PanelButton {
-        visible: Drums.canRun
+        visible: panel.drums.canRun
         x: 60
         y: 812
         width: 120
@@ -627,8 +630,8 @@ Item {
         faceText: "START"
         text: "Start"
         hasLed: true
-        ledOn: Drums.playing
-        onClicked: Drums.playing = true
+        ledOn: panel.drums.playing
+        onClicked: panel.drums.playing = true
 
         LearnOverlay { // a MIDI button learned here toggles start/stop
             anchors.fill: parent
@@ -637,14 +640,14 @@ Item {
         }
     }
     PanelButton {
-        visible: Drums.canRun
+        visible: panel.drums.canRun
         x: 60
         y: 876
         width: 120
         height: 44
         faceText: "STOP"
         text: "Stop"
-        onClicked: Drums.playing = false
+        onClicked: panel.drums.playing = false
     }
     PanelButton {
         x: 60
@@ -654,7 +657,7 @@ Item {
         dark: true
         faceText: "CLEAR"
         text: "Clear track (Shift: whole pattern)"
-        onClicked: (panelKeys.shift ? Drums.clearPattern() : Drums.clearTrack(Drums.selectedTrack))
+        onClicked: (panelKeys.shift ? panel.drums.clearPattern() : panel.drums.clearTrack(panel.drums.selectedTrack))
     }
 
     // Step numbers, playhead LEDs and the step buttons for the selected track
@@ -665,11 +668,11 @@ Item {
             id: stepSlot
             required property int index
             readonly property real cx: panel.stepLeft + (index + 0.5) * panel.stepWidth
-            readonly property int state: Drums.patternRevision >= 0
-                                         ? Drums.stepState(Drums.selectedTrack, index) : 0
-            readonly property bool inPattern: index < Drums.length
-            readonly property bool details: Drums.patternRevision >= 0
-                                            && Drums.stepHasDetails(Drums.selectedTrack, index)
+            readonly property int state: panel.drums.patternRevision >= 0
+                                         ? panel.drums.stepState(panel.drums.selectedTrack, index) : 0
+            readonly property bool inPattern: index < panel.drums.length
+            readonly property bool details: panel.drums.patternRevision >= 0
+                                            && panel.drums.stepHasDetails(panel.drums.selectedTrack, index)
 
             PanelLabel {
                 centerX: stepSlot.cx
@@ -681,13 +684,13 @@ Item {
             Led {
                 x: stepSlot.cx - width / 2
                 y: 832
-                on: Drums.currentStep === stepSlot.index
+                on: panel.drums.currentStep === stepSlot.index
             }
             Rectangle { // the step button: cream face, lit inset
                 id: stepButton
                 activeFocusOnTab: true
-                Keys.onReturnPressed: Drums.cycleStep(stepSlot.index)
-                Keys.onEnterPressed: Drums.cycleStep(stepSlot.index)
+                Keys.onReturnPressed: panel.drums.cycleStep(stepSlot.index)
+                Keys.onEnterPressed: panel.drums.cycleStep(stepSlot.index)
                 x: stepSlot.cx - width / 2
                 y: stepMouse.pressed ? 854 : 852
                 width: panel.stepWidth - 18
@@ -733,7 +736,7 @@ Item {
                         if (mouse.button === Qt.RightButton)
                             stepEditor.edit(stepSlot.index, stepSlot.cx)
                         else
-                            Drums.cycleStep(stepSlot.index)
+                            panel.drums.cycleStep(stepSlot.index)
                     }
                 }
             }
@@ -746,10 +749,10 @@ Item {
     Rectangle {
         id: stepEditor
         property int step: -1
-        readonly property int track: Drums.selectedTrack
-        readonly property string tuneKey: Drums.tuneKey(track)
-        readonly property string decayKey: Drums.decayKey(track)
-        readonly property int rev: Drums.patternRevision + Drums.revision
+        readonly property int track: panel.drums.selectedTrack
+        readonly property string tuneKey: panel.drums.tuneKey(track)
+        readonly property string decayKey: panel.drums.decayKey(track)
+        readonly property int rev: panel.drums.patternRevision + panel.drums.revision
         function edit(index, cx) {
             step = index
             x = Math.max(panel.margin, Math.min(panel.width - panel.margin - width, cx - width / 2))
@@ -784,13 +787,13 @@ Item {
                 readonly property bool usable: modelData.kind === 0 || key !== ""
                 // The step's own value, or < 0 when it has none (the voice's then shows).
                 readonly property real own: stepEditor.rev >= 0 && stepEditor.step >= 0
-                    ? (modelData.kind === 0 ? Drums.stepVelocity(stepEditor.track, stepEditor.step) / 127
-                       : modelData.kind === 1 ? Drums.stepTune(stepEditor.track, stepEditor.step)
-                       : Drums.stepDecay(stepEditor.track, stepEditor.step)) : -1
+                    ? (modelData.kind === 0 ? panel.drums.stepVelocity(stepEditor.track, stepEditor.step) / 127
+                       : modelData.kind === 1 ? panel.drums.stepTune(stepEditor.track, stepEditor.step)
+                       : panel.drums.stepDecay(stepEditor.track, stepEditor.step)) : -1
                 readonly property bool hasOwn: modelData.kind === 0 ? own > 0 : own >= 0
                 readonly property real fallback: modelData.kind === 0
-                    ? (stepEditor.step >= 0 && Drums.stepState(stepEditor.track, stepEditor.step) === 2 ? 1.0 : 0.8)
-                    : (usable && stepEditor.rev >= 0 ? Drums.value(key) : 0.5)
+                    ? (stepEditor.step >= 0 && panel.drums.stepState(stepEditor.track, stepEditor.step) === 2 ? 1.0 : 0.8)
+                    : (usable && stepEditor.rev >= 0 ? panel.drums.value(key) : 0.5)
                 opacity: usable ? 1.0 : 0.35
 
                 PanelLabel { centerX: detail.modelData.cx; y: 40; text: detail.modelData.label; font.pixelSize: 12 }
@@ -813,17 +816,17 @@ Item {
                     onMoved: v => {
                         const clear = Math.abs(v - detail.fallback) < 1e-6
                         if (detail.modelData.kind === 0)
-                            Drums.setStepVelocity(stepEditor.track, stepEditor.step, clear ? 0 : Math.max(1, Math.round(v * 127)))
+                            panel.drums.setStepVelocity(stepEditor.track, stepEditor.step, clear ? 0 : Math.max(1, Math.round(v * 127)))
                         else if (detail.modelData.kind === 1)
-                            Drums.setStepTune(stepEditor.track, stepEditor.step, clear ? -1 : v)
+                            panel.drums.setStepTune(stepEditor.track, stepEditor.step, clear ? -1 : v)
                         else
-                            Drums.setStepDecay(stepEditor.track, stepEditor.step, clear ? -1 : v)
+                            panel.drums.setStepDecay(stepEditor.track, stepEditor.step, clear ? -1 : v)
                     }
                 }
                 readonly property string text: !usable ? "—"
                     : !hasOwn ? "Voice's"
                     : modelData.kind === 0 ? String(Math.round(own * 127))
-                    : Drums.displayText(key, own)
+                    : panel.drums.displayText(key, own)
                 PanelLabel {
                     centerX: detail.modelData.cx
                     y: 120
@@ -840,7 +843,7 @@ Item {
             height: 26
             faceText: "CLEAR"
             text: "Clear this step's velocity and locks"
-            onClicked: Drums.clearStepDetails(stepEditor.track, stepEditor.step)
+            onClicked: panel.drums.clearStepDetails(stepEditor.track, stepEditor.step)
         }
         PanelButton {
             x: stepEditor.width - 94
@@ -861,7 +864,7 @@ Item {
             id: trackCell
             required property var modelData
             required property int index
-            readonly property bool selected: Drums.selectedTrack === index
+            readonly property bool selected: panel.drums.selectedTrack === index
             x: panel.stepLeft + (modelData.first - 1) * panel.stepWidth + 4
             y: 936
             width: modelData.steps * panel.stepWidth - 8
@@ -887,9 +890,9 @@ Item {
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onPressed: mouse => {
                     if (mouse.button === Qt.RightButton)
-                        Drums.audition(trackCell.index)
+                        panel.drums.audition(trackCell.index)
                     else
-                        Drums.selectedTrack = trackCell.index
+                        panel.drums.selectedTrack = trackCell.index
                 }
             }
         }
@@ -901,9 +904,9 @@ Item {
         id: panelKeys
         property bool shift: false
     }
-    Keys.onSpacePressed: Drums.playing = !Drums.playing // no-op in the rack (no transport of its own)
-    Keys.onUpPressed: Drums.selectedTrack = Drums.selectedTrack - 1
-    Keys.onDownPressed: Drums.selectedTrack = Drums.selectedTrack + 1
+    Keys.onSpacePressed: panel.drums.playing = !panel.drums.playing // no-op in the rack (no transport of its own)
+    Keys.onUpPressed: panel.drums.selectedTrack = panel.drums.selectedTrack - 1
+    Keys.onDownPressed: panel.drums.selectedTrack = panel.drums.selectedTrack + 1
     Keys.onPressed: event => {
         panelKeys.shift = (event.modifiers & Qt.ShiftModifier) !== 0
         if (event.modifiers === Qt.NoModifier && event.key === Qt.Key_L) {
@@ -911,16 +914,16 @@ Item {
             event.accepted = true
             return
         }
-        if (event.key === Qt.Key_Escape && (MidiLearn.active || Kits.writing || stepEditor.visible)) {
+        if (event.key === Qt.Key_Escape && (MidiLearn.active || panel.kits.writing || stepEditor.visible)) {
             MidiLearn.active = false
-            Kits.cancel()
+            panel.kits.cancel()
             stepEditor.step = -1
             event.accepted = true
             return
         }
         // A-H select a pattern on the page shown (no modifiers, so shortcuts elsewhere stay free).
         if (event.key >= Qt.Key_A && event.key <= Qt.Key_H && event.modifiers === Qt.NoModifier) {
-            Drums.patternIndex = panel.patternPage * 8 + event.key - Qt.Key_A
+            panel.drums.patternIndex = panel.patternPage * 8 + event.key - Qt.Key_A
             event.accepted = true
         }
     }

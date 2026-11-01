@@ -148,6 +148,15 @@ void RackController::setAbsentIds(const QStringList &ids)
             setPresent(d, !ids.contains(m_entries[d].id) && m_entries[d].inRackByDefault);
 }
 
+QVariantMap RackController::panelProperties(int device) const
+{
+    QVariantMap properties = m_panelProperties ? m_panelProperties(device) : QVariantMap{};
+    for (const QVariant &value : std::as_const(properties))
+        if (QObject *object = value.value<QObject *>()) // the instrument's, never QML's to delete
+            QJSEngine::setObjectOwnership(object, QJSEngine::CppOwnership);
+    return properties;
+}
+
 int RackController::stepFocus(int step) const
 {
     const int count = deviceCount();

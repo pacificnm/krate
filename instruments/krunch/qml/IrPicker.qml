@@ -10,13 +10,14 @@ import Krate
 // files, folders or zip packs (IMPORT, or drop them here).
 Popup {
     id: picker
+    required property Cabinets cabinets
 
     property int channel: 0
     property bool slotB: false
     property string filter: ""
 
-    readonly property string current: Cabinets.revision >= 0 ? Cabinets.irId(channel, slotB) : ""
-    readonly property var entries: Cabinets.revision >= 0 ? Cabinets.irs(filter) : []
+    readonly property string current: picker.cabinets.revision >= 0 ? picker.cabinets.irId(channel, slotB) : ""
+    readonly property var entries: picker.cabinets.revision >= 0 ? picker.cabinets.irs(filter) : []
 
     width: 640
     height: 560
@@ -33,19 +34,19 @@ Popup {
         title: "Import impulse responses"
         fileMode: FileDialog.OpenFiles
         nameFilters: ["Impulse responses (*.wav *.zip)", "WAV files (*.wav)", "Zip packs (*.zip)"]
-        onAccepted: Cabinets.importUrls(selectedFiles)
+        onAccepted: picker.cabinets.importUrls(selectedFiles)
     }
     FolderDialog {
         id: folderDialog
         title: "Import a folder of impulse responses"
-        onAccepted: Cabinets.importUrls([selectedFolder])
+        onAccepted: picker.cabinets.importUrls([selectedFolder])
     }
 
     DropArea {
         anchors.fill: parent
         keys: ["text/uri-list"]
         onDropped: event => {
-            Cabinets.importUrls(event.urls)
+            picker.cabinets.importUrls(event.urls)
             event.accept()
         }
     }
@@ -106,7 +107,7 @@ Popup {
                     id: mouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: Cabinets.choose(picker.channel, picker.slotB, row.modelData.id)
+                    onClicked: picker.cabinets.choose(picker.channel, picker.slotB, row.modelData.id)
                     onDoubleClicked: picker.close()
                 }
                 Text { // favourite
@@ -119,7 +120,7 @@ Popup {
                     MouseArea {
                         anchors.fill: parent
                         anchors.margins: -6
-                        onClicked: Cabinets.setFavourite(row.modelData.id, !row.modelData.favourite)
+                        onClicked: picker.cabinets.setFavourite(row.modelData.id, !row.modelData.favourite)
                     }
                 }
                 Column {
@@ -187,7 +188,7 @@ Popup {
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: Cabinets.libraryCount + " IRs in the library"
+                text: picker.cabinets.libraryCount + " IRs in the library"
                 color: "#9A9488"
                 font.family: Theme.labelFont
                 font.pixelSize: 12
@@ -195,7 +196,7 @@ Popup {
         }
         Text {
             width: parent.width
-            text: Cabinets.importMessage
+            text: picker.cabinets.importMessage
             color: "#E9DFC4"
             font.family: Theme.labelFont
             font.pixelSize: 12

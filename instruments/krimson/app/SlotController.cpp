@@ -36,8 +36,6 @@ SlotController::SlotController(KrimsonController &panel, krimson::Engine &engine
     , m_engine(engine)
     , m_filePath(filePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     load();
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(kSaveDelayMs);
@@ -50,15 +48,8 @@ SlotController::~SlotController()
 {
     if (m_saveTimer.isActive())
         save();
-    s_instance = nullptr;
 }
 
-SlotController *SlotController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 void SlotController::load()
 {

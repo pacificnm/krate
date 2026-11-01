@@ -11,9 +11,10 @@ import Krate
 // "pedal1".."pedal8" by position); × takes it off the board; + adds one.
 Rectangle {
     id: board
+    required property Pedals pedals
 
     readonly property real slot: 164 // a standard pedal and the gap after it
-    readonly property var layout: Pedals.layoutRevision >= 0 ? Pedals.pedals() : []
+    readonly property var layout: board.pedals.layoutRevision >= 0 ? board.pedals.pedals() : []
     // Each pedal's left edge, and the end of the last one (cases are 1 or more slots wide).
     readonly property var lefts: {
         const xs = []
@@ -51,8 +52,8 @@ Rectangle {
         y: 8
         readonly property var counts: {
             let front = 0, loop = 0
-            for (let i = 0; Pedals.revision >= 0 && i < Pedals.count; ++i)
-                Pedals.inLoop(i) ? ++loop : ++front
+            for (let i = 0; board.pedals.revision >= 0 && i < board.pedals.count; ++i)
+                board.pedals.inLoop(i) ? ++loop : ++front
             return [front, loop]
         }
         text: "PEDALS  ·  guitar → " + counts[0] + " in front → preamp → " + counts[1] + " in the loop → power amp"
@@ -77,14 +78,14 @@ Rectangle {
         ScrollBar.horizontal: ScrollBar { policy: lane.interactive ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff }
 
         Repeater {
-            model: Pedals.layoutRevision >= 0 ? Pedals.count : 0
+            model: board.pedals.layoutRevision >= 0 ? board.pedals.count : 0
 
             Rectangle {
                 id: pedal
                 required property int index
                 readonly property var info: board.layout[index] ?? ({})
-                readonly property bool on: Pedals.revision >= 0 && Pedals.isOn(index)
-                readonly property bool loop: Pedals.revision >= 0 && Pedals.inLoop(index)
+                readonly property bool on: board.pedals.revision >= 0 && board.pedals.isOn(index)
+                readonly property bool loop: board.pedals.revision >= 0 && board.pedals.inLoop(index)
                 // Lettering that reads on its case: dark on light cases, cream on dark ones.
                 // (by perceived brightness: a saturated yellow is light, though its HSL lightness isn't).
                 readonly property color caseColour: info.colour ?? "#444"
@@ -264,7 +265,7 @@ Rectangle {
                     onReleased: {
                         const to = board.placeFor(pedal.x + pedal.width / 2)
                         if (to !== pedal.index)
-                            Pedals.move(pedal.index, to)
+                            board.pedals.move(pedal.index, to)
                         else
                             pedal.x = board.lefts[pedal.index]
                     }
@@ -289,14 +290,14 @@ Rectangle {
                                 width: knobRow.size
                                 height: knobRow.size
                                 name: (pedal.info.name ?? "") + " " + knobColumn.modelData.label
-                                value: Pedals.revision >= 0 ? Pedals.knob(pedal.index, knobColumn.index) : 0
+                                value: board.pedals.revision >= 0 ? board.pedals.knob(pedal.index, knobColumn.index) : 0
                                 defaultValue: knobColumn.modelData.defaultValue
                                 detents: knobColumn.modelData.detents ?? 0
-                                displayText: Pedals.knobText(pedal.index, knobColumn.index, value)
+                                displayText: board.pedals.knobText(pedal.index, knobColumn.index, value)
                                 capColor: "#1E1E1E"
                                 capShadeColor: "#000"
                                 pointerColor: "#F2F2F2"
-                                onMoved: v => Pedals.setKnob(pedal.index, knobColumn.index, v)
+                                onMoved: v => board.pedals.setKnob(pedal.index, knobColumn.index, v)
                             }
                             Text {
                                 width: knobRow.size + 2
@@ -336,10 +337,10 @@ Rectangle {
                                 showScale: false
                                 capColor: sliderColumn.index === sliderRow.n - 1 ? "#E0781E" : "#D9DADC"
                                 name: (pedal.info.name ?? "") + " " + sliderColumn.modelData.label
-                                value: Pedals.revision >= 0 ? Pedals.knob(pedal.index, sliderColumn.index) : 0.5
+                                value: board.pedals.revision >= 0 ? board.pedals.knob(pedal.index, sliderColumn.index) : 0.5
                                 defaultValue: sliderColumn.modelData.defaultValue
-                                displayText: Pedals.knobText(pedal.index, sliderColumn.index, value)
-                                onMoved: v => Pedals.setKnob(pedal.index, sliderColumn.index, v)
+                                displayText: board.pedals.knobText(pedal.index, sliderColumn.index, value)
+                                onMoved: v => board.pedals.setKnob(pedal.index, sliderColumn.index, v)
                             }
                             Text {
                                 width: parent.width
@@ -422,7 +423,7 @@ Rectangle {
                                 }
                                 MouseArea {
                                     anchors.fill: parent
-                                    onClicked: Pedals.setInLoop(pedal.index, placeChoice.index === 1)
+                                    onClicked: board.pedals.setInLoop(pedal.index, placeChoice.index === 1)
                                 }
                                 Accessible.role: Accessible.RadioButton
                                 Accessible.name: (pedal.info.name ?? "") + (index === 1 ? " in the effects loop" : " in front of the amp")
@@ -451,7 +452,7 @@ Rectangle {
                     MouseArea {
                         id: footswitchArea
                         anchors.fill: parent
-                        onClicked: Pedals.toggle(pedal.index)
+                        onClicked: board.pedals.toggle(pedal.index)
                     }
                     LearnOverlay {
                         anchors.fill: parent
@@ -485,7 +486,7 @@ Rectangle {
                         anchors.fill: parent
                         anchors.margins: -6
                         hoverEnabled: true
-                        onClicked: Pedals.remove(pedal.index)
+                        onClicked: board.pedals.remove(pedal.index)
                     }
                 }
             }
@@ -493,7 +494,7 @@ Rectangle {
 
         // + : another pedal at the end of the board.
         Rectangle {
-            visible: Pedals.count < Pedals.maxPedals
+            visible: board.pedals.count < board.pedals.maxPedals
             x: board.lefts[board.lefts.length - 1]
             width: 110
             height: lane.height
@@ -532,18 +533,18 @@ Rectangle {
             Menu {
                 id: addMenu
                 Repeater {
-                    model: Pedals.types
+                    model: board.pedals.types
                     MenuItem {
                         required property var modelData
                         text: modelData.name
-                        onTriggered: Pedals.add(modelData.type)
+                        onTriggered: board.pedals.add(modelData.type)
                     }
                 }
             }
         }
 
         Text {
-            visible: Pedals.count === 0
+            visible: board.pedals.count === 0
             x: 130
             anchors.verticalCenter: parent.verticalCenter
             text: "Add a pedal with +. Drag pedals to reorder them; FRONT or LOOP puts one in front of the amp or in its effects loop."

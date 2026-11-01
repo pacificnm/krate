@@ -91,7 +91,7 @@ Labels: bold sans-serif uppercase, 11–15 px; displays: monospace.
 
 ## Binding rules
 
-- Every control binds to a C++ singleton property (`Synth.cutoff`, `Pattern.selectedStep`, …) and writes back through it. No JavaScript holds synth state (from M2/M5 on).
+- Every control binds to a property of the controllers the panel is given (`synth.cutoff`, `pattern.selectedStep`, …; one pair per copy of Korrode) and writes back through it. No JavaScript holds synth state (from M2/M5 on).
 - Values crossing into QML are normalized 0–1; display text (Hz, BPM, dB) comes from `Synth.displayText(paramId)`.
 - The playhead LED reads `Synth.currentStep`, updated at 60 Hz by the poll timer.
 - Knobs moved by MIDI update through the same property, so the panel always shows the real value.

@@ -8,10 +8,13 @@ import Krate
 // the program display and STORE, the slot buttons and the edited slot's setup. Then the sections, left
 // to right: arpeggiator and voice, LFOs, mod envelope, oscillators, filter,
 // amp envelope, effects, output. Wheels, performances and keyboard at the bottom. Every
-// control edits the edited slot (Krimson.editedSlot) by key and is
+// control edits the edited slot (panel.krimson.editedSlot) by key and is
 // MIDI-learnable.
 Item {
     id: panel
+    required property Krimson krimson
+    required property Programs programs
+    required property Slots slots
 
     width: 1600
     height: 900
@@ -48,27 +51,27 @@ Item {
         RingKnob {
             id: kkKnob
             // MORPH lit: the knob shows and sets its morph target (starting from its value).
-            readonly property real target: Krimson.morphRevision >= 0 ? Krimson.morph(kk.key) : -1
-            readonly property bool morphing: Krimson.morphEdit && Krimson.morphable(kk.key)
+            readonly property real target: panel.krimson.morphRevision >= 0 ? panel.krimson.morph(kk.key) : -1
+            readonly property bool morphing: panel.krimson.morphEdit && panel.krimson.morphable(kk.key)
             x: (kk.width - width) / 2
             y: 13
             width: kk.size
             height: kk.size
             bipolar: kk.bipolar
-            name: Krimson.label(kk.key) + (morphing ? " morph target" : "")
-            detents: Krimson.detents(kk.key)
-            value: morphing && target >= 0 ? target : (Krimson.revision >= 0 ? Krimson.value(kk.key) : 0)
+            name: panel.krimson.label(kk.key) + (morphing ? " morph target" : "")
+            detents: panel.krimson.detents(kk.key)
+            value: morphing && target >= 0 ? target : (panel.krimson.revision >= 0 ? panel.krimson.value(kk.key) : 0)
             morphValue: morphing ? -1 : target
             ringColor: morphing ? morphColor : "#FF4A3D"
-            defaultValue: Krimson.defaultValue(kk.key)
-            displayText: Krimson.displayText(kk.key, value)
-            onMoved: v => morphing ? Krimson.setMorph(kk.key, v) : Krimson.setValue(kk.key, v)
+            defaultValue: panel.krimson.defaultValue(kk.key)
+            displayText: panel.krimson.displayText(kk.key, value)
+            onMoved: v => morphing ? panel.krimson.setMorph(kk.key, v) : panel.krimson.setValue(kk.key, v)
 
             MouseArea { // MORPH lit: right-click clears this knob's target
                 anchors.fill: parent
                 enabled: kkKnob.morphing
                 acceptedButtons: Qt.RightButton
-                onClicked: Krimson.clearMorph(kk.key)
+                onClicked: panel.krimson.clearMorph(kk.key)
             }
             LearnOverlay {
                 anchors.fill: parent
@@ -95,13 +98,13 @@ Item {
         required property string key
         property string label: ""
         property real rowHeight: 15
-        readonly property int count: Krimson.detents(key)
-        readonly property int current: Krimson.revision >= 0 ? Math.round(Krimson.value(key) * (count - 1)) : 0
+        readonly property int count: panel.krimson.detents(key)
+        readonly property int current: panel.krimson.revision >= 0 ? Math.round(panel.krimson.value(key) * (count - 1)) : 0
         width: 96
         height: 14 + count * rowHeight
 
         Accessible.role: Accessible.List
-        Accessible.name: Krimson.label(key) + ": " + Krimson.displayText(key, Krimson.value(key))
+        Accessible.name: panel.krimson.label(key) + ": " + panel.krimson.displayText(key, panel.krimson.value(key))
 
         PanelLabel {
             x: 0
@@ -132,14 +135,14 @@ Item {
                 Text {
                     x: 14
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Krimson.displayText(choices.key, choiceRow.index / (choices.count - 1))
+                    text: panel.krimson.displayText(choices.key, choiceRow.index / (choices.count - 1))
                     color: choices.current === choiceRow.index ? panel.silk : panel.dim
                     font.family: Theme.labelFont
                     font.pixelSize: 10
                 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: Krimson.setValue(choices.key, choiceRow.index / (choices.count - 1))
+                    onClicked: panel.krimson.setValue(choices.key, choiceRow.index / (choices.count - 1))
                 }
             }
         }
@@ -155,14 +158,14 @@ Item {
         id: toggle
         required property string key
         property string label: ""
-        readonly property bool on: Krimson.revision >= 0 && Krimson.value(key) > 0.5
+        readonly property bool on: panel.krimson.revision >= 0 && panel.krimson.value(key) > 0.5
         width: 50
         height: 26
         dark: true
         tint: on ? "#E2343A" : "transparent"
         faceText: label
-        text: Krimson.label(key) + (on ? ": on" : ": off")
-        onClicked: Krimson.setValue(key, on ? 0 : 1)
+        text: panel.krimson.label(key) + (on ? ": on" : ": off")
+        onClicked: panel.krimson.setValue(key, on ? 0 : 1)
 
         LearnOverlay {
             anchors.fill: parent
@@ -367,11 +370,11 @@ Item {
     // ---- Left block
 
     KKnob { key: "volume"; label: "MASTER LEVEL"; size: 52; x: 34; y: panel.sectionTop }
-    KKnob { key: "tempo"; label: "TEMPO"; size: 40; x: 120; y: panel.sectionTop + 6; visible: Krimson.ownsTransport }
+    KKnob { key: "tempo"; label: "TEMPO"; size: 40; x: 120; y: panel.sectionTop + 6; visible: panel.krimson.ownsTransport }
     Item { // octave: shifts the keys (MIDI and on-screen)
         id: octave
-        readonly property int shift: Krimson.revision >= 0 ? Math.round(Krimson.value("octave") * 6) - 3 : 0
-        function step(delta) { Krimson.setValue("octave", (Math.max(-3, Math.min(3, shift + delta)) + 3) / 6) }
+        readonly property int shift: panel.krimson.revision >= 0 ? Math.round(panel.krimson.value("octave") * 6) - 3 : 0
+        function step(delta) { panel.krimson.setValue("octave", (Math.max(-3, Math.min(3, shift + delta)) + 3) / 6) }
         x: 200
         y: panel.sectionTop
         width: 116
@@ -408,10 +411,10 @@ Item {
         width: 72
         height: 26
         dark: true
-        tint: Krimson.morphEdit ? "#4FA3FF" : "transparent"
+        tint: panel.krimson.morphEdit ? "#4FA3FF" : "transparent"
         faceText: "MORPH"
-        text: "Morph edit" + (Krimson.morphEdit ? ": on" : "")
-        onClicked: Krimson.morphEdit = !Krimson.morphEdit
+        text: "Morph edit" + (panel.krimson.morphEdit ? ": on" : "")
+        onClicked: panel.krimson.morphEdit = !panel.krimson.morphEdit
 
         LearnOverlay {
             anchors.fill: parent
@@ -427,7 +430,7 @@ Item {
         dark: true
         faceText: "CLEAR"
         text: "Clear the slot's morph targets"
-        onClicked: Krimson.clearAllMorph()
+        onClicked: panel.krimson.clearAllMorph()
     }
     // The edited slot's program: bank and number, a dot while edited; while
     // STORE is armed, the blinking destination (▲▼ choose it, STORE writes).
@@ -435,13 +438,13 @@ Item {
     Timer {
         interval: 250
         repeat: true
-        running: Programs.storing
+        running: panel.programs.storing
         onTriggered: panel.blink = !panel.blink
         onRunningChanged: panel.blink = false
     }
     Item {
         id: programBox
-        readonly property int shown: Programs.storing ? Programs.storeTarget : Programs.number
+        readonly property int shown: panel.programs.storing ? panel.programs.storeTarget : panel.programs.number
         x: 200
         y: panel.sectionTop + 96
         width: 116
@@ -454,17 +457,17 @@ Item {
             height: 38
             radius: 3
             color: "#120606"
-            border.color: Programs.storing ? panel.led : panel.frame
+            border.color: panel.programs.storing ? panel.led : panel.frame
 
             Accessible.role: Accessible.StaticText
-            Accessible.name: "Program " + programDigits.text + ", " + Programs.name
+            Accessible.name: "Program " + programDigits.text + ", " + panel.programs.name
 
             Text {
                 id: programDigits
                 anchors.centerIn: parent
-                text: Programs.storing && panel.blink ? ""
+                text: panel.programs.storing && panel.blink ? ""
                     : (Math.floor(programBox.shown / 8) + 1) + "" + (programBox.shown % 8 + 1)
-                      + (Programs.edited && !Programs.storing ? "." : "")
+                      + (panel.programs.edited && !panel.programs.storing ? "." : "")
                 color: panel.led
                 font.family: "monospace"
                 font.pixelSize: 26
@@ -475,15 +478,15 @@ Item {
             x: 88
             y: 14
             spacing: 2
-            PanelButton { width: 26; height: 18; dark: true; faceText: "▲"; text: "Next program"; onClicked: Programs.step(1) }
-            PanelButton { width: 26; height: 18; dark: true; faceText: "▼"; text: "Previous program"; onClicked: Programs.step(-1) }
+            PanelButton { width: 26; height: 18; dark: true; faceText: "▲"; text: "Next program"; onClicked: panel.programs.step(1) }
+            PanelButton { width: 26; height: 18; dark: true; faceText: "▼"; text: "Previous program"; onClicked: panel.programs.step(-1) }
         }
         Text {
             y: 56
             width: 116
             elide: Text.ElideRight
-            text: Programs.storing ? "STORE to " + Programs.programName(Programs.storeTarget) : Programs.name
-            color: Programs.storing ? panel.led : panel.dim
+            text: panel.programs.storing ? "STORE to " + panel.programs.programName(panel.programs.storeTarget) : panel.programs.name
+            color: panel.programs.storing ? panel.led : panel.dim
             font.family: Theme.labelFont
             font.pixelSize: 10
         }
@@ -494,10 +497,10 @@ Item {
         width: 72
         height: 18
         dark: true
-        tint: Programs.storing ? "#E2343A" : "transparent"
+        tint: panel.programs.storing ? "#E2343A" : "transparent"
         faceText: "STORE"
-        text: Programs.storing ? "Store: press again to write" : "Store the slot's sound"
-        onClicked: Programs.pressStore()
+        text: panel.programs.storing ? "Store: press again to write" : "Store the slot's sound"
+        onClicked: panel.programs.pressStore()
 
         LearnOverlay {
             anchors.fill: parent
@@ -514,8 +517,8 @@ Item {
             id: slotButton
             required property int index
             required property string modelData
-            readonly property bool lit: Slots.revision >= 0 && Slots.isLit(index)
-            readonly property bool edited: Krimson.editedSlot === index
+            readonly property bool lit: panel.slots.revision >= 0 && panel.slots.isLit(index)
+            readonly property bool edited: panel.krimson.editedSlot === index
             x: 40 + index * 68
             y: panel.sectionTop + 190
             width: 60
@@ -546,7 +549,7 @@ Item {
             }
             MouseArea {
                 anchors.fill: parent
-                onClicked: mouse => Slots.pressSlot(slotButton.index, (mouse.modifiers & Qt.ShiftModifier) !== 0)
+                onClicked: mouse => panel.slots.pressSlot(slotButton.index, (mouse.modifiers & Qt.ShiftModifier) !== 0)
             }
             LearnOverlay {
                 anchors.fill: parent
@@ -571,44 +574,44 @@ Item {
         spacing: 8
 
         Text {
-            text: "SLOT " + "ABCD"[Krimson.editedSlot] + " SETUP"
+            text: "SLOT " + "ABCD"[panel.krimson.editedSlot] + " SETUP"
             color: panel.silk
             font.family: Theme.labelFont
             font.pixelSize: 11
             font.bold: true
         }
         Stepper {
-            readonly property int channel: Slots.revision >= 0 ? Slots.channel(Krimson.editedSlot) : 0
+            readonly property int channel: panel.slots.revision >= 0 ? panel.slots.channel(panel.krimson.editedSlot) : 0
             label: "CH"
             value: channel > 0 ? String(channel) : "--"
-            onDown: Slots.setChannel(Krimson.editedSlot, (channel + 16) % 17)
-            onUp: Slots.setChannel(Krimson.editedSlot, (channel + 1) % 17)
+            onDown: panel.slots.setChannel(panel.krimson.editedSlot, (channel + 16) % 17)
+            onUp: panel.slots.setChannel(panel.krimson.editedSlot, (channel + 1) % 17)
         }
         Stepper {
-            readonly property int zone: Slots.revision >= 0 ? Slots.zone(Krimson.editedSlot) : 0
+            readonly property int zone: panel.slots.revision >= 0 ? panel.slots.zone(panel.krimson.editedSlot) : 0
             label: "ZONE"
             value: ["Whole", "Lower", "Upper"][zone]
-            onDown: Slots.setZone(Krimson.editedSlot, (zone + 2) % 3)
-            onUp: Slots.setZone(Krimson.editedSlot, (zone + 1) % 3)
+            onDown: panel.slots.setZone(panel.krimson.editedSlot, (zone + 2) % 3)
+            onUp: panel.slots.setZone(panel.krimson.editedSlot, (zone + 1) % 3)
         }
         Stepper {
-            readonly property int split: Slots.revision >= 0 ? Slots.splitNote : -1
+            readonly property int split: panel.slots.revision >= 0 ? panel.slots.splitNote : -1
             label: "SPLIT"
             value: split < 0 ? "Off" : panel.noteName(split)
-            onDown: Slots.splitNote = split < 0 ? 60 : split - 1
-            onUp: Slots.splitNote = split < 0 ? 60 : split + 1
+            onDown: panel.slots.splitNote = split < 0 ? 60 : split - 1
+            onUp: panel.slots.splitNote = split < 0 ? 60 : split + 1
         }
         Row {
             spacing: 8
             PanelButton {
-                readonly property bool on: Slots.revision >= 0 && Slots.isOn(Krimson.editedSlot)
+                readonly property bool on: panel.slots.revision >= 0 && panel.slots.isOn(panel.krimson.editedSlot)
                 width: 64
                 height: 24
                 dark: true
                 tint: on ? "#E2343A" : "transparent"
                 faceText: "ON"
                 text: "Slot on" + (on ? "" : ": off")
-                onClicked: Slots.setOn(Krimson.editedSlot, !on)
+                onClicked: panel.slots.setOn(panel.krimson.editedSlot, !on)
             }
             PanelButton {
                 width: 90
@@ -616,7 +619,7 @@ Item {
                 dark: true
                 faceText: "SPLIT OFF"
                 text: "No split"
-                onClicked: Slots.splitNote = -1
+                onClicked: panel.slots.splitNote = -1
             }
         }
     }
@@ -751,13 +754,13 @@ Item {
     }
     Wheel { // follows the LX49's wheels too
         x: 50; y: 560; label: "PITCH"; springs: true; height: 200
-        position: (Krimson.bendPosition + 1) / 2
-        onChanged: a => Krimson.pitchBend(a * 2 - 1)
+        position: (panel.krimson.bendPosition + 1) / 2
+        onChanged: a => panel.krimson.pitchBend(a * 2 - 1)
     }
     Wheel {
         x: 120; y: 560; label: "MOD"; height: 200
-        position: Krimson.wheelPosition
-        onChanged: a => Krimson.modWheel(a)
+        position: panel.krimson.wheelPosition
+        onChanged: a => panel.krimson.modWheel(a)
     }
 
     // Performances: all four slots' sounds and setup, 1-8.
@@ -776,18 +779,18 @@ Item {
                 font.pixelSize: 11
                 font.bold: true
             }
-            PanelButton { width: 22; height: 22; dark: true; faceText: "◂"; text: "Previous performance"; onClicked: Programs.stepPerformance(-1) }
+            PanelButton { width: 22; height: 22; dark: true; faceText: "◂"; text: "Previous performance"; onClicked: panel.programs.stepPerformance(-1) }
             Text {
                 width: 40
                 anchors.verticalCenter: parent.verticalCenter
                 horizontalAlignment: Text.AlignHCenter
-                text: (Programs.performance + 1) + (Programs.revision >= 0 && Programs.performanceUsed(Programs.performance) ? "" : "·")
+                text: (panel.programs.performance + 1) + (panel.programs.revision >= 0 && panel.programs.performanceUsed(panel.programs.performance) ? "" : "·")
                 color: panel.led
                 font.family: "monospace"
                 font.pixelSize: 16
                 font.bold: true
             }
-            PanelButton { width: 22; height: 22; dark: true; faceText: "▸"; text: "Next performance"; onClicked: Programs.stepPerformance(1) }
+            PanelButton { width: 22; height: 22; dark: true; faceText: "▸"; text: "Next performance"; onClicked: panel.programs.stepPerformance(1) }
         }
         Row {
             spacing: 6
@@ -797,9 +800,9 @@ Item {
                 dark: true
                 faceText: "LOAD"
                 text: "Load the performance"
-                enabled: Programs.revision >= 0 && Programs.performanceUsed(Programs.performance)
+                enabled: panel.programs.revision >= 0 && panel.programs.performanceUsed(panel.programs.performance)
                 opacity: enabled ? 1.0 : 0.4
-                onClicked: Programs.loadPerformance(Programs.performance)
+                onClicked: panel.programs.loadPerformance(panel.programs.performance)
             }
             PanelButton {
                 width: 64
@@ -807,14 +810,14 @@ Item {
                 dark: true
                 faceText: "SAVE"
                 text: "Save all four slots as this performance"
-                onClicked: Programs.savePerformance(Programs.performance)
+                onClicked: panel.programs.savePerformance(panel.programs.performance)
             }
         }
     }
 
     ControllerPianoKeyboard { // key for key with your MIDI keyboard (the rack's KEYS setting)
         id: keys
-        instrument: Krimson
+        instrument: panel.krimson
         x: 200
         y: 540
         width: 1360
@@ -824,7 +827,7 @@ Item {
     }
 
     // Keyboard shortcuts (standalone): Space run/stop, L learn, Esc leaves learn.
-    Keys.onSpacePressed: Krimson.playing = !Krimson.playing
+    Keys.onSpacePressed: panel.krimson.playing = !panel.krimson.playing
     Keys.onPressed: event => {
         if (event.modifiers !== Qt.NoModifier)
             return

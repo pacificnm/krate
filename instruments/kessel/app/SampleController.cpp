@@ -49,8 +49,6 @@ SampleController::SampleController(kessel::Engine &engine, const QString &dataDi
     , m_libraryDir(dataDir + QStringLiteral("/samples"))
     , m_statePath(dataDir + QStringLiteral("/samples.json"))
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     rescan();
     QJsonObject json;
     if (krate::files::readVersionedJson(m_statePath, kStateVersion, &json) == krate::files::LoadResult::Loaded) {
@@ -73,15 +71,8 @@ SampleController::~SampleController()
     m_engine.setSample(nullptr); // the host has stopped processing by now
     for (int d = 0; d < kessel::DrumCount; ++d)
         m_engine.setDrumSample(d, nullptr);
-    s_instance = nullptr;
 }
 
-SampleController *SampleController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 double SampleController::seconds() const
 {

@@ -6,9 +6,11 @@ import Krate
 // The whole instrument at design resolution (1600 x 692); layout in docs/UI.md.
 // Upper deck 0-340: sound knobs, tempo, pattern display, volume. Lower deck
 // 340-692: run/stop, step row, note keys, step function buttons. All state
-// lives in the Synth and Pattern singletons.
+// lives in the Synth and Pattern controllers it is given (one pair per copy).
 Item {
     id: panel
+    required property Synth synth
+    required property Pattern pattern
 
     width: Theme.designWidth
     height: Theme.designHeight
@@ -16,20 +18,20 @@ Item {
     // Space toggles run/stop from anywhere: no control accepts Space, so the key
     // propagates up from whatever has focus.
     focus: true
-    Keys.onSpacePressed: Synth.playing = !Synth.playing // no-op in the rack (no transport of its own)
+    Keys.onSpacePressed: panel.synth.playing = !panel.synth.playing // no-op in the rack (no transport of its own)
 
     // Editing shortcuts (docs/UI.md#keyboard-shortcuts)
     Keys.onPressed: event => {
         if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))
             return
         switch (event.key) {
-        case Qt.Key_Left: Pattern.selectPrevious(); break
-        case Qt.Key_Right: Pattern.selectNext(); break
-        case Qt.Key_A: Pattern.toggleAccent(); break
-        case Qt.Key_S: Pattern.toggleSlide(); break
-        case Qt.Key_N: Pattern.setGate(0); break
-        case Qt.Key_T: Pattern.setGate(1); break
-        case Qt.Key_R: Pattern.setGate(2); break
+        case Qt.Key_Left: panel.pattern.selectPrevious(); break
+        case Qt.Key_Right: panel.pattern.selectNext(); break
+        case Qt.Key_A: panel.pattern.toggleAccent(); break
+        case Qt.Key_S: panel.pattern.toggleSlide(); break
+        case Qt.Key_N: panel.pattern.setGate(0); break
+        case Qt.Key_T: panel.pattern.setGate(1); break
+        case Qt.Key_R: panel.pattern.setGate(2); break
         case Qt.Key_L: MidiLearn.active = !MidiLearn.active; break
         case Qt.Key_Escape:
             if (!MidiLearn.active)
@@ -38,7 +40,7 @@ Item {
             break
         default:
             if (event.key >= Qt.Key_1 && event.key <= Qt.Key_8)
-                Pattern.pressNumber(event.key - Qt.Key_1)
+                panel.pattern.pressNumber(event.key - Qt.Key_1)
             else
                 return
         }
@@ -70,8 +72,8 @@ Item {
     WaveSwitch {
         x: 96
         y: 6
-        position: Synth.waveform >= 0.5 ? 1 : 0
-        onToggled: position => Synth.waveform = position
+        position: panel.synth.waveform >= 0.5 ? 1 : 0
+        onToggled: position => panel.synth.waveform = position
 
         LearnOverlay {
             anchors.fill: parent
@@ -141,10 +143,10 @@ Item {
                 width: 72
                 height: 72
                 name: soundKnob.modelData.name
-                value: Synth.revision >= 0 ? Synth.paramByKey(soundKnob.modelData.key) : 0
-                defaultValue: Synth.defaultValue(soundKnob.modelData.key)
-                displayText: Synth.displayText(soundKnob.modelData.key, value)
-                onMoved: v => Synth.setParamByKey(soundKnob.modelData.key, v)
+                value: panel.synth.revision >= 0 ? panel.synth.paramByKey(soundKnob.modelData.key) : 0
+                defaultValue: panel.synth.defaultValue(soundKnob.modelData.key)
+                displayText: panel.synth.displayText(soundKnob.modelData.key, value)
+                onMoved: v => panel.synth.setParamByKey(soundKnob.modelData.key, v)
 
                 LearnOverlay {
                     anchors.fill: parent
@@ -229,7 +231,7 @@ Item {
         width: 14
         height: 14
         radius: 3
-        on: Host.audioConnected && Synth.beat // lit for the first step of each beat, at any Scale
+        on: Host.audioConnected && panel.synth.beat // lit for the first step of each beat, at any Scale
     }
 
     // Patterns: 8 banks (A-H) of 8. A BANK blinks until a number is pressed.
@@ -237,7 +239,7 @@ Item {
     Timer {
         interval: 250
         repeat: true
-        running: Pattern.pendingBank >= 0
+        running: panel.pattern.pendingBank >= 0
         onTriggered: panel.bankBlink = !panel.bankBlink
         onRunningChanged: panel.bankBlink = false
     }
@@ -256,8 +258,8 @@ Item {
                 height: 30
                 faceText: String.fromCharCode(65 + index)
                 text: "Bank " + faceText
-                dark: Pattern.pendingBank === index ? panel.bankBlink : Pattern.pendingBank < 0 && Pattern.bank === index
-                onClicked: Pattern.pressBank(index)
+                dark: panel.pattern.pendingBank === index ? panel.bankBlink : panel.pattern.pendingBank < 0 && panel.pattern.bank === index
+                onClicked: panel.pattern.pressBank(index)
 
                 LearnOverlay {
                     anchors.fill: parent
@@ -282,8 +284,8 @@ Item {
                 height: 30
                 faceText: index + 1
                 text: "Pattern " + (index + 1)
-                dark: Pattern.pendingBank < 0 && Pattern.number === index
-                onClicked: Pattern.pressNumber(index)
+                dark: panel.pattern.pendingBank < 0 && panel.pattern.number === index
+                onClicked: panel.pattern.pressNumber(index)
 
                 LearnOverlay {
                     anchors.fill: parent
@@ -296,18 +298,18 @@ Item {
 
     // Tempo: only when Korrode has its own transport (standalone); the rack's
     // transport bar owns tempo.
-    PanelLabel { centerX: 358; y: 150; text: "TEMPO"; visible: Synth.ownsTransport }
+    PanelLabel { centerX: 358; y: 150; text: "TEMPO"; visible: panel.synth.ownsTransport }
     Knob {
-        visible: Synth.ownsTransport
+        visible: panel.synth.ownsTransport
         x: 358 - width / 2
         y: 188
         width: 116
         height: 116
         name: "Tempo"
-        value: Synth.tempo
-        defaultValue: Synth.defaultValue("tempo")
-        displayText: Synth.displayText("tempo", value)
-        onMoved: v => Synth.tempo = v
+        value: panel.synth.tempo
+        defaultValue: panel.synth.defaultValue("tempo")
+        displayText: panel.synth.displayText("tempo", value)
+        onMoved: v => panel.synth.tempo = v
 
         LearnOverlay {
             anchors.fill: parent
@@ -324,9 +326,9 @@ Item {
         width: 66
         height: 66
         name: "Scale"
-        value: Synth.scale
-        displayText: Synth.displayText("scale", value)
-        onMoved: v => Synth.scale = v
+        value: panel.synth.scale
+        displayText: panel.synth.displayText("scale", value)
+        onMoved: v => panel.synth.scale = v
         detents: 3
         minAngle: -60
         maxAngle: 60
@@ -359,9 +361,9 @@ Item {
         width: 66
         height: 66
         name: "Play mode"
-        value: Synth.playMode
-        displayText: Synth.displayText("playmode", value)
-        onMoved: v => Synth.playMode = v
+        value: panel.synth.playMode
+        displayText: panel.synth.displayText("playmode", value)
+        onMoved: v => panel.synth.playMode = v
         detents: 5
         minAngle: 35
         maxAngle: 145
@@ -406,18 +408,18 @@ Item {
         x: 752
         y: 170
         width: 352
-        text: "Pattern " + Pattern.name + (Pattern.pendingBank >= 0 ? "  (bank " + String.fromCharCode(65 + Pattern.pendingBank) + "?)" : "")
-        onUp: Pattern.index = Math.min(63, Pattern.index + 1)
-        onDown: Pattern.index = Math.max(0, Pattern.index - 1)
+        text: "Pattern " + panel.pattern.name + (panel.pattern.pendingBank >= 0 ? "  (bank " + String.fromCharCode(65 + panel.pattern.pendingBank) + "?)" : "")
+        onUp: panel.pattern.index = Math.min(63, panel.pattern.index + 1)
+        onDown: panel.pattern.index = Math.max(0, panel.pattern.index - 1)
     }
     PanelLabel { x: 752; y: 222; text: "LENGTH" }
     LcdField {
         x: 752
         y: 242
         width: 352
-        text: Pattern.length + (Pattern.length === 1 ? " step" : " steps")
-        onUp: Pattern.length = Pattern.length + 1
-        onDown: Pattern.length = Pattern.length - 1
+        text: panel.pattern.length + (panel.pattern.length === 1 ? " step" : " steps")
+        onUp: panel.pattern.length = panel.pattern.length + 1
+        onDown: panel.pattern.length = panel.pattern.length - 1
     }
     Rectangle { // output level meter
         x: 752
@@ -462,11 +464,11 @@ Item {
                 width: 46
                 height: 46
                 detents: fxKnob.modelData.key === "delay_time" ? 7 : 0
-                name: Synth.revision >= 0 ? fxKnob.modelData.name : ""
-                value: Synth.revision >= 0 ? Synth.paramByKey(fxKnob.modelData.key) : 0
-                defaultValue: Synth.defaultValue(fxKnob.modelData.key)
-                displayText: Synth.displayText(fxKnob.modelData.key, value)
-                onMoved: v => Synth.setParamByKey(fxKnob.modelData.key, v)
+                name: panel.synth.revision >= 0 ? fxKnob.modelData.name : ""
+                value: panel.synth.revision >= 0 ? panel.synth.paramByKey(fxKnob.modelData.key) : 0
+                defaultValue: panel.synth.defaultValue(fxKnob.modelData.key)
+                displayText: panel.synth.displayText(fxKnob.modelData.key, value)
+                onMoved: v => panel.synth.setParamByKey(fxKnob.modelData.key, v)
 
                 LearnOverlay {
                     anchors.fill: parent
@@ -490,10 +492,10 @@ Item {
         width: 116
         height: 116
         name: "Volume"
-        value: Synth.volume
-        defaultValue: Synth.defaultValue("volume")
-        displayText: Synth.displayText("volume", value)
-        onMoved: v => Synth.volume = v
+        value: panel.synth.volume
+        defaultValue: panel.synth.defaultValue("volume")
+        displayText: panel.synth.displayText("volume", value)
+        onMoved: v => panel.synth.volume = v
 
         LearnOverlay {
             anchors.fill: parent
@@ -541,15 +543,15 @@ Item {
 
     PanelButton {
         id: runStop
-        visible: Synth.canRun // standalone: the transport; in the rack: just Korrode's sequencer
+        visible: panel.synth.canRun // standalone: the transport; in the rack: just Korrode's sequencer
         x: 32
         y: 506
         width: 142
         height: 132
         text: "Run / Stop"
         indicatorBar: true
-        ledOn: Synth.playing
-        onClicked: Synth.playing = !Synth.playing
+        ledOn: panel.synth.playing
+        onClicked: panel.synth.playing = !panel.synth.playing
 
         LearnOverlay {
             anchors.fill: parent
@@ -557,7 +559,7 @@ Item {
             round: false
         }
     }
-    PanelLabel { centerX: 103; y: 650; text: "RUN / STOP"; visible: Synth.canRun }
+    PanelLabel { centerX: 103; y: 650; text: "RUN / STOP"; visible: panel.synth.canRun }
 
     // Keyboard and time-mode buttons
     PanelButton {
@@ -568,9 +570,9 @@ Item {
         height: 86
         dark: true
         hasLed: true
-        ledOn: Pattern.keyboardMode
+        ledOn: panel.pattern.keyboardMode
         text: "Keyboard: note keys play"
-        onClicked: Pattern.keyboardMode = !Pattern.keyboardMode
+        onClicked: panel.pattern.keyboardMode = !panel.pattern.keyboardMode
     }
     PanelLabel {
         centerX: 281
@@ -588,34 +590,35 @@ Item {
         height: 80
         text: "Time mode"
         hasLed: true
-        ledOn: Pattern.timeMode
-        onClicked: Pattern.timeMode = !Pattern.timeMode
+        ledOn: panel.pattern.timeMode
+        onClicked: panel.pattern.timeMode = !panel.pattern.timeMode
     }
 
     // Steps and note keys
     StepRow {
+        pattern: panel.pattern
         x: 362
         y: 360
-        selectedStep: Pattern.selectedStep
-        playStep: Host.audioConnected ? Synth.currentStep : -1
-        onStepClicked: step => Pattern.selectedStep = step
+        selectedStep: panel.pattern.selectedStep
+        playStep: Host.audioConnected ? panel.synth.currentStep : -1
+        onStepClicked: step => panel.pattern.selectedStep = step
     }
 
     PianoKeys {
         x: 362
         y: 458
-        litKey: Pattern.keyboardMode ? -1 : Pattern.selectedNote
+        litKey: panel.pattern.keyboardMode ? -1 : panel.pattern.selectedNote
         onKeyClicked: semitone => {
-            if (!Pattern.keyboardMode)
-                Pattern.setNote(semitone)
+            if (!panel.pattern.keyboardMode)
+                panel.pattern.setNote(semitone)
         }
         onKeyPressed: semitone => {
-            if (Pattern.keyboardMode)
-                Pattern.auditionOn(semitone)
+            if (panel.pattern.keyboardMode)
+                panel.pattern.auditionOn(semitone)
         }
         onKeyReleased: () => {
-            if (Pattern.keyboardMode)
-                Pattern.auditionOff()
+            if (panel.pattern.keyboardMode)
+                panel.pattern.auditionOff()
         }
     }
 
@@ -652,11 +655,11 @@ Item {
             required property int index
 
             // Time mode shows the gate on ACCENT (rest), DOWN (note) and UP (tie).
-            readonly property bool lit: index === 1 ? Pattern.selectedSlide
-                                      : Pattern.timeMode ? Pattern.selectedGate === [2, -1, 0, 1][index]
-                                      : index === 0 ? Pattern.selectedAccent
-                                      : index === 2 ? Pattern.selectedOctave < 0
-                                      : Pattern.selectedOctave > 0
+            readonly property bool lit: index === 1 ? panel.pattern.selectedSlide
+                                      : panel.pattern.timeMode ? panel.pattern.selectedGate === [2, -1, 0, 1][index]
+                                      : index === 0 ? panel.pattern.selectedAccent
+                                      : index === 2 ? panel.pattern.selectedOctave < 0
+                                      : panel.pattern.selectedOctave > 0
 
             PanelLabel {
                 centerX: fn.modelData.cx
@@ -687,15 +690,15 @@ Item {
                 text: fn.modelData.name
                 onClicked: {
                     if (fn.index === 1)
-                        Pattern.toggleSlide()
-                    else if (Pattern.timeMode)
-                        Pattern.setGate([2, -1, 0, 1][fn.index]) // Rest, -, Note, Tie
+                        panel.pattern.toggleSlide()
+                    else if (panel.pattern.timeMode)
+                        panel.pattern.setGate([2, -1, 0, 1][fn.index]) // Rest, -, Note, Tie
                     else if (fn.index === 0)
-                        Pattern.toggleAccent()
+                        panel.pattern.toggleAccent()
                     else if (fn.index === 2)
-                        Pattern.octaveDown()
+                        panel.pattern.octaveDown()
                     else
-                        Pattern.octaveUp()
+                        panel.pattern.octaveUp()
                 }
             }
         }
@@ -724,7 +727,7 @@ Item {
         width: 58
         height: 36
         text: "Randomize pattern"
-        onClicked: Pattern.randomize()
+        onClicked: panel.pattern.randomize()
     }
     PanelLabel { centerX: 1504; y: 432; text: "DENSITY"; font.pixelSize: 11 }
     Knob { // how many steps RANDOMIZE fills
@@ -734,10 +737,10 @@ Item {
         width: 38
         height: 38
         name: "Density"
-        value: Synth.revision >= 0 ? Synth.paramByKey("density") : 0
-        defaultValue: Synth.defaultValue("density")
-        displayText: Synth.displayText("density", value)
-        onMoved: v => Synth.setParamByKey("density", v)
+        value: panel.synth.revision >= 0 ? panel.synth.paramByKey("density") : 0
+        defaultValue: panel.synth.defaultValue("density")
+        displayText: panel.synth.displayText("density", value)
+        onMoved: v => panel.synth.setParamByKey("density", v)
 
         LearnOverlay {
             anchors.fill: parent
@@ -757,7 +760,7 @@ Item {
         width: 142
         height: 132
         text: "Clear pattern"
-        onClicked: Pattern.clear()
+        onClicked: panel.pattern.clear()
     }
     PanelLabel { centerX: 1503; y: 650; text: "CLEAR" }
 }

@@ -9,6 +9,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <array>
+#include <functional>
 
 #include "rack/ChannelEq.h"
 
@@ -75,6 +76,9 @@ public:
     QStringList panelModules() const { return m_modules; }
     QStringList panelComponents() const { return m_components; }
     QStringList deviceIds() const;
+    // What a device's panel is made with: its own controllers (InstrumentInstance::panelProperties).
+    Q_INVOKABLE QVariantMap panelProperties(int device) const;
+    void setPanelProperties(std::function<QVariantMap(int)> properties) { m_panelProperties = std::move(properties); }
     // The device `step` places on (1 next, -1 previous) that has a panel to show.
     Q_INVOKABLE int stepFocus(int step) const;
 
@@ -224,6 +228,7 @@ private:
     void applyEffects();
     int m_focus = 0;
     RackRunControl *m_run = nullptr;
+    std::function<QVariantMap(int)> m_panelProperties;
     bool m_shownPlaying = false; // the play state last announced
     bool m_mixerShown = false;
     bool m_songShown = false;

@@ -12,7 +12,7 @@ class Engine;
 class QQmlEngine;
 class QJSEngine;
 
-// QML singleton "Pattern": the 16 steps of the current pattern as a list
+// QML type "Pattern" (one per instrument, given to its panel): the 16 steps of the current pattern as a list
 // model, the selected step, and the editing modes. The GUI-side copy of all
 // 64 patterns (8 banks of 8) is the source of truth for editing and saving; every change
 // is sent to the audio thread as an Engine command (docs/ARCHITECTURE.md).
@@ -20,7 +20,7 @@ class PatternModel : public QAbstractListModel
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Pattern)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int index READ patternIndex WRITE setPatternIndex NOTIFY indexChanged) // pattern 0..63 (bank * 8 + number)
     Q_PROPERTY(int bank READ bank NOTIFY indexChanged)              // 0..7 = A..H, of the current pattern
@@ -58,7 +58,6 @@ public:
     PatternModel(korrode::Engine &engine, const QString &filePath, QObject *parent);
     ~PatternModel() override;
 
-    static PatternModel *create(QQmlEngine *, QJSEngine *);
 
     int rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role) const override;
@@ -127,7 +126,6 @@ private:
     void sendCurrentPattern();
     void scheduleSave();
 
-    static inline PatternModel *s_instance = nullptr;
 
     korrode::Engine &m_engine;
     QString m_filePath;

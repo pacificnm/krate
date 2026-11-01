@@ -15,7 +15,7 @@ namespace kobalt {
 class Engine;
 }
 
-// QML singleton "Sequencer": Kobalt's step sequencer, 8 patterns of up to 64
+// QML type "Sequencer" (one per instrument, given to its panel): Kobalt's step sequencer, 8 patterns of up to 64
 // steps (docs/BRIEF.md#step-sequencer). Loading from the keys: pick a step,
 // then play notes one at a time; each goes into the step and the next is
 // picked. A key going down while the one before is still held makes the step
@@ -26,7 +26,7 @@ class KobaltSequenceController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Sequencer)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int patternIndex READ patternIndex WRITE setPatternIndex NOTIFY changed) // 0..7
     Q_PROPERTY(int length READ length NOTIFY changed)                                   // 1..64
@@ -42,7 +42,6 @@ public:
     KobaltSequenceController(KobaltController &panel, kobalt::Engine &engine, const QString &filePath, QObject *parent);
     ~KobaltSequenceController() override;
 
-    static KobaltSequenceController *create(QQmlEngine *, QJSEngine *);
 
     int patternIndex() const { return m_bank.current; }
     void setPatternIndex(int index);
@@ -85,7 +84,6 @@ private:
     int previous() const; // the step before the cursor (wrapping), -1 if not loading
     void poll();        // playing step, loading from the keys
 
-    static inline KobaltSequenceController *s_instance = nullptr;
 
     KobaltController &m_panel;
     kobalt::Engine &m_engine;

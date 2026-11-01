@@ -26,8 +26,6 @@ DrumsController::DrumsController(kessel::Engine &engine, const QString &panelFil
     , m_transport(transport)
     , m_patternsFilePath(patternsFilePath)
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
 
     using kessel::persistence::LoadResult;
     switch (kessel::persistence::loadPatterns(m_patternsFilePath, &m_bank)) {
@@ -63,15 +61,8 @@ DrumsController::~DrumsController()
 {
     if (m_saveTimer.isActive())
         save();
-    s_instance = nullptr;
 }
 
-DrumsController *DrumsController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 void DrumsController::save()
 {

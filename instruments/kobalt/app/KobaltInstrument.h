@@ -15,6 +15,12 @@ class Instance final : public krate::InstrumentInstance
 public:
     explicit Instance(const krate::InstrumentContext &context);
     krate::IInstrument &instrument() override { return engine; }
+    QVariantMap panelProperties() override
+    {
+        return {{QStringLiteral("kobalt"), QVariant::fromValue(&controller)},
+                {QStringLiteral("patches"), QVariant::fromValue(&patches)},
+                {QStringLiteral("sequencer"), QVariant::fromValue(&sequencer)}};
+    }
     void triggerAction(const QString &action) override;
 
     Engine engine;

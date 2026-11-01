@@ -21,7 +21,7 @@ class IrKernel;
 class Krunch;
 } // namespace krunch
 
-// QML singleton "Cabinets": the IR library and which IRs each channel plays
+// QML type "Cabinets" (one per instrument, given to its panel): the IR library and which IRs each channel plays
 // (A and B). Loads an IR when it's chosen (resampled to the engine's rate) and
 // hands it to the audio thread; rebuilds them all when the rate changes.
 // Choices are kept in cabinets.json (by IR id) and in songs' sounds.
@@ -29,7 +29,7 @@ class CabinetController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Cabinets)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     // Bumped when a channel's IRs or the library change.
     Q_PROPERTY(int revision READ revision NOTIFY changed)
@@ -44,7 +44,6 @@ public:
     CabinetController(krunch::Krunch &engine, const QString &libraryDirectory, const QString &filePath, QObject *parent);
     ~CabinetController() override;
 
-    static CabinetController *create(QQmlEngine *, QJSEngine *);
 
     int revision() const { return m_revision; }
     int libraryCount() const;
@@ -77,7 +76,6 @@ private:
     void saveFile();
     void loadFile();
 
-    static inline CabinetController *s_instance = nullptr;
 
     krunch::Krunch &m_engine;
     IrLibrary m_library;

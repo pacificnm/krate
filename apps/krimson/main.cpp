@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         [] { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
+    engine.setInitialProperties(instrument->panelProperties()); // its controllers, for the panel
     engine.loadFromModule(entry.qmlModule, "Main");
 
     krate::installScreenshotHook(engine);

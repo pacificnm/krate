@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QString>
 #include <QStringList>
+#include <QVariantMap>
 
 namespace krate {
 
@@ -36,6 +37,10 @@ public:
     virtual IInstrument &instrument() = 0;
     // A learned MIDI button for one of the entry's actions was pressed.
     virtual void triggerAction(const QString &action) { Q_UNUSED(action); }
+    // What its panel is made with: the controllers it binds to, by the panel's
+    // property names ({"synth": the SynthController, ...}). Each copy of an
+    // instrument has its own, so several can play side by side.
+    virtual QVariantMap panelProperties() { return {}; }
 
     // The instrument's whole sound, for a song in the library to keep
     // (docs/SONG_PLAYER.md#library), and putting one back. By default every

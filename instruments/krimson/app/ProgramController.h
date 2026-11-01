@@ -28,7 +28,7 @@ class ProgramController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Programs)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int number READ number NOTIFY changed)            // the edited slot's program, 0..63
     Q_PROPERTY(QString name READ name NOTIFY changed)
@@ -44,7 +44,6 @@ public:
                       const QString &programsPath, const QString &performancesPath, QObject *parent);
     ~ProgramController() override;
 
-    static ProgramController *create(QQmlEngine *, QJSEngine *);
 
     int number() const;
     QString name() const;
@@ -78,7 +77,6 @@ private:
     void notify();
     void takeInbox(); // programs sent from another app (Konnekt): stored, the newest into the edited slot
 
-    static inline ProgramController *s_instance = nullptr;
 
     KrimsonController &m_panel;
     SlotController &m_slotSetup;
