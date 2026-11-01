@@ -7,7 +7,7 @@
 // bars, each holding 8 tracks of notes. Plain values, no Qt, no allocation.
 namespace krate::seq {
 
-inline constexpr int kTracks = 8;
+inline constexpr int kTracks = 16;
 inline constexpr int kPatterns = 16;
 inline constexpr int kTicksPerBeat = 96;
 inline constexpr int kMaxTicks = 16 * kTicksPerBeat; // 4 bars of 4/4

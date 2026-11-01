@@ -19,6 +19,10 @@ public:
 
     virtual int outputCount() const = 0;
     virtual std::string outputName(int index) const = 0;
+    // Whether the output has a port now: one not wanted yet gets none (the
+    // processor is handed nullptr for it) until the host is told to look
+    // again (JackHost::updateOutputs). The rack's devices: once in the rack.
+    virtual bool outputWanted(int index) const { (void)index; return true; }
     // Physical playback channel (0, 1, ...) this output auto-connects to, or -1.
     virtual int playbackChannel(int index) const = 0;
     // Audio inputs (in_1, in_2, ...: what the user connects a guitar to).

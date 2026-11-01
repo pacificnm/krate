@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <bitset>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -32,7 +33,8 @@ struct RackBlock
     float *masterL = nullptr;
     float *masterR = nullptr;
     // Optional per-device outputs: 2 buffers per device (L, R) in device order,
-    // each `frames` long; each device's own output, before the mixer.
+    // each `frames` long (or nullptr: that device's own output goes nowhere);
+    // each device's own output, before the mixer.
     float *const *deviceOutputs = nullptr;
 };
 
@@ -47,7 +49,9 @@ struct RackBlock
 class Rack
 {
 public:
-    static constexpr int kMaxDevices = 32; // the feed masks are 32-bit
+    // Every copy of every instrument (docs/DAW.md), the audio tracks and the
+    // plugin slots. Below kRackDevice, and in a mapping's 8 bits.
+    static constexpr int kMaxDevices = 160;
     static constexpr int kChannels = 16;
     static constexpr int kInputs = 2;           // audio inputs, given to every device that has inputs
     static constexpr int kAnyChannel = 16;      // CC map row matching any channel
@@ -59,6 +63,7 @@ public:
 
     // The rack itself as an Action's device (e.g. play/stop).
     static constexpr int kRackDevice = 255;
+    static_assert(kMaxDevices < kRackDevice);
 
     // What a mapped CC or note does.
     struct Mapping
@@ -257,11 +262,11 @@ private:
     int m_count = 0;
 
     std::atomic<int> m_focus{0};
-    std::array<std::atomic<std::int8_t>, kChannels> m_channelDevice;
+    std::array<std::atomic<std::int16_t>, kChannels> m_channelDevice;
     std::atomic<bool> m_programFocus{true};
     std::atomic<int> m_keysChannel{-1};
     // Audio thread: the device each sounding note (channel, key) went to; -1 none.
-    std::array<std::array<std::int8_t, 128>, kChannels> m_noteDevice;
+    std::array<std::array<std::int16_t, 128>, kChannels> m_noteDevice;
     std::atomic<float> m_masterLevel{1.0f};
     float m_masterGain = 1.0f; // ramped, audio thread only
     bool m_primed = false;     // first block starts at the fader settings instead of ramping to them

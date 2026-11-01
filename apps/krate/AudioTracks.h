@@ -21,7 +21,7 @@ class QQmlEngine;
 class QJSEngine;
 class RackController;
 
-// QML singleton "Tracks": Krate's audio tracks (docs/DAW.md, D2). Eight
+// QML singleton "Tracks": Krate's audio tracks (docs/DAW.md, D2). Sixteen
 // tracks, each a rack device (added from +, like an instrument): it records
 // its input (the interface, or another device in stereo) into takes, WAV
 // files in ~/.local/share/krate/recordings/audioN/. REC (the transport bar)
@@ -42,7 +42,7 @@ class AudioTracksController : public QObject
     QML_SINGLETON
 
 public:
-    static constexpr int kTracks = 8;
+    static constexpr int kTracks = 16;
     // A take placed on a lane (D3), trimmed and faded (D4); frames are the take's.
     struct LaneClip
     {
@@ -57,6 +57,7 @@ public:
 
     Q_PROPERTY(bool recording READ recording WRITE setRecording NOTIFY recordingChanged) // REC
     Q_PROPERTY(int revision READ revision NOTIFY changed)  // takes or the active one changed
+    Q_PROPERTY(int trackCount READ trackCount CONSTANT)
     Q_PROPERTY(int frame READ frame NOTIFY frameChanged)   // ~20 Hz: meters, recording state
 
     explicit AudioTracksController(const QString &dir, QObject *parent = nullptr);
@@ -79,6 +80,7 @@ public:
             t.engine->setPunch(on, fromBar, toBar);
     }
     int revision() const { return m_revision; }
+    int trackCount() const { return kTracks; }
     int frame() const { return m_frame; }
 
     Q_INVOKABLE int trackOf(int rackDevice) const; // -1: not a track

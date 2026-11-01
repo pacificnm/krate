@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/recordings"), nullptr);
     const qsizetype firstTrack = entries.size();
     entries.append(audioTrackEntries(audioTracks));
-    // CLAP plugins (docs/DAW.md, D7): eight slots, out of the rack until added;
+    // CLAP plugins (docs/DAW.md, D7): sixteen slots, out of the rack until added;
     // which plugin each holds, and its state, in ~/.config/krate/plugins.json.
     PluginSlotsController pluginSlots(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
                                           + QStringLiteral("/plugins.json"),
@@ -269,6 +269,8 @@ int main(int argc, char *argv[])
                      &ArrangeController::devicesChanged);
     pluginSlots.restore();
     audioTracks.setRoundTrip([&jack] { return int(jack.roundTripFrames()); });
+    // A device's own output port appears when it's added to the rack.
+    QObject::connect(&rackController, &RackController::presenceChanged, &rackController, [&jack] { jack.updateOutputs(); });
     host.setMidiInputMatch(session.midiInput());
     host.setRequestedBufferSize(session.bufferSize());
     host.setInputPorts(session.audioInputs());

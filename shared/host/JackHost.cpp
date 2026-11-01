@@ -50,6 +50,8 @@ bool JackHost::open(const char *clientName, std::string *error)
 
     bool portsOk = true;
     for (int c = 0; c < m_channels; ++c) {
+        if (!m_processor.outputWanted(c))
+            continue;
         const std::string name = m_processor.outputName(c);
         m_outs[std::size_t(c)] = jack_port_register(m_client, name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
         portsOk = portsOk && m_outs[std::size_t(c)];
@@ -99,7 +101,8 @@ void JackHost::close()
         jack_deactivate(m_client);
     jack_client_close(m_client);
     m_client = nullptr;
-    m_outs.fill(nullptr);
+    for (auto &out : m_outs)
+        out.store(nullptr);
     m_ins.fill(nullptr);
     m_midiIn = nullptr;
 }
@@ -141,6 +144,8 @@ std::vector<std::string> JackHost::connectToPlayback(const std::string &device)
         if (channel < 0)
             continue;
         jack_port_t *out = m_outs[std::size_t(c)];
+        if (!out)
+            continue;
         if (const char **old = jack_port_get_connections(out)) { // a different device before
             for (int i = 0; old[i]; ++i)
                 jack_disconnect(m_client, jack_port_name(out), old[i]);
@@ -254,6 +259,20 @@ std::uint32_t JackHost::roundTripFrames() const
     return capture.max + playback.max;
 }
 
+void JackHost::updateOutputs()
+{
+    if (!m_client || m_serverGone.load(std::memory_order_relaxed))
+        return;
+    for (int c = 0; c < m_channels; ++c) {
+        if (m_outs[std::size_t(c)].load(std::memory_order_relaxed) || !m_processor.outputWanted(c))
+            continue;
+        const std::string name = m_processor.outputName(c);
+        // Published after it's made: the next cycle writes to it.
+        if (jack_port_t *port = jack_port_register(m_client, name.c_str(), JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))
+            m_outs[std::size_t(c)].store(port, std::memory_order_release);
+    }
+}
+
 void JackHost::suspend()
 {
     m_suspended.store(true, std::memory_order_seq_cst);
@@ -273,7 +292,8 @@ int JackHost::onProcess(jack_nframes_t frames, void *arg)
     self->m_cycles.fetch_add(1, std::memory_order_seq_cst);
     if (self->m_suspended.load(std::memory_order_seq_cst)) { // another thread has the processor (exporting)
         for (int c = 0; c < self->m_channels; ++c)
-            std::fill_n(static_cast<float *>(jack_port_get_buffer(self->m_outs[std::size_t(c)], frames)), frames, 0.0f);
+            if (jack_port_t *port = self->m_outs[std::size_t(c)].load(std::memory_order_acquire))
+                std::fill_n(static_cast<float *>(jack_port_get_buffer(port, frames)), frames, 0.0f);
         return 0;
     }
 
@@ -284,8 +304,10 @@ int JackHost::onProcess(jack_nframes_t frames, void *arg)
     }
 
     float *outputs[kMaxChannels];
-    for (int c = 0; c < self->m_channels; ++c)
-        outputs[c] = static_cast<float *>(jack_port_get_buffer(self->m_outs[std::size_t(c)], frames));
+    for (int c = 0; c < self->m_channels; ++c) {
+        jack_port_t *port = self->m_outs[std::size_t(c)].load(std::memory_order_acquire);
+        outputs[c] = port ? static_cast<float *>(jack_port_get_buffer(port, frames)) : nullptr;
+    }
 
     const float *inputs[kMaxInputs];
     for (int c = 0; c < self->m_inputs; ++c) {

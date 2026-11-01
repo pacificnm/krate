@@ -47,6 +47,8 @@ public:
         const std::string id = device < int(m_ids.size()) ? m_ids[std::size_t(device)] : "device" + std::to_string(device + 1);
         return id + ((index - 2) % 2 == 0 ? "_L" : "_R");
     }
+    // A device's own output gets its port once the device is in the rack.
+    bool outputWanted(int index) const override { return index < 2 || m_rack.present((index - 2) / 2); }
     int playbackChannel(int index) const override { return index < 2 ? index : -1; }
 
     int inputCount() const override { return Rack::kInputs; }
@@ -68,7 +70,7 @@ public:
         for (int guard = 0; done < frames && guard < 64; ++guard) {
             const std::uint32_t n = done == 0 ? first : m_transport.framesUntilLoop(frames - done, sampleRate);
             for (int c = 0; c < outs; ++c)
-                m_outs[std::size_t(c)] = outputs[c] + done;
+                m_outs[std::size_t(c)] = outputs[c] ? outputs[c] + done : nullptr;
             for (int c = 0; c < Rack::kInputs; ++c)
                 m_ins[std::size_t(c)] = inputs && inputs[c] ? inputs[c] + done : nullptr;
             std::uint32_t count = 0; // this part's MIDI, its frames from the part's start

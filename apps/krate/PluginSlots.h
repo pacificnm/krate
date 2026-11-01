@@ -21,8 +21,8 @@ class QQmlEngine;
 class QJSEngine;
 class PluginEditor;
 
-// QML singleton "Plugins": CLAP plugins in the rack (docs/DAW.md, D7). Eight
-// slots, "Plugin 1".."Plugin 8", each a rack device added from + like an
+// QML singleton "Plugins": CLAP plugins in the rack (docs/DAW.md, D7). Sixteen
+// slots, "Plugin 1".."Plugin 16", each a rack device added from + like an
 // instrument; a slot holds a plugin you pick from those found on the system.
 // An instrument plugin plays like the built-in instruments (the keyboard, the
 // sequencer, the arranger, the song player, its mixer strip, automation); an
@@ -42,7 +42,7 @@ class PluginSlotsController : public QObject
     Q_PROPERTY(QVariantList available READ available NOTIFY availableChanged)
 
 public:
-    static constexpr int kSlots = 8;
+    static constexpr int kSlots = 16;
 
     // `file`: plugins.json; `searchPaths`: where plugins are looked for.
     PluginSlotsController(QString file, std::vector<std::string> searchPaths, QObject *parent = nullptr);
@@ -155,6 +155,6 @@ private:
     clap_id m_nextTimer = 1;
 };
 
-// The slots' registry entries: "plugin1".."plugin8", each a rack device with
+// The slots' registry entries: "plugin1".."plugin16", each a rack device with
 // its panel (PluginPanel), in the rack once added from +.
 QList<krate::InstrumentEntry> pluginSlotEntries(PluginSlotsController &owner);

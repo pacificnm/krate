@@ -37,7 +37,7 @@ int Rack::addDevice(IInstrument &instrument, int midiChannel)
     d.rawL.assign(m_maxFrames, 0.0f);
     d.rawR.assign(m_maxFrames, 0.0f);
     if (midiChannel >= 0 && midiChannel < kChannels)
-        m_channelDevice[std::size_t(midiChannel)].store(std::int8_t(m_count), std::memory_order_relaxed);
+        m_channelDevice[std::size_t(midiChannel)].store(std::int16_t(m_count), std::memory_order_relaxed);
     return m_count++;
 }
 
@@ -90,7 +90,7 @@ int Rack::inputSource(int device) const noexcept
 void Rack::setChannelDevice(int channel, int device) noexcept
 {
     if (channel >= 0 && channel < kChannels)
-        m_channelDevice[std::size_t(channel)].store(std::int8_t(device >= 0 && device < m_count ? device : -1),
+        m_channelDevice[std::size_t(channel)].store(std::int16_t(device >= 0 && device < m_count ? device : -1),
                                                     std::memory_order_relaxed);
 }
 
@@ -380,9 +380,9 @@ void Rack::route(MidiEvent event) noexcept
             break; // the note is the button: don't play it
         }
         // A note ends where it started (focus or routing may have changed since).
-        std::int8_t &owner = m_noteDevice[std::size_t(channel)][m.data1 & 0x7F];
+        std::int16_t &owner = m_noteDevice[std::size_t(channel)][m.data1 & 0x7F];
         if (m.type == MidiMessage::Type::NoteOn) {
-            owner = std::int8_t(target);
+            owner = std::int16_t(target);
             forward(target, event);
         } else {
             forward(owner >= 0 ? owner : target, event);
@@ -459,20 +459,20 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
         std::fill_n(bus.data(), frames, 0.0f);
 
     // The devices fed by another device's output go after the others.
-    std::uint32_t feeds = 0, fed = 0;
+    std::bitset<kMaxDevices> feeds, fed;
     for (int i = 0; i < m_count; ++i)
         if (const int source = m_devices[std::size_t(i)].inputSource.load(std::memory_order_relaxed);
             source >= 0 && present(source) && present(i) && m_devices[std::size_t(i)].instrument->inputChannels() > 0) {
-            feeds |= 1u << source;
-            fed |= 1u << i;
+            feeds.set(std::size_t(source));
+            fed.set(std::size_t(i));
         }
     for (int pass = 0; pass < 2; ++pass)
         for (int i = 0; i < m_count; ++i) {
-            if (bool((fed >> i) & 1u) != (pass == 1))
+            if (fed.test(std::size_t(i)) != (pass == 1))
                 continue;
             Device &d = m_devices[std::size_t(i)];
             if (!present(i)) { // not in the rack: silent, not run
-                if (pass == 0 && block.deviceOutputs) {
+                if (pass == 0 && block.deviceOutputs && block.deviceOutputs[2 * i]) {
                     std::fill_n(block.deviceOutputs[2 * i] + offset, frames, 0.0f);
                     std::fill_n(block.deviceOutputs[2 * i + 1] + offset, frames, 0.0f);
                 }
@@ -483,7 +483,7 @@ void Rack::processChunk(const RackBlock &block, std::uint32_t offset, std::uint3
                 d.eqDsp.prepare(m_sampleRate);
                 d.peak.store(0.0f, std::memory_order_relaxed);
             }
-            processDevice(i, block, offset, frames, transport, anySolo, (feeds >> i) & 1u);
+            processDevice(i, block, offset, frames, transport, anySolo, feeds.test(std::size_t(i)));
         }
 
     // The effects: each bus through its effect, only the effect's sound into the master.
@@ -538,7 +538,7 @@ void Rack::processDevice(int i, const RackBlock &block, std::uint32_t offset, st
         std::copy_n(d.right.data(), frames, d.rawR.data());
     }
 
-    if (block.deviceOutputs) { // the device's own output, before the mixer
+    if (block.deviceOutputs && block.deviceOutputs[2 * i]) { // the device's own output, before the mixer
         std::copy_n(d.left.data(), frames, block.deviceOutputs[2 * i] + offset);
         std::copy_n(d.right.data(), frames, block.deviceOutputs[2 * i + 1] + offset);
     }

@@ -1,6 +1,6 @@
 # Krate: Sequencer
 
-A multitrack pattern sequencer for the whole rack, in the spirit of the classic 8-track hardware sequencers: eight tracks, each playing one of the rack's instruments; patterns of up to four bars that hold a whole section (drums, bass, pads and lead together); patterns chained into a song. Bars of a loaded song can be copied into it from the Song screen.
+A multitrack pattern sequencer for the whole rack, in the spirit of the classic hardware sequencers: sixteen tracks, each playing one of the rack's instruments; patterns of up to four bars that hold a whole section (drums, bass, pads and lead together); patterns chained into a song. Bars of a loaded song can be copied into it from the Song screen.
 
 The instruments keep their own step sequencers (Korrode's, Kessel's, Kalliope's, Kobalt's): those are part of their character. The rack sequencer plays them over MIDI like a keyboard would, so it works for every instrument, Krimson included, and isn't bound by their 16-step limit.
 
@@ -8,7 +8,7 @@ Related: [SHARED_FOUNDATIONS.MD](SHARED_FOUNDATIONS.MD) (rack, transport, MIDI r
 
 ## What it does
 
-- **8 tracks.** Each plays one target: Korrode, Kessel, Kalliope, a Krimson slot (A–D), Kobalt or Klang (its pads on notes 36–51), or nothing. A track can be muted. Targets and mutes are the sequencer's, not a pattern's.
+- **16 tracks** (eight until 2026-11-01). Each plays one target: Korrode, Kessel, Kalliope, a Krimson slot (A–D), Kobalt or Klang (its pads on notes 36–51), or nothing. A track can be muted. Targets and mutes are the sequencer's, not a pattern's.
 - **16 patterns.** A pattern is up to **4 bars** (16 beats) long and holds every track's notes for that stretch.
   - **Notes** have a start, a length, a pitch and a velocity. A track can play chords (several notes at once). Notes are stored at 96 ticks per beat, so 16ths (24 ticks), 32nds (12), 16th triplets (16) and 8th triplets (32) all fall on whole ticks.
   - **Grid**: the step size used for editing and for snapping imported notes: 1/16, 1/32, 1/16T or 1/8T. Changing it never moves notes.

@@ -6,7 +6,7 @@ import Krate
 import KrateRack
 
 // The rack sequencer's screen (docs/SEQUENCER.md): RUN, the 16 patterns,
-// length and grid; the 8 tracks (each playing an instrument); a piano roll
+// length and grid; the 16 tracks (each playing an instrument); a piano roll
 // for the selected track (drum lanes for Kessel) with a velocity lane.
 Item {
     id: screen
@@ -236,7 +236,7 @@ Item {
         }
     }
 
-    // --- Left: the 8 tracks -------------------------------------------------------------
+    // --- Left: the 16 tracks ------------------------------------------------------------
     Column {
         id: trackColumn
         x: 16
@@ -321,16 +321,27 @@ Item {
             }
         }
 
-        Repeater {
+        ListView { // the tracks: they scroll when they don't all fit
+            id: trackRows
+            width: trackColumn.width
+            // What's left under the sequence box, above COPY / PASTE / CLEAR and the note under them.
+            height: Math.max(44, Math.min(contentHeight, screen.height - trackColumn.y - 76 - 32 - 16 - 4 * trackColumn.spacing - 16))
+            clip: true
+            spacing: 4
+            boundsBehavior: Flickable.StopAtBounds
             model: screen.trackList
+            ScrollBar.vertical: ScrollBar { policy: trackRows.contentHeight > trackRows.height ? ScrollBar.AlwaysOn : ScrollBar.AsNeeded }
+            // The track chosen (here, from the roll or a learned button) stays in view.
+            readonly property int chosenTrack: Sequencer.track
+            onChosenTrackChanged: positionViewAtIndex(chosenTrack, ListView.Contain)
 
-            Rectangle {
+            delegate: Rectangle {
                 id: trackRow
                 required property int index
                 required property var modelData
                 readonly property bool chosen: Sequencer.track === index
-                width: trackColumn.width
-                height: 56
+                width: trackRows.width - (trackRows.contentHeight > trackRows.height ? 14 : 0)
+                height: 40
                 radius: 4
                 color: chosen ? Theme.silverLight : "#D9DADC"
                 border.color: chosen ? Theme.accentUi : Theme.deckLine
@@ -341,19 +352,21 @@ Item {
                     onClicked: Sequencer.track = trackRow.index
                 }
                 Text {
-                    x: 10
-                    y: 8
+                    x: 8
+                    width: 26
+                    anchors.verticalCenter: parent.verticalCenter
+                    horizontalAlignment: Text.AlignHCenter
                     text: trackRow.index + 1
                     color: Theme.ink
                     font.family: Theme.labelFont
-                    font.pixelSize: 20
+                    font.pixelSize: 17
                     font.bold: true
                 }
                 ComboBox {
-                    x: 40
-                    y: 6
-                    width: 170
+                    x: 38
+                    width: 150
                     height: 30
+                    anchors.verticalCenter: parent.verticalCenter
                     // "None", the instruments in the rack, and the one chosen even if it isn't (docs/DAW.md, D1).
                     readonly property var choices: Sequencer.targetChoices.map((label, i) => ({ label: label, choice: i }))
                         .filter(c => c.choice === 0 || c.choice === trackRow.modelData.choice
@@ -368,18 +381,18 @@ Item {
                     Accessible.name: "Track " + (trackRow.index + 1) + " instrument"
                 }
                 Text {
-                    x: 42
-                    y: 38
+                    x: 194
+                    anchors.verticalCenter: parent.verticalCenter
                     text: trackRow.modelData.notes + (trackRow.modelData.notes === 1 ? " note" : " notes")
                     color: "#55575B"
                     font.family: Theme.labelFont
                     font.pixelSize: 11
                 }
                 PanelButton {
-                    x: parent.width - 52
-                    y: 12
-                    width: 40
-                    height: 30
+                    x: parent.width - 46
+                    width: 38
+                    height: 28
+                    anchors.verticalCenter: parent.verticalCenter
                     faceText: "M"
                     text: "Track " + (trackRow.index + 1) + " mute"
                     dark: trackRow.modelData.mute

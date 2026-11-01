@@ -40,6 +40,7 @@ class SequencerController : public QObject
     Q_PROPERTY(int grid READ grid WRITE setGrid NOTIFY changed)
     Q_PROPERTY(int gridTicks READ gridTicks NOTIFY changed)
     Q_PROPERTY(int ticksPerBeat READ ticksPerBeat CONSTANT)
+    Q_PROPERTY(int trackCount READ trackCount CONSTANT) // krate::seq::kTracks
     Q_PROPERTY(int maxTicks READ maxTicks CONSTANT)
     Q_PROPERTY(QStringList gridNames READ gridNames CONSTANT)
     Q_PROPERTY(QStringList targetChoices READ targetChoices CONSTANT) // "None", then the instruments
@@ -103,6 +104,7 @@ public:
     void setGrid(int grid);
     int gridTicks() const;
     int ticksPerBeat() const { return krate::seq::kTicksPerBeat; }
+    int trackCount() const { return krate::seq::kTracks; }
     int maxTicks() const { return krate::seq::kMaxTicks; }
     QStringList gridNames() const;
     QStringList targetChoices() const;

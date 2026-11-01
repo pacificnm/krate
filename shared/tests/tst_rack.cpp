@@ -1117,6 +1117,50 @@ private slots:
         QCOMPARE(amp.inputSamples.back(), std::make_pair(0.0f, 0.0f)); // no rack inputs: silence
     }
 
+    // Past the 32 the rack once held: a device far down the rack feeds
+    // another, and notes on a channel reach a device past index 127.
+    void feedsAndChannelsPastThirtyTwo()
+    {
+        std::vector<std::unique_ptr<FakeDevice>> devices;
+        Rack rack(64);
+        for (int i = 0; i < 140; ++i) {
+            devices.push_back(std::make_unique<FakeDevice>(kParamsA, i == 100 ? 0.5f : 0.0f));
+            rack.addDevice(*devices.back());
+        }
+        devices[120]->inputs = 2;
+        rack.prepare(48000.0);
+        rack.setInputSource(120, 100);
+        run(rack, 64);
+        QCOMPARE(devices[120]->inputSamples.back(), std::make_pair(0.5f, 0.5f));
+
+        rack.setChannelDevice(4, 135);
+        QCOMPARE(rack.channelDevice(4), 135);
+        run(rack, 64, {noteOn(4, 60)});
+        QCOMPARE(devices[135]->received.size(), std::size_t(1));
+    }
+
+    // A device whose own output has no port yet (nullptr) still plays into the mix.
+    void missingDeviceOutputsAreSkipped()
+    {
+        FakeDevice a(kParamsA, 0.25f), b(kParamsA, 0.5f);
+        Rack rack(64);
+        rack.addDevice(a);
+        rack.addDevice(b);
+        rack.prepare(48000.0);
+        std::vector<float> left(64), right(64), aL(64), aR(64);
+        float *outs[] = {aL.data(), aR.data(), nullptr, nullptr};
+        TransportState transport;
+        RackBlock block;
+        block.frames = 64;
+        block.transport = &transport;
+        block.masterL = left.data();
+        block.masterR = right.data();
+        block.deviceOutputs = outs;
+        rack.process(block);
+        QCOMPARE(aL.back(), 0.25f);
+        QVERIFY(left.back() > 0.5f); // both in the mix
+    }
+
     void deviceLimit()
     {
         std::vector<std::unique_ptr<FakeDevice>> devices;

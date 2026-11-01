@@ -22,7 +22,7 @@ namespace krate {
 class JackHost final : public AudioHost
 {
 public:
-    static constexpr int kMaxChannels = 66; // the Krate rack: the master and 32 devices, in stereo
+    static constexpr int kMaxChannels = 322; // the Krate rack: the master and 160 devices, in stereo
     static constexpr int kMaxInputs = 8;
 
     explicit JackHost(JackProcessor &processor);
@@ -36,6 +36,9 @@ public:
     // On failure returns false and fills *error.
     bool open(const char *clientName, std::string *error) override;
     void close() override;
+    // GUI thread: ports for the outputs the processor wants now and had none
+    // (a device just added to the rack). A port, once made, stays.
+    void updateOutputs();
 
     bool isOpen() const override { return m_client != nullptr; }
     // True once the server has shut the client down; call close() and retry later.
@@ -87,7 +90,7 @@ private:
     const int m_channels;
     const int m_inputs;
     jack_client_t *m_client = nullptr;
-    std::array<jack_port_t *, kMaxChannels> m_outs{};
+    std::array<std::atomic<jack_port_t *>, kMaxChannels> m_outs{}; // nullptr: no port (not wanted yet)
     std::array<jack_port_t *, kMaxInputs> m_ins{};
     std::array<std::atomic<float>, kMaxInputs> m_inputPeaks{};
     jack_port_t *m_midiIn = nullptr;
