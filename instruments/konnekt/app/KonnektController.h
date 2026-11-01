@@ -27,7 +27,7 @@ class KonnektController : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(Konnekt)
-    QML_SINGLETON
+    QML_UNCREATABLE("one per instrument, given to its panel")
 
     Q_PROPERTY(int revision READ revision NOTIFY changed)                 // modules or cables changed
     Q_PROPERTY(int moduleRevision READ moduleRevision NOTIFY modulesChanged) // modules added or removed
@@ -55,7 +55,6 @@ public:
     KonnektController(konnekt::Engine &engine, const QString &dataDir, QObject *parent);
     ~KonnektController() override;
 
-    static KonnektController *create(QQmlEngine *, QJSEngine *);
 
     int revision() const { return m_revision; }
     int moduleRevision() const { return m_moduleRevision; }
@@ -172,7 +171,6 @@ private:
     const konnekt::Module *module(int slot) const;
     void takeOut(int slot);
 
-    static inline KonnektController *s_instance = nullptr;
 
     konnekt::Engine &m_engine;
     QString m_path;

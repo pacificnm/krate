@@ -415,8 +415,16 @@ Window {
                     x: panel ? (slot.width - panel.width * s) / 2 : 0
                     y: panel ? (slot.height - panel.height * s) / 2 : 0
                     transform: Scale { xScale: loader.s; yScale: loader.s }
-                    // A panel shared by several devices (the audio tracks) is told which it is.
-                    onLoaded: if (item && item.hasOwnProperty("rackDevice")) item.rackDevice = slot.index
+                    onLoaded: {
+                        // A panel shared by several devices (the audio tracks) is told which it is.
+                        if (item && item.hasOwnProperty("rackDevice"))
+                            item.rackDevice = slot.index
+                        // One that lays itself out (Konnekt) gets the whole area, unscaled.
+                        if (item && item.hasOwnProperty("fillsSlot")) {
+                            item.width = Qt.binding(() => slot.width)
+                            item.height = Qt.binding(() => slot.height)
+                        }
+                    }
                 }
             }
         }
@@ -547,6 +555,7 @@ Window {
             krimson: "Four sounds at once: leads, basses, pads, each on its own channel.",
             kobalt: "Monosynth: one oscillator, a sub, portamento, an arpeggiator.",
             klang: "Sampler: your WAV and MP3 files on pads, slices and patterns.",
+            konnekt: "Modular synth: modules wired with patch cables, lessons that build a synth up.",
             krunch: "Guitar amp: your guitar through amp channels, cabinets and pedals.",
             klick: "Metronome: a click on the rack's tempo."
         })

@@ -78,6 +78,7 @@ target_link_libraries(krate PRIVATE
     krimson_ui krimson_uiplugin
     kobalt_ui kobalt_uiplugin
     klang_ui klang_uiplugin
+    konnekt_ui konnekt_uiplugin
     krunch_ui krunch_uiplugin
     klick_ui klick_uiplugin
     krate_qml krate_qmlplugin

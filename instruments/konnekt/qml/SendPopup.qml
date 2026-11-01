@@ -11,6 +11,8 @@ import Krate
 Popup {
     id: send
 
+    required property Konnekt konnekt
+
     property int target: 0
     property int slot: 16
     property string defaultName: "Konnekt"
@@ -20,15 +22,15 @@ Popup {
     property var names: []
 
     function refresh() {
-        targets = Konnekt.sendTargets()
+        targets = send.konnekt.sendTargets()
         if (targets.length > 0 && result === "")
             target = targets[0].target
         load()
     }
     function load() {
-        preview = Konnekt.sendPreview(target)
-        names = Konnekt.instrumentSlots(target)
-        slot = Konnekt.suggestedSlot(target)
+        preview = send.konnekt.sendPreview(target)
+        names = send.konnekt.instrumentSlots(target)
+        slot = send.konnekt.suggestedSlot(target)
     }
 
     modal: true
@@ -178,10 +180,10 @@ Popup {
                     onClicked: {
                         const name = (send.targets.find(t => t.target === send.target)?.name ?? "")
                         const where = (Math.floor(send.slot / 8) + 1) + "" + (send.slot % 8 + 1)
-                        send.result = Konnekt.sendTo(send.target, send.slot, nameField.text)
+                        send.result = send.konnekt.sendTo(send.target, send.slot, nameField.text)
                             ? "Sent to " + name + " " + where + ". If " + name + " (or Krate) is open it's there now, selected; if not, it arrives the next time it starts."
                             : "Couldn't send it: see the log."
-                        send.names = Konnekt.instrumentSlots(send.target)
+                        send.names = send.konnekt.instrumentSlots(send.target)
                     }
                 }
                 PanelButton { width: 90; height: 34; dark: true; faceText: "CLOSE"; text: "Close"; onClicked: send.close() }

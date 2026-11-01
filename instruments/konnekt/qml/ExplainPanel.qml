@@ -6,17 +6,19 @@ import Krate
 
 // The explanation a right-click opens (docs/MANUAL.md#explanations): what a
 // module, knob, jack or button is, how it works, why you'd want it, where it
-// goes and what to try (Konnekt.explain), with what it's doing on the rack now.
+// goes and what to try (panel.konnekt.explain), with what it's doing on the rack now.
 // It follows the rack live; links open other explanations, ◂ goes back.
 Rectangle {
     id: panel
+
+    required property Konnekt konnekt
 
     property string path: ""
     property var history: []
     signal showScope(int slot, int jack)
 
     readonly property var signalColors: ["#E8873A", "#4FA3E8", "#6FCF5A", "#B57BE8"] // audio, pitch, gate, mod
-    readonly property var card: path !== "" && Konnekt.revision + Konnekt.knobRevision >= 0 ? Konnekt.explain(path) : ({})
+    readonly property var card: path !== "" && panel.konnekt.revision + panel.konnekt.knobRevision >= 0 ? panel.konnekt.explain(path) : ({})
     readonly property color accent: card.signal !== undefined && card.signal >= 0 ? signalColors[card.signal] : "#F2B632"
 
     function show(p) {

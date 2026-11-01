@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Krate
 
-// One module on the rack, drawn from its table (Konnekt.moduleInfo): a header
+// One module on the rack, drawn from its table (panel.konnekt.moduleInfo): a header
 // to drag it by (and ✕ to remove it), its knobs, its input jacks, its output
 // jacks with their live traces. Jacks are clicked to wire them (the rack does
 // the wiring: jackClicked); jackPoint() says where a jack is, for the cables.
@@ -11,10 +11,12 @@ import Krate
 Item {
     id: panel
 
+    required property Konnekt konnekt
+
     required property int slot
     required property string type
     property bool onScreen: true // the rack says; traces and the scope only redraw when seen
-    readonly property var info: Konnekt.moduleInfo(type)
+    readonly property var info: panel.konnekt.moduleInfo(type)
 
     signal jackClicked(int slot, bool output, int jack)
     signal jackScope(int slot, int jack)
@@ -86,12 +88,12 @@ Item {
                 anchors.fill: parent
                 anchors.margins: -4
                 hoverEnabled: true
-                onClicked: Konnekt.removeModule(panel.slot)
-                onEntered: Konnekt.help = "Remove " + panel.info.name + " (and its cables)."
+                onClicked: panel.konnekt.removeModule(panel.slot)
+                onEntered: panel.konnekt.help = "Remove " + panel.info.name + " (and its cables)."
             }
         }
         HoverHandler {
-            onHoveredChanged: if (hovered) Konnekt.help = panel.info.name + ": " + panel.info.help
+            onHoveredChanged: if (hovered) panel.konnekt.help = panel.info.name + ": " + panel.info.help
                                                           + (panel.info.perVoice ? "  It runs once per voice." : "  It runs once: per-voice cables into it are mixed.")
                                                           + "  (Drag here to move it. Right-click: what it is and why.)"
         }
@@ -120,8 +122,8 @@ Item {
                 width: panel.knobW
                 height: panel.knobH
 
-                readonly property real position: Konnekt.knobRevision >= 0 ? Konnekt.knob(panel.slot, index) : 0
-                readonly property int cc: Konnekt.learning ? Konnekt.learnedCc(panel.slot, index) : -1
+                readonly property real position: panel.konnekt.knobRevision >= 0 ? panel.konnekt.knob(panel.slot, index) : 0
+                readonly property int cc: panel.konnekt.learning ? panel.konnekt.learnedCc(panel.slot, index) : -1
                 readonly property bool toggle: modelData.detents === 2 // two positions: a button
 
                 Text {
@@ -148,7 +150,7 @@ Item {
                         border.color: "#08090A"
                         Text {
                             anchors.centerIn: parent
-                            text: Konnekt.knobText(panel.slot, knobCell.index, knobCell.position)
+                            text: panel.konnekt.knobText(panel.slot, knobCell.index, knobCell.position)
                             color: knobCell.position > 0.5 ? "#111" : "#DAD5CB"
                             font.family: Theme.labelFont
                             font.pixelSize: 10
@@ -156,7 +158,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: Konnekt.setKnob(panel.slot, knobCell.index, knobCell.position > 0.5 ? 0 : 1)
+                            onClicked: panel.konnekt.setKnob(panel.slot, knobCell.index, knobCell.position > 0.5 ? 0 : 1)
                         }
                     }
                 }
@@ -173,9 +175,9 @@ Item {
                         name: knobCell.modelData.name
                         detents: knobCell.modelData.detents
                         value: knobCell.position
-                        defaultValue: Konnekt.knobDefault(panel.slot, knobCell.index)
-                        displayText: Konnekt.knobText(panel.slot, knobCell.index, value)
-                        onMoved: v => Konnekt.setKnob(panel.slot, knobCell.index, v)
+                        defaultValue: panel.konnekt.knobDefault(panel.slot, knobCell.index)
+                        displayText: panel.konnekt.knobText(panel.slot, knobCell.index, value)
+                        onMoved: v => panel.konnekt.setKnob(panel.slot, knobCell.index, v)
                         capColor: "#33363C"
                         capShadeColor: "#15161A"
                         capBorderColor: "#08090A"
@@ -188,37 +190,37 @@ Item {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
-                    text: knobCell.cc >= 0 ? "CC " + knobCell.cc : Konnekt.knobText(panel.slot, knobCell.index, knobCell.position)
+                    text: knobCell.cc >= 0 ? "CC " + knobCell.cc : panel.konnekt.knobText(panel.slot, knobCell.index, knobCell.position)
                     color: knobCell.cc >= 0 ? "#5FD0FF" : "#9A968E"
                     font.family: Theme.labelFont
                     font.pixelSize: 10
                 }
                 HoverHandler {
-                    onHoveredChanged: if (hovered) Konnekt.help = knobCell.modelData.name + ": " + knobCell.modelData.help
-                                                                  + (Konnekt.learning ? "  (LEARN: click, then move a knob on your controller; right-click to forget.)"
+                    onHoveredChanged: if (hovered) panel.konnekt.help = knobCell.modelData.name + ": " + knobCell.modelData.help
+                                                                  + (panel.konnekt.learning ? "  (LEARN: click, then move a knob on your controller; right-click to forget.)"
                                                                                       : "  (Right-click: what it is and why.)")
                 }
                 TapHandler { // while learning, right-click forgets a link instead
-                    enabled: !Konnekt.learning
+                    enabled: !panel.konnekt.learning
                     acceptedButtons: Qt.RightButton
                     onTapped: panel.explain(panel.path + "/knob/" + knobCell.modelData.key)
                 }
                 Rectangle { // MIDI Learn: click to arm, right-click to forget
-                    visible: Konnekt.learning
+                    visible: panel.konnekt.learning
                     anchors.fill: knob
                     anchors.margins: -4
                     radius: width / 2
                     color: "transparent"
                     border.width: 2
-                    border.color: Konnekt.armed(panel.slot, knobCell.index) ? "#FF6A55" : knobCell.cc >= 0 ? "#5FD0FF" : "#4A6A8A"
+                    border.color: panel.konnekt.armed(panel.slot, knobCell.index) ? "#FF6A55" : knobCell.cc >= 0 ? "#5FD0FF" : "#4A6A8A"
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         onClicked: mouse => {
                             if (mouse.button === Qt.RightButton)
-                                Konnekt.forget(panel.slot, knobCell.index)
+                                panel.konnekt.forget(panel.slot, knobCell.index)
                             else
-                                Konnekt.armLearn(panel.slot, knobCell.index)
+                                panel.konnekt.armLearn(panel.slot, knobCell.index)
                         }
                     }
                 }
@@ -244,7 +246,7 @@ Item {
             required property int index
             required property var modelData
             readonly property point at: panel.jackPoint(false, index)
-            readonly property bool plugged: Konnekt.revision >= 0 && Konnekt.cableInto(panel.slot, index).fromSlot !== undefined
+            readonly property bool plugged: panel.konnekt.revision >= 0 && panel.konnekt.cableInto(panel.slot, index).fromSlot !== undefined
             x: at.x - panel.jackW / 2
             y: at.y - 11
             width: panel.jackW
@@ -286,7 +288,7 @@ Item {
                     else
                         panel.jackClicked(panel.slot, false, inJack.index)
                 }
-                onEntered: Konnekt.help = "Input · " + inJack.modelData.name + ": " + inJack.modelData.help
+                onEntered: panel.konnekt.help = "Input · " + inJack.modelData.name + ": " + inJack.modelData.help
                                           + (inJack.plugged ? "  (Click to pull its cable out and plug it elsewhere." : "  (Click, then click an output to connect.")
                                           + " Right-click: what it is and why.)"
             }
@@ -337,14 +339,14 @@ Item {
                 y: 40
                 width: parent.width - 8
                 height: 18
-                readonly property int frame: Konnekt.frame
+                readonly property int frame: panel.konnekt.frame
                 onFrameChanged: if (panel.onScreen) requestPaint()
                 onPaint: {
                     const ctx = getContext("2d")
                     ctx.reset()
                     ctx.fillStyle = "#0D0E10"
                     ctx.fillRect(0, 0, width, height)
-                    const t = Konnekt.trace(panel.slot, outJack.index)
+                    const t = panel.konnekt.trace(panel.slot, outJack.index)
                     const n = t.length / 2
                     let lo = 0, hi = 0
                     for (let i = 0; i < t.length; ++i) {
@@ -373,7 +375,7 @@ Item {
                     } else
                         panel.jackClicked(panel.slot, true, outJack.index)
                 }
-                onEntered: Konnekt.help = "Output · " + outJack.modelData.name + ": " + outJack.modelData.help
+                onEntered: panel.konnekt.help = "Output · " + outJack.modelData.name + ": " + outJack.modelData.help
                                           + "  (Click, then click an input to connect. Right-click: what it is and why, and see it on the scope.)"
             }
         }
@@ -393,16 +395,16 @@ Item {
             id: screen
             anchors.fill: parent
             anchors.margins: 4
-            readonly property int frame: Konnekt.frame
-            onFrameChanged: if (panel.isScope && panel.onScreen && Konnekt.scopeSlot() === panel.slot) requestPaint()
+            readonly property int frame: panel.konnekt.frame
+            onFrameChanged: if (panel.isScope && panel.onScreen && panel.konnekt.scopeSlot() === panel.slot) requestPaint()
             onPaint: {
                 const ctx = getContext("2d")
                 ctx.reset()
                 ctx.strokeStyle = "#1E3A1E"
                 ctx.beginPath(); ctx.moveTo(0, height / 2); ctx.lineTo(width, height / 2); ctx.stroke()
                 const spans = [240, 960, 3840] // 5, 20, 80 ms at 48 kHz
-                const n = spans[Math.round(Konnekt.knobRevision >= 0 ? Konnekt.knob(panel.slot, 0) * 2 : 1)]
-                const s = Konnekt.scopeSamples(n * 2)
+                const n = spans[Math.round(panel.konnekt.knobRevision >= 0 ? panel.konnekt.knob(panel.slot, 0) * 2 : 1)]
+                const s = panel.konnekt.scopeSamples(n * 2)
                 // Start at a rising zero crossing in the first half: a steady picture.
                 let start = 0
                 for (let i = 1; i < n; ++i)
@@ -419,7 +421,7 @@ Item {
             }
         }
         Text {
-            visible: Konnekt.revision >= 0 && Konnekt.scopeSlot() !== panel.slot
+            visible: panel.konnekt.revision >= 0 && panel.konnekt.scopeSlot() !== panel.slot
             anchors.centerIn: parent
             text: "Click to show what's plugged in"
             color: "#4A7A4A"

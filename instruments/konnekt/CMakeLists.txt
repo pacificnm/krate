@@ -36,8 +36,11 @@ qt_add_qml_module(konnekt_ui
         app/Translate.cpp
         app/KonnektController.h
         app/KonnektController.cpp
+        app/KonnektInstrument.h
+        app/KonnektInstrument.cpp
     QML_FILES
         qml/Main.qml
+        qml/Panel.qml
         qml/ModulePanel.qml
         qml/ExplainPanel.qml
         qml/SendPopup.qml

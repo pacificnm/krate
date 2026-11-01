@@ -94,6 +94,7 @@ A modular synthesizer for building sounds and learning how synths work. 23 modul
 - **Every part explains itself**: hover for a line, right-click anything for the whole story: what it is, how it works, why you'd use it, what to try, and what it's doing in your patch right now.
 - **20 lessons**, from a single oscillator to FM, wavefolding and drums from scratch, and **84 presets** (basses, leads, 80s synth-pop, pads, drum grooves, effects) to play and take apart.
 - **Send to an instrument**: turn a patch into a Kalliope, Kobalt or Krimson preset, with a report of what came across.
+- **In the rack too**: add it from **+** in Krate like the other instruments (up to 16, each with its own patch); the sequencer, the arranger and your keyboard play it. It keeps its own time (its Clock modules).
 
 [More](instruments/konnekt/README.md).
 

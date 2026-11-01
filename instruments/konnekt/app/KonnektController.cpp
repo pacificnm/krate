@@ -47,8 +47,6 @@ KonnektController::KonnektController(Engine &engine, const QString &dataDir, QOb
     , m_patchesDir(dataDir + QStringLiteral("/patches"))
     , m_instrumentsDir(QFileInfo(dataDir).absolutePath())
 {
-    Q_ASSERT(!s_instance);
-    s_instance = this;
     m_seenKnobs.fill(-1.0f);
 
     QJsonObject json;
@@ -90,15 +88,8 @@ KonnektController::~KonnektController()
 {
     if (m_saveTimer.isActive())
         save();
-    s_instance = nullptr;
 }
 
-KonnektController *KonnektController::create(QQmlEngine *, QJSEngine *)
-{
-    Q_ASSERT(s_instance);
-    QJSEngine::setObjectOwnership(s_instance, QJSEngine::CppOwnership);
-    return s_instance;
-}
 
 QVariantList KonnektController::moduleTypes() const
 {

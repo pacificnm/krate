@@ -22,7 +22,7 @@ namespace krate {
 class JackHost final : public AudioHost
 {
 public:
-    static constexpr int kMaxChannels = 322; // the Krate rack: the master and 160 devices, in stereo
+    static constexpr int kMaxChannels = 402; // the Krate rack: the master and 200 devices, in stereo
     static constexpr int kMaxInputs = 8;
 
     explicit JackHost(JackProcessor &processor);

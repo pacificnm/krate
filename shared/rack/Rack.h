@@ -51,7 +51,7 @@ class Rack
 public:
     // Every copy of every instrument (docs/DAW.md), the audio tracks and the
     // plugin slots. Below kRackDevice, and in a mapping's 8 bits.
-    static constexpr int kMaxDevices = 160;
+    static constexpr int kMaxDevices = 200;
     static constexpr int kChannels = 16;
     static constexpr int kInputs = 2;           // audio inputs, given to every device that has inputs
     static constexpr int kAnyChannel = 16;      // CC map row matching any channel
