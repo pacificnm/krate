@@ -8,9 +8,10 @@ Written for Debian 13 (trixie) on a small PC with a USB audio interface and a US
 
 From the netinst image:
 
-1. Make a user (say `jaimie`) and give it `sudo` (leave the root password empty and the installer does).
-2. At **Software selection**, untick every desktop and **GNOME**/**KDE**; tick only **SSH server** and **standard system utilities**.
-3. Finish, reboot, log in on the console (or over SSH).
+1. In the PC's firmware setup, if the drive mode (SATA/NVMe Operation) says RAID, set it to **AHCI**: otherwise the installer can't see the internal drive.
+2. Make a user (say `jaimie`) and give it `sudo` (leave the root password empty and the installer does). **If you set a root password**, your user has no `sudo`: for the commands below, become root with `su -` (with the dash: plain `su` can't find `usermod` and `update-grub`), leave out `sudo`, and give your user `sudo` for later with `usermod -aG sudo jaimie`.
+3. At **Software selection**, untick every desktop and **GNOME**/**KDE**; tick only **SSH server** and **standard system utilities**.
+4. Finish, reboot, log in on the console (or over SSH).
 
 ## 2. Install Krate and cage
 
@@ -55,7 +56,7 @@ sudo systemctl set-default graphical.target
 sudo reboot
 ```
 
-The PC boots into Krate, full screen, logged in as you. If Krate quits or crashes it starts again in two seconds.
+The PC boots into Krate, full screen, logged in as you (in place of the console's login prompt). If Krate quits or crashes it starts again in two seconds.
 
 ## 5. First start
 
@@ -69,7 +70,7 @@ In Krate:
 
 | | |
 | --- | --- |
-| A text console | **Ctrl+Alt+F2** (log in there); **Ctrl+Alt+F7** back to Krate. |
+| A text console | **Ctrl+Alt+F2** (log in there); **Ctrl+Alt+F1** back to Krate. |
 | Over the network | `ssh jaimie@player`. |
 | Krate's log | `journalctl -u krate-kiosk@jaimie` |
 | Stop / start Krate | `sudo systemctl stop krate-kiosk@jaimie`, `start`, `restart` |
@@ -82,6 +83,7 @@ In Krate:
 
 | | |
 | --- | --- |
+| A login prompt instead of Krate | As root: `systemctl status krate-kiosk@jaimie` (is it enabled and running?) and `journalctl -u krate-kiosk@jaimie -b`. An early package ran Krate on console 7, which the screen doesn't switch to: Ctrl+Alt+F7 shows it; install the current package (`apt install --reinstall ./krate_*.deb`). |
 | Black screen, back to a login prompt | `journalctl -u krate-kiosk@jaimie -b`: cage needs the PC's graphics (built-in graphics work); `cage` and `qt6-wayland` must be installed. |
 | No sound | On the console, as your user: `wpctl status` lists the interface; in Krate's **AUDIO** choose it as the output. |
 | Crackles | A larger buffer (256); check `groups` lists `pipewire` (log out and in, or reboot, after adding it). |
@@ -89,4 +91,4 @@ In Krate:
 
 ## How it's set up
 
-`krate-kiosk@.service` (in `/usr/lib/systemd/system`) runs `cage -d -s -- krate-kiosk` on console 7 as the user named after `@`, with a full login session (`/etc/pam.d/krate-kiosk`: logind, so cage gets the screen and the keyboard, and the user's systemd, so PipeWire starts). `krate-kiosk` starts Krate through PipeWire's JACK (`pw-jack`), as the menu entries do. cage runs its own XWayland, so plugin editors (X11 windows) open too. Krate starts maximized to the screen; its tabs scroll when the rack holds more instruments than fit.
+`krate-kiosk@.service` (in `/usr/lib/systemd/system`) runs `cage -d -s -- krate-kiosk` on console 1 (the one the PC boots to, its login prompt making way) as the user named after `@`, with a full login session (`/etc/pam.d/krate-kiosk`: logind, so cage gets the screen and the keyboard, and the user's systemd, so PipeWire starts). `krate-kiosk` starts Krate through PipeWire's JACK (`pw-jack`), as the menu entries do. cage runs its own XWayland, so plugin editors (X11 windows) open too. Krate starts maximized to the screen; its tabs scroll when the rack holds more instruments than fit.

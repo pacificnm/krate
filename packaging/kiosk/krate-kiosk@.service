@@ -1,10 +1,12 @@
 # Krate full screen on a dedicated player (docs/PLAYER.md): cage, a kiosk
-# compositor, showing only Krate, on its own console, logged in as the user
+# compositor, showing only Krate, on the console the PC boots to (tty1, in
+# place of its login prompt), logged in as the user
 # named by the instance (krate-kiosk@jaimie). Not enabled by installing it:
 #   sudo systemctl enable krate-kiosk@<user>
 #   sudo systemctl set-default graphical.target
 # Krate starting again if it quits or crashes. Ctrl+Alt+F2 (cage -s) for a text
-# console. After cage's own "start on boot" example.
+# console, Ctrl+Alt+F1 back. After cage's own "start on boot" example, but on
+# tty1: nothing switches the screen to another console at boot.
 
 [Unit]
 Description=Krate full screen (cage) for %i
@@ -14,9 +16,9 @@ After=systemd-user-sessions.service plymouth-quit-wait.service
 # Logind gives the session its seat (the screen, the keyboard).
 Wants=dbus.socket systemd-logind.service
 After=dbus.socket systemd-logind.service
-# Its console: no login prompt there.
-Conflicts=getty@tty7.service
-After=getty@tty7.service
+# Its console: the login prompt there makes way.
+Conflicts=getty@tty1.service
+After=getty@tty1.service
 ConditionPathExists=/dev/tty0
 Before=graphical.target
 
@@ -25,14 +27,14 @@ Type=simple
 User=%i
 # A full login session for the user (PAM, logind, the user's systemd: PipeWire).
 PAMName=krate-kiosk
-TTYPath=/dev/tty7
+TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes
 TTYVTDisallocate=yes
 StandardInput=tty-fail
 StandardOutput=journal
 StandardError=journal
-UtmpIdentifier=tty7
+UtmpIdentifier=tty1
 UtmpMode=user
 Environment=XDG_SESSION_TYPE=wayland
 # -d: no window decorations; -s: Ctrl+Alt+F<n> still switches consoles.
