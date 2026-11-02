@@ -31,6 +31,7 @@ set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml)
 
 enable_testing()
 
+add_subdirectory(third_party/nam)
 add_subdirectory(shared)
 add_subdirectory(instruments/korrode)
 add_subdirectory(instruments/klick)

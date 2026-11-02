@@ -110,7 +110,7 @@ A modular synthesizer for building sounds and learning how synths work. 23 modul
 
 ### Krunch (guitar amp)
 
-A guitar amp in the rack, played from your audio interface's input: four channels (clean to high gain) with gain, EQ, presence and a gate, a power amp with sag, cabinets from your own impulse responses (an IR library you import WAVs, folders or zip packs into), a pedalboard in front of the amp and in its effects loop (overdrive, fuzz, compressor, EQs, modulation, delays, reverb), and presets. [More](instruments/krunch/README.md).
+A guitar amp in the rack, played from your audio interface's input: four channels (clean to high gain) with gain, EQ, presence and a gate, each playing Krunch's own tube stages (preamp tubes to choose) or a **capture of a real amp** (Neural Amp Modeler `.nam` files, [CAPTURES.md](instruments/krunch/docs/CAPTURES.md)), a power amp with sag and power tubes to choose, cabinets from your own impulse responses (an IR library you import WAVs, folders or zip packs into), a pedalboard in front of the amp and in its effects loop (overdrive, fuzz, compressor, EQs, modulation, delays, reverb, Dual Head for two amps set apart), SPACE between two cabinets, and presets. [More](instruments/krunch/README.md).
 
 ![Krunch](docs/screenshots/krate-krunch.png)
 

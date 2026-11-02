@@ -1,5 +1,7 @@
 # Krunch: guitar amp for the Krate rack (docs/ROADMAP.md).
 
+include(FetchContent)
+
 add_library(krunch_dsp STATIC
     dsp/Cabinet.h
     dsp/ClassicPedals.h
@@ -28,6 +30,8 @@ add_library(krunch_dsp STATIC
     dsp/Tube.cpp
     dsp/DualHead.h
     dsp/DualHead.cpp
+    dsp/Capture.h
+    dsp/Capture.cpp
     dsp/SignaturePedals.h
     dsp/SignaturePedals.cpp
     dsp/StudioPedals.h
@@ -38,13 +42,17 @@ add_library(krunch_dsp STATIC
     dsp/ToneStack.cpp
 )
 target_include_directories(krunch_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(krunch_dsp PUBLIC krate_core krate_dsp)
+# The whole archive: its model types register themselves from objects nothing else references.
+target_link_libraries(krunch_dsp PUBLIC krate_core krate_dsp "$<LINK_LIBRARY:WHOLE_ARCHIVE,nam_core>")
 target_compile_options(krunch_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
 add_executable(tst_krunch tests/tst_krunch.cpp)
 target_include_directories(tst_krunch PRIVATE tools)
 target_compile_options(tst_krunch PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_krunch PRIVATE krunch_dsp krate_testing Qt6::Test)
+# The NAM engine's own example captures (in its fetched sources), for the capture tests.
+FetchContent_GetProperties(nam_core)
+target_compile_definitions(tst_krunch PRIVATE NAM_EXAMPLES="${nam_core_SOURCE_DIR}/example_models")
 add_test(NAME tst_krunch COMMAND tst_krunch)
 
 # --- krunch_ui: QML module "Krunch": controller and panel
@@ -56,6 +64,8 @@ qt_add_qml_module(krunch_ui
     SOURCES
         app/CabinetController.h
         app/CabinetController.cpp
+        app/CaptureController.h
+        app/CaptureController.cpp
         app/IrLibrary.h
         app/IrLibrary.cpp
         app/KrunchController.h
@@ -69,6 +79,7 @@ qt_add_qml_module(krunch_ui
     QML_FILES
         qml/Panel.qml
         qml/IrPicker.qml
+        qml/CapturePicker.qml
         qml/Pedalboard.qml
 )
 target_include_directories(krunch_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)

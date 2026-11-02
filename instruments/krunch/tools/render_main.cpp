@@ -1,8 +1,9 @@
 // krunch-render: play a guitar DI through Krunch offline, one WAV per channel.
 // The DI is a WAV file (--in; its first channel) or a synthetic riff; --ir and
-// --ir-b load cabinet IRs (A and B) into every channel.
+// --ir-b load cabinet IRs (A and B) into every channel; --capture plays an amp
+// capture (.nam) on every channel in place of the preamp and power amp.
 //
-//   krunch-render [--in di.wav] [--ir a.wav] [--ir-b b.wav] [--out prefix] [--channel 1..4]
+//   krunch-render [--in di.wav] [--ir a.wav] [--ir-b b.wav] [--capture amp.nam] [--out prefix] [--channel 1..4]
 //                 [--set key=value]... [--bench]
 //
 // Writes <prefix>-ch<N>.wav (stereo, 16-bit) for each channel rendered, and
@@ -30,7 +31,7 @@ namespace {
 
 int usage()
 {
-    std::fprintf(stderr, "usage: krunch-render [--in di.wav] [--ir a.wav] [--ir-b b.wav] [--out prefix] [--channel 1..4]\n"
+    std::fprintf(stderr, "usage: krunch-render [--in di.wav] [--ir a.wav] [--ir-b b.wav] [--capture amp.nam] [--out prefix] [--channel 1..4]\n"
                          "                     [--set key=value]... [--bench]\n");
     return 2;
 }
@@ -39,7 +40,7 @@ int usage()
 
 int main(int argc, char **argv)
 {
-    std::string in, out = "krunch", irA, irB;
+    std::string in, out = "krunch", irA, irB, capturePath;
     int only = 0;
     bool bench = false;
     std::vector<std::pair<std::string, float>> settings;
@@ -51,6 +52,8 @@ int main(int argc, char **argv)
             irA = argv[++i];
         else if (a == "--ir-b" && i + 1 < argc)
             irB = argv[++i];
+        else if (a == "--capture" && i + 1 < argc)
+            capturePath = argv[++i];
         else if (a == "--out" && i + 1 < argc)
             out = argv[++i];
         else if (a == "--channel" && i + 1 < argc)
@@ -108,6 +111,17 @@ int main(int argc, char **argv)
         for (int c = 0; c < krunch::kChannels; ++c)
             for (int k = 0; k < 2; ++k)
                 amp.cabinet().setKernel(krunch::Krunch::cabinetSlot(c, k == 1), kernels[k].get());
+        std::unique_ptr<krunch::CaptureModel> capture;
+        if (!capturePath.empty()) {
+            std::string error;
+            capture = krunch::CaptureModel::load(capturePath, rate, int(krunch::Krunch::kBlock), &error);
+            if (!capture) {
+                std::fprintf(stderr, "could not load the capture %s: %s\n", capturePath.c_str(), error.c_str());
+                return 1;
+            }
+            for (int c = 0; c < krunch::kChannels; ++c)
+                amp.setCapture(c, capture.get()); // (one model: one channel plays at a time here)
+        }
         amp.setParam(int(krunch::ParamId::Channel), float(channel - 1) / float(krunch::kChannels - 1));
         for (const auto &[key, value] : settings)
             for (std::size_t p = 0; p < krunch::kParams.size(); ++p)

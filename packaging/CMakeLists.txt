@@ -12,6 +12,13 @@ foreach(app IN LISTS KRATE_APPS)
     install(FILES icons/${app}.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 endforeach()
 install(FILES ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME copyright)
+# Krunch's amp captures play through Neural Amp Modeler's core (MIT) and Eigen (MPL 2.0, source at
+# gitlab.com/libeigen/eigen), built in: their licences go with the package.
+include(FetchContent)
+FetchContent_GetProperties(nam_core)
+FetchContent_GetProperties(nam_eigen)
+install(FILES ${nam_core_SOURCE_DIR}/LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR}/third-party RENAME NeuralAmpModelerCore-LICENSE)
+install(FILES ${nam_eigen_SOURCE_DIR}/COPYING.MPL2 DESTINATION ${CMAKE_INSTALL_DOCDIR}/third-party RENAME Eigen-COPYING.MPL2)
 install(FILES ${PROJECT_SOURCE_DIR}/README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
 # A dedicated player (docs/PLAYER.md): Krate full screen under cage, started

@@ -8,6 +8,7 @@
 #include "core/Instrument.h"
 #include "core/ParamValues.h"
 #include "dsp/Cabinet.h"
+#include "dsp/Capture.h"
 #include "dsp/DualHead.h"
 #include "dsp/Gate.h"
 #include "dsp/Pedal.h"
@@ -127,6 +128,17 @@ public:
     // The rate prepare() was given (any thread): what kernels must be built for.
     double sampleRate() const noexcept { return m_rateForKernels.load(std::memory_order_relaxed); }
 
+    // A channel's amp capture (docs/CAPTURES.md): with one, the channel plays
+    // it in place of the preamp and power amp (GAIN drives it, BASS ... PRESENCE
+    // are an EQ after it). Handed over from any thread; the caller keeps it
+    // alive until blocksProcessed() has moved two on. One readied for another
+    // rate than prepare()'s is ignored until replaced.
+    void setCapture(int channel, CaptureModel *model) noexcept
+    {
+        m_captures[std::size_t(channel)].store(model, std::memory_order_release);
+    }
+    bool playsCapture(int channel) const noexcept;
+
     // Pedal chains (lists handed over from any thread, see Pedalboard): in
     // front of the amp, in the loop.
     PedalChain &frontPedals() noexcept { return m_front; }
@@ -169,6 +181,16 @@ private:
     std::array<const float *, Cabinet::kSlots> m_slotWeightPtrs{};
     std::array<float, Cabinet::kSlots> m_slotPans{}; // SPACE: A to the left, B to the right
     DualHeadSplit m_dualHead; // the Dual Head pedal's second amp, at the output
+    // Captures: each channel's, and the EQ after it.
+    std::array<std::atomic<CaptureModel *>, kChannels> m_captures{};
+    struct CaptureEq
+    {
+        Biquad bass, mid, treble, presence;
+        std::array<float, 4> knobs{-1.0f, -1.0f, -1.0f, -1.0f};
+    };
+    std::array<CaptureEq, kChannels> m_captureEq;
+    double m_powerMix = 1.0;      // the power amp in the path (0 while a capture plays: it has its own)
+    std::array<float, kBlock> m_preAmp{}; // the signal into the power amp, for that blend
     std::array<float, kBlock> m_speakerWeight{}, m_speakerOut{};
 
     std::atomic<float> m_inputPeak{0.0f};

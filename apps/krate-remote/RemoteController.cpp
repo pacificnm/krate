@@ -331,6 +331,8 @@ QVariantList RemoteController::places() const
     add(QStringLiteral("Home"), m_home);
     // Krate's sounds folder: what lands there is in the Sounds library by itself.
     add(QStringLiteral("Sounds (the library's)"), folder(Folder::Data) + QStringLiteral("/sounds"));
+    // Krunch's amp captures (.nam): what lands there is in its AMP list by itself.
+    add(QStringLiteral("Amp captures (Krunch)"), folder(Folder::Instruments) + QStringLiteral("/krunch/captures"));
     for (const Folder f : loc::kShown)
         add(loc::label(f), folder(f));
     for (const QString &p : pluginFolders())

@@ -28,6 +28,8 @@ Four channels, each with its own parameters (`ch<N>_<name>`) and cabinet. Only t
 - The last stage's coupling capacitor (30 Hz) out; the **tone stack** (`dsp/ToneStack.cpp`, Yeh and Smith, DAFx 2006: American or British parts); **presence** −6 … +9 dB above 3 kHz, then a low-pass at 11 kHz; a trim per voice evens the channels' peaks out (the clean channel +20 dB).
 - Played 12 dB softer, Crunch comes out about 3 dB quieter and cleaner; Heavy and Lead hold their level (saturated, as such amps are) but clean up and never choke (`tst_krunch` touchResponse). The stages before them (a fixed `tanh` per stage) came out within half a dB.
 
+A channel can play an **amp capture** instead (a `.nam` model of a real amp, in place of the preamp and the power amp): [CAPTURES.md](CAPTURES.md).
+
 ## Gate
 
 `dsp/Gate.h`, before the preamp. Threshold −80 … −20 dBFS (0 = off); opens in 0.5 ms above it, holds 30 ms, closes over 80 ms once the level is 6 dB under it.

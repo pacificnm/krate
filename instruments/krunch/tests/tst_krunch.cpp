@@ -1,4 +1,7 @@
 #include <QtTest>
+#include <QFile>
+#include <QTemporaryDir>
+#include <QElapsedTimer>
 
 #include <cmath>
 #include <complex>
@@ -10,6 +13,7 @@
 #include "SyntheticGuitar.h"
 #include "dsp/Gate.h"
 #include "dsp/Krunch.h"
+#include "dsp/Capture.h"
 #include "dsp/DualHead.h"
 #include "dsp/PowerAmp.h"
 #include "dsp/Preamp.h"
@@ -657,6 +661,53 @@ private slots:
         const auto [l1, r1] = sides(true, 0.25f); // 10 ms
         QVERIFY2(std::abs(lagOf(l1, r1) - 480) <= 2, qPrintable(QStringLiteral("lag %1").arg(lagOf(l1, r1))));
         QCOMPARE(DualHead::delayMs(0.25f), 10.0);
+    }
+
+    // An amp capture (a .nam model) plays in place of the preamp and power
+    // amp: on its channel only, bounded, faster than real time; a file that
+    // isn't a model is refused with a reason.
+    void capturePlaysInPlaceOfTheAmp()
+    {
+        std::string error;
+        const auto model = CaptureModel::load(NAM_EXAMPLES "/wavenet_a1_standard.nam", kRate, int(Krunch::kBlock), &error);
+        QVERIFY2(model, error.c_str());
+        QCOMPARE(model->sampleRate(), kRate);
+        const auto di = tools::SyntheticGuitar(kRate).riff();
+        const auto run = [&](bool capture, int channel) {
+            Krunch amp;
+            amp.prepare(kRate, 128);
+            if (capture)
+                amp.setCapture(2, model.get());
+            setChannel(amp, channel);
+            return play(amp, di);
+        };
+        const auto own = run(false, 2);
+        QElapsedTimer timer;
+        timer.start();
+        const auto captured = run(true, 2);
+        const double seconds = double(timer.nsecsElapsed()) * 1e-9;
+        QVERIFY2(seconds < double(di.size()) / kRate, qPrintable(QStringLiteral("%1 s for %2 s").arg(seconds).arg(double(di.size()) / kRate)));
+        double diff = 0.0;
+        for (std::size_t i = 0; i < own.size(); ++i)
+            diff += std::fabs(double(own[i]) - double(captured[i]));
+        QVERIFY(diff > 1.0);                // it plays the capture, not Krunch's preamp
+        QVERIFY(peak(captured) < 2.0f);     // bounded
+        QVERIFY(db(rms(captured)) > -60.0); // and sounds
+        for (float x : captured)
+            QVERIFY(std::isfinite(x));
+        // Another channel plays Krunch's own amp as before.
+        const auto other = run(true, 1), otherOwn = run(false, 1);
+        QCOMPARE(other, otherOwn);
+
+        QTemporaryDir dir;
+        const QString junk = dir.filePath("junk.nam");
+        QFile f(junk);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("{ not a model");
+        f.close();
+        error.clear();
+        QVERIFY(!CaptureModel::load(junk.toStdString(), kRate, 128, &error));
+        QVERIFY(!error.empty());
     }
 
     void peaksForTheMeters()

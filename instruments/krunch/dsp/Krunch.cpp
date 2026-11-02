@@ -137,12 +137,40 @@ Preamp::Settings Krunch::preampSettings(int channel) const noexcept
     return s;
 }
 
+bool Krunch::playsCapture(int channel) const noexcept
+{
+    const CaptureModel *model = m_captures[std::size_t(channel)].load(std::memory_order_acquire);
+    return model && model->sampleRate() == m_sampleRate;
+}
+
 void Krunch::runChannel(int channel, float *out, std::uint32_t frames) noexcept
 {
     std::copy_n(m_in.data(), frames, out);
-    Preamp &preamp = m_preamps[std::size_t(channel)];
-    preamp.set(preampSettings(channel));
-    preamp.process(out, frames);
+    CaptureModel *capture = m_captures[std::size_t(channel)].load(std::memory_order_acquire);
+    if (capture && capture->sampleRate() == m_sampleRate) {
+        // The capture: GAIN drives it (-12 .. +12 dB, noon as captured), then the EQ.
+        const float drive = float(std::pow(10.0, (std::clamp(double(channelValue(channel, ChannelParam::Gain)), 0.0, 1.0) - 0.5) * 24.0 / 20.0));
+        for (std::uint32_t n = 0; n < frames; ++n)
+            out[n] *= drive;
+        capture->process(out, frames);
+        CaptureEq &eq = m_captureEq[std::size_t(channel)];
+        const std::array<float, 4> knobs{channelValue(channel, ChannelParam::Bass), channelValue(channel, ChannelParam::Mid),
+                                         channelValue(channel, ChannelParam::Treble), channelValue(channel, ChannelParam::Presence)};
+        if (knobs != eq.knobs) {
+            eq.knobs = knobs;
+            const auto db = [](float v, double range) { return (std::clamp(double(v), 0.0, 1.0) - 0.5) * 2.0 * range; };
+            eq.bass.setLowShelf(m_sampleRate, 120.0, db(knobs[0], 12.0));
+            eq.mid.setPeak(m_sampleRate, 700.0, 0.7, db(knobs[1], 10.0));
+            eq.treble.setHighShelf(m_sampleRate, 2500.0, db(knobs[2], 12.0));
+            eq.presence.setHighShelf(m_sampleRate, 5000.0, db(knobs[3], 8.0));
+        }
+        for (std::uint32_t n = 0; n < frames; ++n)
+            out[n] = eq.presence.process(eq.treble.process(eq.mid.process(eq.bass.process(out[n]))));
+    } else {
+        Preamp &preamp = m_preamps[std::size_t(channel)];
+        preamp.set(preampSettings(channel));
+        preamp.process(out, frames);
+    }
 
     // Volume, ramped across the block.
     const float target = float(units::volumeGain(channelValue(channel, ChannelParam::Volume)));
@@ -215,7 +243,18 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
 
     m_powerAmp.set(m_params.get(int(ParamId::Master)), m_params.get(int(ParamId::Sag)),
                    m_params.get(int(ParamId::Resonance)), units::powerTube(m_params.get(int(ParamId::PowerTube))));
-    m_powerAmp.process(m_a.data(), frames);
+    // A capture has its own power amp: Krunch's fades out of the path while one plays (and back in).
+    const double powerTarget = playsCapture(m_active) ? 0.0 : 1.0;
+    if (powerTarget == 1.0 && m_powerMix == 1.0) {
+        m_powerAmp.process(m_a.data(), frames);
+    } else {
+        std::copy_n(m_a.data(), frames, m_preAmp.data());
+        m_powerAmp.process(m_a.data(), frames);
+        for (std::uint32_t n = 0; n < frames; ++n) {
+            m_powerMix += std::clamp(powerTarget - m_powerMix, -m_fadeStep, m_fadeStep);
+            m_a[n] = float(m_powerMix * double(m_a[n]) + (1.0 - m_powerMix) * double(m_preAmp[n]));
+        }
+    }
 
     // The cabinets: the playing channel's (and the previous one's while it fades).
     std::fill_n(left, frames, 0.0f);

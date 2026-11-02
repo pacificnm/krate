@@ -14,6 +14,7 @@ Item {
     required property Krunch krunch
     required property Presets presets
     required property Cabinets cabinets
+    required property Captures captures
     required property Pedals pedals
 
     width: 1400
@@ -28,6 +29,7 @@ Item {
     readonly property var channelColors: ["#5FB0E8", "#F2C230", "#F08A2B", "#E2412E"]
 
     function chKey(name) { return "ch" + (channel + 1) + "_" + name }
+    readonly property string captureName: panel.captures.revision >= 0 ? panel.captures.capture(panel.channel) : ""
     function voiceOf(c) { return panel.krunch.revision >= 0 ? Math.round(panel.krunch.value("ch" + (c + 1) + "_voice") * 3) : 0 }
 
     component Meter: Rectangle { // vertical, -60..0 dB
@@ -399,7 +401,35 @@ Item {
                 font.pixelSize: 12
                 color: panel.channelColors[panel.channel]
             }
-            Stepper { x: 300; y: 6; key: panel.chKey("tube"); label: "PREAMP TUBES" }
+            Stepper {
+                x: 300
+                y: 6
+                key: panel.chKey("tube")
+                label: "PREAMP TUBES"
+                visible: panel.captureName === "" // a capture has its own
+            }
+            Row { // the channel's amp: Krunch's tubes or a capture
+                x: 760
+                y: 4
+                spacing: 8
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "AMP"
+                    font.pixelSize: 11
+                    color: "#8F897A"
+                }
+                PanelButton {
+                    width: 300
+                    height: 26
+                    dark: true
+                    faceText: panel.captureName === "" ? "KRUNCH TUBES ▾" : panel.captureName.toUpperCase() + " ▾"
+                    text: "Choose this channel's amp: Krunch's tubes or a capture"
+                    onClicked: {
+                        capturePicker.channel = panel.channel
+                        capturePicker.open()
+                    }
+                }
+            }
         }
         Repeater {
             model: [
@@ -669,6 +699,13 @@ Item {
                 }
             }
         }
+    }
+
+    CapturePicker {
+        id: capturePicker
+        captures: panel.captures
+        x: (panel.width - width) / 2
+        y: 40
     }
 
     IrPicker {
