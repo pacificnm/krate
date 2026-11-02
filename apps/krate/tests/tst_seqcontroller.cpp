@@ -367,6 +367,42 @@ private slots:
         QCOMPARE(arrange.lane(1).size(), 3);
     }
 
+    // Lanes 9-16 arm and record like the first eight (the arming once held only 8).
+    void recordsOnTheLastLanes()
+    {
+        QTemporaryDir dir;
+        Sequencer seq;
+        Transport transport;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.load();
+        ArrangeController arrange(c, transport, nullptr);
+        MidiCapture capture;
+        arrange.setMidiCapture(&capture);
+        arrange.setSongMode(true);
+        arrange.setArmed(15, true);
+        arrange.setArmed(11, true);
+        QVERIFY(arrange.armed(15));
+        QVERIFY(arrange.armed(11));
+        QVERIFY(!arrange.armed(3));
+        arrange.setRecording(true);
+        transport.setPlaying(true);
+        TransportState t;
+        t.playing = true;
+        t.bpm = 120.0;
+        t.beatAtBlockStart = 0.0;
+        const MidiEvent on{0, 3, {0x90, 60, 100}}, off{0, 3, {0x80, 60, 0}};
+        capture.capture(t, &on, 1, 48000.0);
+        t.beatAtBlockStart = 1.0;
+        capture.capture(t, &off, 1, 48000.0);
+        arrange.poll();
+        QCOMPARE(arrange.takeNotes(), 1);
+        transport.setPlaying(false);
+        arrange.poll();
+        QCOMPARE(arrange.lane(15).size(), 1);
+        QCOMPARE(arrange.lane(11).size(), 1);
+        QCOMPARE(arrange.lane(3).size(), 0);
+    }
+
     void arranger()
     {
         QTemporaryDir dir;

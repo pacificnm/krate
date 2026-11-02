@@ -208,7 +208,7 @@ private:
     bool m_following = false;
     bool m_recording = false;
     krate::MidiCapture *m_capture = nullptr;
-    std::array<bool, 8> m_armed{};
+    std::array<bool, krate::seq::kTracks> m_armed{}; // (8 until the tracks became 16: lanes 9-16 wrote past it)
     bool m_taking = false;
     std::vector<TakeNote> m_take;
     std::array<Held, 128> m_held{};
