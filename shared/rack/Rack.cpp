@@ -76,7 +76,7 @@ void Rack::setInputSource(int device, int source) noexcept
     if (device < 0 || device >= m_count)
         return;
     // Not itself, nor another device that takes inputs (no loops).
-    if (source == device || source < -1 || source >= m_count || (source >= 0 && takesInput(source)))
+    if (source == device || source < interfaceSource(kInputs - 1) || source >= m_count || (source >= 0 && takesInput(source)))
         source = -1;
     m_devices[std::size_t(device)].inputSource.store(source, std::memory_order_relaxed);
 }
@@ -521,7 +521,7 @@ void Rack::processDevice(int i, const RackBlock &block, std::uint32_t offset, st
 {
     Device &d = m_devices[std::size_t(i)];
     float *const outputs[2] = {d.left.data(), d.right.data()};
-    // Its inputs: the rack's, in order (any beyond them are silent), or another
+    // Its inputs: the rack's, in order from its first (any beyond them are silent), or another
     // device's output, summed to mono, on every input.
     const float *inputs[kInputs + 6];
     const int inputCount = std::min(d.instrument->inputChannels(), int(std::size(inputs)));
@@ -534,10 +534,11 @@ void Rack::processDevice(int i, const RackBlock &block, std::uint32_t offset, st
             return s.raw.data();
         return c == 0 ? s.rawL.data() : c == 1 ? s.rawR.data() : m_silence.data();
     };
+    const int first = firstInput(source); // the rack's inputs: from this one on
     for (int c = 0; c < inputCount; ++c)
         inputs[c] = source >= 0 ? (fromDevice ? fed(c) : m_silence.data())
-                    : block.inputs && c < kInputs ? block.inputs[c] + offset
-                                                 : m_silence.data();
+                    : block.inputs && first + c < kInputs && block.inputs[first + c] ? block.inputs[first + c] + offset
+                                                                                   : m_silence.data();
     d.instrument->process(AudioBlock{outputs, frames, d.midi.data(), d.midiCount,
                                      block.transport ? &transport : nullptr, inputCount > 0 ? inputs : nullptr});
 

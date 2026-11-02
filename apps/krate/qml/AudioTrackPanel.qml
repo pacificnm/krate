@@ -4,7 +4,7 @@ import QtQuick
 import Krate
 
 // An audio track's panel (docs/DAW.md, D2) at design size 900 x 450: ARM,
-// MONITOR, INPUT and where the input comes from, the input meter, the
+// MONITOR, CHANNELS and the SOURCE (an interface jack, by name, or an instrument), the input meter, the
 // selected take's waveform and the takes, each on the track's lane (where it
 // was recorded, shown in the arranger) or not. REC is on the transport bar.
 Item {
@@ -82,13 +82,13 @@ Item {
         }
     }
 
-    // MONITOR and INPUT: three positions each
+    // MONITOR and CHANNELS (of the source: both of a pair, or one): three positions each
     Repeater {
         model: [
-            { label: "MONITOR", param: 1, x: 170, faces: ["OFF", "AUTO", "ON"],
+            { label: "MONITOR", param: 1, x: 165, faces: ["OFF", "AUTO", "ON"],
               names: ["Don't hear the input", "Hear the input while armed", "Always hear the input"] },
-            { label: "INPUT", param: 2, x: 420, faces: ["STEREO", "IN 1", "IN 2"],
-              names: ["Record both inputs", "Record input 1 (mono)", "Record input 2 (mono)"] }
+            { label: "CHANNELS", param: 2, x: 390, faces: ["STEREO", "MONO", "NEXT"],
+              names: ["Stereo: the source's input and the next", "Mono: the source's input", "Mono: the input after it"] }
         ]
         Column {
             id: selector
@@ -103,7 +103,7 @@ Item {
                     model: 3
                     PanelButton {
                         required property int index
-                        width: 74
+                        width: 64
                         height: 50
                         text: selector.modelData.names[index]
                         faceText: selector.modelData.faces[index]
@@ -117,10 +117,10 @@ Item {
 
     // Where the input comes from: the interface, or another device (the mixer's input selector)
     Column {
-        x: 670
+        x: 610
         y: 120
         spacing: 6
-        PanelLabel { text: "SOURCE" }
+        PanelLabel { text: "SOURCE (click: the list)" }
         Row {
             spacing: 6
             PanelButton {
@@ -130,22 +130,50 @@ Item {
                 faceText: "◂"
                 onClicked: Rack.stepInputSource(panel.rackDevice, -1)
             }
-            Rectangle {
-                width: 120
+            Rectangle { // the source, and what it's wired to; a click lists them all
+                width: 180
                 height: 50
                 radius: 4
                 color: Theme.lcdBg
                 border.color: Theme.deckLine
-                Text {
+                Accessible.role: Accessible.Button
+                Accessible.name: "Input source: " + sourceLabel.text
+                Column {
                     anchors.centerIn: parent
-                    width: parent.width - 8
-                    horizontalAlignment: Text.AlignHCenter
-                    elide: Text.ElideRight
-                    text: Rack.mixerRevision >= 0 ? Rack.inputSourceName(panel.rackDevice) : ""
-                    color: Theme.lcdInk
-                    font.family: Theme.labelFont
-                    font.pixelSize: 15
-                    font.bold: true
+                    width: parent.width - 10
+                    Text {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        text: Rack.mixerRevision >= 0 ? Rack.inputSourceName(panel.rackDevice) : ""
+                        color: Theme.lcdInk
+                        font.family: Theme.labelFont
+                        font.pixelSize: 15
+                        font.bold: true
+                    }
+                    Text {
+                        id: sourceLabel
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideMiddle
+                        text: {
+                            if (Rack.mixerRevision < 0) return ""
+                            const full = Rack.inputSourceLabel(panel.rackDevice)
+                            const at = full.indexOf(" · ")
+                            return at >= 0 ? full.slice(at + 3) : "its own output"
+                        }
+                        color: Theme.lcdInk
+                        font.family: Theme.labelFont
+                        font.pixelSize: 11
+                    }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: sourceMenu.popup()
+                }
+                SourceMenu {
+                    id: sourceMenu
+                    device: panel.rackDevice
                 }
             }
             PanelButton {

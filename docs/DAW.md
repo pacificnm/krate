@@ -22,6 +22,21 @@ Decisions:
 - **Grow Krate rather than build plugins for another DAW, or fork one**: everything stays the way we want it, and the instruments' panels need no work (as plugins they would have to run as separate programs next to the host).
 - **Copies** (D8): up to 16 of each instrument, each its own device, built only once added (below).
 
+## Audio inputs
+
+Krate has eight audio inputs, **IN 1** to **IN 8**. **AUDIO** (or ⚙ Settings ▸ Audio) shows what each one is wired to: one jack of your audio interface each. On a first start they're wired to the interface's jacks in order, so IN 2 is its second jack (a 2-input interface's line 2). Change any of them there.
+
+Everything that records or processes sound picks its **source** by name: an audio track (its panel's **SOURCE**: click it for the list), Krunch, an effect plugin, and on the mixer the box at the bottom of their strips.
+- The interface's inputs that are wired to something: **IN 2 · <interface> · in 2**.
+- Any instrument's own output.
+
+A click on the box opens the list. A right click or the mouse wheel steps through it. An audio track's **CHANNELS** then says what it takes from that source:
+- **STEREO**: the source's jack and the next one;
+- **MONO**: just that jack;
+- **NEXT**: just the next one.
+
+Krunch's own input 1 and 2 are likewise its source's jack and the next. Saved with the rack (`"input": "input:2"`; none = IN 1).
+
 ## Copies
 
 Up to 16 of each instrument play side by side: **Korrode 2**, **Kessel 3** and on, each with its own sound, patterns, mixer strip, sequencer targets, MIDI links and automation lanes. Klick is one only. Konnekt is in the rack too (2026-11-01: its window became a panel, `Panel.qml`, that the standalone app's window holds), its copies each with their own patch.

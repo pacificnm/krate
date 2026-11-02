@@ -635,38 +635,87 @@ void RackController::setInputSource(int device, int source)
     emit mixerChanged(); // the session saves it
 }
 
-void RackController::stepInputSource(int device, int delta)
+QVariantList RackController::inputSources(int device) const
 {
+    QVariantList list;
     if (!takesInput(device))
-        return;
-    // The interface, then every instrument that can feed it (not itself, nor another with inputs).
-    QList<int> sources{-1};
+        return list;
+    // The interface's inputs wired to something (and the first, and the one it has)...
+    const int current = inputSource(device);
+    for (int k = 0; k < krate::Rack::kInputs; ++k) {
+        const int source = krate::Rack::interfaceSource(k);
+        if (k > 0 && m_interfaceInputs.value(k).isEmpty() && source != current)
+            continue;
+        const QString name = QStringLiteral("IN %1").arg(k + 1);
+        const QString wired = m_interfaceInputs.value(k);
+        list << QVariantMap{{QStringLiteral("source"), source},
+                            {QStringLiteral("name"), name},
+                            {QStringLiteral("label"), name + QStringLiteral(" · ") + (wired.isEmpty() ? QStringLiteral("nothing (AUDIO)") : wired)}};
+    }
+    // ...then every instrument that can feed it (not itself, nor another with inputs).
     for (int d = 0; d < m_strips.size(); ++d)
         if (d != device && !takesInput(d) && isPresent(d))
-            sources << d;
-    const int at = std::max(0, int(sources.indexOf(inputSource(device))));
+            list << QVariantMap{{QStringLiteral("source"), d}, {QStringLiteral("name"), m_names.value(d)}, {QStringLiteral("label"), m_names.value(d)}};
+    return list;
+}
+
+void RackController::stepInputSource(int device, int delta)
+{
+    const QVariantList sources = inputSources(device);
+    if (sources.isEmpty())
+        return;
+    int at = 0;
+    for (qsizetype i = 0; i < sources.size(); ++i)
+        if (sources[i].toMap().value(QStringLiteral("source")).toInt() == inputSource(device))
+            at = int(i);
     const int n = int(sources.size());
-    setInputSource(device, sources.at(((at + delta) % n + n) % n));
+    setInputSource(device, sources.at(((at + delta) % n + n) % n).toMap().value(QStringLiteral("source")).toInt());
 }
 
 QString RackController::inputSourceName(int device) const
 {
     const int source = inputSource(device);
-    return source < 0 ? QStringLiteral("INPUT") : m_names.value(source);
+    return source < 0 ? QStringLiteral("IN %1").arg(krate::Rack::firstInput(source) + 1) : m_names.value(source);
+}
+
+QString RackController::inputSourceLabel(int device) const
+{
+    const int source = inputSource(device);
+    if (source >= 0)
+        return m_names.value(source);
+    const QString wired = m_interfaceInputs.value(krate::Rack::firstInput(source));
+    return inputSourceName(device) + QStringLiteral(" · ") + (wired.isEmpty() ? QStringLiteral("nothing (AUDIO)") : wired);
+}
+
+void RackController::setInterfaceInputs(const QStringList &labels)
+{
+    if (labels == m_interfaceInputs)
+        return;
+    m_interfaceInputs = labels;
+    ++m_mixerRevision;
+    emit mixerChanged();
 }
 
 QString RackController::inputSourceId(int device) const
 {
     const int source = inputSource(device);
-    return source < 0 || source >= m_entries.size() ? QString() : m_entries[source].id;
+    if (source < 0) {
+        const int first = krate::Rack::firstInput(source);
+        return first == 0 ? QString() : QStringLiteral("input:%1").arg(first + 1);
+    }
+    return source >= m_entries.size() ? QString() : m_entries[source].id;
 }
 
 void RackController::setInputSourceId(int device, const QString &id)
 {
     int source = -1;
-    for (qsizetype i = 0; i < m_entries.size(); ++i)
-        if (m_entries[i].id == id)
-            source = int(i);
+    if (id.startsWith(QLatin1String("input:"))) {
+        source = krate::Rack::interfaceSource(std::clamp(id.mid(6).toInt() - 1, 0, krate::Rack::kInputs - 1));
+    } else {
+        for (qsizetype i = 0; i < m_entries.size(); ++i)
+            if (m_entries[i].id == id)
+                source = int(i);
+    }
     if (takesInput(device))
         setInputSource(device, source);
 }

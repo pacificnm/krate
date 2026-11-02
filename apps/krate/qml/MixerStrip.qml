@@ -325,8 +325,9 @@ Item {
         font.bold: false
     }
 
-    // Audio input (the guitar amp): INPUT (the audio interface) or another
-    // instrument's own output. Click: next; right-click or wheel down: previous.
+    // Audio input (the guitar amp, audio tracks): one of the interface's jacks
+    // (IN 1, IN 2...) or another instrument's own output. Click: the list, by
+    // name; right-click or the wheel: the previous or next.
     Rectangle {
         id: inputBox
         readonly property bool shown: strip.rev >= 0 && !strip.isMaster && Rack.takesInput(strip.device)
@@ -342,7 +343,7 @@ Item {
         border.color: Theme.deckLine
 
         Accessible.role: Accessible.Button
-        Accessible.name: strip.name + " audio input: " + (shown ? Rack.inputSourceName(strip.device) : "")
+        Accessible.name: strip.name + " audio input: " + (shown ? Rack.inputSourceLabel(strip.device) : "")
 
         Text {
             anchors.centerIn: parent
@@ -358,8 +359,12 @@ Item {
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.RightButton
-            onClicked: mouse => inputBox.step(mouse.button === Qt.RightButton ? -1 : 1)
+            onClicked: mouse => mouse.button === Qt.RightButton ? inputBox.step(-1) : inputMenu.popup()
             onWheel: wheel => inputBox.step(wheel.angleDelta.y > 0 ? 1 : -1)
+        }
+        SourceMenu {
+            id: inputMenu
+            device: strip.device
         }
     }
 

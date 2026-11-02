@@ -174,6 +174,38 @@ QString HostController::portLabel(const QString &port)
     return device + QStringLiteral(" · ") + channel;
 }
 
+void HostController::setAutoInputs(bool on)
+{
+    m_autoInputs = on;
+    autoWireInputs(); // the audio may be open already
+}
+
+void HostController::autoWireInputs()
+{
+    if (!m_autoInputs || m_capturePorts.isEmpty())
+        return;
+    m_autoInputs = false;
+    // The per-input sources (one per jack, named) when there are, else every capture port, in order.
+    QStringList jacks;
+    for (const QString &p : std::as_const(m_capturePorts))
+        if (p.endsWith(QLatin1String(":capture_MONO")))
+            jacks << p;
+    if (jacks.isEmpty())
+        jacks = m_capturePorts;
+    for (int i = 0; i < m_inputPorts.size(); ++i)
+        m_inputPorts[i] = jacks.value(i);
+    emit inputPortsChanged();
+    connectInputs();
+}
+
+QStringList HostController::inputLabels() const
+{
+    QStringList labels;
+    for (const QString &port : m_inputPorts)
+        labels << (port.isEmpty() ? QString() : portLabel(port));
+    return labels;
+}
+
 QVariantList HostController::inputsConnected() const
 {
     QVariantList result;
@@ -221,6 +253,7 @@ void HostController::refreshCapturePorts()
         m_outputDevices = devices;
         emit capturePortsChanged();
     }
+    autoWireInputs();
 }
 
 void HostController::setOutputDevice(const QString &device)

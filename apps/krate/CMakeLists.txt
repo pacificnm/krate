@@ -77,6 +77,7 @@ qt_add_qml_module(krate
         qml/AudioSettings.qml
         qml/KeysSettings.qml
         qml/SettingsScreen.qml
+        qml/SourceMenu.qml
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(krate PROPERTIES ENABLE_EXPORTS ON) # -rdynamic: function names in crash reports

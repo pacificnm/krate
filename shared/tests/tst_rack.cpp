@@ -1077,7 +1077,7 @@ private slots:
         FakeDevice amp(kParamsA, 0.0f), synth(kParamsB, 0.0f);
         amp.inputs = 3;
         Rack rack(4096);
-        rack.addDevice(amp);
+        const int ampIndex = rack.addDevice(amp);
         rack.addDevice(synth);
         rack.prepare(48000.0);
         std::vector<float> in1(5000), in2(5000);
@@ -1096,6 +1096,15 @@ private slots:
         QCOMPARE(amp.inputSamples[3], std::make_pair(4096.0f, 4999.0f));
         QCOMPARE(amp.inputSamples[4], std::make_pair(-4096.0f, -4999.0f));
         QCOMPARE(synth.gotInputs, (std::vector<bool>{false, false}));
+
+        // From input 2 on: its first input is the rack's second (a guitar in the interface's jack 2).
+        rack.setInputSource(ampIndex, Rack::interfaceSource(1));
+        QCOMPARE(rack.inputSource(ampIndex), -2);
+        run(rack, 5000, {}, nullptr, inputs);
+        QCOMPARE(amp.inputSamples[amp.inputSamples.size() - 3], std::make_pair(-4096.0f, -4999.0f));
+        QCOMPARE(amp.inputSamples[amp.inputSamples.size() - 2], std::make_pair(0.0f, 0.0f)); // input 3: nothing there
+        rack.setInputSource(ampIndex, Rack::interfaceSource(Rack::kInputs)); // past the last: the first
+        QCOMPARE(rack.inputSource(ampIndex), -1);
 
         // A host without inputs (offline renders): silence.
         run(rack, 64);

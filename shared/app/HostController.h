@@ -76,6 +76,11 @@ public:
     QStringList inputPorts() const { return m_inputPorts; }
     // Before the first poll (the saved choice) or from the GUI.
     void setInputPorts(const QStringList &ports);
+    // Nothing chosen yet (a first start): once the interface's inputs are
+    // known, wire them in order (input 1 to its first jack...).
+    void setAutoInputs(bool on);
+    // What each input is wired to, as AUDIO shows it ("" = nothing).
+    QStringList inputLabels() const;
     Q_INVOKABLE void setInputPort(int input, const QString &port);
     // A capture port's name for people, e.g. "USB Audio Interface · in 1".
     Q_INVOKABLE static QString portLabel(const QString &port);
@@ -105,6 +110,7 @@ private:
     void poll();
     void connectMidiInput();
     void connectInputs();
+    void autoWireInputs(); // if asked, and the interface's inputs are known
     void refreshCapturePorts();
     void connectOutputs();
     void setAudioStatus(const QString &status);
@@ -127,6 +133,7 @@ private:
     QString m_outputDevice;
     QString m_connectedOutput; // the device the outputs went to ("" = the first hardware outputs)
     QStringList m_inputPorts;
+    bool m_autoInputs = false;
     QList<qreal> m_inputLevels;
     int m_requestedBufferSize = 0;
     std::uint32_t m_lastLatency = 0;

@@ -179,8 +179,14 @@ public:
     Q_INVOKABLE int inputSource(int device) const;
     Q_INVOKABLE void setInputSource(int device, int source);
     Q_INVOKABLE void stepInputSource(int device, int delta); // the next (or previous) source, round
-    Q_INVOKABLE QString inputSourceName(int device) const;   // "INPUT", or the instrument's name
-    QString inputSourceId(int device) const;                 // "" = the interface (sessions, songs)
+    Q_INVOKABLE QString inputSourceName(int device) const;   // "IN 2" (the interface's), or the instrument's name
+    // In full: "IN 2 · USB Audio Interface · in 2", or the instrument's name.
+    Q_INVOKABLE QString inputSourceLabel(int device) const;
+    // What can feed it: [{source, name, label}]: the interface's inputs, then instruments.
+    Q_INVOKABLE QVariantList inputSources(int device) const;
+    // What each of the rack's inputs is wired to ("" = nothing), as AUDIO shows it.
+    void setInterfaceInputs(const QStringList &labels);
+    QString inputSourceId(int device) const;                 // "" = the interface's input 1, "input:2"... (sessions, songs)
     void setInputSourceId(int device, const QString &id);
 
     // The instruments' own RUN / STOP (set before the panels load); PLAY switches them all on.
@@ -237,6 +243,7 @@ private:
     krate::Transport &m_transport;
     QList<krate::InstrumentEntry> m_entries; // their default MIDI channels
     QStringList m_names, m_modules, m_components;
+    QStringList m_interfaceInputs; // what each of the rack's inputs is wired to ("" = nothing)
     QList<Strip> m_strips;
     qreal m_masterFader = kUnityFader;
     std::array<qreal, kEffectControls> m_effects{0.7, 0.5, 0.7, 0.5, 0.35 / 0.9};

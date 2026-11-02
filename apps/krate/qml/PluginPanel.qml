@@ -114,14 +114,17 @@ Item {
             onClicked: Rack.stepInputSource(panel.rackDevice, -1)
         }
         Rectangle {
-            width: 160
+            width: 240
             height: 36
             radius: 4
             color: Theme.lcdBg
             border.color: Theme.deckLine
             Text {
                 anchors.centerIn: parent
-                text: Rack.mixerRevision >= 0 && panel.effect ? Rack.inputSourceName(panel.rackDevice) : ""
+                width: parent.width - 8
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideMiddle
+                text: Rack.mixerRevision >= 0 && panel.effect ? Rack.inputSourceLabel(panel.rackDevice) : ""
                 color: Theme.lcdInk
                 font.family: Theme.labelFont
                 font.pixelSize: 14

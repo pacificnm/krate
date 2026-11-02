@@ -24,7 +24,7 @@ Plugin folders: CLAP plugins are looked for in the folders you add, then the sta
 
 ## Audio, MIDI and keys
 
-- **Audio**: the output, the audio interface's inputs, the buffer size (the same as the AUDIO popup).
+- **Audio**: the output, what Krate's inputs IN 1 to IN 8 are wired to (the interface's jacks in order at first; [DAW.md](DAW.md#audio-inputs)), the buffer size (the same as the AUDIO popup).
 - **MIDI inputs**: every MIDI device plugged in (the default: two keyboards play together, told apart by channel), or only those whose name matches what you type.
 - **Program Change** n focuses the nth instrument in the rack, or (off) goes to the instrument as a program change.
 - **Your MIDI keyboard**: its keys, first note and octave range (the same as the KEYS popup).

@@ -348,9 +348,16 @@ int main(int argc, char *argv[])
     QObject::connect(&host, &krate::HostController::outputDeviceChanged, &session,
                      [&session, &host] { session.setOutputDevice(host.outputDevice()); });
     QObject::connect(&host, &krate::HostController::inputPortsChanged, &session,
-                     [&session, &host] { session.setAudioInputs(host.inputPorts()); });
+                     [&session, &host, &rackController] {
+                         session.setAudioInputs(host.inputPorts());
+                         rackController.setInterfaceInputs(host.inputLabels());
+                     });
     QObject::connect(&host, &krate::HostController::requestedBufferSizeChanged, &session,
                      [&session, &host] { session.setBufferSize(host.requestedBufferSize()); });
+    // Never chosen (or all "None"): the interface's jacks in order, once it's seen (and kept).
+    const QStringList savedInputs = session.audioInputs();
+    rackController.setInterfaceInputs(host.inputLabels()); // the mixer's IN 1, IN 2... named
+    host.setAutoInputs(std::none_of(savedInputs.begin(), savedInputs.end(), [](const QString &p) { return !p.isEmpty(); }));
 
     QQmlApplicationEngine engine;
     QObject::connect(

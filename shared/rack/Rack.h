@@ -53,7 +53,11 @@ public:
     // plugin slots. Below kRackDevice, and in a mapping's 8 bits.
     static constexpr int kMaxDevices = 200;
     static constexpr int kChannels = 16;
-    static constexpr int kInputs = 2;           // audio inputs, given to every device that has inputs
+    static constexpr int kInputs = 8;           // audio inputs (the interface's jacks), for devices that take input
+    // A device's input source: another device (>= 0), or the rack's inputs from
+    // input `first` on (its first input that one, its second the next...).
+    static constexpr int interfaceSource(int first) noexcept { return -1 - first; }
+    static constexpr int firstInput(int source) noexcept { return source < 0 ? -1 - source : 0; }
     static constexpr int kAnyChannel = 16;      // CC map row matching any channel
     static constexpr std::uint32_t kMaxEventsPerDevice = 256;
 
@@ -221,7 +225,7 @@ private:
         std::vector<float> right;
         std::vector<float> raw; // its output summed to mono before EQ and fader, while it feeds another device
         std::vector<float> rawL, rawR; // and as it is, for a device that takes it in stereo
-        std::atomic<int> inputSource{-1}; // -1: the rack's inputs; else a device
+        std::atomic<int> inputSource{-1}; // < 0: the rack's inputs from firstInput() on; else a device
         std::array<MidiEvent, kMaxEventsPerDevice> midi{};
         std::uint32_t midiCount = 0;
 

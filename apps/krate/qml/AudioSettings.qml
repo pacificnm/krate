@@ -64,7 +64,7 @@ Column {
             Text {
                 width: 56
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Input " + (inputRow.index + 1)
+                text: "IN " + (inputRow.index + 1) // as the mixer and audio tracks name it
                 color: Theme.ink
                 font.family: Theme.labelFont
                 font.pixelSize: 12
@@ -75,7 +75,7 @@ Column {
                 textRole: "label"
                 currentIndex: inputRow.choices.findIndex(c => c.port === inputRow.port)
                 onActivated: index => Host.setInputPort(inputRow.index, inputRow.choices[index].port)
-                Accessible.name: "Input " + (inputRow.index + 1)
+                Accessible.name: "IN " + (inputRow.index + 1)
             }
             Led {
                 anchors.verticalCenter: parent.verticalCenter
