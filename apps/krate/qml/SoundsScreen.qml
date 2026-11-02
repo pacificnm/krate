@@ -104,7 +104,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - 36
                     elide: Text.ElideMiddle
-                    text: folderRow.modelData.replace(/^\/home\/[^/]+/, "~")
+                    text: folderRow.modelData === Sounds.dropFolder ? "Krate's sounds folder"
+                                                                    : folderRow.modelData.replace(/^\/home\/[^/]+/, "~")
                     color: Theme.ink
                     font.family: Theme.labelFont
                     font.pixelSize: 12
@@ -113,6 +114,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: folderRow.modelData !== Sounds.dropFolder // Krate's own: always there
                     text: "✕"
                     color: Theme.ink
                     MouseArea {
@@ -318,7 +320,7 @@ Item {
                 visible: Sounds.total === 0 && !Sounds.scanning
                 wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
-                text: "No sounds yet. ADD FOLDER points the library at a folder of WAV or MP3 files (sample packs, your drum sounds); they stay where they are."
+                text: "No sounds yet. ADD FOLDER points the library at a folder of WAV or MP3 files (sample packs, your drum sounds); they stay where they are. Or put them in Krate's sounds folder (Krate Remote: Places ▸ Sounds): they show up by themselves."
                 color: Theme.lcdInk
                 font.family: Theme.labelFont
                 font.pixelSize: 16

@@ -40,7 +40,7 @@ Audio, your MIDI keyboard's keys and the instruments' own settings are set on th
 
 ## Files
 
-**PLACES** lists the player's home folder, Krate's folders (recordings, song library, instruments' sounds, exports, Krate's data) and the plugin folders. The path field takes any folder.
+**PLACES** lists the player's home folder, **Sounds** (Krate's sounds folder: what you put there is in the Sounds library by itself), Krate's folders (recordings, song library, instruments' sounds, exports, Krate's data) and the plugin folders. The path field takes any folder.
 
 | | |
 | --- | --- |
@@ -56,7 +56,8 @@ What goes where:
 
 | | |
 | --- | --- |
-| Samples and sample packs | Any folder (`~/Samples`, say), then on the player **Sounds ▸ ADD FOLDER** (or **RESCAN** if it's already one of the library's folders). |
+| Samples and sample packs | **Sounds**, the first of the Places: Krate's sounds folder, always in the Sounds library. What lands there shows up in the library by itself a moment later (folders and all). Anywhere else: on the player **Sounds ▸ ADD FOLDER** (or **RESCAN**). |
+| Not for the library | An instrument's own folders (`klang/samples`, `kessel/samples`) are where Krate copies a sound you send to a pad or drum: the Sounds library doesn't look there. |
 | CLAP plugins | `~/.clap`, or a folder added under Settings ▸ Plugin folders. |
 | Recordings and exports | In their folders. Download them to mix or keep elsewhere. |
 | Songs (`.gp`, `.mid`) | Any folder, then open them in Krate's **Song** screen, which adds them to the library. |

@@ -80,6 +80,26 @@ private slots:
         QCOMPARE(sounds::soundInfo(dir.filePath("notes.txt")).seconds, 0.0);
     }
 
+    // A sound right in the folder (no subfolder): indexed too (its dir "").
+    void indexesTheFoldersOwnFiles()
+    {
+        QTemporaryDir dir;
+        const QString sounds = dir.filePath("sounds");
+        writeWav(sounds + "/Big Clap.wav", 0.3);
+        writeWav(sounds + "/pack/Kick 1.wav", 0.5);
+        SoundLibrary lib(dir.filePath("sounds.db"));
+        QVERIFY(lib.addFolder(sounds));
+        std::vector<sounds::FileInfo> files;
+        for (const QString &f : sounds::findSoundFiles(sounds))
+            files.push_back(sounds::soundInfo(f));
+        QCOMPARE(lib.update(QDir(sounds).absolutePath(), files), 2);
+        SoundLibrary::Query search;
+        search.search = QStringLiteral("clap");
+        const QVariantList found = lib.sounds(search);
+        QCOMPARE(found.size(), 1);
+        QCOMPARE(found[0].toMap().value("dir").toString(), QString());
+    }
+
     void indexesFolders()
     {
         QTemporaryDir dir;

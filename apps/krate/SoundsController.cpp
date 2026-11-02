@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFileInfo>
 #include <QJSEngine>
 
@@ -34,6 +36,40 @@ SoundsController::SoundsController(const QString &databaseFile, krate::Previewer
     m_timer.start();
     if (!m_library.isOpen())
         m_message = QStringLiteral("The sound library couldn't open its database.");
+    m_settle.setSingleShot(true);
+    m_settle.setInterval(1500);
+    connect(&m_settle, &QTimer::timeout, this, [this] {
+        watchDropFolder(); // new folders in it too
+        rescan();
+    });
+    connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_settle.start(); });
+}
+
+void SoundsController::setDropFolder(const QString &folder)
+{
+    m_dropFolder = QDir::cleanPath(folder);
+    QDir().mkpath(m_dropFolder);
+    if (!m_library.folders().contains(m_dropFolder))
+        m_library.addFolder(m_dropFolder); // (false if a library folder holds it already: fine)
+    watchDropFolder();
+    rescan(); // whatever arrived while Krate wasn't running
+}
+
+void SoundsController::watchDropFolder()
+{
+    if (m_dropFolder.isEmpty())
+        return;
+    QStringList dirs{m_dropFolder};
+    QDirIterator it(m_dropFolder, QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    while (it.hasNext() && dirs.size() < 1000)
+        dirs << it.next();
+    const QStringList watched = m_watcher.directories();
+    QStringList add;
+    for (const QString &d : std::as_const(dirs))
+        if (!watched.contains(d))
+            add << d;
+    if (!add.isEmpty())
+        m_watcher.addPaths(add);
 }
 
 SoundsController::~SoundsController()
@@ -104,8 +140,10 @@ void SoundsController::removeFolder(const QString &folder)
 
 void SoundsController::rescan()
 {
-    if (m_scanning.exchange(true))
-        return; // one at a time
+    if (m_scanning.exchange(true)) {
+        m_scanAgain = true; // one at a time
+        return;
+    }
     if (m_worker.joinable())
         m_worker.join();
     m_message = QStringLiteral("Looking through your folders…");
@@ -135,6 +173,8 @@ void SoundsController::scan(QStringList folders)
         m_scanning.store(false);
         m_message = QStringLiteral("%1 sounds in the library.").arg(m_library.total());
         bump();
+        if (std::exchange(m_scanAgain, false) && !m_quit.load())
+            rescan();
     }, Qt::QueuedConnection);
 }
 

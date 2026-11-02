@@ -99,7 +99,8 @@ int SoundLibrary::update(const QString &folder, const std::vector<sounds::FileIn
     for (const sounds::FileInfo &f : files) {
         found.insert(f.path);
         const QString relative = root.relativeFilePath(f.path);
-        const QString dir = QFileInfo(relative).path() == u"." ? QString() : QFileInfo(relative).path();
+        // "" (not a null string, which is SQL's NULL: refused by the column) for the folder's own files.
+        const QString dir = QFileInfo(relative).path() == u"." ? QStringLiteral("") : QFileInfo(relative).path();
         insert.addBindValue(f.path);
         insert.addBindValue(folder);
         insert.addBindValue(QFileInfo(f.path).completeBaseName());

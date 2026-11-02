@@ -317,6 +317,8 @@ QVariantList RemoteController::places() const
         list << QVariantMap{{QStringLiteral("label"), label}, {QStringLiteral("path"), path}};
     };
     add(QStringLiteral("Home"), m_home);
+    // Krate's sounds folder: what lands there is in the Sounds library by itself.
+    add(QStringLiteral("Sounds (the library's)"), folder(Folder::Data) + QStringLiteral("/sounds"));
     for (const Folder f : loc::kShown)
         add(loc::label(f), folder(f));
     for (const QString &p : pluginFolders())

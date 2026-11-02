@@ -18,11 +18,16 @@ Open the **Sounds** tab (next to Arrange; key `O`, learnable).
 
 On Kessel, a drum playing your sample keeps its knobs: **TUNE** is the sample's pitch (the middle as recorded), **DECAY** fades it (the top: to its end), and its level, pan, sends and place in every pattern stay; **WRITE** keeps the drums' samples in the kit (see Kessel's KITS.md).
 
+## Krate's sounds folder
+
+`~/.local/share/krate/sounds` (in Krate's data folder) is always in the library: it's the first folder listed, and it can't be taken out. Anything put there shows up by itself a moment later, in subfolders too (a pack keeps its folders); files deleted from it leave the library. It's where **Krate Remote** sends sounds (**Files ▸ Places ▸ Sounds**, [REMOTE.md](REMOTE.md)). Other folders you add are looked through when you press **RESCAN**.
+
 ## Where things are
 
 | | |
 | --- | --- |
 | `~/.local/share/krate/sounds.db` | The library: folders, sounds, categories, favourites. |
+| `~/.local/share/krate/sounds` | Krate's sounds folder: always in the library, watched. |
 | Your folders | The sounds themselves, untouched. |
 | `~/.local/share/klang/samples`, `~/.local/share/kessel/samples` | Copies of the sounds you sent to Klang or Kessel. |
 

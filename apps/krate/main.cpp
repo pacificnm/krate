@@ -273,6 +273,7 @@ int main(int argc, char *argv[])
         soundDevices.push_back({int(i), entries[i].name, instances[std::size_t(i)].get()});
     SoundsController soundsController(appData + QStringLiteral("/sounds.db"),
                                       previewer, rackController, std::move(soundDevices), nullptr);
+    soundsController.setDropFolder(appData + QStringLiteral("/sounds")); // docs/SOUNDS.md#krates-sounds-folder
     krate::MidiCapture midiCapture; // the keyboard's notes, for MIDI clips
     arrangeController.setMidiCapture(&midiCapture);
     // Automation (docs/DAW.md, D5): the instruments' knobs over the song.

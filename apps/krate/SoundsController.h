@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <QElapsedTimer>
+#include <QFileSystemWatcher>
 #include <QObject>
 #include <QStringList>
 #include <QTimer>
@@ -40,6 +41,9 @@ class SoundsController : public QObject
     Q_PROPERTY(bool scanning READ scanning NOTIFY changed)
     Q_PROPERTY(QString message READ message NOTIFY changed)
     Q_PROPERTY(QStringList folders READ folders NOTIFY changed)
+    // Krate's own sounds folder (<data>/sounds): always in the library, and
+    // looked through again by itself when files arrive (Krate Remote's uploads).
+    Q_PROPERTY(QString dropFolder READ dropFolder CONSTANT)
     Q_PROPERTY(QStringList categoryNames READ categoryNames CONSTANT)
     Q_PROPERTY(QVariantList categoryCounts READ categoryCounts NOTIFY changed)
     Q_PROPERTY(int total READ total NOTIFY changed)
@@ -63,6 +67,9 @@ public:
     bool scanning() const { return m_scanning.load(); }
     QString message() const { return m_message; }
     QStringList folders() const { return m_library.folders(); }
+    QString dropFolder() const { return m_dropFolder; }
+    // Makes `folder` the sounds folder: created, put in the library, watched.
+    void setDropFolder(const QString &folder);
     QStringList categoryNames() const { return sounds::categoryNames(); }
     QVariantList categoryCounts() const;
     int total() const { return m_library.total(); }
@@ -99,6 +106,7 @@ private:
     void freeRetired();
     void retirePlaying(); // the sound the previewer had, freed once the audio has moved on
     void bump();
+    void watchDropFolder();
     krate::InstrumentInstance *instanceOf(int device) const;
 
     static inline SoundsController *s_instance = nullptr;
@@ -110,6 +118,10 @@ private:
     QString m_message;
     std::thread m_worker;
     std::atomic<bool> m_scanning{false}, m_quit{false};
+    bool m_scanAgain = false; // asked while scanning: once more when it's done
+    QString m_dropFolder;
+    QFileSystemWatcher m_watcher;
+    QTimer m_settle; // the drop folder looked through once files stop arriving
     // The sound decoded last (its preview and waveform), and the one playing.
     std::shared_ptr<const Decoded> m_decoded;
     int m_previewing = -1;
