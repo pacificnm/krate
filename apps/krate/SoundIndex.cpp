@@ -1,5 +1,6 @@
 #include "SoundIndex.h"
 
+#include <QCryptographicHash>
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
@@ -127,10 +128,27 @@ QStringList findSoundFiles(const QString &folder)
     return files;
 }
 
+QString fingerprint(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    constexpr qint64 kPart = 64 * 1024;
+    const qint64 size = file.size();
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    hash.addData(file.read(kPart));
+    if (size > kPart) {
+        file.seek(std::max(kPart, size - kPart));
+        hash.addData(file.read(kPart));
+    }
+    return QString::number(size) + u':' + QString::fromLatin1(hash.result().toHex());
+}
+
 FileInfo soundInfo(const QString &path)
 {
     FileInfo info;
     info.path = path;
+    info.fingerprint = fingerprint(path);
     if (!path.endsWith(QStringLiteral(".wav"), Qt::CaseInsensitive))
         return info;
     QFile file(path);

@@ -1,3 +1,5 @@
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <QtTest>
 
 #include <QDir>
@@ -100,12 +102,77 @@ private slots:
         QCOMPARE(found[0].toMap().value("dir").toString(), QString());
     }
 
+    // The same sound in several folders (your folder, Klang's samples, Kessel's):
+    // listed and counted once; a different sound of the same name still listed.
+    void copiesListedOnce()
+    {
+        QTemporaryDir dir;
+        const QString a = dir.filePath("sounds"), b = dir.filePath("klang/samples"), c = dir.filePath("kessel/samples");
+        writeWav(a + "/Groove Loop.wav", 1.0);
+        QVERIFY(QFile::copy(a + "/Groove Loop.wav", b + "/Groove Loop.wav") || (QDir().mkpath(b) && QFile::copy(a + "/Groove Loop.wav", b + "/Groove Loop.wav")));
+        QDir().mkpath(c);
+        QVERIFY(QFile::copy(a + "/Groove Loop.wav", c + "/Groove Loop (2).wav"));
+        writeWav(c + "/Groove Loop.wav", 0.5); // another sound, the same name
+        SoundLibrary lib(dir.filePath("sounds.db"));
+        for (const QString &folder : {a, b, c}) {
+            QVERIFY(lib.addFolder(folder));
+            std::vector<sounds::FileInfo> files;
+            for (const QString &f : sounds::findSoundFiles(folder))
+                files.push_back(sounds::soundInfo(f));
+            lib.update(QDir(folder).absolutePath(), files);
+        }
+        SoundLibrary::Query all;
+        const QVariantList list = lib.sounds(all);
+        QCOMPARE(list.size(), 2);
+        QCOMPARE(lib.total(), 2);
+        QCOMPARE(lib.categoryCounts()[std::size_t(Category::Loop)], 2);
+        QVERIFY(list[0].toMap().value("path").toString().startsWith(a)); // the first indexed
+        SoundLibrary::Query inKessel; // a folder's own list: all of its files
+        inKessel.folder = QDir(c).absolutePath();
+        QCOMPARE(lib.sounds(inKessel).size(), 2);
+    }
+
+    // A library made before fingerprints: opened, given them at the next scan.
+    void olderLibraryUpgraded()
+    {
+        QTemporaryDir dir;
+        const QString db = dir.filePath("sounds.db");
+        {
+            QSqlDatabase old = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), QStringLiteral("old"));
+            old.setDatabaseName(db);
+            QVERIFY(old.open());
+            QSqlQuery q(old);
+            QVERIFY(q.exec("CREATE TABLE folders (path TEXT PRIMARY KEY)"));
+            QVERIFY(q.exec("CREATE TABLE sounds (id INTEGER PRIMARY KEY, path TEXT UNIQUE NOT NULL, folder TEXT NOT NULL, "
+                           "name TEXT NOT NULL, dir TEXT NOT NULL, category INTEGER NOT NULL, manual INTEGER NOT NULL DEFAULT 0, "
+                           "favorite INTEGER NOT NULL DEFAULT 0, seconds REAL NOT NULL DEFAULT 0, rate INTEGER NOT NULL DEFAULT 0, "
+                           "channels INTEGER NOT NULL DEFAULT 0)"));
+            QVERIFY(q.exec("PRAGMA user_version = 1"));
+            old.close();
+        }
+        QSqlDatabase::removeDatabase(QStringLiteral("old"));
+        const QString a = dir.filePath("a"), b = dir.filePath("b");
+        writeWav(a + "/x/Hit.wav", 0.2);
+        QDir().mkpath(b + "/x");
+        QVERIFY(QFile::copy(a + "/x/Hit.wav", b + "/x/Hit.wav"));
+        SoundLibrary lib(db);
+        QVERIFY(lib.isOpen());
+        for (const QString &folder : {a, b}) {
+            QVERIFY(lib.addFolder(folder));
+            std::vector<sounds::FileInfo> files;
+            for (const QString &f : sounds::findSoundFiles(folder))
+                files.push_back(sounds::soundInfo(f));
+            lib.update(QDir(folder).absolutePath(), files);
+        }
+        QCOMPARE(lib.total(), 1);
+    }
+
     void indexesFolders()
     {
         QTemporaryDir dir;
         const QString pack = dir.filePath("pack");
         writeWav(pack + "/Kicks/Kick 1.wav", 0.5);
-        writeWav(pack + "/Kicks/Kick 2.wav", 0.5);
+        writeWav(pack + "/Kicks/Kick 2.wav", 0.55); // (another sound: identical files are listed once)
         writeWav(pack + "/Snares/Snare A.wav", 0.4);
         writeWav(pack + "/Loops/Groove 90.wav", 2.0);
         const auto scan = [&] {

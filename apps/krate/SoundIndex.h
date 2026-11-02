@@ -23,11 +23,16 @@ struct FileInfo
     QString path;
     double seconds = 0.0; // 0: not known (MP3s, until played)
     int rate = 0, channels = 0;
+    QString fingerprint; // the same for the same contents (copies of one sound in several folders)
 };
 
 // WAV and MP3 files under `folder`, at any depth.
 QStringList findSoundFiles(const QString &folder);
-// Its length, rate and channels from a WAV header; for an MP3 only the path.
+// The contents in short: its size and a hash of its start and end (no need
+// to read a long loop whole). "" if it can't be read.
+QString fingerprint(const QString &path);
+// Its length, rate and channels from a WAV header; for an MP3 only the path
+// (and both, its fingerprint).
 FileInfo soundInfo(const QString &path);
 
 } // namespace sounds

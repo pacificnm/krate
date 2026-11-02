@@ -24,7 +24,7 @@ These folders are always in the library, listed first. They can't be taken out o
 - Krate's sounds folder, `~/.local/share/krate/sounds`.
 - The instruments' samples folders: Klang's pads and Kessel's drums, `~/.local/share/klang/samples` and `~/.local/share/kessel/samples`, and their copies' if there are any.
 
-Anything put in one of them shows up in the library by itself a moment later, subfolders included (a pack keeps its folders). Files deleted from them leave the library.
+The same sound in several places (your folder, Klang's samples, Kessel's) is listed once: files with the same contents are one sound, whatever their names. Anything put in one of them shows up in the library by itself a moment later, subfolders included (a pack keeps its folders). Files deleted from them leave the library.
 
 Krate Remote sends sounds to the sounds folder (**Files ▸ Places ▸ Sounds**, [REMOTE.md](REMOTE.md)), but files sent to an instrument's samples folder show up too. Other folders you add are looked through when you press **RESCAN**.
 
