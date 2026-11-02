@@ -10,6 +10,14 @@ namespace units {
 int input(float v) { return v >= 0.5f ? 1 : 0; }
 int channel(float v) { return std::clamp(int(std::lround(double(v) * (kChannels - 1))), 0, kChannels - 1); }
 Voice voice(float v) { return Voice(std::clamp(int(std::lround(double(v) * (int(Voice::Count) - 1))), 0, int(Voice::Count) - 1)); }
+PreTube preTube(float v)
+{
+    return PreTube(std::clamp(int(std::lround(double(v) * (int(PreTube::Count) - 1))), 0, int(PreTube::Count) - 1));
+}
+PowerTube powerTube(float v)
+{
+    return PowerTube(std::clamp(int(std::lround(double(v) * (int(PowerTube::Count) - 1))), 0, int(PowerTube::Count) - 1));
+}
 double levelDb(float v) { return kLevelMinDb + double(v) * (kLevelMaxDb - kLevelMinDb); }
 double levelGain(float v) { return v <= 0.0f ? 0.0 : std::pow(10.0, levelDb(v) / 20.0); }
 double volumeDb(float v) { return -40.0 + 46.0 * double(v); }
@@ -25,6 +33,18 @@ std::string input(float v) { return std::format("In {}", units::input(v) + 1); }
 std::string channel(float v) { return std::format("Channel {}", units::channel(v) + 1); }
 std::string dial(float v) { return std::format("{:.1f}", double(v) * 10.0); }
 std::string level(float v) { return v <= 0.0f ? "-inf dB" : db(units::levelDb(v)); }
+std::string preTube(float v)
+{
+    static const char *const kNames[] = {"High gain", "Smooth", "Medium", "Low gain"};
+    return kNames[int(units::preTube(v))];
+}
+
+std::string powerTube(float v)
+{
+    static const char *const kNames[] = {"British pentode", "American beam", "Small pentode", "Big beam"};
+    return kNames[int(units::powerTube(v))];
+}
+
 std::string voice(float v)
 {
     static constexpr const char *kNames[] = {"Clean", "Crunch", "Heavy", "Lead"};
@@ -51,6 +71,8 @@ void holdPeak(std::atomic<float> &held, float peak) noexcept
 Krunch::Krunch()
 {
     m_volume.fill(-1.0f);
+    for (int t = 0; t < int(PreTube::Count); ++t) // the triode tables, built here: not on the audio thread
+        TriodeCurve::get(PreTube(t));
 }
 
 void Krunch::prepare(double sampleRate, std::uint32_t) noexcept
@@ -106,6 +128,7 @@ Preamp::Settings Krunch::preampSettings(int channel) const noexcept
     s.mid = channelValue(channel, ChannelParam::Mid);
     s.treble = channelValue(channel, ChannelParam::Treble);
     s.presence = channelValue(channel, ChannelParam::Presence);
+    s.tube = units::preTube(channelValue(channel, ChannelParam::Tube));
     return s;
 }
 
@@ -186,7 +209,7 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
         m_loop.process(m_a.data(), frames);
 
     m_powerAmp.set(m_params.get(int(ParamId::Master)), m_params.get(int(ParamId::Sag)),
-                   m_params.get(int(ParamId::Resonance)));
+                   m_params.get(int(ParamId::Resonance)), units::powerTube(m_params.get(int(ParamId::PowerTube))));
     m_powerAmp.process(m_a.data(), frames);
 
     // The cabinets: the playing channel's (and the previous one's while it fades).
@@ -206,7 +229,7 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
 
     // Level (ramped). The trim keeps a cranked master (the output stage at full
     // swing, plus the speaker's peaks) under full scale.
-    constexpr double kOutputTrimDb = -4.0;
+    constexpr double kOutputTrimDb = -0.5; // (-4 before the tube stages: they swing less)
     const float target = float(units::levelGain(m_params.get(int(ParamId::Level))) * std::pow(10.0, kOutputTrimDb / 20.0));
     if (m_level < 0.0f)
         m_level = target;

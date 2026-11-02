@@ -24,6 +24,8 @@ add_library(krunch_dsp STATIC
     dsp/PowerAmp.cpp
     dsp/Preamp.h
     dsp/Preamp.cpp
+    dsp/Tube.h
+    dsp/Tube.cpp
     dsp/SignaturePedals.h
     dsp/SignaturePedals.cpp
     dsp/StudioPedals.h

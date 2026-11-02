@@ -14,19 +14,19 @@ Four channels, each with its own parameters (`ch<N>_<name>`) and cabinet. Only t
 
 ## Preamp
 
-`dsp/Preamp.cpp`, per channel, by its **voice**:
+`dsp/Preamp.cpp`, per channel: two to four **triode stages** (`dsp/Tube.cpp`) at 4× the sample rate, in volts (a guitar at full scale is 1 V at the first grid), wired per voice as its kind of amp is, then the tone stack and presence.
 
-| Voice | Stages | Into the first stage | Gain knob (first stage) | Tone stack |
-| --- | --- | --- | --- | --- |
-| Clean | 1 | high-pass 30 Hz | −14 … +10 dB | American (scooped, glassy) |
-| Crunch | 2 | high-pass 60 Hz, +2 dB at 900 Hz | 0 … +30 dB | British |
-| Heavy | 3 | high-pass 140 Hz, +5 dB at 850 Hz (tight) | +6 … +40 dB | British |
-| Lead | 4 | high-pass 100 Hz, +6 dB at 750 Hz | +6 … +42 dB | British |
+| Voice | Stages (cathode Ω, bypassed above Hz, coupling Hz, roll-off Hz) | Between | Tone stack |
+| --- | --- | --- | --- |
+| Clean | 1.5 k/4/25/14 k, 1.5 k/4/20/11 k | Gain pot (−32 dB … 0) and the stack's loss (×0.12) | American |
+| Crunch | 2.7 k/40/8/12 k, **10 k cold**/1.5 k/20/6 k, 1.5 k/50/25/3.5 k | Gain pot (−30 … 0), ×0.45 | British |
+| Heavy | 1.5 k/60/15/12 k, **10 k cold**/1.5 k/40/6 k, 1.5 k/60/30/3.5 k, 1.5 k/60/30/3 k | Gain pot (−40 … 0), ×0.22, ×0.25 | British |
+| Lead | 1.5 k/40/10/11 k, 2.7 k/100/30/6 k, 1.5 k/70/30/3.8 k, 1.5 k/100/40/3.2 k | Gain pot (−38 … 0), ×0.25, ×0.2 | British |
 
-- **Stages** run at 4× the sample rate (`dsp/Oversampler.h`: two half-band 2× stages each way, about 0.5 ms of delay). Each is a gain, a biased `tanh` (asymmetric: even harmonics), a coupling-capacitor high-pass and a treble roll-off (one-pole each, per voice). Later stages have a fixed gain (+12 … +14 dB) and half the bias.
-- **Tone stack** (`dsp/ToneStack.cpp`): the passive bass / mid / treble network modelled from the circuit (Yeh and Smith, DAFx 2006): third order, the controls interact as on an amp, bass on a log taper; bilinear transform. Two sets of parts: American (the mid scoop near 700 Hz is about 12 dB at noon) and British (less scooped).
-- **Presence:** a high shelf at 3 kHz, −6 … +9 dB; then a low-pass at 11 kHz.
-- A trim per voice evens the channels' peaks out (within about 4 dB). The clean voice plays a few dB quieter on average than the distorted ones: matching their average would drive the power amp into clipping on every pick (a hot guitar at −7 dBFS stays under 2 % distortion on the clean channel, sag up).
+- **A triode stage** (`TriodeStage`): Koren's triode equations (1996) solved once per tube type against a 100 kΩ plate load from 250 V and kept as a table (plate voltage against grid-to-cathode voltage). The cathode resistor's voltage follows the stage's current through its bypass capacitor, so a stage pushed hard biases itself colder (compression that recovers), and below the bypass frequency the stage has less gain (less bass into the clipping: tight). The coupling capacitor in front is a high-pass that the grid charges when driven past the cathode (grid current: a little blocking). Then the plate swing, inverted, and the Miller roll-off. A 10 kΩ stage idles near cutoff: the cold clipper, asymmetric. The resting point is solved by bisection (silence in is silence out from the first sample).
+- **Preamp tubes** (`ch<N>_tube`, all of the channel's stages): **High gain** (mu 100), **Smooth** (mu 70, softer), **Medium** (mu 60, more headroom), **Low gain** (mu 21.5: barely clips).
+- The last stage's coupling capacitor (30 Hz) out; the **tone stack** (`dsp/ToneStack.cpp`, Yeh and Smith, DAFx 2006: American or British parts); **presence** −6 … +9 dB above 3 kHz, then a low-pass at 11 kHz; a trim per voice evens the channels' peaks out (the clean channel +20 dB).
+- Played 12 dB softer, Crunch comes out about 3 dB quieter and cleaner; Heavy and Lead hold their level (saturated, as such amps are) but clean up and never choke (`tst_krunch` touchResponse). The stages before them (a fixed `tanh` per stage) came out within half a dB.
 
 ## Gate
 
@@ -38,7 +38,16 @@ Between the channel volume and the power amp: the loop's pedal chain (`dsp/Pedal
 
 ## Power amp
 
-`dsp/PowerAmp.cpp`, shared by the channels. **Resonance** lifts 100 Hz (0 … +10 dB) going in; **Master** drives the output stage −24 … +18 dB (it clips from about 0 dB); the stage is a symmetric `tanh` at 4×. **Sag**: a follower on the output (20 ms attack, 200 ms release) lowers the headroom, so digging in compresses.
+`dsp/PowerAmp.cpp`, shared by the channels. **Resonance** lifts 100 Hz (0 … +10 dB) going in, then the power tubes' own voicing; **Master** drives the output pair −30 … +12 dB. The pair (`pushPull`, at 4×): each tube's current a 3/2 law from its class AB idle under a soft ceiling, the two subtracted (symmetric, a little crossover when biased cold), unity gain when small. **Sag**: a follower on the output (20 ms attack, 200 ms release) lowers the ceiling, by the tubes' own droop times the knob, so digging in compresses.
+
+| Power tubes (`power_tube`) | Headroom | Knee | Idle | Sag | Voicing |
+| --- | --- | --- | --- | --- | --- |
+| British pentode | 1.0 | 2.5 | 0.35 | 1.0 | +1.5 dB at 800 Hz |
+| American beam | 1.25 | 2.0 | 0.45 | 0.7 | −1.5 dB at 600 Hz |
+| Small pentode | 0.6 | 1.6 | 0.6 | 1.6 | +2 dB at 2 kHz |
+| Big beam | 1.6 | 3.5 | 0.4 | 0.4 | +1.5 dB at 120 Hz |
+
+The output is made up by the square root of the headroom, so changing tubes changes the feel more than the level (within about 4 dB).
 
 ## Cabinet
 
@@ -49,7 +58,7 @@ Between the channel volume and the power amp: the loop's pedal chain (`dsp/Pedal
 - **Loading** (`IrKernel::build`, off the audio thread): the WAV's first two channels, resampled to the engine's rate (windowed sinc), cut at 65,536 taps (1.4 s at 48 kHz) with a 10 ms fade, normalised to unit energy and then −6.5 dB, so IRs play as loud as each other and as the built-in speaker (the 33 of one 4×12 pack land within 1.4 dB). The controller hands kernels over through atomics and frees a replaced one once the audio thread has moved two blocks on; a kernel built for another rate is ignored until rebuilt.
 - **Cost:** about 0.7 % of a core for a 200 ms mono IR.
 
-The **built-in speaker** (`SpeakerFilter`, always running so it's ready): high-pass 75 Hz, +3 dB at 110 Hz, −2.5 dB at 450 Hz, +4 dB at 2.4 kHz, two low-passes (5 and 6 kHz). After the cabinet, −4 dB of trim, so a cranked master stays near full scale, and the Level knob.
+The **built-in speaker** (`SpeakerFilter`, always running so it's ready): high-pass 75 Hz, +3 dB at 110 Hz, −2.5 dB at 450 Hz, +4 dB at 2.4 kHz, two low-passes (5 and 6 kHz). After the cabinet, −0.5 dB of trim, so a cranked master stays near full scale, and the Level knob.
 
 ## IR library
 
@@ -61,10 +70,11 @@ The **built-in speaker** (`SpeakerFilter`, always running so it's ready): high-p
 | --- | --- | --- |
 | `input` | input 1 or 2 | 1 |
 | `channel` | 1 … 4 | 1 |
-| `master` | 0 … 10 (−24 … +18 dB into the output stage) | 5 |
+| `master` | 0 … 10 (−30 … +12 dB into the output pair) | 5 |
 | `sag` | 0 … 10 | 3 |
 | `resonance` | 0 … 10 (0 … +10 dB at 100 Hz) | 4 |
 | `level` | −inf, −60 … +12 dB | 0 dB |
+| `power_tube` | British pentode, American beam, Small pentode, Big beam | British pentode |
 | `ch<N>_voice` | Clean, Crunch, Heavy, Lead | channel 1 Clean, 2 Crunch, 3 Heavy, 4 Lead |
 | `ch<N>_gain` | 0 … 10 | 4, 5, 6.5, 7 |
 | `ch<N>_bass`, `_mid`, `_treble`, `_presence` | 0 … 10 | per channel (channel 3: mids at 3.5) |
@@ -72,7 +82,8 @@ The **built-in speaker** (`SpeakerFilter`, always running so it's ready): high-p
 | `ch<N>_gate` | off, −80 … −20 dBFS | off, off, −59 dB, −62 dB |
 | `ch<N>_loop` | off / on | on |
 | `ch<N>_cab_mix` | A 100 … B 100 (with both IRs) | A 50 / B 50 |
+| `ch<N>_tube` | High gain, Smooth, Medium, Low gain | High gain |
 
 Learnable buttons: `channel1` … `channel4`, `loop` (the playing channel's).
 
-Cost: 1–3 % of one core per channel (`krunch-render --bench`, the lead voice the most).
+Cost: 2.5–3 % of one core per channel (`krunch-render --bench`, Heavy and Lead the most).

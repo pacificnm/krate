@@ -131,7 +131,7 @@ private slots:
 
     void parameterTable()
     {
-        QCOMPARE(int(kParams.size()), 6 + 4 * 10);
+        QCOMPARE(int(kParams.size()), 7 + 4 * 11);
         QVERIFY(kParams.size() <= 64); // the "changed by audio" mask
         std::set<std::string_view> keys;
         for (const auto &p : kParams) {
@@ -140,6 +140,8 @@ private slots:
         }
         QCOMPARE(kParams[std::size_t(channelParam(2, ChannelParam::Gain))].key, std::string_view("ch3_gain"));
         QCOMPARE(kParams[std::size_t(channelParam(0, ChannelParam::Loop))].key, std::string_view("ch1_loop"));
+        QCOMPARE(kParams[std::size_t(channelParam(3, ChannelParam::Tube))].key, std::string_view("ch4_tube"));
+        QCOMPARE(kParams[std::size_t(ParamId::PowerTube)].key, std::string_view("power_tube"));
         // The four channels start clean, crunch, heavy, lead.
         for (int c = 0; c < kChannels; ++c)
             QCOMPARE(int(units::voice(kParams[std::size_t(channelParam(c, ChannelParam::Voice))].defaultValue)), c);
@@ -216,9 +218,10 @@ private slots:
         QVERIFY(thd(high) > 2.0 * thd(low));
     }
 
+    // Clean, Crunch, Heavy: more distorted each; Lead (smoother, for sustain) well past Crunch.
     void voicesFromCleanToLead()
     {
-        double previous = 0.0;
+        std::vector<double> d;
         for (Voice v : {Voice::Clean, Voice::Crunch, Voice::Heavy, Voice::Lead}) {
             Preamp p;
             p.prepare(kRate);
@@ -226,27 +229,100 @@ private slots:
             s.voice = v;
             s.gain = 0.5f;
             p.set(s);
-            const double d = thd(p, 220.0, 0.05f);
-            QVERIFY2(d > previous, qPrintable(QStringLiteral("voice %1: THD %2").arg(int(v)).arg(d)));
-            previous = d;
+            d.push_back(thd(p, 220.0, 0.05f));
+        }
+        QVERIFY2(d[0] < d[1] && d[1] < d[2], qPrintable(QStringLiteral("THD %1 %2 %3").arg(d[0]).arg(d[1]).arg(d[2])));
+        QVERIFY2(d[3] > 1.5 * d[1], qPrintable(QStringLiteral("lead %1, crunch %2").arg(d[3]).arg(d[1])));
+    }
+
+    // The tubes answer the pick: played 12 dB softer, a driven channel is
+    // quieter (Crunch by several dB; the old stages came out within half a
+    // dB) and cleaner.
+    void touchResponse()
+    {
+        for (Voice v : {Voice::Crunch, Voice::Heavy, Voice::Lead}) {
+            Preamp::Settings s;
+            s.voice = v;
+            s.gain = 0.5f;
+            const auto level = [&s](float amplitude) {
+                Preamp p;
+                p.prepare(kRate);
+                p.set(s);
+                auto x = sine(19200, 220.0, amplitude);
+                p.process(x.data(), std::uint32_t(x.size()));
+                return db(rms(x, 9600));
+            };
+            const auto distortion = [&s](float amplitude) {
+                Preamp p;
+                p.prepare(kRate);
+                p.set(s);
+                return thd(p, 220.0, amplitude);
+            };
+            // Crunch quieter by several dB; the high-gain voices hold their level
+            // (as such amps do: they're saturated) without choking, and clean up.
+            const double drop = level(0.2f) - level(0.05f);
+            const double least = v == Voice::Crunch ? 2.5 : -0.5; // (and no choking: never much louder played softer)
+            QVERIFY2(drop > least, qPrintable(QStringLiteral("voice %1: %2 dB quieter for 12 dB softer").arg(int(v)).arg(drop)));
+            QVERIFY2(distortion(0.05f) < distortion(0.2f), qPrintable(QStringLiteral("voice %1: no cleaner played softer").arg(int(v))));
         }
     }
 
-    // The lead voice is saturated: 12 dB more guitar is barely louder.
-    void leadSaturates()
+    // Each preamp tube changes the sound; a lower-gain tube distorts less.
+    void tubesChangeTheSound()
     {
-        const auto level = [](float amplitude) {
+        std::vector<double> d;
+        for (PreTube t : {PreTube::HighGain, PreTube::Smooth, PreTube::Medium, PreTube::LowGain}) {
             Preamp p;
             p.prepare(kRate);
             Preamp::Settings s;
-            s.voice = Voice::Lead;
+            s.voice = Voice::Crunch;
             s.gain = 0.5f;
+            s.tube = t;
             p.set(s);
-            auto x = sine(9600, 220.0, amplitude);
+            d.push_back(thd(p, 220.0, 0.05f));
+        }
+        QVERIFY2(d[3] < d[0], qPrintable(QStringLiteral("low gain %1, high gain %2").arg(d[3]).arg(d[0])));
+        for (std::size_t i = 1; i < d.size(); ++i)
+            QVERIFY(std::fabs(d[i] - d[0]) > 0.002);
+    }
+
+    // The resting bias is right whatever the tube and stage: silence in, silence out
+    // (no thump settling at the start).
+    void silenceIsSilentFromTheStart()
+    {
+        for (int v = 0; v < int(Voice::Count); ++v)
+            for (int t = 0; t < int(PreTube::Count); ++t) {
+                Preamp p;
+                p.prepare(kRate);
+                Preamp::Settings s;
+                s.voice = Voice(v);
+                s.tube = PreTube(t);
+                s.gain = 1.0f;
+                p.set(s);
+                std::vector<float> x(4800, 0.0f);
+                p.process(x.data(), std::uint32_t(x.size()));
+                float peak = 0.0f;
+                for (float y : x)
+                    peak = std::max(peak, std::fabs(y));
+                QVERIFY2(peak < 1e-4f, qPrintable(QStringLiteral("voice %1 tube %2: %3").arg(v).arg(t).arg(peak)));
+            }
+    }
+
+    // The power tubes: each clips at its own level.
+    void powerTubesDiffer()
+    {
+        std::vector<double> levels;
+        for (int t = 0; t < int(PowerTube::Count); ++t) {
+            PowerAmp p;
+            p.prepare(kRate);
+            p.set(0.9f, 0.0f, 0.0f, PowerTube(t));
+            auto x = sine(9600, 220.0, 0.5f);
             p.process(x.data(), std::uint32_t(x.size()));
-            return db(rms(x, 4800));
-        };
-        QVERIFY(level(0.2f) - level(0.05f) < 2.0);
+            levels.push_back(db(rms(x, 4800)));
+        }
+        // The big beam's headroom is the most, the small pentode's the least.
+        QVERIFY2(levels[int(PowerTube::BigBeam)] > levels[int(PowerTube::SmallPentode)] + 3.0,
+                 qPrintable(QStringLiteral("%1 vs %2 dB").arg(levels[int(PowerTube::BigBeam)]).arg(levels[int(PowerTube::SmallPentode)])));
     }
 
     void cleanAtLowGainIsClean()

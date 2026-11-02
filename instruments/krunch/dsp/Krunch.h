@@ -27,8 +27,8 @@ namespace krunch {
 inline constexpr int kChannels = 4;
 
 // Parameter ids: the amp's own, then kChannelParams per channel.
-enum class ParamId : int { Input, Channel, Master, Sag, Resonance, Level, FirstChannel };
-enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, CabMix, Count };
+enum class ParamId : int { Input, Channel, Master, Sag, Resonance, Level, PowerTube, FirstChannel };
+enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, CabMix, Tube, Count };
 inline constexpr int kChannelParams = int(ChannelParam::Count);
 inline constexpr int ParamCount = int(ParamId::FirstChannel) + kChannels * kChannelParams;
 // Index of a channel's parameter (channel 0..3).
@@ -44,6 +44,8 @@ std::string volume(float v);
 std::string gate(float v);
 std::string onOff(float v);
 std::string cabMix(float v); // "A 70 / B 30"
+std::string preTube(float v);   // "High gain"
+std::string powerTube(float v); // "British pentode"
 } // namespace format
 
 namespace units {
@@ -53,6 +55,8 @@ inline constexpr double kLevelMaxDb = 12.0;
 int input(float v);         // 0 or 1
 int channel(float v);       // 0..3
 Voice voice(float v);
+PreTube preTube(float v);
+PowerTube powerTube(float v);
 double levelDb(float v);    // kLevelMinDb..kLevelMaxDb; the bottom is silence
 double levelGain(float v);  // 0 at the bottom
 double volumeDb(float v);   // -40..+6 dB; the bottom is silence
@@ -70,7 +74,8 @@ double gateDb(float v);     // the threshold, -80..-20 dBFS (0 = off)
     {"ch" #n "_volume", "Channel " #n " Volume", dVolume, 0, &format::volume},                                      \
     {"ch" #n "_gate", "Channel " #n " Gate", dGate, 0, &format::gate},                                              \
     {"ch" #n "_loop", "Channel " #n " Effects Loop", 1.0f, 2, &format::onOff},                                      \
-    {"ch" #n "_cab_mix", "Channel " #n " Cabinet Mix", 0.5f, 0, &format::cabMix}
+    {"ch" #n "_cab_mix", "Channel " #n " Cabinet Mix", 0.5f, 0, &format::cabMix},                                \
+    {"ch" #n "_tube", "Channel " #n " Tube", 0.0f, int(PreTube::Count), &format::preTube}
 
 inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"input", "Input", 0.0f, 2, &format::input},          // the interface's input 1 or 2
@@ -79,6 +84,7 @@ inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"sag", "Sag", 0.3f, 0, &format::dial},
     {"resonance", "Resonance", 0.4f, 0, &format::dial},
     {"level", "Level", 60.0f / 72.0f, 0, &format::level}, // -60..+12 dB, default 0 dB
+    {"power_tube", "Power Tube", 0.0f, int(PowerTube::Count), &format::powerTube},
     // Defaults: 1 clean, 2 crunch, 3 heavy (tight, mids down), 4 lead.
     KRUNCH_CHANNEL_PARAMS(1, 0.0f, 0.40f, 0.50f, 0.50f, 0.55f, 0.50f, 0.70f, 0.00f),
     KRUNCH_CHANNEL_PARAMS(2, 1.0f / 3.0f, 0.50f, 0.55f, 0.60f, 0.55f, 0.50f, 0.70f, 0.00f),

@@ -62,6 +62,47 @@ Item {
     }
 
     // A knob with its label above and its value under it, centred on cx.
+    // A choice of four, stepped (the tubes): ◂ its name ▸.
+    component Stepper: Row {
+        id: stepper
+        required property string key
+        required property string label
+        property int count: 4
+        readonly property int at: panel.krunch.revision >= 0 ? Math.round(panel.krunch.value(key) * (count - 1)) : 0
+        function step(delta) { panel.krunch.setValue(key, ((at + delta + count) % count) / (count - 1)) }
+        spacing: 6
+        Label {
+            anchors.verticalCenter: parent.verticalCenter
+            text: stepper.label
+            font.pixelSize: 11
+            color: "#8F897A"
+        }
+        PanelButton {
+            width: 26
+            height: 22
+            dark: true
+            faceText: "◂"
+            text: "Previous " + stepper.label.toLowerCase()
+            onClicked: stepper.step(-1)
+        }
+        Label {
+            width: 130
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignHCenter
+            text: panel.krunch.revision >= 0 ? panel.krunch.displayText(stepper.key, panel.krunch.value(stepper.key)).toUpperCase() : ""
+            font.pixelSize: 12
+            color: panel.cream
+        }
+        PanelButton {
+            width: 26
+            height: 22
+            dark: true
+            faceText: "▸"
+            text: "Next " + stepper.label.toLowerCase()
+            onClicked: stepper.step(1)
+        }
+    }
+
     component AmpKnob: Item {
         id: ampKnob
         required property string key
@@ -329,6 +370,7 @@ Item {
             color: "transparent"
             border.color: "#3A3B3E"
             Label { x: 10; y: 152; text: "POWER AMP"; font.pixelSize: 11; color: "#8F897A" }
+            Stepper { x: 112; y: 148; key: "power_tube"; label: "TUBES" }
         }
         AmpKnob { y: 14; cx: 830; key: "master"; label: "MASTER" }
         AmpKnob { y: 14; cx: 965; key: "sag"; label: "SAG" }
@@ -357,6 +399,7 @@ Item {
                 font.pixelSize: 12
                 color: panel.channelColors[panel.channel]
             }
+            Stepper { x: 300; y: 6; key: panel.chKey("tube"); label: "PREAMP TUBES" }
         }
         Repeater {
             model: [

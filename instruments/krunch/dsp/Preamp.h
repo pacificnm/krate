@@ -6,21 +6,25 @@
 #include "dsp/Filters.h"
 #include "dsp/Oversampler.h"
 #include "dsp/ToneStack.h"
+#include "dsp/Tube.h"
 
 namespace krunch {
 
 // A channel's voice: how many gain stages and how they're filtered.
 enum class Voice : int { Clean, Crunch, Heavy, Lead, Count };
 
-// One channel's preamp (docs/DSP.md#preamp): a pre-filter (how much bass and
-// mid the first stage sees), one to four valve-like gain stages at 4x the
-// sample rate, the tone stack and presence. Mono, in place, base rate.
+// One channel's preamp (docs/DSP.md#preamp): two to four triode stages
+// (dsp/Tube.h) at 4x the sample rate, in volts, each voice wired as its kind
+// of amp is (coupling capacitors, cathode bypass, the Gain pot between the
+// first two stages, dividers between the rest), then the tone stack and
+// presence. The tube is the channel's: all its stages. Mono, in place, base rate.
 class Preamp
 {
 public:
     struct Settings
     {
         Voice voice = Voice::Clean;
+        PreTube tube = PreTube::HighGain;
         float gain = 0.5f; // controls 0..1
         float bass = 0.5f;
         float mid = 0.5f;
@@ -30,6 +34,9 @@ public:
     };
 
     static constexpr int kMaxStages = 4;
+    // A guitar at full scale is this many volts at the first grid (a hot pickup
+    // peaks around 0.5-1 V; an interface's instrument input reaches full scale above that).
+    static constexpr double kInputVolts = 1.0;
 
     void prepare(double sampleRate) noexcept;
     void reset() noexcept;
@@ -38,30 +45,19 @@ public:
     void process(float *buffer, std::uint32_t frames) noexcept;
 
 private:
-    // A triode stage: gain, a biased soft clipper (the bias makes it
-    // asymmetric: even harmonics), the coupling capacitor and the stage's
-    // treble roll-off.
-    struct Stage
-    {
-        double gain = 1.0;
-        double bias = 0.0;
-        double offset = 0.0; // the clipper's output at rest, removed
-        OnePole coupling;    // high-pass
-        OnePole rolloff;     // low-pass
-        float process(float x) noexcept;
-    };
-
     void retune() noexcept;
 
     double m_rate = 48000.0;
     Settings m_settings;
     bool m_tuned = false;
 
-    Biquad m_preHighpass; // tightens the bass into the first stage
-    Biquad m_preMid;      // a mid push into the first stage
+    Biquad m_inputHighpass; // the input jack's coupling (DC, rumble)
     Oversampler4x m_oversampler;
-    std::array<Stage, kMaxStages> m_stages;
+    std::array<TriodeStage, kMaxStages> m_stages;
+    std::array<double, kMaxStages> m_into{}; // what reaches each stage's grid: the Gain pot, dividers
     int m_stageCount = 1;
+    double m_outScale = 1.0; // volts out of the last stage to the tone stack's level
+    OnePole m_outCoupling;   // the last stage's coupling capacitor (its bias moving is no thump out)
     ToneStack m_stack;
     Biquad m_presence;
     Biquad m_presenceCut; // the stages' top end above where a guitar speaker reaches
