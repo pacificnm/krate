@@ -162,6 +162,60 @@ private slots:
         QVERIFY(!again.autoCheckUpdates());
         QCOMPARE(again.startNotes().size(), 1);
     }
+
+    // The file changed by something else while Krate runs (Krate Remote):
+    // what applies at once does, a folder waits for the start, Krate's own
+    // saves aren't read back.
+    void changedElsewhere()
+    {
+        QTemporaryDir dir;
+        const QString path = dir.filePath("settings.json");
+        SettingsController s(path, {});
+        QString midi = QStringLiteral("unset"), exports;
+        QStringList plugins{QStringLiteral("unset")};
+        s.onMidiInputsChanged = [&midi](const QString &p) { midi = p; };
+        s.onExportsChanged = [&exports](const QString &f) { exports = f; };
+        s.onPluginFoldersChanged = [&plugins](const QStringList &f) { plugins = f; };
+        s.setMidiInputs(QStringLiteral("Keys"));
+        QCOMPARE(midi, QStringLiteral("Keys"));
+
+        QSignalSpy changed(&s, &SettingsController::changed);
+        s.reload(); // its own file: nothing
+        QCOMPARE(changed.count(), 0);
+
+        QJsonObject json = loc::readSettings(path);
+        json[QStringLiteral("midiInputs")] = QStringLiteral("Pedal");
+        json[QStringLiteral("programChangeFocus")] = false;
+        json[QStringLiteral("pluginFolders")] = QJsonArray{dir.filePath("clap")};
+        json[QStringLiteral("folders")] = QJsonObject{{QStringLiteral("exports"), dir.filePath("usb")},
+                                                      {QStringLiteral("library"), dir.filePath("ignored")}};
+        json[QStringLiteral("pending")] = QJsonObject{{QStringLiteral("recordings"), move(dir.filePath("takes"))},
+                                                      {QStringLiteral("exports"), move(dir.filePath("ignored"))}};
+        const QString other = dir.filePath("other.json");
+        write(other, QJsonDocument(json).toJson(QJsonDocument::Compact));
+        QFile::remove(path);
+        QVERIFY(QFile::rename(other, path)); // as a save from elsewhere does
+        QTRY_VERIFY(changed.count() > 0); // the watcher
+
+        QCOMPARE(midi, QStringLiteral("Pedal"));
+        QVERIFY(!s.programChangeFocus());
+        QCOMPARE(plugins, QStringList{dir.filePath("clap")});
+        QCOMPARE(exports, dir.filePath("usb"));
+        QCOMPARE(s.folder(Folder::Exports), dir.filePath("usb"));
+        QCOMPARE(s.folder(Folder::Library), loc::folder(Folder::Library, QJsonObject{})); // only through a move
+        QVERIFY(s.restartNeeded());
+        // Kept in Krate's form, the move waiting for the start.
+        const QJsonObject saved = loc::readSettings(path);
+        QCOMPARE(saved.value(u"pending").toObject().keys(), QStringList{QStringLiteral("recordings")});
+        QVERIFY(!saved.value(u"folders").toObject().contains(u"library"));
+
+        // Half written: left until it's whole.
+        changed.clear();
+        write(path, "{\"midiInputs\": ");
+        s.reload();
+        QCOMPARE(changed.count(), 0);
+        QCOMPARE(s.midiInputs(), QStringLiteral("Pedal"));
+    }
 };
 
 QTEST_GUILESS_MAIN(TestSettings)

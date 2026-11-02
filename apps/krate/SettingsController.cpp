@@ -4,6 +4,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QJSEngine>
 #include <QJsonArray>
@@ -22,22 +23,6 @@ namespace loc = krate::locations;
 namespace {
 
 constexpr int kFileVersion = 1;
-
-struct FolderText
-{
-    Folder folder;
-    const char *label;
-    const char *about;
-};
-// In the order the screen shows them.
-constexpr FolderText kTexts[] = {
-    {Folder::Recordings, "Recordings", "The audio tracks' takes (WAV files)."},
-    {Folder::Library, "Song library", "The songs you've added (tabs, MIDI files, backing tracks) and the library's database."},
-    {Folder::Instruments, "Instruments' sounds",
-     "Each instrument's patterns, patches, kits, samples and cabinets, in a folder of its own (the instruments' own apps use it too)."},
-    {Folder::Exports, "Exports", "Where EXPORT writes the song and its stems."},
-    {Folder::Data, "Krate's data", "Sequences, the sound library's index, crash reports and logs (and recordings and songs, unless they're elsewhere)."},
-};
 
 std::optional<Folder> folderOf(const QString &key)
 {
@@ -128,10 +113,87 @@ SettingsController::SettingsController(QString path, QStringList instrumentIds, 
     if (waiting) // before anything opens the folders
         json = applyPending(json, m_ids, &m_notes);
     m_current = json;
-    if (waiting)
+    if (waiting) {
         save();
+    } else {
+        QFile f(m_path);
+        if (f.open(QIODevice::ReadOnly))
+            m_written = f.readAll();
+    }
     for (const QString &note : std::as_const(m_notes))
         qCInfo(lcSettings) << note;
+    watch();
+}
+
+void SettingsController::watch()
+{
+    // The folder too: a file saved whole (renamed into place) is a new file.
+    QDir().mkpath(configFolder());
+    m_watcher.addPath(configFolder());
+    if (QFileInfo::exists(m_path))
+        m_watcher.addPath(m_path);
+    m_settle.setSingleShot(true);
+    m_settle.setInterval(200);
+    connect(&m_settle, &QTimer::timeout, this, &SettingsController::reload);
+    auto changed = [this] { m_settle.start(); };
+    connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, changed);
+    connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, changed);
+}
+
+void SettingsController::reload()
+{
+    QFile f(m_path);
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+    const QByteArray bytes = f.readAll();
+    if (!m_watcher.files().contains(m_path))
+        m_watcher.addPath(m_path);
+    if (bytes == m_written)
+        return; // Krate's own
+    QJsonParseError error;
+    const QJsonDocument doc = QJsonDocument::fromJson(bytes, &error);
+    if (!doc.isObject()) // half written, or not JSON: wait for the next change
+        return;
+    m_written = bytes;
+    qCInfo(lcSettings) << "settings.json changed: reading it again";
+    const QJsonObject json = doc.object();
+
+    // Folders: exports at once; the rest wait for the next start, as from the screen.
+    const QString exports = json.value(u"folders").toObject().value(loc::key(Folder::Exports)).toString();
+    QJsonObject current = m_current.value(u"folders").toObject();
+    const bool exportsMoved = loc::folder(Folder::Exports, json) != folder(Folder::Exports);
+    if (exportsMoved) {
+        current[loc::key(Folder::Exports)] = exports;
+        m_current[QStringLiteral("folders")] = current;
+    }
+    QJsonObject pending;
+    const QJsonObject asked = json.value(u"pending").toObject();
+    for (auto it = asked.begin(); it != asked.end(); ++it) {
+        const auto f = folderOf(it.key());
+        if (!f || *f == Folder::Exports)
+            continue;
+        QJsonObject next = m_current;
+        QJsonObject folders = current;
+        folders[it.key()] = it.value().toObject().value(u"path").toString();
+        next[QStringLiteral("folders")] = folders;
+        if (loc::folder(*f, next) != folder(*f))
+            pending[it.key()] = it.value().toObject();
+    }
+    m_pending = pending;
+
+    // The rest through their setters (each acts on its change and saves).
+    const QStringList pluginFolders = strings(json.value(u"pluginFolders"));
+    const QString midiInputs = json.value(u"midiInputs").toString();
+    const bool pcFocus = json.value(u"programChangeFocus").toBool(true);
+    const bool autoCheck = json.value(u"autoCheckUpdates").toBool(true);
+    if (exportsMoved && onExportsChanged)
+        onExportsChanged(folder(Folder::Exports));
+    setPluginFolders(pluginFolders);
+    setMidiInputs(midiInputs);
+    setProgramChangeFocus(pcFocus);
+    setAutoCheckUpdates(autoCheck);
+    save(); // in Krate's own form (the folders and moves as above)
+    emit changed();
 }
 
 SettingsController::~SettingsController()
@@ -149,8 +211,8 @@ SettingsController *SettingsController::create(QQmlEngine *, QJSEngine *)
 QVariantList SettingsController::folders() const
 {
     QVariantList list;
-    for (const FolderText &t : kTexts) {
-        const QString key = loc::key(t.folder);
+    for (const Folder shown : loc::kShown) {
+        const QString key = loc::key(shown);
         const QJsonObject p = m_pending.value(key).toObject();
         const bool waiting = m_pending.contains(key);
         QJsonObject next = m_current;
@@ -160,14 +222,14 @@ QVariantList SettingsController::folders() const
         next[QStringLiteral("folders")] = nextFolders;
         list << QVariantMap{
             {QStringLiteral("key"), key},
-            {QStringLiteral("label"), QString::fromLatin1(t.label)},
-            {QStringLiteral("about"), QString::fromLatin1(t.about)},
-            {QStringLiteral("path"), folder(t.folder)},
-            {QStringLiteral("defaultPath"), loc::defaultFolder(t.folder, m_current)},
+            {QStringLiteral("label"), loc::label(shown)},
+            {QStringLiteral("about"), loc::about(shown)},
+            {QStringLiteral("path"), folder(shown)},
+            {QStringLiteral("defaultPath"), loc::defaultFolder(shown, m_current)},
             {QStringLiteral("isDefault"), m_current.value(u"folders").toObject().value(key).toString().isEmpty()},
-            {QStringLiteral("pending"), waiting ? loc::folder(t.folder, next) : QString()},
+            {QStringLiteral("pending"), waiting ? loc::folder(shown, next) : QString()},
             {QStringLiteral("pendingMove"), p.value(u"move").toBool()},
-            {QStringLiteral("atOnce"), t.folder == Folder::Exports},
+            {QStringLiteral("atOnce"), shown == Folder::Exports},
         };
     }
     return list;
@@ -300,8 +362,10 @@ void SettingsController::save()
         json.remove(QStringLiteral("pending"));
     QDir().mkpath(QFileInfo(m_path).absolutePath());
     QSaveFile f(m_path);
+    const QByteArray bytes = QJsonDocument(json).toJson();
     if (f.open(QIODevice::WriteOnly)) {
-        f.write(QJsonDocument(json).toJson());
-        f.commit();
+        f.write(bytes);
+        if (f.commit())
+            m_written = bytes;
     }
 }

@@ -2,9 +2,12 @@
 
 #include <functional>
 
+#include <QByteArray>
+#include <QFileSystemWatcher>
 #include <QJsonObject>
 #include <QObject>
 #include <QStringList>
+#include <QTimer>
 #include <QUrl>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
@@ -83,11 +86,16 @@ public:
     // The start's moves, for tests: what `settings` waits for, done.
     static QJsonObject applyPending(QJsonObject settings, const QStringList &instrumentIds, QStringList *notes);
 
+    // Reads the file again if it isn't what Krate wrote (the watcher does, a
+    // moment after the file changes; public for tests).
+    void reload();
+
 signals:
     void changed();
 
 private:
     void save();
+    void watch();
 
     static inline SettingsController *s_instance = nullptr;
     QString m_path;
@@ -98,4 +106,7 @@ private:
     QString m_midiInputs;
     bool m_programChangeFocus = true;
     bool m_autoCheckUpdates = true;
+    QByteArray m_written; // the file as Krate last wrote or read it
+    QFileSystemWatcher m_watcher;
+    QTimer m_settle;
 };

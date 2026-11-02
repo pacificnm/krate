@@ -50,6 +50,7 @@ add_subdirectory(apps/klang)
 add_subdirectory(apps/konnekt)
 add_subdirectory(apps/krate-render)
 add_subdirectory(apps/krate)
+add_subdirectory(apps/krate-remote)
 add_subdirectory(apps/song-dump)
 
 # Installing, and the .deb (packaging/README.md).

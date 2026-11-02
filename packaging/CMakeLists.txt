@@ -1,11 +1,11 @@
 # Installing Krate and packaging it as a .deb (packaging/README.md):
-# the eight apps, a menu entry and an icon each, and the docs.
+# the eight apps and Krate Remote, a menu entry and an icon each, and the docs.
 include(GNUInstallDirs)
 # Directories as Debian has them (rwxr-xr-x), whatever the builder's umask.
 set(CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
                                                 WORLD_READ WORLD_EXECUTE)
 
-set(KRATE_APPS krate korrode kessel kalliope krimson kobalt klang konnekt)
+set(KRATE_APPS krate korrode kessel kalliope krimson kobalt klang konnekt krate-remote)
 install(TARGETS ${KRATE_APPS} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 foreach(app IN LISTS KRATE_APPS)
     install(FILES applications/${app}.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
@@ -27,6 +27,7 @@ install(PROGRAMS update/krate-update DESTINATION libexec/krate)
 install(FILES update/krate-update.service DESTINATION lib/systemd/system)
 install(FILES update/50-krate-update.rules DESTINATION ${CMAKE_INSTALL_DATADIR}/polkit-1/rules.d)
 install(FILES ${PROJECT_SOURCE_DIR}/docs/UPDATES.md ${PROJECT_SOURCE_DIR}/docs/SETTINGS.md ${PROJECT_SOURCE_DIR}/docs/CRASHES.md
+              ${PROJECT_SOURCE_DIR}/docs/REMOTE.md
         DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
 # --- The .deb (cpack -G DEB; packaging/build-deb.sh does it all)
@@ -45,7 +46,9 @@ Each instrument also runs on its own: Korrode (acid bass), Kessel (drum
 machine), Kalliope (polysynth), Krimson (multitimbral virtual-analog),
 Kobalt (monosynth), Klang (sampler and looper) and Konnekt (a modular
 synth with lessons, presets and explanations of every part). Krate itself
-adds a mixer, a guitar amp, a song player and a step sequencer.")
+adds a mixer, a guitar amp, a song player and a step sequencer. Krate
+Remote manages a Krate player from another computer over SSH: its
+settings, its files both ways, its crash reports.")
 set(CPACK_DEBIAN_PACKAGE_SECTION sound)
 set(CPACK_DEBIAN_PACKAGE_PRIORITY optional)
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/pacificnm/krate")
@@ -59,8 +62,9 @@ set(CPACK_STRIP_FILES ON)
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
     "pipewire-jack, curl, jq, polkitd, qml6-module-qtqml, qml6-module-qtqml-models, qml6-module-qtqml-workerscript, qml6-module-qtquick, qml6-module-qtquick-controls, qml6-module-qtquick-dialogs, qml6-module-qtquick-layouts, qml6-module-qtquick-shapes, qml6-module-qtquick-templates, qml6-module-qtquick-window, qt6-qpa-plugins, libqt6sql6-sqlite")
-set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-wayland")
-set(CPACK_DEBIAN_PACKAGE_SUGGESTS "cage") # the kiosk (docs/PLAYER.md)
+# Krate Remote logs in to a player with ssh; a player takes logins with sshd.
+set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-wayland, openssh-client")
+set(CPACK_DEBIAN_PACKAGE_SUGGESTS "cage, openssh-server") # the kiosk (docs/PLAYER.md), Krate Remote reaching it
 # The PAM file is a configuration file; systemd learns of the kiosk service.
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/kiosk/conffiles;${CMAKE_CURRENT_SOURCE_DIR}/kiosk/postinst;${CMAKE_CURRENT_SOURCE_DIR}/kiosk/postrm")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION ON)

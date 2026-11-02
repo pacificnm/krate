@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Krate Remote
+GenericName=Krate Player Manager
+Comment=A Krate player's settings, files and crash reports, from this computer (over SSH)
+Exec=krate-remote
+Icon=krate-remote
+Terminal=false
+Categories=AudioVideo;Audio;Network;
+Keywords=krate;player;remote;settings;files;upload;ssh;
+StartupNotify=true
+StartupWMClass=krate-remote

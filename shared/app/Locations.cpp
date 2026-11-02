@@ -21,6 +21,32 @@ QString key(Folder folder)
     return {};
 }
 
+QString label(Folder folder)
+{
+    switch (folder) {
+    case Folder::Data: return QStringLiteral("Krate's data");
+    case Folder::Recordings: return QStringLiteral("Recordings");
+    case Folder::Library: return QStringLiteral("Song library");
+    case Folder::Exports: return QStringLiteral("Exports");
+    case Folder::Instruments: return QStringLiteral("Instruments' sounds");
+    }
+    return {};
+}
+
+QString about(Folder folder)
+{
+    switch (folder) {
+    case Folder::Data:
+        return QStringLiteral("Sequences, the sound library's index, crash reports and logs (and recordings and songs, unless they're elsewhere).");
+    case Folder::Recordings: return QStringLiteral("The audio tracks' takes (WAV files).");
+    case Folder::Library: return QStringLiteral("The songs you've added (tabs, MIDI files, backing tracks) and the library's database.");
+    case Folder::Exports: return QStringLiteral("Where EXPORT writes the song and its stems.");
+    case Folder::Instruments:
+        return QStringLiteral("Each instrument's patterns, patches, kits, samples and cabinets, in a folder of its own (the instruments' own apps use it too).");
+    }
+    return {};
+}
+
 QString settingsFile()
 {
     return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/krate/settings.json");
@@ -34,23 +60,28 @@ QJsonObject readSettings(const QString &path)
     return QJsonDocument::fromJson(f.readAll()).object();
 }
 
-QString defaultFolder(Folder folder, const QJsonObject &settings)
+Roots localRoots()
 {
-    const QString genericData = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    return {QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation),
+            QStandardPaths::writableLocation(QStandardPaths::MusicLocation)};
+}
+
+QString defaultFolder(Folder folder, const QJsonObject &settings, const Roots &roots)
+{
     switch (folder) {
-    case Folder::Data: return genericData + QStringLiteral("/krate");
-    case Folder::Recordings: return locations::folder(Folder::Data, settings) + QStringLiteral("/recordings");
-    case Folder::Library: return locations::folder(Folder::Data, settings) + QStringLiteral("/library");
-    case Folder::Exports: return QStandardPaths::writableLocation(QStandardPaths::MusicLocation) + QStringLiteral("/Krate");
-    case Folder::Instruments: return genericData;
+    case Folder::Data: return roots.dataHome + QStringLiteral("/krate");
+    case Folder::Recordings: return locations::folder(Folder::Data, settings, roots) + QStringLiteral("/recordings");
+    case Folder::Library: return locations::folder(Folder::Data, settings, roots) + QStringLiteral("/library");
+    case Folder::Exports: return roots.music + QStringLiteral("/Krate");
+    case Folder::Instruments: return roots.dataHome;
     }
     return {};
 }
 
-QString folder(Folder folder, const QJsonObject &settings)
+QString folder(Folder folder, const QJsonObject &settings, const Roots &roots)
 {
     const QString set = settings.value(u"folders").toObject().value(key(folder)).toString();
-    return set.isEmpty() ? defaultFolder(folder, settings) : QDir::cleanPath(set);
+    return set.isEmpty() ? defaultFolder(folder, settings, roots) : QDir::cleanPath(set);
 }
 
 QString folder(Folder f) { return folder(f, readSettings()); }

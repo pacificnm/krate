@@ -20,15 +20,28 @@ enum class Folder {
 inline constexpr Folder kFolders[] = {Folder::Data, Folder::Recordings, Folder::Library, Folder::Exports, Folder::Instruments};
 
 QString key(Folder folder); // "data", "recordings", ... (settings.json's)
+QString label(Folder folder); // "Song library"
+QString about(Folder folder); // what's in it, a sentence
+// In the order the Settings screens show them.
+inline constexpr Folder kShown[] = {Folder::Recordings, Folder::Library, Folder::Instruments, Folder::Exports, Folder::Data};
 
 // ~/.config/krate/settings.json: fixed, as it says where the rest is.
 QString settingsFile();
 QJsonObject readSettings(const QString &path = settingsFile());
 
+// Where the defaults are: this computer's (XDG_DATA_HOME, the Music folder),
+// or another's (Krate Remote works them out for the player).
+struct Roots
+{
+    QString dataHome; // ~/.local/share
+    QString music;    // ~/Music
+};
+Roots localRoots();
+
 // A folder as `settings` has it now (its "folders"), or its default.
-QString folder(Folder folder, const QJsonObject &settings);
+QString folder(Folder folder, const QJsonObject &settings, const Roots &roots = localRoots());
 QString folder(Folder folder); // as settings.json has it
-QString defaultFolder(Folder folder, const QJsonObject &settings);
+QString defaultFolder(Folder folder, const QJsonObject &settings, const Roots &roots = localRoots());
 // An instrument's sounds and patterns: <instruments>/<id>.
 QString instrumentData(const QString &id);
 

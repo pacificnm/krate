@@ -51,4 +51,4 @@ Plugin folders: CLAP plugins are looked for in the folders you add, then the sta
 }
 ```
 
-A folder missing from `folders` (or "") is its default; `pending` waits for the next start. Code: `shared/app/Locations` (where each folder is, moving one: Krate and the instruments' apps), `apps/krate/SettingsController` (the `Settings` QML singleton, the start's moves), `qml/SettingsScreen.qml`, `AudioSettings.qml` and `KeysSettings.qml` (shared with the popups). Tests: `tst_settings`.
+A folder missing from `folders` (or "") is its default; `pending` waits for the next start. Changed by something else while Krate runs (Krate Remote, [REMOTE.md](REMOTE.md), or an editor), the file is read again: plugin folders, MIDI inputs, Program Change, checking for updates and the exports folder apply at once, other folders wait for the start as usual. Code: `shared/app/Locations` (where each folder is, moving one: Krate and the instruments' apps), `apps/krate/SettingsController` (the `Settings` QML singleton, the start's moves), `qml/SettingsScreen.qml`, `AudioSettings.qml` and `KeysSettings.qml` (shared with the popups). Tests: `tst_settings`.
