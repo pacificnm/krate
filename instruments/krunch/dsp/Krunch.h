@@ -30,7 +30,7 @@ inline constexpr int kChannels = 4;
 
 // Parameter ids: the amp's own, then kChannelParams per channel.
 enum class ParamId : int { Input, Channel, Master, Sag, Resonance, Level, PowerTube, FirstChannel };
-enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, CabMix, Tube, Space, Count };
+enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, CabMix, Tube, Space, Cabinet, Count };
 inline constexpr int kChannelParams = int(ChannelParam::Count);
 inline constexpr int ParamCount = int(ParamId::FirstChannel) + kChannels * kChannelParams;
 // Index of a channel's parameter (channel 0..3).
@@ -78,7 +78,8 @@ double gateDb(float v);     // the threshold, -80..-20 dBFS (0 = off)
     {"ch" #n "_loop", "Channel " #n " Effects Loop", 1.0f, 2, &format::onOff},                                      \
     {"ch" #n "_cab_mix", "Channel " #n " Cabinet Mix", 0.5f, 0, &format::cabMix},                                \
     {"ch" #n "_tube", "Channel " #n " Tube", 0.0f, int(PreTube::Count), &format::preTube},                       \
-    {"ch" #n "_space", "Channel " #n " Cabinet Space", 0.0f, 0, &format::dial}
+    {"ch" #n "_space", "Channel " #n " Cabinet Space", 0.0f, 0, &format::dial},                                    \
+    {"ch" #n "_cabinet", "Channel " #n " Cabinet", 1.0f, 2, &format::onOff}
 
 inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"input", "Input", 0.0f, 2, &format::input},          // the interface's input 1 or 2
@@ -192,6 +193,7 @@ private:
     double m_powerMix = 1.0;      // the power amp in the path (0 while a capture plays: it has its own)
     std::array<float, kBlock> m_preAmp{}; // the signal into the power amp, for that blend
     std::array<float, kBlock> m_speakerWeight{}, m_speakerOut{};
+    std::array<float, kBlock> m_directWeight{}; // channels with their cabinet off: the amp straight out
 
     std::atomic<float> m_inputPeak{0.0f};
     std::atomic<float> m_outputPeak{0.0f};

@@ -4,7 +4,7 @@ A channel can play a **capture** of a real amp instead of Krunch's own preamp an
 
 ## Using one
 
-1. Get `.nam` files of amps you like. Use **amp-only** captures (the amp through a load box, no cabinet), so your own cabinet IRs follow them. Most captures are made at 48 kHz, which is what the player runs at.
+1. Get `.nam` files of amps you like (TONE3000 is the big free library). **Amp-only** captures (the amp through a load box, no cabinet) take your own cabinet IRs after them; a **full-rig** capture (a miked cabinet in it: "mic", "cab", "full rig" in the name) wants the channel's **CABINET** switched **OFF**, or you hear two cabinets (muffled, boxy). Most captures are made at 48 kHz, which is what the player runs at.
 2. Put them in Krunch's captures folder, `~/.local/share/krunch/captures`. Use **Krate Remote** (**Files ▸ Places ▸ Amp captures (Krunch)**, upload or drop them), or **IMPORT** in the picker, or drop them on it. Files that land in the folder show up by themselves.
 3. On the channel, **AMP** (top right of the channel) opens the list: pick a capture, or **Krunch's own amp (its tubes)**. A click plays it at once (it loads in the background), so you can play and compare.
 

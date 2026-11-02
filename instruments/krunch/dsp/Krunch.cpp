@@ -101,6 +101,12 @@ void Krunch::addCabinet(int channel, const float *weight, std::uint32_t frames) 
         return k && k->sampleRate() == rate;
     };
     const int slotA = cabinetSlot(channel, false), slotB = cabinetSlot(channel, true);
+    if (channelValue(channel, ChannelParam::Cabinet) < 0.5f) { // CABINET off: no IR, no speaker (a capture with its own)
+        for (std::uint32_t n = 0; n < frames; ++n)
+            m_directWeight[n] += weight[n];
+        m_slotPans[std::size_t(slotA)] = m_slotPans[std::size_t(slotB)] = 0.0f;
+        return;
+    }
     const bool a = usable(slotA), b = usable(slotB);
     if (!a && !b) {
         for (std::uint32_t n = 0; n < frames; ++n)
@@ -261,12 +267,20 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
     std::fill_n(right, frames, 0.0f);
     m_slotWeightPtrs.fill(nullptr);
     std::fill_n(m_speakerWeight.data(), frames, 0.0f);
+    std::fill_n(m_directWeight.data(), frames, 0.0f);
     addCabinet(m_active, m_fadeIn.data(), frames);
     if (previous >= 0)
         addCabinet(previous, m_fadeOut.data(), frames);
     m_cabinet.process(m_a.data(), frames, m_slotWeightPtrs.data(), left, right, m_slotPans.data());
     for (std::uint32_t n = 0; n < frames; ++n) { // the built-in speaker keeps running, so it's ready
         const float y = m_speaker.process(m_a[n]) * m_speakerWeight[n];
+        left[n] += y;
+        right[n] += y;
+    }
+    // The cabinet off: the amp's output as it is (at the speaker's level, so switching doesn't jump much).
+    constexpr float kDirectGain = 1.0f; // (measured: within 1.5 dB of a cabinet IR, through a capture or the tubes)
+    for (std::uint32_t n = 0; n < frames; ++n) {
+        const float y = m_a[n] * m_directWeight[n] * kDirectGain;
         left[n] += y;
         right[n] += y;
     }

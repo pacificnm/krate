@@ -169,7 +169,7 @@ private slots:
 
     void parameterTable()
     {
-        QCOMPARE(int(kParams.size()), 7 + 4 * 12);
+        QCOMPARE(int(kParams.size()), 7 + 4 * 13);
         QVERIFY(kParams.size() <= 64); // the "changed by audio" mask
         std::set<std::string_view> keys;
         for (const auto &p : kParams) {
@@ -708,6 +708,36 @@ private slots:
         error.clear();
         QVERIFY(!CaptureModel::load(junk.toStdString(), kRate, 128, &error));
         QVERIFY(!error.empty());
+    }
+
+    // CABINET off: no IR and no speaker, the amp straight out (both sides);
+    // at about the level the cabinet played at.
+    void cabinetBypass()
+    {
+        const auto di = tools::SyntheticGuitar(kRate).riff();
+        const auto run = [&](bool cabinet) {
+            Krunch amp;
+            amp.prepare(kRate, 128);
+            setChannel(amp, 1);
+            amp.setParam(channelParam(1, ChannelParam::Cabinet), cabinet ? 1.0f : 0.0f);
+            return playStereo(amp, di);
+        };
+        const auto [on, onR] = run(true);
+        const auto [off, offR] = run(false);
+        QCOMPARE(off, offR); // mono, on both sides
+        // The speaker's top cut is gone: far more above 6 kHz without it.
+        const auto highs = [](const std::vector<float> &s) {
+            double e = 0.0, z = 0.0;
+            for (std::size_t i = 1; i < s.size(); ++i) { // a first difference: the top end, roughly
+                const double d = double(s[i]) - double(s[i - 1]);
+                e += d * d;
+                z += double(s[i]) * double(s[i]);
+            }
+            return e / z;
+        };
+        QVERIFY2(highs(off) > 1.3 * highs(on), qPrintable(QStringLiteral("%1 vs %2").arg(highs(off)).arg(highs(on))));
+        QVERIFY2(std::fabs(db(rms(off)) - db(rms(on))) < 6.0, qPrintable(QStringLiteral("%1 vs %2 dB").arg(db(rms(off))).arg(db(rms(on)))));
+        QVERIFY(peak(off) < 1.0f);
     }
 
     void peaksForTheMeters()

@@ -489,6 +489,31 @@ Item {
         // --- The playing channel's cabinet ------------------------------------------
 
         Label { x: 40; y: 400; text: "CABINET"; font.pixelSize: 13 }
+        // On, or off: no IR and no speaker (a capture that has its cabinet in it).
+        PanelButton {
+            readonly property bool cabinetOn: panel.krunch.revision < 0 || panel.krunch.value(panel.chKey("cabinet")) >= 0.5
+            x: 118
+            y: 394
+            width: 76
+            height: 24
+            dark: true
+            hasLed: true
+            ledOn: cabinetOn
+            faceText: cabinetOn ? "ON" : "OFF"
+            text: "Channel " + (panel.channel + 1) + " cabinet on or off"
+            onClicked: panel.krunch.setValue(panel.chKey("cabinet"), cabinetOn ? 0 : 1)
+
+            LearnOverlay { anchors.fill: parent; paramKey: "cabinet"; round: false }
+        }
+        Label {
+            x: 206
+            y: 400
+            visible: panel.krunch.revision >= 0 && panel.krunch.value(panel.chKey("cabinet")) < 0.5
+            text: "bypassed: the amp straight out (for a capture with its cabinet in it)"
+            font.pixelSize: 11
+            font.bold: false
+            color: "#F2C230"
+        }
         Repeater {
             model: 2
             Column {
@@ -499,6 +524,7 @@ Item {
                 x: 40 + index * 470
                 y: 422
                 spacing: 4
+                opacity: panel.krunch.revision >= 0 && panel.krunch.value(panel.chKey("cabinet")) < 0.5 ? 0.35 : 1.0
                 PanelButton {
                     width: 440
                     height: 40

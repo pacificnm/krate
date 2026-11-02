@@ -27,6 +27,7 @@ public:
                 {QStringLiteral("pedals"), QVariant::fromValue(&pedals)}};
     }
     // "channel1".."channel4", "loop" (the playing channel's effects loop),
+    // "cabinet" (the playing channel's cabinet on or off),
     // "pedal1".."pedal8" (the footswitches, by position on the board),
     // "presetNext", "presetPrevious".
     void triggerAction(const QString &action) override;

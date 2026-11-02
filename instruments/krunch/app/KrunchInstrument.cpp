@@ -47,8 +47,8 @@ void Instance::triggerAction(const QString &action)
         presets.step(action == u"presetNext" ? 1 : -1);
     } else if (action.startsWith(u"pedal")) {
         pedals.toggle(action.mid(5).toInt() - 1);
-    } else if (action == u"loop") {
-        const QString key = QStringLiteral("ch%1_loop").arg(units::channel(float(controller.value(QStringLiteral("channel")))) + 1);
+    } else if (action == u"loop" || action == u"cabinet") { // the playing channel's
+        const QString key = QStringLiteral("ch%1_%2").arg(units::channel(float(controller.value(QStringLiteral("channel")))) + 1).arg(action);
         controller.setValue(key, controller.value(key) > 0.5 ? 0.0 : 1.0);
     }
 }
@@ -65,7 +65,7 @@ krate::InstrumentEntry registryEntry()
     entry.panelComponent = QStringLiteral("Panel");
     for (int c = 1; c <= kChannels; ++c)
         entry.actions << QStringLiteral("channel%1").arg(c);
-    entry.actions << QStringLiteral("loop");
+    entry.actions << QStringLiteral("loop") << QStringLiteral("cabinet");
     for (int p = 1; p <= PedalList::kMaxPedals; ++p)
         entry.actions << QStringLiteral("pedal%1").arg(p);
     entry.actions << QStringLiteral("presetNext") << QStringLiteral("presetPrevious");

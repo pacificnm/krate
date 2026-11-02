@@ -60,6 +60,8 @@ The output is made up by the square root of the headroom, so changing tubes chan
 - **Loading** (`IrKernel::build`, off the audio thread): the WAV's first two channels, resampled to the engine's rate (windowed sinc), cut at 65,536 taps (1.4 s at 48 kHz) with a 10 ms fade, normalised to unit energy and then −6.5 dB, so IRs play as loud as each other and as the built-in speaker (the 33 of one 4×12 pack land within 1.4 dB). The controller hands kernels over through atomics and frees a replaced one once the audio thread has moved two blocks on; a kernel built for another rate is ignored until rebuilt.
 - **Cost:** about 0.7 % of a core for a 200 ms mono IR.
 
+**CABINET** on/off (`ch<N>_cabinet`, learnable as `cabinet`: the playing channel's): off, the channel plays no IR and no speaker, the amp straight out (for a capture with its cabinet in it), at about the level a cabinet plays at.
+
 **SPACE** (`ch<N>_space`): with both IRs loaded, A moves to the left and B to the right as it turns up (at 10, hard left and right; CAB MIX still balances them). A slot's place is a gain per side: both at the centre, the far side fading out. With one IR or none it does nothing.
 
 The **built-in speaker** (`SpeakerFilter`, always running so it's ready): high-pass 75 Hz, +3 dB at 110 Hz, −2.5 dB at 450 Hz, +4 dB at 2.4 kHz, two low-passes (5 and 6 kHz). After the cabinet, −0.5 dB of trim, so a cranked master stays near full scale, and the Level knob.
@@ -88,7 +90,8 @@ The **built-in speaker** (`SpeakerFilter`, always running so it's ready): high-p
 | `ch<N>_cab_mix` | A 100 … B 100 (with both IRs) | A 50 / B 50 |
 | `ch<N>_tube` | High gain, Smooth, Medium, Low gain | High gain |
 | `ch<N>_space` | 0 … 10 (A left, B right) | 0 |
+| `ch<N>_cabinet` | off / on (off: no IR, no speaker) | on |
 
-Learnable buttons: `channel1` … `channel4`, `loop` (the playing channel's).
+Learnable buttons: `channel1` … `channel4`, `loop` and `cabinet` (the playing channel's).
 
 Cost: 2.5–3 % of one core per channel (`krunch-render --bench`, Heavy and Lead the most).
