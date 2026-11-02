@@ -12,6 +12,7 @@
 #include <QSaveFile>
 #include <QUrl>
 
+#include "app/UrlList.h"
 #include "dsp/Capture.h"
 #include "dsp/Krunch.h"
 
@@ -151,9 +152,7 @@ void CaptureController::importUrls(const QVariantList &urls)
 {
     int added = 0;
     QStringList failed;
-    for (const QVariant &v : urls) {
-        const QUrl url = v.toUrl();
-        const QString path = url.isLocalFile() ? url.toLocalFile() : v.toString();
+    for (const QString &path : krate::localPaths(urls)) { // (a dialog's files come wrapped)
         const QFileInfo info(path);
         if (!info.isFile() || !path.endsWith(kSuffix, Qt::CaseInsensitive)) {
             failed << info.fileName();

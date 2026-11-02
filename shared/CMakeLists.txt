@@ -148,6 +148,8 @@ add_library(krate_app STATIC
     app/PanelFile.cpp
     app/PresetInbox.h
     app/PresetInbox.cpp
+    app/UrlList.h
+    app/UrlList.cpp
     app/ScreenshotHook.h
     app/ScreenshotHook.cpp
     app/CrashReports.h
@@ -199,6 +201,11 @@ target_link_libraries(krate_qml PUBLIC krate_app krate_core Qt6::Qml Qt6::Quick)
 target_compile_options(krate_qml PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests for the shared pieces
+add_executable(tst_urllist tests/tst_urllist.cpp)
+target_compile_options(tst_urllist PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_urllist PRIVATE krate_app Qt6::Qml Qt6::Test)
+add_test(NAME tst_urllist COMMAND tst_urllist)
+
 add_executable(tst_recording tests/tst_recording.cpp)
 target_compile_options(tst_recording PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_recording PRIVATE krate_rec krate_dsp Qt6::Test)

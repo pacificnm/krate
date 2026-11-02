@@ -1,5 +1,7 @@
 #include "CabinetController.h"
 
+#include "app/UrlList.h"
+
 #include <QFileInfo>
 #include <QJSEngine>
 #include <QJsonObject>
@@ -63,12 +65,7 @@ QVariantList CabinetController::irs(const QString &filter) const
 
 void CabinetController::importUrls(const QVariantList &urls)
 {
-    QStringList paths;
-    for (const QVariant &u : urls) {
-        const QUrl url = u.toUrl();
-        paths << (url.isLocalFile() ? url.toLocalFile() : u.toString());
-    }
-    const IrLibrary::ImportResult r = m_library.import(paths);
+    const IrLibrary::ImportResult r = m_library.import(krate::localPaths(urls)); // (a dialog's files come wrapped)
     QStringList parts;
     parts << QStringLiteral("%1 IR%2 added").arg(r.added).arg(r.added == 1 ? QString() : QStringLiteral("s"));
     if (r.duplicates)
