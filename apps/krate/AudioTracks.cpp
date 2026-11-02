@@ -16,6 +16,9 @@
 #include "RackController.h"
 #include "dsp/Wav.h"
 
+#include <QLoggingCategory>
+Q_LOGGING_CATEGORY(lcTracks, "krate.tracks")
+
 namespace {
 constexpr int kPeakBins = 600; // the waveform's columns
 
@@ -110,6 +113,11 @@ void AudioTracksController::setRecording(bool on)
     m_recording = on;
     for (Track &t : m_tracks)
         t.engine->setRecordEnabled(on);
+    QStringList armed;
+    for (int i = 0; i < kTracks; ++i)
+        if (m_tracks[std::size_t(i)].engine->param(krate::AudioTrack::Arm) > 0.5f)
+            armed << QStringLiteral("Audio %1").arg(i + 1);
+    qCInfo(lcTracks).noquote() << "REC" << (on ? "on" : "off") << "- armed:" << (armed.isEmpty() ? QStringLiteral("none") : armed.join(u", "));
     emit recordingChanged();
 }
 
@@ -478,7 +486,10 @@ void AudioTracksController::setParam(int track, int index, qreal value)
 {
     if (track < 0 || track >= kTracks)
         return;
+    const float before = m_tracks[std::size_t(track)].engine->param(index);
     m_tracks[std::size_t(track)].engine->setParam(index, float(value));
+    if (index == krate::AudioTrack::Arm && (before > 0.5f) != (value > 0.5))
+        qCInfo(lcTracks).noquote() << QStringLiteral("Audio %1").arg(track + 1) << (value > 0.5 ? "armed" : "disarmed");
     save();
     bump();
 }
@@ -497,6 +508,19 @@ void AudioTracksController::poll()
         addFinished(f);
     for (int i = 0; i < kTracks; ++i) {
         Track &t = m_tracks[std::size_t(i)];
+        // The log: a take starting and ending; armed with REC on while playing but not recording, why.
+        const bool now = t.engine->recording();
+        if (now != t.wasRecording) {
+            t.wasRecording = now;
+            qCInfo(lcTracks).noquote() << QStringLiteral("Audio %1").arg(i + 1) << (now ? "recording" : "stopped recording");
+        }
+        const bool shouldRecord = m_recording && t.engine->param(krate::AudioTrack::Arm) > 0.5f && m_playing && m_playing();
+        if (shouldRecord && !now && ++t.notRecordingPolls == 40) // ~2 s
+            qCWarning(lcTracks).noquote() << QStringLiteral("Audio %1").arg(i + 1) << "is armed, REC is on and the transport plays, but it isn't recording:"
+                                          << "writer busy" << t.engine->writerBusy() << "REC in the engine" << t.engine->recordEnabled()
+                                          << "in the rack" << (m_rack && t.device >= 0 && m_rack->isPresent(t.device));
+        if (!shouldRecord || now)
+            t.notRecordingPolls = 0;
         if (t.loading.valid() && t.loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
             Loaded loaded = t.loading.get();
             if (loaded.take)
@@ -523,10 +547,12 @@ void AudioTracksController::addFinished(const krate::Recorder::Finished &f)
     if (f.track < 0 || f.track >= kTracks)
         return;
     if (!f.ok || f.frames == 0) {
-        if (f.frames == 0)
+        if (f.frames == 0) {
             QFile::remove(QString::fromStdString(f.path));
+            qCWarning(lcTracks).noquote() << QStringLiteral("Audio %1:").arg(f.track + 1) << "an empty take (no audio reached it), dropped";
+        }
         if (!f.ok)
-            qWarning("krate: couldn't write the take %s", f.path.c_str());
+            qCWarning(lcTracks).noquote() << QStringLiteral("Audio %1:").arg(f.track + 1) << "couldn't write the take" << QString::fromStdString(f.path);
         if (f.frames == 0)
             return;
     }
@@ -545,6 +571,8 @@ void AudioTracksController::addFinished(const krate::Recorder::Finished &f)
     t.takes.push_back(take);
     t.clips.push_back({take.file, take.startBeat}); // on the lane where it was recorded, on top
     t.selected = int(t.takes.size()) - 1;
+    qCInfo(lcTracks).noquote() << QStringLiteral("Audio %1: take %2, %3 s, at beat %4").arg(f.track + 1).arg(take.file)
+                                         .arg(double(f.frames) / std::max(1, f.rate), 0, 'f', 1).arg(f.startBeat, 0, 'f', 2);
     refresh(f.track);
     save();
     bump();

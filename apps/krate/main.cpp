@@ -126,6 +126,7 @@ int main(int argc, char *argv[])
     // The audio tracks (docs/DAW.md, D2): out of the rack until added from +;
     // their takes in the recordings folder (~/.local/share/krate/recordings).
     AudioTracksController audioTracks(settings.folder(Folder::Recordings), nullptr);
+    audioTracks.setTransportPlaying([&transport] { return transport.playing(); });
     const qsizetype firstTrack = entries.size();
     entries.append(audioTrackEntries(audioTracks));
     // CLAP plugins (docs/DAW.md, D7): sixteen slots, out of the rack until added;

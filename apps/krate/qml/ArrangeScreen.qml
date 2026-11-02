@@ -364,6 +364,8 @@ Item {
         width: parent.width - x - 16
         elide: Text.ElideRight
         text: Arrange.following ? "A DAW leads over JACK: its position and its loop play (start, LOOP and PUNCH here wait)."
+              : Tracks.recording && Arrange.playing && Arrange.songMode && Arrange.loopOn
+                ? "Recording with LOOP on: each time the loop goes round, armed audio tracks start a new take (the takes stack on their lanes; switch LOOP off for one long take)."
               : Arrange.songMode && Arrange.recording && Arrange.playing ? "Recording: " + Arrange.takeNotes + " notes so far (armed lanes)."
               : Arrange.songMode ? "SONG: the arrangement plays. Ruler: where play starts. Drag LOOP and PUNCH to set them. R + REC records the keyboard."
               : "Patterns play as the Seq screen says. Switch SONG on to play this arrangement."

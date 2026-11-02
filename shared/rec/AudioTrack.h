@@ -102,6 +102,8 @@ public:
     int takeChannels() const noexcept { return m_takeChannels.load(std::memory_order_acquire); }
     // Written and closed: a new take may begin.
     void writerDone() noexcept { m_writerBusy.store(false, std::memory_order_release); }
+    bool writerBusy() const noexcept { return m_writerBusy.load(std::memory_order_acquire); } // (the log)
+    bool recordEnabled() const noexcept { return m_recordEnabled.load(std::memory_order_relaxed); }
 
 private:
     float input(const float *const *in, int channel, std::uint32_t i) const noexcept;

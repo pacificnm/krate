@@ -12,6 +12,9 @@
 #include "core/Transport.h"
 #include "rack/Rack.h"
 
+#include <QLoggingCategory>
+Q_LOGGING_CATEGORY(lcRackTransport, "krate.transport")
+
 namespace {
 constexpr int kPollIntervalMs = 33;   // ~30 Hz
 constexpr qreal kMeterFloorDb = -60.0;
@@ -307,6 +310,7 @@ void RackController::setPlaying(bool playing)
     if (playing && m_run) // the rack's PLAY runs every sequencer
         m_run->playAll();
     m_transport.setPlaying(playing);
+    qCInfo(lcRackTransport) << (playing ? "PLAY" : "STOP");
     emit playingChanged();
 }
 

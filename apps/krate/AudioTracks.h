@@ -70,6 +70,8 @@ public:
     void setRack(RackController *rack) { m_rack = rack; }
     // The interface's round trip in frames (the host's), for a take from its inputs.
     void setRoundTrip(std::function<int()> roundTrip) { m_roundTrip = std::move(roundTrip); }
+    // Whether the transport plays (the log says when an armed track isn't recording).
+    void setTransportPlaying(std::function<bool()> playing) { m_playing = std::move(playing); }
 
     bool recording() const { return m_recording; }
     void setRecording(bool on);
@@ -157,6 +159,8 @@ private:
         std::vector<TakeInfo> takes;
         std::vector<LaneClip> clips;
         int selected = -1;
+        bool wasRecording = false; // (the log)
+        int notRecordingPolls = 0;
         int device = -1;
         std::map<QString, Loaded> cache;             // loaded takes, by file
         std::unique_ptr<krate::Playlist> playlist;   // handed to the engine
@@ -184,6 +188,7 @@ private:
     std::unique_ptr<krate::Recorder> m_recorder;
     RackController *m_rack = nullptr;
     std::function<int()> m_roundTrip = [] { return 0; };
+    std::function<bool()> m_playing;
     std::function<void()> m_beforeLaneEdit;
     bool m_recording = false;
     bool m_finished = false, m_stopping = false;
