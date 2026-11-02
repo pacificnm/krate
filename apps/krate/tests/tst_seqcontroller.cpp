@@ -666,6 +666,14 @@ private slots:
         transport.setPlaying(true);
         QVERIFY(run.running(QStringLiteral("korrode")));
         QVERIFY(run.running(QStringLiteral("kessel")));
+        transport.setPlaying(false);
+        run.setPlayedBySequencer([](int device) { return device == 1; }); // a Seq track plays Kessel
+        run.playAll();
+        transport.setPlaying(true);
+        QVERIFY(run.running(QStringLiteral("korrode")));
+        QVERIFY(!run.running(QStringLiteral("kessel"))); // its own patterns off: the track plays it
+        run.setRunning(QStringLiteral("kessel"), true);  // its own RUN still does
+        QVERIFY(run.running(QStringLiteral("kessel")));
         song = true; // SONG on while playing
         run.songModeChanged();
         QVERIFY(!run.running(QStringLiteral("korrode")));

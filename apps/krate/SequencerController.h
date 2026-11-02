@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include <memory>
 #include <optional>
 #include <vector>
@@ -48,7 +50,8 @@ class SequencerController : public QObject
     // instruments not in the rack; the list itself stays whole, so saved
     // targets keep their meaning (docs/DAW.md, D1).
     Q_PROPERTY(QVariantList targetDevices READ targetDevices CONSTANT)
-    // Per track: {choice, mute, notes (in this pattern), label, drums}.
+    // Per track: {choice, mute, notes (in this pattern), label, drums, pads (the
+    // instrument's named lanes, notes of any length: Klang)}.
     Q_PROPERTY(QVariantList tracks READ tracks NOTIFY changed)
     // The selected track's notes in this pattern: {start, length, pitch, velocity}.
     Q_PROPERTY(QVariantList notes READ notes NOTIFY changed)
@@ -113,6 +116,13 @@ public:
     QVariantList notes() const;
     QVariantList patternsUsed() const;
     QVariantList drumLanes() const;
+    // A track's named lanes, top to bottom ({name, note}): Kessel's voices,
+    // or the instrument's own (Klang's pads, by their sounds); [] = a piano roll.
+    Q_INVOKABLE QVariantList lanes(int track) const;
+    // Whether a track plays this rack device.
+    bool playsDevice(int device) const;
+    // An instrument's named notes (InstrumentInstance::noteLanes), by rack device.
+    void setNoteLanes(std::function<QVariantList(int device)> lanes) { m_noteLanes = std::move(lanes); }
     bool hasClipboard() const { return m_clipboard.has_value(); }
     QString trackClipboard() const { return m_trackClipboardFrom; }
     bool chainMode() const { return m_state.chainMode; }
@@ -233,6 +243,7 @@ private:
     };
     std::optional<Before> m_before;
     std::vector<NoteTarget> m_targets;
+    std::function<QVariantList(int)> m_noteLanes;
     QString m_path;
     SequencerState m_state;
     std::optional<krate::seq::Pattern> m_clipboard;

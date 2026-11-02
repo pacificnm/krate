@@ -79,6 +79,7 @@ public:
     void loadSound(const QJsonObject &sound) override;
     QStringList sampleTargets() const override;
     QStringList sampleTargetContents() const override;
+    QVariantList noteLanes() const override;
     bool assignSample(int target, const QString &path, QString *error) override;
     void clearSample(int target) override;
 

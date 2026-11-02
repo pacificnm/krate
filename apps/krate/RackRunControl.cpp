@@ -55,7 +55,7 @@ void RackRunControl::playAll()
 {
     const bool song = m_songMode && m_songMode(); // the song alone: what it holds, nothing else
     for (qsizetype j = 0; j < m_ids.size(); ++j) {
-        m_enabled[j] = !song;
+        m_enabled[j] = !song && !(m_playedBySequencer && m_playedBySequencer(int(j)));
         apply(int(j));
     }
     if (m_setRackSequencer)

@@ -196,6 +196,11 @@ QStringList CopyInstance::sampleTargets() const
     return m_instance ? m_instance->sampleTargets() : QStringList{};
 }
 
+QVariantList CopyInstance::noteLanes() const
+{
+    return m_instance ? m_instance->noteLanes() : QVariantList{};
+}
+
 QStringList CopyInstance::sampleTargetContents() const
 {
     return m_instance ? m_instance->sampleTargetContents() : QStringList{};

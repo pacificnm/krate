@@ -298,8 +298,12 @@ int main(int argc, char *argv[])
     QObject::connect(&audioTracks, &AudioTracksController::recordingChanged, &arrangeController,
                      [&] { arrangeController.setRecording(audioTracks.recording()); }); // one REC for both
     sequencerController.setRunControl(&runControl);
+    sequencerController.setNoteLanes([&instances](int device) { // Klang's pads, by name
+        return device >= 0 && std::size_t(device) < instances.size() ? instances[std::size_t(device)]->noteLanes() : QVariantList{};
+    });
     // SONG on: PLAY plays the arrangement alone (an empty one: nothing).
     runControl.setSongMode([&arrangeController] { return arrangeController.songMode(); });
+    runControl.setPlayedBySequencer([&sequencerController](int device) { return sequencerController.playsDevice(device); });
     QObject::connect(&arrangeController, &ArrangeController::changed, &runControl,
                      [&arrangeController, &runControl, song = arrangeController.songMode()]() mutable {
                          if (std::exchange(song, arrangeController.songMode()) != song)

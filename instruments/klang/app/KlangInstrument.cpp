@@ -1,5 +1,7 @@
 #include "klang/app/KlangInstrument.h"
 
+#include <QFileInfo>
+
 namespace klang {
 
 Instance::Instance(const krate::InstrumentContext &context)
@@ -53,6 +55,18 @@ QStringList Instance::sampleTargets() const
     QStringList list;
     for (int p = 0; p < KlangPadController::kPads; ++p)
         list << QStringLiteral("Pad %1").arg(p + 1);
+    return list;
+}
+
+QVariantList Instance::noteLanes() const
+{
+    // Pad 1 at the top, each by its sound: "1 · 01 kick" (notes 36..51).
+    QVariantList list;
+    for (int p = 0; p < KlangPadController::kPads; ++p) {
+        const QString sound = pads.name(p);
+        list << QVariantMap{{QStringLiteral("name"), QStringLiteral("%1 · %2").arg(p + 1).arg(sound.isEmpty() ? QStringLiteral("empty") : QFileInfo(sound).completeBaseName())},
+                            {QStringLiteral("note"), Engine::kFirstPadNote + p}};
+    }
     return list;
 }
 

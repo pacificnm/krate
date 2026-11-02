@@ -7,13 +7,15 @@ import KrateRack
 
 // The rack sequencer's screen (docs/SEQUENCER.md): RUN, the 16 patterns,
 // length and grid; the 16 tracks (each playing an instrument); a piano roll
-// for the selected track (drum lanes for Kessel) with a velocity lane.
+// for the selected track (drum lanes for Kessel, pad lanes for Klang) with a velocity lane.
 Item {
     id: screen
 
     readonly property var trackList: Sequencer.revision >= 0 ? Sequencer.tracks : []
     readonly property var selected: trackList.length > Sequencer.track ? trackList[Sequencer.track] : ({})
-    readonly property bool drums: selected.drums === true
+    readonly property bool drums: selected.drums === true // Kessel: its voices, hits
+    // Named lanes: Kessel's voices, or the instrument's own (Klang's pads, notes of any length).
+    readonly property bool laned: drums || selected.pads === true
     readonly property int stepsPerBeat: Sequencer.ticksPerBeat / Sequencer.gridTicks
     readonly property string lengthText: {
         const beats = Sequencer.length / Sequencer.ticksPerBeat
@@ -628,20 +630,20 @@ Item {
         border.color: Theme.deckLine
         clip: true
 
-        readonly property int keyWidth: screen.drums ? 110 : 52
+        readonly property int keyWidth: screen.drums ? 110 : screen.laned ? 170 : 52
         readonly property int velocityHeight: 90
-        readonly property real rowHeight: screen.drums ? Math.max(18, (height - velocityHeight - 8) / 16) : 14
+        readonly property real rowHeight: screen.laned ? Math.max(18, (height - velocityHeight - 8) / Math.max(1, lanes.length)) : 14
         readonly property real gridWidth: width - keyWidth - 2
         readonly property real pxPerTick: gridWidth / Math.max(1, Sequencer.length)
-        readonly property var lanes: Sequencer.drumLanes
-        readonly property int rows: screen.drums ? lanes.length : 128
+        readonly property var lanes: Sequencer.revision >= 0 && screen.laned ? Sequencer.lanes(Sequencer.track) : []
+        readonly property int rows: screen.laned ? lanes.length : 128
 
         // Pitch at a row (top row = highest pitch); the row of a pitch (-1: not shown).
         function pitchAt(row) {
-            return screen.drums ? lanes[row].note : 127 - row
+            return screen.laned ? lanes[row].note : 127 - row
         }
         function rowOf(pitch) {
-            if (!screen.drums)
+            if (!screen.laned)
                 return 127 - pitch
             for (let i = 0; i < lanes.length; ++i)
                 if (lanes[i].note === pitch)
@@ -666,7 +668,7 @@ Item {
             ScrollBar.vertical: ScrollBar {}
             // Start around the notes, or around C3..C5.
             function centre() {
-                if (screen.drums) {
+                if (screen.laned) {
                     contentY = 0
                     return
                 }
@@ -692,7 +694,7 @@ Item {
                     id: lane
                     required property int index
                     readonly property int pitch: rollFrame.pitchAt(index)
-                    readonly property bool black: !screen.drums && [1, 3, 6, 8, 10].indexOf(pitch % 12) >= 0
+                    readonly property bool black: !screen.laned && [1, 3, 6, 8, 10].indexOf(pitch % 12) >= 0
                     y: index * rollFrame.rowHeight
                     width: roll.width
                     height: rollFrame.rowHeight
@@ -707,7 +709,7 @@ Item {
                         y: parent.height - 1
                         width: rollFrame.gridWidth
                         height: 1
-                        color: !screen.drums && lane.pitch % 12 === 0 ? "#6A6C70" : "#3A3B3F"
+                        color: !screen.laned && lane.pitch % 12 === 0 ? "#6A6C70" : "#3A3B3F"
                     }
                     Rectangle { // the key
                         width: rollFrame.keyWidth - 2
@@ -716,11 +718,11 @@ Item {
                         Text {
                             x: 6
                             anchors.verticalCenter: parent.verticalCenter
-                            visible: screen.drums || lane.pitch % 12 === 0
-                            text: screen.drums ? rollFrame.lanes[lane.index].name : screen.noteName(lane.pitch)
+                            visible: screen.laned || lane.pitch % 12 === 0
+                            text: screen.laned ? rollFrame.lanes[lane.index].name : screen.noteName(lane.pitch)
                             color: lane.black ? Theme.inkInverse : Theme.ink
                             font.family: Theme.labelFont
-                            font.pixelSize: screen.drums ? 12 : 10
+                            font.pixelSize: screen.laned ? 12 : 10
                         }
                     }
                 }
@@ -845,7 +847,7 @@ Item {
                         }
                     }
                     Accessible.role: Accessible.Button
-                    Accessible.name: (screen.drums && note.row >= 0 ? rollFrame.lanes[note.row].name : screen.noteName(modelData.pitch))
+                    Accessible.name: (screen.laned && note.row >= 0 ? rollFrame.lanes[note.row].name : screen.noteName(modelData.pitch))
                                      + ", step " + (Math.floor(modelData.start / Sequencer.gridTicks) + 1)
                                      + ", velocity " + modelData.velocity
                 }

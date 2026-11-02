@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QString>
 #include <QStringList>
+#include <QVariantList>
 #include <QVariantMap>
 
 namespace krate {
@@ -68,6 +69,10 @@ public:
         return false;
     }
     virtual void clearSample(int target) { Q_UNUSED(target); }
+
+    // Named notes, for the Seq screen's lanes (Klang: its pads, by the sound
+    // each plays): [{name, note}], top to bottom. None: a piano roll.
+    virtual QVariantList noteLanes() const { return {}; }
 };
 
 // How a host (standalone app or the Krate rack) finds and builds an instrument.

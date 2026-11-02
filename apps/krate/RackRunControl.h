@@ -23,7 +23,8 @@ class Transport;
 // - The rack's PLAY switches every sequencer on, the rack sequencer's too (playAll()),
 //   except in the arranger's SONG mode: then the song plays alone (the rack
 //   sequencer, which plays it; the instruments' own patterns off), an empty
-//   song nothing.
+//   song nothing; and an instrument a Seq track plays doesn't also run its own
+//   patterns (Klang's pattern A on top of the track's notes).
 // Devices are the rack's, in the order of `ids`. GUI thread.
 class RackRunControl final : public krate::RunControl
 {
@@ -46,6 +47,8 @@ public:
 
     // The arranger's SONG mode (on: the rack's PLAY plays the song alone).
     void setSongMode(std::function<bool()> songMode) { m_songMode = std::move(songMode); }
+    // Whether a Seq track plays this device (then PLAY leaves its own patterns off).
+    void setPlayedBySequencer(std::function<bool(int device)> played) { m_playedBySequencer = std::move(played); }
     // SONG switched: on while playing, the instruments' own patterns stop.
     void songModeChanged();
 
@@ -72,4 +75,5 @@ private:
     std::function<bool()> m_rackSequencerRunning;
     std::function<void(bool)> m_setRackSequencer;
     std::function<bool()> m_songMode;
+    std::function<bool(int)> m_playedBySequencer;
 };

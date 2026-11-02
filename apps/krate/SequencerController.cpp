@@ -215,7 +215,9 @@ QVariantList SequencerController::tracks() const
                             {QStringLiteral("mute"), m_state.mutes[std::size_t(t)]},
                             {QStringLiteral("notes"), int(current().tracks[std::size_t(t)].count)},
                             {QStringLiteral("label"), choice > 0 ? m_targets[std::size_t(choice - 1)].label : QString()},
-                            {QStringLiteral("drums"), choice > 0 && m_targets[std::size_t(choice - 1)].drumMap}};
+                            {QStringLiteral("drums"), choice > 0 && m_targets[std::size_t(choice - 1)].drumMap},
+                            {QStringLiteral("pads"), choice > 0 && !m_targets[std::size_t(choice - 1)].drumMap && m_noteLanes
+                                                         && !m_noteLanes(m_targets[std::size_t(choice - 1)].device).isEmpty()}};
     }
     return list;
 }
@@ -248,6 +250,27 @@ QVariantList SequencerController::drumLanes() const
     for (const DrumLane &lane : kDrumLanes)
         list << QVariantMap{{QStringLiteral("name"), QString::fromLatin1(lane.name)}, {QStringLiteral("note"), lane.note}};
     return list;
+}
+
+QVariantList SequencerController::lanes(int track) const
+{
+    if (track < 0 || track >= kTracks)
+        return {};
+    const int choice = choiceOf(track);
+    if (choice <= 0)
+        return {};
+    const NoteTarget &target = m_targets[std::size_t(choice - 1)];
+    if (target.drumMap)
+        return drumLanes();
+    return m_noteLanes ? m_noteLanes(target.device) : QVariantList{};
+}
+
+bool SequencerController::playsDevice(int device) const
+{
+    for (int t = 0; t < kTracks; ++t)
+        if (const int choice = choiceOf(t); choice > 0 && m_targets[std::size_t(choice - 1)].device == device)
+            return true;
+    return false;
 }
 
 // --- Edits ----------------------------------------------------------------------------

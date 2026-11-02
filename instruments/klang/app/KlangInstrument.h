@@ -25,6 +25,7 @@ public:
     // Sounds from the library go onto the pads.
     QStringList sampleTargets() const override;
     QStringList sampleTargetContents() const override;
+    QVariantList noteLanes() const override;
     bool assignSample(int target, const QString &path, QString *error) override;
     void clearSample(int target) override;
 
