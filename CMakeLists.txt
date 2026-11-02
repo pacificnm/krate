@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(krate VERSION 0.6.1 LANGUAGES CXX)
+project(krate VERSION 0.6.2 LANGUAGES CXX)
 
 # Krate: a suite of instruments and a rack that plays them together
 # (docs/SHARED_FOUNDATIONS.MD). shared/ holds everything instrument-neutral,
