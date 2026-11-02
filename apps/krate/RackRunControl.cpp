@@ -53,8 +53,22 @@ void RackRunControl::addRunner(const QString &id) { m_runners.insert(id); }
 
 void RackRunControl::playAll()
 {
+    const bool song = m_songMode && m_songMode(); // the song alone: what it holds, nothing else
     for (qsizetype j = 0; j < m_ids.size(); ++j) {
-        m_enabled[j] = true;
+        m_enabled[j] = !song;
+        apply(int(j));
+    }
+    if (m_setRackSequencer)
+        m_setRackSequencer(true);
+    emit changed();
+}
+
+void RackRunControl::songModeChanged()
+{
+    if (!(m_songMode && m_songMode()) || !m_transport.playing())
+        return;
+    for (qsizetype j = 0; j < m_ids.size(); ++j) {
+        m_enabled[j] = false;
         apply(int(j));
     }
     if (m_setRackSequencer)

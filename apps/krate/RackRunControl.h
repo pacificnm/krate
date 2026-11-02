@@ -20,7 +20,10 @@ class Transport;
 // - Started while the rack plays: it joins, in time, from the next bar.
 // - Stopping the last one running stops the transport (unless the rack
 //   sequencer still runs).
-// - The rack's PLAY switches every sequencer on, the rack sequencer's too (playAll()).
+// - The rack's PLAY switches every sequencer on, the rack sequencer's too (playAll()),
+//   except in the arranger's SONG mode: then the song plays alone (the rack
+//   sequencer, which plays it; the instruments' own patterns off), an empty
+//   song nothing.
 // Devices are the rack's, in the order of `ids`. GUI thread.
 class RackRunControl final : public krate::RunControl
 {
@@ -41,7 +44,12 @@ public:
         m_setRackSequencer = std::move(setRunning);
     }
 
-    // The rack's PLAY: every sequencer on (the transport is the caller's).
+    // The arranger's SONG mode (on: the rack's PLAY plays the song alone).
+    void setSongMode(std::function<bool()> songMode) { m_songMode = std::move(songMode); }
+    // SONG switched: on while playing, the instruments' own patterns stop.
+    void songModeChanged();
+
+    // The rack's PLAY: every sequencer on, or in SONG mode the song alone (the transport is the caller's).
     void playAll();
     // The rack sequencer's RUN from silence: the instruments' own sequencers
     // off, the transport on (the rack sequencer plays alone).
@@ -63,4 +71,5 @@ private:
     QSet<QString> m_runners;
     std::function<bool()> m_rackSequencerRunning;
     std::function<void(bool)> m_setRackSequencer;
+    std::function<bool()> m_songMode;
 };

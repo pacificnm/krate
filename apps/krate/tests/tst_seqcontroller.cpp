@@ -634,6 +634,46 @@ private slots:
         QVERIFY(transport.playing());
     }
 
+    // In the arranger's SONG mode the rack's PLAY plays the song alone: the
+    // instruments' own patterns stay off (an empty song plays nothing); SONG
+    // switched on while everything plays stops them.
+    void songPlaysAlone()
+    {
+        QTemporaryDir dir;
+        krate::Rack rack(64);
+        krate::Transport transport;
+        RackRunControl run(rack, transport, {QStringLiteral("korrode"), QStringLiteral("kessel")});
+        run.addRunner(QStringLiteral("korrode"));
+        run.addRunner(QStringLiteral("kessel"));
+        Sequencer seq;
+        SequencerController c(seq, targets(), dir.filePath(QStringLiteral("sequencer.json")));
+        c.setRunControl(&run);
+        c.load();
+        run.setRackSequencer([&c] { return c.running(); }, [&c](bool on) { c.setRunning(on); });
+        bool song = true;
+        run.setSongMode([&song] { return song; });
+
+        run.playAll();
+        transport.setPlaying(true);
+        QVERIFY(c.running()); // the song's player
+        QVERIFY(!run.running(QStringLiteral("korrode")));
+        QVERIFY(!run.running(QStringLiteral("kessel")));
+        QVERIFY(!run.anyInstrumentRunning());
+        transport.setPlaying(false);
+
+        song = false; // the patterns: everyone, as before
+        run.playAll();
+        transport.setPlaying(true);
+        QVERIFY(run.running(QStringLiteral("korrode")));
+        QVERIFY(run.running(QStringLiteral("kessel")));
+        song = true; // SONG on while playing
+        run.songModeChanged();
+        QVERIFY(!run.running(QStringLiteral("korrode")));
+        QVERIFY(!run.running(QStringLiteral("kessel")));
+        QVERIFY(c.running());
+        QVERIFY(transport.playing());
+    }
+
     // A track's notes copied onto another track, in another pattern; the
     // destination keeps its instrument; the source is untouched.
     void copyAndPasteTrack()

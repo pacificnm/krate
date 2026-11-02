@@ -22,6 +22,10 @@ Decisions:
 - **Grow Krate rather than build plugins for another DAW, or fork one**: everything stays the way we want it, and the instruments' panels need no work (as plugins they would have to run as separate programs next to the host).
 - **Copies** (D8): up to 16 of each instrument, each its own device, built only once added (below).
 
+## PLAY and SONG
+
+The rack's **PLAY** runs everything: the Seq screen's patterns and every instrument's own sequencer. With **SONG** on (Arrange), PLAY plays the arrangement and nothing else: the instruments' own patterns stay off, so an empty song is silent. Switching SONG on while everything plays stops the instruments' own patterns. An instrument's own **RUN** still plays its pattern alone, or joins at the next bar.
+
 ## Audio inputs
 
 Krate has eight audio inputs, **IN 1** to **IN 8**. **AUDIO** (or ⚙ Settings ▸ Audio) shows what each one is wired to: one jack of your audio interface each. On a first start they're wired to the interface's jacks in order, so IN 2 is its second jack (a 2-input interface's line 2). Change any of them there.

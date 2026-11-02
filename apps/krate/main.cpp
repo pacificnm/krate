@@ -298,6 +298,13 @@ int main(int argc, char *argv[])
     QObject::connect(&audioTracks, &AudioTracksController::recordingChanged, &arrangeController,
                      [&] { arrangeController.setRecording(audioTracks.recording()); }); // one REC for both
     sequencerController.setRunControl(&runControl);
+    // SONG on: PLAY plays the arrangement alone (an empty one: nothing).
+    runControl.setSongMode([&arrangeController] { return arrangeController.songMode(); });
+    QObject::connect(&arrangeController, &ArrangeController::changed, &runControl,
+                     [&arrangeController, &runControl, song = arrangeController.songMode()]() mutable {
+                         if (std::exchange(song, arrangeController.songMode()) != song)
+                             runControl.songModeChanged();
+                     });
     // An instrument's own RUN plays it alone, the Seq screen's tracks off; PLAY runs them all.
     runControl.setRackSequencer([&sequencerController] { return sequencerController.running(); },
                                 [&sequencerController](bool on) { sequencerController.setRunning(on); });
