@@ -104,7 +104,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - 36
                     elide: Text.ElideMiddle
-                    text: folderRow.modelData === Sounds.dropFolder ? "Krate's sounds folder"
+                    text: Sounds.ownFolders[folderRow.modelData] !== undefined ? Sounds.ownFolders[folderRow.modelData]
                                                                     : folderRow.modelData.replace(/^\/home\/[^/]+/, "~")
                     color: Theme.ink
                     font.family: Theme.labelFont
@@ -114,7 +114,7 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: folderRow.modelData !== Sounds.dropFolder // Krate's own: always there
+                    visible: Sounds.ownFolders[folderRow.modelData] === undefined // Krate's own: always there
                     text: "✕"
                     color: Theme.ink
                     MouseArea {

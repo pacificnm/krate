@@ -273,7 +273,15 @@ int main(int argc, char *argv[])
         soundDevices.push_back({int(i), entries[i].name, instances[std::size_t(i)].get()});
     SoundsController soundsController(appData + QStringLiteral("/sounds.db"),
                                       previewer, rackController, std::move(soundDevices), nullptr);
-    soundsController.setDropFolder(appData + QStringLiteral("/sounds")); // docs/SOUNDS.md#krates-sounds-folder
+    { // Krate's own folders of sounds, always in the library (docs/SOUNDS.md#krates-own-folders)
+        QVariantMap own{{appData + QStringLiteral("/sounds"), QStringLiteral("Krate's sounds folder")}};
+        for (qsizetype i = 0; i < entries.size(); ++i) { // the instruments that take samples: their samples folders
+            const QString samples = QDir(data).filePath(entries[i].id) + QStringLiteral("/samples");
+            if (!instances[std::size_t(i)]->sampleTargets().isEmpty() || QFileInfo(samples).isDir())
+                own[samples] = entries[i].name + QStringLiteral("'s samples");
+        }
+        soundsController.setOwnFolders(own);
+    }
     krate::MidiCapture midiCapture; // the keyboard's notes, for MIDI clips
     arrangeController.setMidiCapture(&midiCapture);
     // Automation (docs/DAW.md, D5): the instruments' knobs over the song.

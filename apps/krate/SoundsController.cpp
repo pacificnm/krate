@@ -39,30 +39,35 @@ SoundsController::SoundsController(const QString &databaseFile, krate::Previewer
     m_settle.setSingleShot(true);
     m_settle.setInterval(1500);
     connect(&m_settle, &QTimer::timeout, this, [this] {
-        watchDropFolder(); // new folders in it too
+        watchOwnFolders(); // new folders in them too
         rescan();
     });
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_settle.start(); });
 }
 
-void SoundsController::setDropFolder(const QString &folder)
+void SoundsController::setOwnFolders(const QVariantMap &folders)
 {
-    m_dropFolder = QDir::cleanPath(folder);
-    QDir().mkpath(m_dropFolder);
-    if (!m_library.folders().contains(m_dropFolder))
-        m_library.addFolder(m_dropFolder); // (false if a library folder holds it already: fine)
-    watchDropFolder();
+    m_own.clear();
+    for (auto it = folders.begin(); it != folders.end(); ++it) {
+        const QString path = QDir::cleanPath(it.key());
+        QDir().mkpath(path);
+        if (!m_library.folders().contains(path))
+            m_library.addFolder(path); // (false if a library folder holds it already: fine)
+        m_own[path] = it.value();
+    }
+    watchOwnFolders();
     rescan(); // whatever arrived while Krate wasn't running
 }
 
-void SoundsController::watchDropFolder()
+void SoundsController::watchOwnFolders()
 {
-    if (m_dropFolder.isEmpty())
-        return;
-    QStringList dirs{m_dropFolder};
-    QDirIterator it(m_dropFolder, QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
-    while (it.hasNext() && dirs.size() < 1000)
-        dirs << it.next();
+    QStringList dirs;
+    for (auto own = m_own.begin(); own != m_own.end(); ++own) {
+        dirs << own.key();
+        QDirIterator it(own.key(), QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+        while (it.hasNext() && dirs.size() < 2000)
+            dirs << it.next();
+    }
     const QStringList watched = m_watcher.directories();
     QStringList add;
     for (const QString &d : std::as_const(dirs))

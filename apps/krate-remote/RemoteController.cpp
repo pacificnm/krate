@@ -64,6 +64,16 @@ RemoteController::RemoteController(Shell &shell, QObject *parent)
     m_host = saved.value(QStringLiteral("host"), QStringLiteral("krate.local")).toString();
     m_user = saved.value(QStringLiteral("user"), qEnvironmentVariable("USER")).toString();
     m_port = saved.value(QStringLiteral("port"), 22).toInt();
+    // Krate updated or restarted on the player: the top bar follows within seconds.
+    m_poll.setInterval(20000);
+    connect(&m_poll, &QTimer::timeout, this, [this] {
+        if (m_state != QLatin1String("connected") || m_busy > 0)
+            return;
+        run(QString::fromLatin1(kProbe), [this](const Shell::Result &r) {
+            if (r.ok())
+                readInfo(r);
+        });
+    });
 }
 
 RemoteController::~RemoteController() { s_instance = nullptr; }
@@ -163,6 +173,7 @@ void RemoteController::connectTo(const QString &host, const QString &user, int p
         }
         readInfo(r);
         setState(QStringLiteral("connected"));
+        m_poll.start();
         setMessage(QStringLiteral("Connected to %1.").arg(m_hostName.isEmpty() ? m_host : m_hostName));
         readSettings([this] {
             readReports();
@@ -173,6 +184,7 @@ void RemoteController::connectTo(const QString &host, const QString &user, int p
 
 void RemoteController::disconnectFrom()
 {
+    m_poll.stop();
     ++m_generation;
     m_shell.disconnect();
     m_shell.setPassword({});

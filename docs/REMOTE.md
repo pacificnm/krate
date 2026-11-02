@@ -57,7 +57,7 @@ What goes where:
 | | |
 | --- | --- |
 | Samples and sample packs | **Sounds**, the first of the Places: Krate's sounds folder, always in the Sounds library. What lands there shows up in the library by itself a moment later (folders and all). Anywhere else: on the player **Sounds ▸ ADD FOLDER** (or **RESCAN**). |
-| Not for the library | An instrument's own folders (`klang/samples`, `kessel/samples`) are where Krate copies a sound you send to a pad or drum: the Sounds library doesn't look there. |
+| Klang's or Kessel's samples | Their `samples` folders (under Instruments' sounds) are in the Sounds library too, as are the files you send there. |
 | CLAP plugins | `~/.clap`, or a folder added under Settings ▸ Plugin folders. |
 | Recordings and exports | In their folders. Download them to mix or keep elsewhere. |
 | Songs (`.gp`, `.mid`) | Any folder, then open them in Krate's **Song** screen, which adds them to the library. |

@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QStringList>
+#include <QTimer>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
@@ -151,4 +152,5 @@ private:
     std::deque<std::function<QJsonObject(QJsonObject)>> m_edits;
     bool m_editing = false;
     int m_generation = 0; // a connection's: answers for an earlier one are dropped
+    QTimer m_poll;        // the player's state (Krate's version, running) read again now and then
 };
