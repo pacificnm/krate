@@ -235,6 +235,16 @@ Krimson's reverb (an eight-line feedback-delay network, `shared/dsp/Reverb.cpp`)
 | `tone` | 1.2 … 12 kHz | about 4.3 kHz |
 | `mix` | 0 … 100 % | 30 % |
 
+## Dual Head
+
+Two amps set apart (`dsp/DualHead.cpp`). The amp's sound after its cabinets plays as the left amp; the right is a copy, **DELAY** later, voiced by **TONE** and at **BALANCE**. A few milliseconds make the sound wide; 20–40 ms put two amps across a room. With the cabinets' **SPACE** up and two IRs, each amp has its own cabinet (A left, B right). Where it sits on the board doesn't matter (it works at the amp's output, where it's stereo); in the loop it follows the channel's loop switch. Switching it on or off, or turning DELAY, glides (no clicks).
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `delay` | 0 … 40 ms | 12 ms |
+| `tone` | the second amp darker … brighter (a tilt around 1.2 kHz) | the same |
+| `balance` | the second amp −12 … 0 dB | 0 dB |
+
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
 Tests: `tests/tst_pedals.cpp` (Haze: the octave in place of the note, cleaning up at low fuzz and saturated at high, the room's tail, bounded; Pyramid: a dynamic crunch, Gain adding drive, Bite brightening, the echo on time, bounded; Madman: the distortion's gain range, saturated at its defaults, Gain adding distortion, the mid push, the doubler adding takes at an even level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

@@ -79,8 +79,10 @@ public:
 
     // Audio thread. Adds weights[slot][n] times slot's output to left/right
     // (a mono IR on both sides); slots with no weights (nullptr) or no kernel
-    // are skipped. frames <= the weights' length.
-    void process(const float *in, std::uint32_t frames, const float *const *weights, float *left, float *right) noexcept;
+    // are skipped. frames <= the weights' length. pans (optional): each slot's
+    // place, -1 left .. 0 both sides .. +1 right (SPACE).
+    void process(const float *in, std::uint32_t frames, const float *const *weights, float *left, float *right,
+                 const float *pans = nullptr) noexcept;
 
 private:
     struct SlotState

@@ -10,9 +10,11 @@
 #include "SyntheticGuitar.h"
 #include "dsp/Gate.h"
 #include "dsp/Krunch.h"
+#include "dsp/DualHead.h"
 #include "dsp/PowerAmp.h"
 #include "dsp/Preamp.h"
 #include "dsp/ToneStack.h"
+#include "dsp/Wav.h"
 
 using namespace krunch;
 
@@ -59,6 +61,38 @@ std::vector<float> play(Krunch &amp, const std::vector<float> &in, bool withInpu
         amp.process(block);
     }
     return out;
+}
+
+// Both sides of the output.
+std::pair<std::vector<float>, std::vector<float>> playStereo(Krunch &amp, const std::vector<float> &in)
+{
+    std::vector<float> left(in.size()), right(in.size());
+    for (std::size_t at = 0; at < in.size(); at += 128) {
+        const auto frames = std::uint32_t(std::min<std::size_t>(128, in.size() - at));
+        float *const outputs[2] = {left.data() + at, right.data() + at};
+        const float *const inputs[2] = {in.data() + at, in.data() + at};
+        krate::AudioBlock block{outputs, frames};
+        block.inputs = inputs;
+        amp.process(block);
+    }
+    return {left, right};
+}
+
+double energy(const std::vector<float> &s, std::size_t from, std::size_t to)
+{
+    double e = 0.0;
+    for (std::size_t i = from; i < std::min(to, s.size()); ++i)
+        e += double(s[i]) * double(s[i]);
+    return e;
+}
+
+// A short burst at the start of `n` samples.
+std::vector<float> burst(std::size_t n)
+{
+    std::vector<float> x(n, 0.0f);
+    for (std::size_t i = 0; i < 240; ++i)
+        x[i] = 0.1f * float(std::sin(2.0 * std::numbers::pi * 440.0 * double(i) / kRate));
+    return x;
 }
 
 void setChannel(Krunch &amp, int channel) { amp.setParam(int(ParamId::Channel), float(channel) / float(kChannels - 1)); }
@@ -131,7 +165,7 @@ private slots:
 
     void parameterTable()
     {
-        QCOMPARE(int(kParams.size()), 7 + 4 * 11);
+        QCOMPARE(int(kParams.size()), 7 + 4 * 12);
         QVERIFY(kParams.size() <= 64); // the "changed by audio" mask
         std::set<std::string_view> keys;
         for (const auto &p : kParams) {
@@ -534,6 +568,95 @@ private slots:
         QVERIFY(levelWith(0.5f, 1.0f, true) < base * 0.6);  // front pedals: always in
         QVERIFY(levelWith(1.0f, 0.5f, true) < base * 0.6);  // loop pedals: with the loop on
         QVERIFY(std::fabs(levelWith(1.0f, 0.5f, false) - base) < base * 0.01); // loop off: bypassed
+    }
+
+    // SPACE: with both IRs, A to the left and B to the right as it turns up.
+    // (B here is A 1000 samples later, so where each one lands shows.)
+    void spaceSpreadsTheCabinets()
+    {
+        std::vector<float> a(2048, 0.0f), b(2048, 0.0f);
+        a[0] = 1.0f;
+        b[1000] = 1.0f;
+        krate::WavData wa, wb;
+        wa.rate = wb.rate = int(kRate);
+        wa.channels = wb.channels = 1;
+        wa.left = a;
+        wb.left = b;
+        const auto kernelA = IrKernel::build(wa, kRate), kernelB = IrKernel::build(wb, kRate);
+        QVERIFY(kernelA && kernelB);
+        // The amp with A, B or both loaded, SPACE as given.
+        const auto sides = [&](bool withA, bool withB, float space) {
+            Krunch amp;
+            amp.prepare(kRate, 128);
+            if (withA)
+                amp.cabinet().setKernel(Krunch::cabinetSlot(0, false), kernelA.get());
+            if (withB)
+                amp.cabinet().setKernel(Krunch::cabinetSlot(0, true), kernelB.get());
+            amp.setParam(channelParam(0, ChannelParam::Space), space);
+            return playStereo(amp, burst(9600));
+        };
+        const auto apart = [](const std::vector<float> &x, const std::vector<float> &y, float scale) {
+            double d = 0.0, e = 0.0;
+            for (std::size_t i = 0; i < x.size(); ++i) {
+                d += std::pow(double(x[i]) - scale * double(y[i]), 2.0);
+                e += std::pow(scale * double(y[i]), 2.0);
+            }
+            return d / e;
+        };
+        const auto [onlyA, onlyAr] = sides(true, false, 1.0f); // one IR: SPACE does nothing
+        QCOMPARE(apart(onlyA, onlyAr, 1.0f), 0.0);
+        const auto [onlyB, onlyBr] = sides(false, true, 0.0f);
+        const auto [l0, r0] = sides(true, true, 0.0f);
+        QCOMPARE(apart(l0, r0, 1.0f), 0.0); // both on both sides
+        // At 10: the left is A alone, the right B alone (each at the mix's half).
+        const auto [l1, r1] = sides(true, true, 1.0f);
+        QVERIFY2(apart(l1, onlyA, 0.5f) < 1e-8, qPrintable(QStringLiteral("left %1").arg(apart(l1, onlyA, 0.5f))));
+        QVERIFY2(apart(r1, onlyB, 0.5f) < 1e-8, qPrintable(QStringLiteral("right %1").arg(apart(r1, onlyB, 0.5f))));
+        // Half way: the left is A and half of B.
+        const auto [lh, rh] = sides(true, true, 0.5f);
+        std::vector<float> expected(lh.size());
+        for (std::size_t i = 0; i < expected.size(); ++i)
+            expected[i] = 0.5f * onlyA[i] + 0.25f * onlyB[i];
+        QVERIFY2(apart(lh, expected, 1.0f) < 1e-8, qPrintable(QStringLiteral("half %1").arg(apart(lh, expected, 1.0f))));
+    }
+
+    // Dual Head: the right side is the left, DELAY later (the second amp).
+    void dualHeadSetsASecondAmpApart()
+    {
+        const auto sides = [](bool pedal, float delay) {
+            Krunch amp;
+            DualHead dual;
+            dual.setKnob(DualHead::Delay, delay);
+            PedalList list;
+            list.count = 1;
+            list.pedals[0] = &dual;
+            if (pedal)
+                amp.frontPedals().set(&list);
+            amp.prepare(kRate, 128);
+            dual.prepare(kRate);
+            amp.setParam(int(ParamId::Master), 0.2f);
+            return playStereo(amp, burst(19200));
+        };
+        const auto lagOf = [](const std::vector<float> &l, const std::vector<float> &r) {
+            int best = 0;
+            double top = -1.0;
+            for (int lag = 0; lag < 2400; ++lag) {
+                double c = 0.0;
+                for (std::size_t i = 0; i + std::size_t(lag) < 9600; ++i)
+                    c += double(l[i]) * double(r[i + std::size_t(lag)]);
+                if (c > top) {
+                    top = c;
+                    best = lag;
+                }
+            }
+            return best;
+        };
+        const auto [l0, r0] = sides(false, 0.25f);
+        QCOMPARE(lagOf(l0, r0), 0); // no pedal: the same on both sides
+        QCOMPARE(energy(l0, 0, 9600), energy(r0, 0, 9600));
+        const auto [l1, r1] = sides(true, 0.25f); // 10 ms
+        QVERIFY2(std::abs(lagOf(l1, r1) - 480) <= 2, qPrintable(QStringLiteral("lag %1").arg(lagOf(l1, r1))));
+        QCOMPARE(DualHead::delayMs(0.25f), 10.0);
     }
 
     void peaksForTheMeters()

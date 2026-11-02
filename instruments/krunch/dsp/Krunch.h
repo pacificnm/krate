@@ -8,6 +8,7 @@
 #include "core/Instrument.h"
 #include "core/ParamValues.h"
 #include "dsp/Cabinet.h"
+#include "dsp/DualHead.h"
 #include "dsp/Gate.h"
 #include "dsp/Pedal.h"
 #include "dsp/PowerAmp.h"
@@ -28,7 +29,7 @@ inline constexpr int kChannels = 4;
 
 // Parameter ids: the amp's own, then kChannelParams per channel.
 enum class ParamId : int { Input, Channel, Master, Sag, Resonance, Level, PowerTube, FirstChannel };
-enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, CabMix, Tube, Count };
+enum class ChannelParam : int { Voice, Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, CabMix, Tube, Space, Count };
 inline constexpr int kChannelParams = int(ChannelParam::Count);
 inline constexpr int ParamCount = int(ParamId::FirstChannel) + kChannels * kChannelParams;
 // Index of a channel's parameter (channel 0..3).
@@ -75,7 +76,8 @@ double gateDb(float v);     // the threshold, -80..-20 dBFS (0 = off)
     {"ch" #n "_gate", "Channel " #n " Gate", dGate, 0, &format::gate},                                              \
     {"ch" #n "_loop", "Channel " #n " Effects Loop", 1.0f, 2, &format::onOff},                                      \
     {"ch" #n "_cab_mix", "Channel " #n " Cabinet Mix", 0.5f, 0, &format::cabMix},                                \
-    {"ch" #n "_tube", "Channel " #n " Tube", 0.0f, int(PreTube::Count), &format::preTube}
+    {"ch" #n "_tube", "Channel " #n " Tube", 0.0f, int(PreTube::Count), &format::preTube},                       \
+    {"ch" #n "_space", "Channel " #n " Cabinet Space", 0.0f, 0, &format::dial}
 
 inline constexpr std::array<krate::ParamDescriptor, ParamCount> kParams{{
     {"input", "Input", 0.0f, 2, &format::input},          // the interface's input 1 or 2
@@ -165,6 +167,8 @@ private:
     std::array<float, kBlock> m_fadeIn{}, m_fadeOut{}; // the playing channel's and the previous one's weights
     std::array<std::array<float, kBlock>, Cabinet::kSlots> m_slotWeights{};
     std::array<const float *, Cabinet::kSlots> m_slotWeightPtrs{};
+    std::array<float, Cabinet::kSlots> m_slotPans{}; // SPACE: A to the left, B to the right
+    DualHeadSplit m_dualHead; // the Dual Head pedal's second amp, at the output
     std::array<float, kBlock> m_speakerWeight{}, m_speakerOut{};
 
     std::atomic<float> m_inputPeak{0.0f};

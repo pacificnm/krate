@@ -82,7 +82,7 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(17));
+        QCOMPARE(pedalTypes().size(), std::size_t(18));
         QCOMPARE(pedalTypes()[5]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);

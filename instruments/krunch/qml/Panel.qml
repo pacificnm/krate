@@ -483,11 +483,13 @@ Item {
                 }
             }
         }
-        AmpKnob { y: 380; cx: 1060; size: 64; key: panel.chKey("cab_mix"); label: "CAB MIX" }
+        AmpKnob { y: 380; cx: 1010; size: 64; key: panel.chKey("cab_mix"); label: "CAB MIX" }
+        // SPACE: A to the left, B to the right (with both IRs).
+        AmpKnob { y: 380; cx: 1110; size: 64; key: panel.chKey("space"); label: "SPACE" }
         Text {
-            x: 1140
+            x: 1170
             y: 420
-            width: 190
+            width: 160
             text: panel.cabinets.libraryCount + " IRs in the library"
             color: "#8F897A"
             font.family: Theme.labelFont

@@ -151,7 +151,8 @@ void Cabinet::computeTail(int slot, const IrKernel &kernel) noexcept
     }
 }
 
-void Cabinet::process(const float *in, std::uint32_t frames, const float *const *weights, float *left, float *right) noexcept
+void Cabinet::process(const float *in, std::uint32_t frames, const float *const *weights, float *left, float *right,
+                      const float *pans) noexcept
 {
     std::array<const IrKernel *, kSlots> kernels{};
     for (int s = 0; s < kSlots; ++s)
@@ -178,6 +179,9 @@ void Cabinet::process(const float *in, std::uint32_t frames, const float *const 
             if (!k)
                 continue;
             const float w = weights[s][n];
+            // Its place: both sides at the centre, one side fading out towards the other.
+            const float pan = pans ? pans[s] : 0.0f;
+            const float wl = w * std::min(1.0f, 1.0f - pan), wr = w * std::min(1.0f, 1.0f + pan);
             const SlotState &state = m_slots[std::size_t(s)];
             for (int side = 0; side < k->m_sides; ++side) {
                 const auto &head = k->m_side[std::size_t(side)].head;
@@ -185,10 +189,10 @@ void Cabinet::process(const float *in, std::uint32_t frames, const float *const 
                 for (std::size_t t = 0; t < kBlock; ++t)
                     y += head[t] * window[t];
                 if (k->m_sides == 1) {
-                    left[n] += w * y;
-                    right[n] += w * y;
+                    left[n] += wl * y;
+                    right[n] += wr * y;
                 } else {
-                    (side == 0 ? left : right)[n] += w * y;
+                    (side == 0 ? left : right)[n] += (side == 0 ? wl : wr) * y;
                 }
             }
         }

@@ -84,6 +84,7 @@ void Krunch::prepare(double sampleRate, std::uint32_t) noexcept
     for (Preamp &p : m_preamps)
         p.prepare(sampleRate);
     m_powerAmp.prepare(sampleRate);
+    m_dualHead.prepare(sampleRate);
     m_speaker.prepare(sampleRate);
     m_cabinet.prepare();
     m_rateForKernels.store(sampleRate, std::memory_order_relaxed);
@@ -117,6 +118,10 @@ void Krunch::addCabinet(int channel, const float *weight, std::uint32_t frames) 
         assign(slotA, 1.0f - mix);
     if (b && mix > 0.0f)
         assign(slotB, mix);
+    // SPACE: with both IRs, A moves left and B right (at 10: hard left and right).
+    const float space = a && b ? std::clamp(channelValue(channel, ChannelParam::Space), 0.0f, 1.0f) : 0.0f;
+    m_slotPans[std::size_t(slotA)] = -space;
+    m_slotPans[std::size_t(slotB)] = space;
 }
 
 Preamp::Settings Krunch::preampSettings(int channel) const noexcept
@@ -220,12 +225,25 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
     addCabinet(m_active, m_fadeIn.data(), frames);
     if (previous >= 0)
         addCabinet(previous, m_fadeOut.data(), frames);
-    m_cabinet.process(m_a.data(), frames, m_slotWeightPtrs.data(), left, right);
+    m_cabinet.process(m_a.data(), frames, m_slotWeightPtrs.data(), left, right, m_slotPans.data());
     for (std::uint32_t n = 0; n < frames; ++n) { // the built-in speaker keeps running, so it's ready
         const float y = m_speaker.process(m_a[n]) * m_speakerWeight[n];
         left[n] += y;
         right[n] += y;
     }
+
+    // Dual Head (a pedal in front or in the loop, on): the second amp, on the right.
+    // (In the loop, only with the playing channel's loop on, as the loop's other pedals.)
+    const DualHead *dual = nullptr;
+    const bool loopOn = channelValue(m_active, ChannelParam::Loop) >= 0.5f;
+    for (const PedalChain *chain : {&m_front, &m_loop})
+        if (const PedalList *list = chain->list(); list && !dual && (chain == &m_front || loopOn))
+            for (int i = 0; i < list->count; ++i)
+                if (list->pedals[std::size_t(i)]->info().type == DualHead::kInfo.type && list->pedals[std::size_t(i)]->on()) {
+                    dual = static_cast<const DualHead *>(list->pedals[std::size_t(i)]);
+                    break;
+                }
+    m_dualHead.process(dual, left, right, frames);
 
     // Level (ramped). The trim keeps a cranked master (the output stage at full
     // swing, plus the speaker's peaks) under full scale.

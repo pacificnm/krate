@@ -10,6 +10,7 @@
 #include "dsp/SignaturePedals.h"
 #include "dsp/StudioPedals.h"
 #include "dsp/TimePedals.h"
+#include "dsp/DualHead.h"
 
 namespace krunch {
 
@@ -64,12 +65,14 @@ std::span<const PedalInfo *const> pedalTypes()
     static const PedalInfo *const kTypes[] = {&Prism::kInfo,   &Madman::kInfo, &Pyramid::kInfo, &Haze::kInfo, &Compressor::kInfo, &GreenDrive::kInfo, &RoundFuzz::kInfo,
                                               &Eq5::kInfo,     &Eq10::kInfo,       &Phaser::kInfo,     &Flanger::kInfo,
                                               &Vibe::kInfo,    &Chorus::kInfo,     &Tremolo::kInfo,    &Delay::kInfo,
-                                              &DrumEcho::kInfo, &Reverb::kInfo};
+                                              &DrumEcho::kInfo, &Reverb::kInfo,   &DualHead::kInfo};
     return kTypes;
 }
 
 std::unique_ptr<Pedal> makePedal(std::string_view type)
 {
+    if (type == DualHead::kInfo.type)
+        return std::make_unique<DualHead>();
     if (type == GreenDrive::kInfo.type)
         return std::make_unique<GreenDrive>();
     if (type == Haze::kInfo.type)
