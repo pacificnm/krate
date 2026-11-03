@@ -11,6 +11,7 @@
 #include <QString>
 #include <QTimer>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
 #include "app/InstrumentRegistry.h"
@@ -112,6 +113,9 @@ public:
     void setLanes(const Lanes &lanes);
     void setBeforeLaneEdit(std::function<void()> before) { m_beforeLaneEdit = std::move(before); }
     Q_INVOKABLE QVariantList takePeaks(int track, int index) const; // [] until loaded
+    // The take being recorded, as it grows (until it's on the lane): {startBeat,
+    // seconds, peaks (0..1, kLiveBinsPerSecond of them a second)}; {} for none.
+    Q_INVOKABLE QVariantMap liveTake(int track) const;
     Q_INVOKABLE void removeClip(int track, int clip);
     Q_INVOKABLE bool isRecording(int track) const;
     Q_INVOKABLE qreal inputLevel(int track) const;        // 0..1 (-60..0 dB)
@@ -168,6 +172,14 @@ private:
         std::future<Loaded> loading;
         QString loadingFile; // the take being loaded
         qreal level = 0.0;
+        struct Live
+        {
+            std::uint32_t id = 0; // the engine's take id
+            double startBeat = 0.0;
+            qint64 frames = 0;
+            std::vector<float> peaks;
+            QString landed; // its file, once finished: shown until that's loaded
+        } live; // the take being recorded
     };
 
     QString trackDir(int track) const;

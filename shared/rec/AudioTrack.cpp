@@ -108,6 +108,8 @@ void AudioTrack::process(const AudioBlock &block) noexcept
         m_takeStartBeat.store(t.beatAtBlockStart + (from > 0 ? double(from) / framesPerBeat : 0.0),
                               std::memory_order_relaxed);
         m_takeChannels.store(inputMode == Stereo ? 2 : 1, std::memory_order_relaxed);
+        m_takeFrames.store(0, std::memory_order_relaxed);
+        m_takePeak.store(0.0f, std::memory_order_relaxed);
         m_takeId.fetch_add(1, std::memory_order_release);
         recording = true;
     } else if (recording && from > 0) {
@@ -115,6 +117,11 @@ void AudioTrack::process(const AudioBlock &block) noexcept
     }
     if (recording) {
         m_ring.write(m_inL.data() + from, m_inR.data() + from, to - from);
+        float recorded = m_takePeak.load(std::memory_order_relaxed);
+        for (std::uint32_t i = from; i < to; ++i)
+            recorded = std::max({recorded, std::fabs(m_inL[i]), std::fabs(m_inR[i])});
+        m_takePeak.store(recorded, std::memory_order_relaxed);
+        m_takeFrames.fetch_add(std::int64_t(to - from), std::memory_order_release);
         if (to < n)
             recording = false; // punched out: everything up to it is in the buffer
     }

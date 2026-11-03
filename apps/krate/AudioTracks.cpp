@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include <QDateTime>
 #include <QDir>
@@ -21,6 +22,7 @@ Q_LOGGING_CATEGORY(lcTracks, "krate.tracks")
 
 namespace {
 constexpr int kPeakBins = 600; // the waveform's columns
+constexpr int kLiveBinsPerSecond = 20; // the waveform of a take being recorded
 
 // A rack device that is one of the tracks.
 class AudioTrackInstance final : public krate::InstrumentInstance
@@ -225,6 +227,22 @@ void AudioTracksController::deleteTake(int track, int index)
 QVariantList AudioTracksController::peaks(int track) const
 {
     return takePeaks(track, selectedTake(track));
+}
+
+QVariantMap AudioTracksController::liveTake(int track) const
+{
+    if (track < 0 || track >= kTracks)
+        return {};
+    const Track &t = m_tracks[std::size_t(track)];
+    if (t.live.id == 0 || t.live.frames <= 0)
+        return {};
+    QVariantList peaks;
+    peaks.reserve(qsizetype(t.live.peaks.size()));
+    for (float p : t.live.peaks)
+        peaks.append(p);
+    return {{QStringLiteral("startBeat"), t.live.startBeat},
+            {QStringLiteral("seconds"), double(t.live.frames) / std::max(1.0, t.engine->sampleRate())},
+            {QStringLiteral("peaks"), peaks}};
 }
 
 QVariantList AudioTracksController::takePeaks(int track, int index) const
@@ -521,12 +539,37 @@ void AudioTracksController::poll()
                                           << "in the rack" << (m_rack && t.device >= 0 && m_rack->isPresent(t.device));
         if (!shouldRecord || now)
             t.notRecordingPolls = 0;
+        // The take being recorded, drawn as it grows: each poll's peak over the frames since the last.
+        if (now) {
+            const std::uint32_t id = t.engine->takeId();
+            if (id != t.live.id) {
+                t.live = {};
+                t.live.id = id;
+                t.live.startBeat = t.engine->takeStartBeat();
+            }
+            const qint64 frames = t.engine->takeFrames();
+            const float peak = t.engine->takeRecordedPeak();
+            const qint64 perBin = std::max<qint64>(1, qint64(t.engine->sampleRate()) / kLiveBinsPerSecond);
+            if (frames > t.live.frames) {
+                const std::size_t first = std::size_t(t.live.frames / perBin), last = std::size_t((frames - 1) / perBin);
+                if (t.live.peaks.size() < last + 1)
+                    t.live.peaks.resize(last + 1, 0.0f);
+                for (std::size_t b = first; b <= last; ++b)
+                    t.live.peaks[b] = std::max(t.live.peaks[b], std::min(peak, 1.0f));
+                t.live.frames = frames;
+            }
+        } else if (t.live.id != 0 && !t.live.landed.isEmpty() && t.cache.count(t.live.landed)) {
+            t.live = {}; // on the lane with its own waveform now
+        }
         if (t.loading.valid() && t.loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
             Loaded loaded = t.loading.get();
-            if (loaded.take)
+            if (loaded.take) {
                 t.cache[t.loadingFile] = std::move(loaded);
-            else
+            } else {
                 qWarning("krate: couldn't read the take %s", qPrintable(t.loadingFile));
+                if (t.loadingFile == t.live.landed)
+                    t.live = {};
+            }
             refresh(i); // plays it, loads the next
             bump();
         }
@@ -546,6 +589,8 @@ void AudioTracksController::addFinished(const krate::Recorder::Finished &f)
 {
     if (f.track < 0 || f.track >= kTracks)
         return;
+    // What was drawn while it recorded: kept until the take's own waveform is loaded (poll).
+    Track::Live live = std::exchange(m_tracks[std::size_t(f.track)].live, {});
     if (!f.ok || f.frames == 0) {
         if (f.frames == 0) {
             QFile::remove(QString::fromStdString(f.path));
@@ -571,6 +616,8 @@ void AudioTracksController::addFinished(const krate::Recorder::Finished &f)
     t.takes.push_back(take);
     t.clips.push_back({take.file, take.startBeat}); // on the lane where it was recorded, on top
     t.selected = int(t.takes.size()) - 1;
+    t.live = std::move(live);
+    t.live.landed = take.file;
     qCInfo(lcTracks).noquote() << QStringLiteral("Audio %1: take %2, %3 s, at beat %4").arg(f.track + 1).arg(take.file)
                                          .arg(double(f.frames) / std::max(1, f.rate), 0, 'f', 1).arg(f.startBeat, 0, 'f', 2);
     refresh(f.track);

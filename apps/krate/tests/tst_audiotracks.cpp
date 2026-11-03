@@ -114,6 +114,49 @@ private slots:
         QVERIFY(!QFileInfo::exists(QDir(recordings).filePath("audio3/" + file)));
     }
 
+    // The take being recorded, for the arranger: from where it started, as
+    // long as what's recorded so far, its peaks; gone once the take is on the
+    // lane with its own waveform.
+    void drawsTheTakeAsItRecords()
+    {
+        QTemporaryDir dir;
+        AudioTracksController tracks(dir.filePath("recordings"));
+        krate::AudioTrack &engine = tracks.engine(1);
+        engine.prepare(48000.0, kBlock);
+        Feed feed{engine};
+        feed.beat = 8.0;
+        QVERIFY(tracks.liveTake(1).isEmpty());
+        tracks.setParam(1, krate::AudioTrack::Arm, 1.0);
+        tracks.setRecording(true);
+        feed.block(true, true);
+        for (int k = 0; k < 187; ++k) // a second (188 blocks)
+            feed.block(true);
+        waitFor([&] { return !tracks.liveTake(1).isEmpty(); });
+        QVariantMap live = tracks.liveTake(1);
+        QCOMPARE(live.value("startBeat").toDouble(), 8.0);
+        QCOMPARE(live.value("seconds").toDouble(), 188.0 * kBlock / 48000.0);
+        QVariantList peaks = live.value("peaks").toList();
+        QCOMPARE(peaks.size(), 21); // 20 a second, the last one begun
+        QCOMPARE(peaks.first().toDouble(), 0.5);
+        QCOMPARE(peaks.last().toDouble(), 0.5);
+
+        // Louder for the next half second: only the new part is.
+        std::fill(feed.a.begin(), feed.a.end(), 0.9f);
+        for (int k = 0; k < 94; ++k)
+            feed.block(true);
+        waitFor([&] { return tracks.liveTake(1).value("peaks").toList().size() > 21; });
+        peaks = tracks.liveTake(1).value("peaks").toList();
+        QCOMPARE(peaks.size(), 31);
+        QCOMPARE(peaks[5].toDouble(), 0.5);
+        QVERIFY(std::fabs(peaks[25].toDouble() - 0.9) < 1e-6);
+
+        feed.block(false);
+        waitFor([&] { return tracks.liveTake(1).isEmpty(); });
+        QVERIFY(tracks.liveTake(1).isEmpty());
+        QCOMPARE(tracks.clips(1).size(), 1);
+        QVERIFY(tracks.clips(1)[0].toMap().value("loaded").toBool());
+    }
+
     // Quitting while recording keeps the take; a track that recorded
     // nothing leaves no file.
     void quittingKeepsTheTake()

@@ -93,6 +93,10 @@ public:
     std::uint64_t blocks() const noexcept { return m_blocks.load(std::memory_order_acquire); }
     bool recording() const noexcept { return m_recording.load(std::memory_order_acquire); }
     float takeInputPeak() noexcept { return m_inputPeak.exchange(0.0f, std::memory_order_relaxed); }
+    // The take being recorded (the arranger draws it as it grows): frames
+    // recorded into it so far, and the peak of those recorded since last asked.
+    std::int64_t takeFrames() const noexcept { return m_takeFrames.load(std::memory_order_acquire); }
+    float takeRecordedPeak() noexcept { return m_takePeak.exchange(0.0f, std::memory_order_relaxed); }
     double sampleRate() const noexcept { return m_rate; }
 
     // --- The disk thread (Recorder)
@@ -121,6 +125,8 @@ private:
     std::atomic<std::uint32_t> m_takeId{0};
     std::atomic<double> m_takeStartBeat{0.0};
     std::atomic<int> m_takeChannels{2};
+    std::atomic<std::int64_t> m_takeFrames{0};
+    std::atomic<float> m_takePeak{0.0f};
     std::atomic<const Playlist *> m_playlist{nullptr};
     std::vector<std::uint8_t> m_covered; // this block's samples a later clip has written
     std::atomic<std::uint64_t> m_blocks{0};

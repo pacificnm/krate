@@ -905,6 +905,52 @@ Item {
                                 anchors.fill: parent
                                 onPressed: screen.select("", -1, -1)
                             }
+                            Rectangle { // the take being recorded, growing as it records (over the clips)
+                                id: liveBox
+                                readonly property var live: Tracks.frame >= 0 ? Tracks.liveTake(audioLane.modelData.track) : ({})
+                                readonly property bool shown: live.peaks !== undefined
+                                readonly property real beatWidth: screen.barWidth / 4
+                                z: 2
+                                visible: shown
+                                x: shown ? live.startBeat * beatWidth : 0
+                                width: shown ? Math.max(4, live.seconds * Rack.bpm / 60 * beatWidth) : 0
+                                height: audioLane.height
+                                radius: 3
+                                color: "#7E3B36"
+                                border.color: "#4A1F1B"
+                                clip: true
+                                Canvas {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    readonly property var peaks: liveBox.shown ? liveBox.live.peaks : []
+                                    onPeaksChanged: requestPaint()
+                                    onWidthChanged: requestPaint()
+                                    onPaint: {
+                                        const ctx = getContext("2d")
+                                        ctx.clearRect(0, 0, width, height)
+                                        const n = peaks.length
+                                        if (n === 0)
+                                            return
+                                        ctx.fillStyle = Theme.labelOrange
+                                        const mid = height / 2
+                                        for (let x = 0; x < width; ++x) {
+                                            const p = peaks[Math.min(n - 1, Math.floor(x * n / width))]
+                                            const h = Math.max(0.5, p * mid)
+                                            ctx.fillRect(x, mid - h, 1, 2 * h)
+                                        }
+                                    }
+                                }
+                                Text {
+                                    x: 6
+                                    y: 1
+                                    visible: liveBox.width > 40
+                                    text: "● REC"
+                                    color: Theme.inkInverse
+                                    font.family: "monospace"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
+                            }
                             Repeater { // the takes on the lane, a later one on top
                                 model: audioLane.clips
                                 Rectangle {
