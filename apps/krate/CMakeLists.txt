@@ -68,6 +68,8 @@ qt_add_qml_module(krate
         qml/Meter.qml
         qml/SongScreen.qml
         qml/SeqScreen.qml
+        qml/SequenceBox.qml
+        qml/SequenceLibrary.qml
         qml/LibraryPanel.qml
         qml/AudioTrackPanel.qml
         qml/ArrangeScreen.qml

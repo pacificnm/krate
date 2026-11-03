@@ -606,6 +606,44 @@ private slots:
         QCOMPARE(c.notes().size(), 2);
         QCOMPARE(c.savedSequences().size(), 0);
     }
+
+    // A saved sequence keeps the audio tracks' clips (its arrangement's
+    // audio): opening it puts them back, NEW clears them, CLOSE goes back to
+    // what was there; one saved before audio was kept leaves them alone; an
+    // audio edit is a change.
+    void sequencesKeepTheirAudioClips()
+    {
+        Fixture f;
+        krate::seq::Sequencer seq;
+        SequencerController c(seq, noteTargets(f.entries), f.path("sequencer.json"));
+        c.load();
+        c.setLibrary(f.library.get(), nullptr);
+        QJsonArray audio; // the audio tracks' lanes, as the controller keeps them
+        const auto lanes = [](const QString &file, double beat) {
+            return QJsonArray{QJsonArray{QJsonObject{{QStringLiteral("file"), file}, {QStringLiteral("startBeat"), beat}}}};
+        };
+
+        QVERIFY(c.saveSequenceAs(QStringLiteral("Old"))); // no audio kept with it
+        const int old = c.sequenceId();
+        c.setAudioLanes([&] { return audio; }, [&](const QJsonArray &a) { audio = a; });
+
+        audio = lanes(QStringLiteral("take-a.wav"), 4.0);
+        c.audioEdited();
+        QVERIFY(c.modified());
+        QVERIFY(c.saveSequenceAs(QStringLiteral("A")));
+        const int a = c.sequenceId();
+        c.newSequence();
+        QVERIFY(audio.isEmpty());
+        audio = lanes(QStringLiteral("take-b.wav"), 8.0);
+        QVERIFY(c.saveSequenceAs(QStringLiteral("B")));
+
+        QVERIFY(c.openSequence(a));
+        QCOMPARE(audio, lanes(QStringLiteral("take-a.wav"), 4.0));
+        QVERIFY(c.openSequence(old));
+        QCOMPARE(audio, lanes(QStringLiteral("take-a.wav"), 4.0)); // left as they were
+        c.closeSequence(); // back to before the first one opened: B's
+        QCOMPARE(audio, lanes(QStringLiteral("take-b.wav"), 8.0));
+    }
 };
 
 QTEST_GUILESS_MAIN(TestSong)

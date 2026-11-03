@@ -358,10 +358,19 @@ Item {
         }
     }
 
+    // The arrangement is the open sequence's: its name, NEW, SAVE, the library.
+    SequenceBox {
+        id: sequenceBox
+        stacked: false
+        anchors.right: parent.right
+        anchors.rightMargin: 16
+        anchors.verticalCenter: tools.verticalCenter
+    }
+
     Text { // what this screen does in pattern mode, or while a DAW leads
         x: tools.x + tools.width + 16
         anchors.verticalCenter: tools.verticalCenter
-        width: parent.width - x - 16
+        width: sequenceBox.x - x - 12
         elide: Text.ElideRight
         text: Arrange.following ? "A DAW leads over JACK: its position and its loop play (start, LOOP and PUNCH here wait)."
               : Tracks.recording && Arrange.playing && Arrange.songMode && Arrange.loopOn

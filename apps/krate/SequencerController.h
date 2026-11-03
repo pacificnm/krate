@@ -6,6 +6,7 @@
 #include <optional>
 #include <vector>
 
+#include <QJsonArray>
 #include <QObject>
 #include <QStringList>
 #include <QTimer>
@@ -147,6 +148,15 @@ public:
     void setRunControl(RackRunControl *run) { m_run = run; }
     // Where sequences are saved, and the rack's sounds and mixer to save with them.
     void setLibrary(SongLibrary *library, const RackSounds *sounds);
+    // The audio tracks' clips, kept with each saved sequence ("audio"): what
+    // they are now, and putting them back (a new sequence: none).
+    void setAudioLanes(std::function<QJsonArray()> get, std::function<void(const QJsonArray &)> set)
+    {
+        m_getAudio = std::move(get);
+        m_setAudio = std::move(set);
+    }
+    // The audio clips were edited (or a take landed): the sequence has changed.
+    void audioEdited();
 
     int sequenceId() const { return int(m_state.sequenceId); }
     QString sequenceName() const { return m_state.sequenceName; }
@@ -244,6 +254,9 @@ private:
     std::optional<Before> m_before;
     std::vector<NoteTarget> m_targets;
     std::function<QVariantList(int)> m_noteLanes;
+    std::function<QJsonArray()> m_getAudio;
+    std::function<void(const QJsonArray &)> m_setAudio;
+    QJsonObject withAudio(QJsonObject data) const; // the sequencer's, with the audio clips
     QString m_path;
     SequencerState m_state;
     std::optional<krate::seq::Pattern> m_clipboard;

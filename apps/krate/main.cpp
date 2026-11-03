@@ -327,6 +327,8 @@ int main(int argc, char *argv[])
         soundInstances.push_back(instance.get());
     const RackSounds rackSounds(rackController, deviceIds, std::move(soundInstances));
     sequencerController.setLibrary(&library, &rackSounds);
+    sequencerController.setAudioLanes([&audioTracks] { return audioTracks.lanesJson(); },
+                                      [&audioTracks](const QJsonArray &lanes) { audioTracks.setLanesJson(lanes); });
     songController.setBackingTrack(&static_cast<BackingInstance *>(instances.back().get())->track);
     if (const QString old = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + QStringLiteral("/songs.json");
         QFileInfo::exists(old))

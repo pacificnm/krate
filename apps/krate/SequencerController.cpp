@@ -102,6 +102,24 @@ void SequencerController::arrangerEdited(bool arrangementChanged)
     emit changed();
 }
 
+void SequencerController::audioEdited()
+{
+    if (m_state.modified)
+        return;
+    m_state.modified = true;
+    m_dirty = true;
+    m_saveTimer.start();
+    ++m_revision;
+    emit changed();
+}
+
+QJsonObject SequencerController::withAudio(QJsonObject data) const
+{
+    if (m_getAudio)
+        data.insert(QStringLiteral("audio"), m_getAudio());
+    return data;
+}
+
 void SequencerController::flush()
 {
     if (m_dirty)
@@ -593,7 +611,7 @@ bool SequencerController::saveSequence()
         return false;
     const RackSounds::Snapshot now = m_sounds ? m_sounds->capture() : RackSounds::Snapshot{};
     m_state.modified = false;
-    if (!m_library->saveSequence(m_state.sequenceId, m_state.sequenceName, sequencerToJson(m_state), now.sounds,
+    if (!m_library->saveSequence(m_state.sequenceId, m_state.sequenceName, withAudio(sequencerToJson(m_state)), now.sounds,
                                  now.mixer)) {
         m_state.modified = true;
         return false;
@@ -617,7 +635,7 @@ bool SequencerController::saveSequenceAs(const QString &name)
     m_state.sequenceId = 0;
     m_state.sequenceName = trimmed;
     m_state.modified = false;
-    const qint64 id = m_library->saveSequence(0, trimmed, sequencerToJson(m_state), now.sounds, now.mixer);
+    const qint64 id = m_library->saveSequence(0, trimmed, withAudio(sequencerToJson(m_state)), now.sounds, now.mixer);
     if (id <= 0) {
         m_state.sequenceId = oldId;
         m_state.sequenceName = oldName;
@@ -641,7 +659,7 @@ bool SequencerController::openSequence(int id)
     if (!saved)
         return false;
     if (!m_before) // what to put back on close: from before the first one opened
-        m_before = Before{m_sounds ? m_sounds->capture() : RackSounds::Snapshot{}, sequencerToJson(m_state)};
+        m_before = Before{m_sounds ? m_sounds->capture() : RackSounds::Snapshot{}, withAudio(sequencerToJson(m_state))};
     const bool running = m_state.running;
     m_state = sequencerFromJson(saved->data);
     m_state.running = running; // RUN is yours, not the sequence's
@@ -651,6 +669,8 @@ bool SequencerController::openSequence(int id)
     m_clipboard.reset();
     if (m_sounds)
         m_sounds->restore({saved->sounds, saved->mixer});
+    if (m_setAudio && saved->data.contains(QStringLiteral("audio"))) // (saved before audio was kept: as they are)
+        m_setAudio(saved->data.value(QStringLiteral("audio")).toArray());
     applyState();
     m_dirty = true;
     m_saveTimer.start();
@@ -666,6 +686,8 @@ void SequencerController::closeSequence()
         if (m_sounds)
             m_sounds->restore(m_before->sounds);
         m_state = sequencerFromJson(m_before->sequencer);
+        if (m_setAudio && m_before->sequencer.contains(QStringLiteral("audio")))
+            m_setAudio(m_before->sequencer.value(QStringLiteral("audio")).toArray());
         m_before.reset();
     } else { // opened before the rack last started: nothing to go back to, so it's just let go
         m_state.sequenceId = 0;
@@ -687,6 +709,8 @@ void SequencerController::newSequence()
     m_before.reset(); // what's on the rack now stays (there's no sequence to close)
     m_clipboard.reset();
     m_track = 0;
+    if (m_setAudio)
+        m_setAudio({}); // no audio clips (the takes stay, in each track's list)
     applyState();
     m_dirty = true;
     m_saveTimer.start();

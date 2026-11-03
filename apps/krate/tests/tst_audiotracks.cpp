@@ -155,6 +155,15 @@ private slots:
         QVERIFY(tracks.liveTake(1).isEmpty());
         QCOMPARE(tracks.clips(1).size(), 1);
         QVERIFY(tracks.clips(1)[0].toMap().value("loaded").toBool());
+
+        // As a saved sequence keeps the lanes: cleared (a new one), then back.
+        const QJsonArray kept = tracks.lanesJson();
+        tracks.setLanesJson({});
+        QVERIFY(tracks.clips(1).isEmpty());
+        QCOMPARE(tracks.takes(1).size(), 1); // the take stays
+        tracks.setLanesJson(kept);
+        QCOMPARE(tracks.clips(1).size(), 1);
+        QCOMPARE(tracks.clips(1)[0].toMap().value("startBeat").toDouble(), 8.0);
     }
 
     // Quitting while recording keeps the take; a track that recorded

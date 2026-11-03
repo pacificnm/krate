@@ -41,8 +41,11 @@ ArrangeController::ArrangeController(SequencerController &sequencer, krate::Tran
         m_redo.clear();
         emit historyChanged();
     });
-    if (m_tracks) // a recording, the panel, an edit: undoable too
-        m_tracks->setBeforeLaneEdit([this] { beforeEdit(); });
+    if (m_tracks) // a recording, the panel, an edit: undoable too, and a change to the sequence
+        m_tracks->setBeforeLaneEdit([this] {
+            beforeEdit();
+            m_sequencer.audioEdited();
+        });
     apply();
     m_writeTimer.setInterval(15); // knobs recorded about 66 times a second
     connect(&m_writeTimer, &QTimer::timeout, this, &ArrangeController::writeTick);

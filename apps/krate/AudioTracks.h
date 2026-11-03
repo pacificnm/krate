@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include <QJsonArray>
 #include <QObject>
 #include <QString>
 #include <QTimer>
@@ -111,6 +112,10 @@ public:
     // `before` is told before any lane changes (a recording, the panel, an edit).
     Lanes lanes() const;
     void setLanes(const Lanes &lanes);
+    // Every lane's clips as kept with a saved sequence (its "audio"), and
+    // put back from there (clips of takes deleted since are dropped).
+    QJsonArray lanesJson() const;
+    void setLanesJson(const QJsonArray &lanes);
     void setBeforeLaneEdit(std::function<void()> before) { m_beforeLaneEdit = std::move(before); }
     Q_INVOKABLE QVariantList takePeaks(int track, int index) const; // [] until loaded
     // The take being recorded, as it grows (until it's on the lane): {startBeat,

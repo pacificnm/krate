@@ -24,6 +24,25 @@ namespace {
 constexpr int kPeakBins = 600; // the waveform's columns
 constexpr int kLiveBinsPerSecond = 20; // the waveform of a take being recorded
 
+QJsonObject clipToJson(const AudioTracksController::LaneClip &clip)
+{
+    return {{QStringLiteral("file"), clip.file},
+            {QStringLiteral("startBeat"), clip.startBeat},
+            {QStringLiteral("trim"), clip.trim},
+            {QStringLiteral("length"), clip.length},
+            {QStringLiteral("fadeIn"), clip.fadeIn},
+            {QStringLiteral("fadeOut"), clip.fadeOut}};
+}
+
+AudioTracksController::LaneClip clipFromJson(const QJsonObject &j)
+{
+    return {j.value(QStringLiteral("file")).toString(), j.value(QStringLiteral("startBeat")).toDouble(),
+            std::max<qint64>(0, j.value(QStringLiteral("trim")).toInteger()),
+            std::max<qint64>(0, j.value(QStringLiteral("length")).toInteger()),
+            std::max<qint64>(0, j.value(QStringLiteral("fadeIn")).toInteger()),
+            std::max<qint64>(0, j.value(QStringLiteral("fadeOut")).toInteger())};
+}
+
 // A rack device that is one of the tracks.
 class AudioTrackInstance final : public krate::InstrumentInstance
 {
@@ -471,6 +490,27 @@ void AudioTracksController::setLanes(const Lanes &lanes)
     bump();
 }
 
+QJsonArray AudioTracksController::lanesJson() const
+{
+    QJsonArray lanes;
+    for (const Track &t : m_tracks) {
+        QJsonArray clips;
+        for (const LaneClip &clip : t.clips)
+            clips.append(clipToJson(clip));
+        lanes.append(clips);
+    }
+    return lanes;
+}
+
+void AudioTracksController::setLanesJson(const QJsonArray &lanes)
+{
+    Lanes put;
+    for (int i = 0; i < kTracks; ++i)
+        for (const QJsonValue &v : lanes.at(i).toArray())
+            put[std::size_t(i)].push_back(clipFromJson(v.toObject()));
+    setLanes(put);
+}
+
 void AudioTracksController::removeClip(int track, int clip)
 {
     if (track < 0 || track >= kTracks)
@@ -734,14 +774,9 @@ void AudioTracksController::load()
         }
         if (o.contains(QStringLiteral("clips"))) {
             for (const QJsonValue &v : o.value(QStringLiteral("clips")).toArray()) {
-                const QJsonObject j = v.toObject();
-                const QString file = j.value(QStringLiteral("file")).toString();
-                if (takeIndex(t, file) >= 0)
-                    t.clips.push_back({file, j.value(QStringLiteral("startBeat")).toDouble(),
-                                       std::max<qint64>(0, j.value(QStringLiteral("trim")).toInteger()),
-                                       std::max<qint64>(0, j.value(QStringLiteral("length")).toInteger()),
-                                       std::max<qint64>(0, j.value(QStringLiteral("fadeIn")).toInteger()),
-                                       std::max<qint64>(0, j.value(QStringLiteral("fadeOut")).toInteger())});
+                LaneClip clip = clipFromJson(v.toObject());
+                if (takeIndex(t, clip.file) >= 0)
+                    t.clips.push_back(std::move(clip));
             }
         } else if (const int active = takeIndex(t, o.value(QStringLiteral("active")).toString()); active >= 0) {
             t.clips.push_back({t.takes[std::size_t(active)].file, t.takes[std::size_t(active)].startBeat}); // before the lanes
@@ -772,12 +807,7 @@ void AudioTracksController::save()
         o.insert(QStringLiteral("takes"), takes);
         QJsonArray clips;
         for (const LaneClip &clip : t.clips)
-            clips.append(QJsonObject{{QStringLiteral("file"), clip.file},
-                                     {QStringLiteral("startBeat"), clip.startBeat},
-                                     {QStringLiteral("trim"), clip.trim},
-                                     {QStringLiteral("length"), clip.length},
-                                     {QStringLiteral("fadeIn"), clip.fadeIn},
-                                     {QStringLiteral("fadeOut"), clip.fadeOut}});
+            clips.append(clipToJson(clip));
         o.insert(QStringLiteral("clips"), clips);
         tracks.append(o);
     }
