@@ -4,27 +4,26 @@
 #include <cstdint>
 
 #include "dsp/Filters.h"
+#include "dsp/Head.h"
 #include "dsp/Oversampler.h"
 #include "dsp/ToneStack.h"
 #include "dsp/Tube.h"
 
 namespace krunch {
 
-// A channel's voice: how many gain stages and how they're filtered.
-enum class Voice : int { Clean, Crunch, Heavy, Lead, Count };
-
 // One channel's preamp (docs/DSP.md#preamp): two to four triode stages
-// (dsp/Tube.h) at 4x the sample rate, in volts, each voice wired as its kind
-// of amp is (coupling capacitors, cathode bypass, the Gain pot between the
+// (dsp/Tube.h) at 4x the sample rate, in volts, wired as the head says
+// (dsp/Head.h: coupling capacitors, cathode bypass, the Gain pot between the
 // first two stages, dividers between the rest), then the tone stack and
-// presence. The tube is the channel's: all its stages. Mono, in place, base rate.
+// presence. Mono, in place, base rate.
 class Preamp
 {
 public:
     struct Settings
     {
         Voice voice = Voice::Clean;
-        PreTube tube = PreTube::HighGain;
+        const HeadDesign *head = nullptr; // a head of its own (else the voice's built-in one)
+        PreTube tube = PreTube::HighGain; // a built-in head's tubes
         float gain = 0.5f; // controls 0..1
         float bass = 0.5f;
         float mid = 0.5f;
@@ -33,7 +32,7 @@ public:
         bool operator==(const Settings &) const = default;
     };
 
-    static constexpr int kMaxStages = 4;
+    static constexpr int kMaxStages = HeadDesign::kMaxStages;
     // A guitar at full scale is this many volts at the first grid (a hot pickup
     // peaks around 0.5-1 V; an interface's instrument input reaches full scale above that).
     static constexpr double kInputVolts = 1.0;

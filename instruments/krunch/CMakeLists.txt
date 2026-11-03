@@ -28,6 +28,8 @@ add_library(krunch_dsp STATIC
     dsp/Preamp.cpp
     dsp/Tube.h
     dsp/Tube.cpp
+    dsp/Head.h
+    dsp/Head.cpp
     dsp/DualHead.h
     dsp/DualHead.cpp
     dsp/Capture.h
@@ -46,10 +48,28 @@ target_include_directories(krunch_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(krunch_dsp PUBLIC krate_core krate_dsp "$<LINK_LIBRARY:WHOLE_ARCHIVE,nam_core>")
 target_compile_options(krunch_dsp PRIVATE -Wall -Wextra -Wpedantic -Werror)
 
+# --- Amp heads (docs/HEADS.md): the head files, and krunch-fit (heads fitted to captures)
+add_library(krunch_heads STATIC app/HeadFile.h app/HeadFile.cpp)
+target_include_directories(krunch_heads PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(krunch_heads PUBLIC krunch_dsp Qt6::Core)
+target_compile_options(krunch_heads PRIVATE -Wall -Wextra -Wpedantic)
+add_library(krunch_fit STATIC tools/HeadFit.h tools/HeadFit.cpp)
+target_include_directories(krunch_fit PUBLIC tools)
+target_link_libraries(krunch_fit PUBLIC krunch_dsp)
+target_compile_options(krunch_fit PRIVATE -Wall -Wextra -Wpedantic)
+add_executable(krunch-fit tools/fit_main.cpp)
+target_link_libraries(krunch-fit PRIVATE krunch_fit krunch_heads)
+target_compile_options(krunch-fit PRIVATE -Wall -Wextra -Wpedantic)
+
+add_executable(tst_headfit tests/tst_headfit.cpp)
+target_include_directories(tst_headfit PRIVATE tools)
+target_link_libraries(tst_headfit PRIVATE krunch_fit krunch_heads Qt6::Test)
+add_test(NAME tst_headfit COMMAND tst_headfit)
+
 add_executable(tst_krunch tests/tst_krunch.cpp)
 target_include_directories(tst_krunch PRIVATE tools)
 target_compile_options(tst_krunch PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_krunch PRIVATE krunch_dsp krate_testing Qt6::Test)
+target_link_libraries(tst_krunch PRIVATE krunch_dsp krunch_heads krate_testing Qt6::Test)
 # The NAM engine's own example captures (in its fetched sources), for the capture tests.
 FetchContent_GetProperties(nam_core)
 target_compile_definitions(tst_krunch PRIVATE NAM_EXAMPLES="${nam_core_SOURCE_DIR}/example_models")
@@ -67,6 +87,8 @@ qt_add_qml_module(krunch_ui
         app/CabinetController.cpp
         app/CaptureController.h
         app/CaptureController.cpp
+        app/HeadController.h
+        app/HeadController.cpp
         app/IrLibrary.h
         app/IrLibrary.cpp
         app/KrunchController.h
@@ -87,7 +109,7 @@ qt_add_qml_module(krunch_ui
         ${krunch_manual_images}
 )
 target_include_directories(krunch_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
-target_link_libraries(krunch_ui PUBLIC krunch_dsp krate_app krate_qml krate_song Qt6::Quick Qt6::Sql)
+target_link_libraries(krunch_ui PUBLIC krunch_dsp krunch_heads krate_app krate_qml krate_song Qt6::Quick Qt6::Sql)
 target_compile_options(krunch_ui PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- krunch-render: offline renders of each channel, and a benchmark

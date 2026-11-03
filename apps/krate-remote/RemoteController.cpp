@@ -333,6 +333,8 @@ QVariantList RemoteController::places() const
     add(QStringLiteral("Sounds (the library's)"), folder(Folder::Data) + QStringLiteral("/sounds"));
     // Krunch's amp captures (.nam): what lands there is in its AMP list by itself.
     add(QStringLiteral("Amp captures (Krunch)"), folder(Folder::Instruments) + QStringLiteral("/krunch/captures"));
+    // Krunch's amp heads (.json, from krunch-fit): likewise in its AMP list.
+    add(QStringLiteral("Amp heads (Krunch)"), folder(Folder::Instruments) + QStringLiteral("/krunch/heads"));
     for (const Folder f : loc::kShown)
         add(loc::label(f), folder(f));
     for (const QString &p : pluginFolders())

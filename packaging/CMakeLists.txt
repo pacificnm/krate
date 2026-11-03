@@ -11,6 +11,8 @@ foreach(app IN LISTS KRATE_APPS)
     install(FILES applications/${app}.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
     install(FILES icons/${app}.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 endforeach()
+# krunch-fit (docs/HEADS.md): Krunch amp heads fitted to amp captures, from a terminal.
+install(TARGETS krunch-fit RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR} RENAME copyright)
 # Krunch's amp captures play through Neural Amp Modeler's core (MIT) and Eigen (MPL 2.0, source at
 # gitlab.com/libeigen/eigen), built in: their licences go with the package.

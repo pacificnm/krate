@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "SyntheticGuitar.h"
+#include "app/HeadFile.h"
 #include "dsp/Gate.h"
 #include "dsp/Krunch.h"
 #include "dsp/Capture.h"
@@ -708,6 +709,60 @@ private slots:
         error.clear();
         QVERIFY(!CaptureModel::load(junk.toStdString(), kRate, 128, &error));
         QVERIFY(!error.empty());
+    }
+
+    // Amp heads (docs/HEADS.md): a channel built as a head. A built-in voice
+    // made explicit (its tubes and power amp spelled out) plays exactly as the
+    // voice does; another head plays differently, on its channel only; none
+    // again: the voice. A head file keeps the design, and brings wild values in.
+    void headsBuildTheChannel()
+    {
+        const auto di = tools::SyntheticGuitar(kRate).riff();
+        const auto run = [&](const HeadDesign *head, int channel) {
+            Krunch amp;
+            amp.prepare(kRate, 128);
+            amp.setParam(channelParam(2, ChannelParam::Tube), 1.0f / 3.0f);     // smooth
+            amp.setParam(int(ParamId::PowerTube), 2.0f / 3.0f);                // small pentodes
+            amp.setHead(2, head);
+            setChannel(amp, channel);
+            return play(amp, di);
+        };
+        const HeadDesign same = explicitHead(Voice::Heavy, PreTube::Smooth, PowerTube::SmallPentode);
+        QCOMPARE(run(&same, 2), run(nullptr, 2)); // (channel 3's voice is Heavy)
+        HeadDesign other = same;
+        other.stage[0].cathodeOhms = 4000.0;
+        other.power.headroom = 0.5;
+        other.peakDb = 6.0;
+        other.lowCutHz = 90.0;
+        other.highCutHz = 5000.0;
+        const auto changed = run(&other, 2), voice = run(nullptr, 2);
+        double diff = 0.0;
+        for (std::size_t i = 0; i < changed.size(); ++i)
+            diff += std::fabs(double(changed[i]) - double(voice[i]));
+        QVERIFY(diff > 1.0);
+        QCOMPARE(run(&other, 1), run(nullptr, 1)); // another channel: its voice
+        for (float x : changed)
+            QVERIFY(std::isfinite(x));
+
+        HeadFile file;
+        file.name = QStringLiteral("Test head");
+        file.design = other;
+        file.design.channelTube = false;
+        file.design.channelPower = false;
+        const auto back = HeadFile::fromJson(file.toJson());
+        QVERIFY(back);
+        QCOMPARE(back->name, file.name);
+        QCOMPARE(run(&back->design, 2), run(&file.design, 2)); // the same amp
+        QJsonObject wild = file.toJson();
+        QJsonObject power = wild.value(u"power").toObject();
+        power[QStringLiteral("headroom")] = -5.0;
+        power[QStringLiteral("high_cut_hz")] = 1e9;
+        wild[QStringLiteral("power")] = power;
+        const auto tamed = HeadFile::fromJson(wild);
+        QVERIFY(tamed);
+        QVERIFY(tamed->design.power.headroom > 0.0);
+        QVERIFY(tamed->design.highCutHz <= 20000.0);
+        QVERIFY(!HeadFile::fromJson(QJsonObject{{QStringLiteral("version"), 1}}));
     }
 
     // CABINET off: no IR and no speaker, the amp straight out (both sides);

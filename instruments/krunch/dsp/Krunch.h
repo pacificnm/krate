@@ -140,6 +140,16 @@ public:
     }
     bool playsCapture(int channel) const noexcept;
 
+    // A channel's amp head (docs/HEADS.md): with one, its preamp (and power amp,
+    // when the head has its own tubes) are built as the head says, in place of
+    // the VOICE's built-in head. Handed over from any thread, kept alive by the
+    // caller until blocksProcessed() has moved two on; nullptr: the voice's.
+    void setHead(int channel, const HeadDesign *head) noexcept
+    {
+        m_heads[std::size_t(channel)].store(head, std::memory_order_release);
+    }
+    const HeadDesign *head(int channel) const noexcept { return m_heads[std::size_t(channel)].load(std::memory_order_acquire); }
+
     // Pedal chains (lists handed over from any thread, see Pedalboard): in
     // front of the amp, in the loop.
     PedalChain &frontPedals() noexcept { return m_front; }
@@ -184,6 +194,7 @@ private:
     DualHeadSplit m_dualHead; // the Dual Head pedal's second amp, at the output
     // Captures: each channel's, and the EQ after it.
     std::array<std::atomic<CaptureModel *>, kChannels> m_captures{};
+    std::array<std::atomic<const HeadDesign *>, kChannels> m_heads{};
     struct CaptureEq
     {
         Biquad bass, mid, treble, presence;

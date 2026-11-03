@@ -95,3 +95,7 @@ The **built-in speaker** (`SpeakerFilter`, always running so it's ready): high-p
 Learnable buttons: `channel1` … `channel4`, `loop` and `cabinet` (the playing channel's).
 
 Cost: 2.5–3 % of one core per channel (`krunch-render --bench`, Heavy and Lead the most).
+
+## Amp heads
+
+How the preamp and power amp are built (stages, tubes, filters, tone stack, power tubes, output voicing) is a head: the voices are the built-in ones, and heads fitted to amp captures come from files. See [HEADS.md](HEADS.md).

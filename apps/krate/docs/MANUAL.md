@@ -508,6 +508,7 @@ Audio, your MIDI keyboard's keys and the instruments' own settings are set on th
 | **Home** | The player's home folder. |
 | **Sounds (the library's)** | Samples and sample packs. They show up in the Sounds library by themselves a moment later, folders and all. |
 | **Amp captures (Krunch)** | Amp capture files for Krunch: they show up in Krunch's **AMP** list by themselves. |
+| **Amp heads (Krunch)** | Amp head files for Krunch (made by fitting Krunch's tubes to a capture on your computer): they show up in Krunch's **AMP** list by themselves. |
 | **Recordings**, **Exports** | The audio tracks' takes, and what **EXPORT** wrote: download them to mix or keep elsewhere. |
 | **Song library**, **Krate's data**, **Instruments' sounds** | Krate's other folders. Klang's and Kessel's `samples` folders are under **Instruments' sounds**, and show up in the Sounds library too. |
 | **Plugins** | The plugin folders. |

@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "dsp/Filters.h"
+#include "dsp/Head.h"
 #include "dsp/Oversampler.h"
 #include "dsp/Tube.h"
 
@@ -18,15 +19,21 @@ class PowerAmp
 public:
     void prepare(double sampleRate) noexcept;
     void reset() noexcept;
-    // Controls 0..1, between blocks.
-    void set(float master, float sag, float resonance, PowerTube tube = PowerTube::BritishPentode) noexcept;
+    // Controls 0..1, between blocks. A head with power tubes of its own
+    // (not the stepper's) brings them, how hard Master drives them, and its
+    // output voicing and level.
+    void set(float master, float sag, float resonance, PowerTube tube = PowerTube::BritishPentode,
+             const HeadDesign *head = nullptr) noexcept;
     void process(float *buffer, std::uint32_t frames) noexcept;
 
 private:
     double m_rate = 48000.0;
     float m_master = -1.0f, m_sag = -1.0f, m_resonance = -1.0f;
     PowerTube m_tube = PowerTube::Count;
+    const HeadDesign *m_head = nullptr; // with its own power tubes, or none
     const PowerTubeDesign *m_design = nullptr;
+    Biquad m_lowCut, m_highCut, m_peak; // the head's output voicing
+    double m_output = 1.0;
     Biquad m_voicing; // the tube's own voicing
     double m_drive = 1.0;
     double m_sagAmount = 0.0;

@@ -140,6 +140,7 @@ Preamp::Settings Krunch::preampSettings(int channel) const noexcept
     s.treble = channelValue(channel, ChannelParam::Treble);
     s.presence = channelValue(channel, ChannelParam::Presence);
     s.tube = units::preTube(channelValue(channel, ChannelParam::Tube));
+    s.head = head(channel);
     return s;
 }
 
@@ -248,7 +249,8 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
         m_loop.process(m_a.data(), frames);
 
     m_powerAmp.set(m_params.get(int(ParamId::Master)), m_params.get(int(ParamId::Sag)),
-                   m_params.get(int(ParamId::Resonance)), units::powerTube(m_params.get(int(ParamId::PowerTube))));
+                   m_params.get(int(ParamId::Resonance)), units::powerTube(m_params.get(int(ParamId::PowerTube))),
+                   head(m_active));
     // A capture has its own power amp: Krunch's fades out of the path while one plays (and back in).
     const double powerTarget = playsCapture(m_active) ? 0.0 : 1.0;
     if (powerTarget == 1.0 && m_powerMix == 1.0) {

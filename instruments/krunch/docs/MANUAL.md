@@ -21,7 +21,7 @@ If the grille's **DELAY** line is orange, the trip from your guitar to the speak
 ## How Krunch makes sound
 
 ```
-guitar ─► front pedals ─► gate ─► PREAMP (the playing channel: tubes, or a capture) ─► channel VOLUME
+guitar ─► front pedals ─► gate ─► PREAMP (the playing channel: tubes, a head, or a capture) ─► channel VOLUME
        ─► loop pedals (if the channel's LOOP is on) ─► POWER AMP ─► CABINET (IRs A and B, or the built-in speaker) ─► LEVEL ─► out
 ```
 
@@ -69,26 +69,26 @@ The box in the middle of the plate shows the playing channel's controls, its bor
 
 | Control | What it does |
 | --- | --- |
-| **VOICE** | The kind of amp the channel is (4 positions): **Clean** (two gentle stages and an American-style tone stack: sparkle and headroom), **Crunch** (three stages and a British-style tone stack: classic rock crunch that cleans up when you play softer), **Heavy** (four stages, tight lows: modern high gain), **Lead** (four stages, smoother and singing: sustain for solos). |
+| **VOICE** | The kind of amp the channel is (4 positions; dimmed while the channel plays an amp head or a capture, which are their own kind of amp): **Clean** (two gentle stages and an American-style tone stack: sparkle and headroom), **Crunch** (three stages and a British-style tone stack: classic rock crunch that cleans up when you play softer), **Heavy** (four stages, tight lows: modern high gain), **Lead** (four stages, smoother and singing: sustain for solos). |
 | **GAIN** | How hard the preamp is driven, 0 … 10: clean to full distortion, depending on the voice. With a capture: how hard you drive the capture, −12 … +12 dB (noon: as it was captured). |
 | **BASS**, **MID**, **TREBLE** | The tone stack, 0 … 10, as on an amp: the knobs interact, and the mids scoop as on the real thing. With a capture: an EQ after it (noon is flat). |
 | **PRESENCE** | The top end after the tone stack, −6 … +9 dB above 3 kHz: bite and air, or a softer edge. |
 | **VOLUME** | The channel's own level, −40 … +6 dB (all the way down: silent). Use it to balance the channels, so switching from rhythm to lead jumps by as much as you want. |
 | **GATE** | The noise gate, before the preamp: **Off**, or a threshold of −80 … −20 dB. Turn it up until the hiss and hum stop between notes, but not so far that it cuts your notes' tails. |
-| **PREAMP TUBES** | The channel's preamp tubes, with ◂ ▸: **High gain** (the most gain), **Smooth** (a little less, softer clipping), **Medium** (more headroom), **Low gain** (barely clips: clean even when pushed). Hidden while the channel plays a capture. |
-| **AMP** | The channel's amp: **KRUNCH TUBES** (its own preamp and power amp), or the name of an amp capture. Click it to choose (see Amp captures, below). |
+| **PREAMP TUBES** | The channel's preamp tubes, with ◂ ▸: **High gain** (the most gain), **Smooth** (a little less, softer clipping), **Medium** (more headroom), **Low gain** (barely clips: clean even when pushed). Hidden while the channel plays an amp head or a capture (they have their own). |
+| **AMP** | The channel's amp: **KRUNCH TUBES** (its own preamp and power amp, as the VOICE knob), the name of an amp head (Krunch's tubes built like a real amp), or the name of an amp capture. Click it to choose (see Amp heads and Amp captures, below). |
 | **LOOP** (**FX LOOP**) | The channel's effects loop on or off (lit: on). On, the pedals placed in **LOOP** play between the preamp and the power amp; the line under it counts them. Learnable (it switches the playing channel's loop). |
 
 ## Amp captures
 
 A capture is a real amp, modelled: a small file made by playing recordings through the amp and training a model on how it answered, distortion and feel included. A channel can play one in place of Krunch's preamp and power amp. Krunch reads `.nam` capture files, an open format; thousands are shared for free on community capture sites by players who made them. Most are made at 48 kHz, the rate the player runs at (another rate plays too, with a note in the picker).
 
-![The amp capture picker](images/captures.png)
+![The AMP picker: Krunch's tubes, amp heads, captures](images/captures.png)
 
 | Control | What it does |
 | --- | --- |
-| **AMP** | Opens the picker for the playing channel. Click a capture to play it at once (it loads in the background), so you can play and compare; **Krunch's own amp (its tubes)** goes back to Krunch's tubes. |
-| **IMPORT** | Opens a file dialog: the `.nam` files you choose are copied into the captures folder. You can also drop files on the picker. |
+| **AMP** | Opens the picker for the playing channel: **Krunch's own amp (its tubes, as the VOICE knob)**, then the **amp heads**, then the **captures**. Click one to play it at once (a capture loads in the background), so you can play and compare. |
+| **IMPORT** | Opens a file dialog: the `.nam` captures and `.json` heads you choose are copied into their folders. You can also drop files on the picker. |
 | **CLOSE** | Closes the picker. |
 
 **Getting captures in.** Three ways, all into Krunch's captures folder, `~/.local/share/krunch/captures`:
@@ -99,7 +99,16 @@ A capture is a real amp, modelled: a small file made by playing recordings throu
 
 **Amp-only or full rig?** An amp-only capture (the amp into a load, no speaker) wants a cabinet after it: keep the channel's **CABINET** **ON** and choose IRs. A full-rig capture already has a miked cabinet in it (look for "cab", "mic" or "full rig" in its name or description): set the channel's **CABINET** to **OFF**, or you hear two cabinets, muffled and boxy.
 
-With a capture on a channel, **GAIN** drives it and **BASS**, **MID**, **TREBLE** and **PRESENCE** become an EQ after it; **VOLUME**, **GATE**, **FX LOOP**, the cabinet and the pedals work as always. **VOICE**, **PREAMP TUBES** and the power amp (**MASTER**, **SAG**, **RESONANCE**, **TUBES**) aren't used. Captures play at a common loudness, so switching between them doesn't jump.
+With a capture on a channel, **GAIN** drives it and **BASS**, **MID**, **TREBLE** and **PRESENCE** become an EQ after it; **VOLUME**, **GATE**, **FX LOOP**, the cabinet and the pedals work as always. **VOICE**, **PREAMP TUBES** and the power amp (**MASTER**, **SAG**, **RESONANCE**, **TUBES**) aren't used, and dim. Captures play at a common loudness, so switching between them doesn't jump.
+
+## Amp heads
+
+An amp head is Krunch's own tube amp built like a particular real amp: how many preamp stages and how each is biased and filtered, the tone stack, how the power tubes break up and sag. The four VOICE positions are the built-in heads; others are files, made on your computer by fitting Krunch's tubes to an amp capture of the amp you want (see the heads guide, `docs/HEADS.md`, in Krunch's folder). Unlike a capture, every knob on a head works as on the amp: **GAIN**, the tone stack, **PRESENCE**, **MASTER**, **SAG** and **RESONANCE** move it around the sound it was fitted to (all at noon: the capture's sound), and it costs far less processing.
+
+- **Choose one** in the **AMP** picker, under **AMP HEADS**: each shows its name and what it was fitted to (and how close: lower is closer).
+- **VOICE** and **PREAMP TUBES** dim while a head plays (it has its own tubes), and so does the power amp's **TUBES** when the head has its own power tubes.
+- **Getting heads in**: **IMPORT** in the picker (`.json` files), copy them into `~/.local/share/krunch/heads`, or **Krate Remote**: **Files ▸ Places ▸ Amp heads (Krunch)**.
+- **Making heads**: record dry takes of your guitar once (an audio track with no amp), get amp-only captures of the amps you like, and run `krunch-fit` on your computer: it writes a head for each capture, a report of how close it got, and files to compare the capture and the head by ear.
 
 ## Cabinet
 
