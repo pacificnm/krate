@@ -25,7 +25,8 @@ public:
 
     double sampleRate() const noexcept { return m_rate; }         // what it was readied for
     double expectedRate() const noexcept { return m_expected; }   // what it was trained at (0: any)
-    // Its output brought to a common loudness (-18 dB), when the file says how loud it is.
+    // Its output brought to a common loudness (kLoudnessDb), when the file says how loud it is.
+    static constexpr double kLoudnessDb = -8.0;
     float outputGain() const noexcept { return m_outputGain; }
 
     // Mono, in place, frames <= maxFrames.

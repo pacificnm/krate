@@ -17,7 +17,7 @@ With a capture on a channel:
 | **VOLUME**, **GATE**, **FX LOOP**, the cabinets, **SPACE**, the pedals, **Dual Head** | As always. |
 | **VOICE**, **PREAMP TUBES**, the power amp (**MASTER**, **SAG**, **RESONANCE**, **TUBES**) | Not used: the capture is the amp, its power stage included. Krunch's power amp fades out of the path while a channel with a capture plays. |
 
-Captures are played at a common loudness (−18 dB, from the level the file records), so switching between them doesn't jump. Each channel's capture is kept by name in `~/.config/krunch/captures.json`, in presets and with songs' sounds.
+Captures are played at a common loudness (−8 dB by the level the file records: about as loud as Krunch's own voices), so switching between them, or to a voice, doesn't jump. Each channel's capture is kept by name in `~/.config/krunch/captures.json`, in presets and with songs' sounds.
 
 ## How
 
