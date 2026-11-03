@@ -20,6 +20,20 @@ Instance::Instance(const krate::InstrumentContext &context)
 {
 }
 
+QJsonObject Instance::saveSound()
+{
+    QJsonObject sound = InstrumentInstance::saveSound();
+    sound.insert(QStringLiteral("patch"), controller.toJson());
+    return sound;
+}
+
+void Instance::loadSound(const QJsonObject &sound)
+{
+    InstrumentInstance::loadSound(sound);
+    if (const QJsonObject patch = sound.value(u"patch").toObject(); !patch.isEmpty() && patch != controller.toJson() && controller.fromJson(patch))
+        controller.save(); // (and kept as the patch it starts with)
+}
+
 krate::InstrumentEntry registryEntry()
 {
     krate::InstrumentEntry entry;

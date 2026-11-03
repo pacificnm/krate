@@ -21,6 +21,9 @@ public:
                 {QStringLiteral("kits"), QVariant::fromValue(&kits)},
                 {QStringLiteral("samples"), QVariant::fromValue(&samples)}};
     }
+    // The knobs, and the samples its drums play (by name in its library; "" = the synth).
+    QJsonObject saveSound() override;
+    void loadSound(const QJsonObject &sound) override;
     void triggerAction(const QString &action) override;
     // Sounds from the library go onto the drums (instead of their synth).
     QStringList sampleTargets() const override;

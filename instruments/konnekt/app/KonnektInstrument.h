@@ -19,6 +19,9 @@ public:
     {
         return {{QStringLiteral("konnekt"), QVariant::fromValue(&controller)}};
     }
+    // Its Volume and its patch (modules, knobs and cables).
+    QJsonObject saveSound() override;
+    void loadSound(const QJsonObject &sound) override;
 
     // Declaration order: the controller (which frees the modules) goes before the engine.
     Engine engine;

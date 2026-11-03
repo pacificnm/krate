@@ -112,10 +112,19 @@ void Engine::trigger(DrumId drum, float velocity, bool accent, float tuneLock, f
     const double accentGain = accent ? 1.0 + double(m_params.get(int(ParamId::Accent))) : 1.0; // up to +6 dB
     hit.gain = units::gain(knob(knobs.level)) * std::clamp(double(velocity), 0.0, 1.0) * accentGain;
     hit.tune = tuneLock >= 0.0f ? tuneLock : knob(knobs.tune);
-    hit.decay = decayLock >= 0.0f ? decayLock : knob(knobs.decay);
+    // (A drum without a DECAY knob, crash and ride, plays a sample of its own whole.)
+    hit.decay = decayLock >= 0.0f ? decayLock : knobs.decay == kNone ? 1.0f : knob(knobs.decay);
     for (std::size_t i = 0; i < hit.extra.size(); ++i)
         hit.extra[i] = knob(knobs.extra[i]);
     m_voices.trigger(drum, hit);
+}
+
+int Engine::decayParam(int drum) noexcept
+{
+    if (drum < 0 || drum >= DrumCount)
+        return -1;
+    const ParamId decay = kVoiceKnobs[std::size_t(drum)].decay;
+    return decay == kNone ? -1 : int(decay);
 }
 
 void Engine::updateMix() noexcept

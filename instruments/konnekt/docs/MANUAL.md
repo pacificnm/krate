@@ -203,7 +203,7 @@ Konnekt is in Krate's rack too: add it from **+** like the other instruments, up
 
 - **Playing it**: your keyboard plays it while its tab has focus (it has no MIDI channel of its own); a track on the **Seq** screen, or a lane on the **Arrange** screen, can play it as it plays the others: the notes go to MIDI In.
 - **Its own time**: Konnekt keeps time with its Clock modules (their TEMPO), not the rack's tempo or PLAY.
-- **Saved sequences**: a sequence saved in Krate doesn't keep Konnekt's patch. The patch is kept by Konnekt itself (the rack as you leave it comes back), and in **PATCHES**.
+- **Saved sequences and songs** keep Konnekt's patch (its modules, knobs and cables) with its sound: opening one puts its patch back. (One saved before this leaves the patch as it is.) Konnekt also keeps the patch you leave it with, and your named patches in **PATCHES**.
 
 ## MIDI and MIDI Learn
 

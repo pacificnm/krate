@@ -21,6 +21,9 @@ public:
                 {QStringLiteral("pads"), QVariant::fromValue(&pads)},
                 {QStringLiteral("patterns"), QVariant::fromValue(&patterns)}};
     }
+    // The knobs, and every pad's sample and settings (not only the edited pad's).
+    QJsonObject saveSound() override;
+    void loadSound(const QJsonObject &sound) override;
     void triggerAction(const QString &action) override;
     // Sounds from the library go onto the pads.
     QStringList sampleTargets() const override;

@@ -16,7 +16,7 @@ Open the **Sounds** tab (next to Arrange; key `O`, learnable).
 | **★** | Marks a favourite. |
 | **SEND TO** | Pick an instrument in the rack that takes sounds (**Klang**, **Kessel**), then click where the sound goes: one of Klang's 16 pads, or one of Kessel's 16 drums. The sound is copied into that instrument's own samples folder, so it keeps working if the original moves. A right click empties a pad, or puts a Kessel drum back on its own synthesized sound. |
 
-On Kessel, a drum playing your sample keeps its knobs: **TUNE** is the sample's pitch (the middle as recorded), **DECAY** fades it (the top: to its end), and its level, pan, sends and place in every pattern stay; **WRITE** keeps the drums' samples in the kit (see Kessel's KITS.md).
+On Kessel, a drum playing your sample keeps its knobs: **TUNE** is the sample's pitch (the middle as recorded), **DECAY** fades it (the top: to its end, where sending a sound puts it; back to the drum's own when the sample comes off; crash and ride, without DECAY, play it whole), and its level, pan, sends and place in every pattern stay; **WRITE** keeps the drums' samples in the kit (see Kessel's KITS.md).
 
 ## Krate's own folders
 

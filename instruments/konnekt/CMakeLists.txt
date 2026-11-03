@@ -171,7 +171,7 @@ endforeach()
 
 # The app's controller (its sources compiled in: no QML plugin).
 add_executable(konnekt_tst_konnekt tests/tst_konnekt.cpp app/KonnektController.h app/KonnektController.cpp
-    app/Explainer.h app/Explainer.cpp app/Translate.h app/Translate.cpp)
+    app/Explainer.h app/Explainer.cpp app/Translate.h app/Translate.cpp app/KonnektInstrument.h app/KonnektInstrument.cpp)
 target_include_directories(konnekt_tst_konnekt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(konnekt_tst_konnekt PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_definitions(konnekt_tst_konnekt PRIVATE KONNEKT_LESSONS="${CMAKE_CURRENT_SOURCE_DIR}/lessons"

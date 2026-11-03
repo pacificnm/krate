@@ -391,17 +391,9 @@ void KlangPadController::edited()
 void KlangPadController::save()
 {
     m_saveTimer.stop();
-    QJsonArray pads;
-    for (int pad = 0; pad < kPads; ++pad) {
-        QJsonObject params;
-        for (int i = 0; i < klang::PadParamCount; ++i)
-            params.insert(keyOf(i), double(m_engine.padParam(pad, ParamId(i))));
-        pads.append(QJsonObject{{QStringLiteral("sample"), m_names[std::size_t(pad)]},
-                                {QStringLiteral("params"), params}});
-    }
     const QJsonObject json{{QStringLiteral("version"), kFileVersion},
                            {QStringLiteral("edited"), m_engine.editedPad()},
-                           {QStringLiteral("pads"), pads}};
+                           {QStringLiteral("pads"), padsJson()}};
     if (!krate::files::writeJsonFile(m_path, json))
         qCWarning(lcKlangPads) << "could not save" << m_path;
 }
@@ -419,7 +411,26 @@ void KlangPadController::load()
         qCWarning(lcKlangPads) << "could not read" << m_path;
         return;
     }
-    const QJsonArray pads = json.value(u"pads").toArray();
+    applyPads(json.value(u"pads").toArray());
+    m_panel.setEditedPad(std::clamp(json.value(u"edited").toInt(0), 0, kPads - 1));
+    m_engine.reportAllChanged();
+}
+
+QJsonArray KlangPadController::padsJson() const
+{
+    QJsonArray pads;
+    for (int pad = 0; pad < kPads; ++pad) {
+        QJsonObject params;
+        for (int i = 0; i < klang::PadParamCount; ++i)
+            params.insert(keyOf(i), double(m_engine.padParam(pad, ParamId(i))));
+        pads.append(QJsonObject{{QStringLiteral("sample"), m_names[std::size_t(pad)]},
+                                {QStringLiteral("params"), params}});
+    }
+    return pads;
+}
+
+void KlangPadController::applyPads(const QJsonArray &pads)
+{
     for (int pad = 0; pad < kPads && pad < pads.size(); ++pad) {
         const QJsonObject po = pads.at(pad).toObject();
         const QJsonObject params = po.value(u"params").toObject();
@@ -428,14 +439,23 @@ void KlangPadController::load()
                 m_engine.setPadParam(pad, ParamId(i),
                                      krate::snapToDetent(klang::kParams[std::size_t(i)], float(std::clamp(v.toDouble(), 0.0, 1.0))));
         const QString name = po.value(u"sample").toString();
-        if (name.isEmpty())
+        if (name == m_names[std::size_t(pad)] && (name.isEmpty() || m_samples[std::size_t(pad)]))
+            continue; // already there
+        if (name.isEmpty()) {
+            use(pad, nullptr, QString());
             continue;
+        }
         QString error;
         if (const SamplePtr sample = decode(m_libraryDir + u'/' + name, &error))
             use(pad, sample, name);
         else
             qCWarning(lcKlangPads) << "pad" << pad + 1 << ":" << name << error;
     }
-    m_panel.setEditedPad(std::clamp(json.value(u"edited").toInt(0), 0, kPads - 1));
+}
+
+void KlangPadController::setPads(const QJsonArray &pads)
+{
+    applyPads(pads);
     m_engine.reportAllChanged();
+    edited();
 }

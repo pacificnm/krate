@@ -134,7 +134,7 @@ The drum keeps its knobs, its mix strip and its place in every pattern, but its 
 | Control | What it does |
 | --- | --- |
 | **TUNE** | The sample's pitch, ±24 semitones; the middle plays it as recorded (on NOISE, its TONE knob; on the hats, the shared hi hat TUNE). Step tune locks work too. |
-| **DECAY** | Fades the sample out, 50 ms to 4 s; at the top it plays to its end. At the drum's default (the middle) a sample fades over about half a second, so turn DECAY all the way up to hear the whole sound. Crash and ride have no DECAY: their samples always fade over about half a second. |
+| **DECAY** | Fades the sample out, 50 ms to 4 s; at the top (**Full**) it plays to its end. Sending a sound to a drum turns its DECAY to Full, so it plays whole; turn it down to make it shorter. A right click (back to the synth) puts DECAY back to the drum's own. Crash and ride have no DECAY: their samples always play whole. |
 | **LEVEL**, **PAN**, **DRIVE**, sends | As before. The drum's other knobs (SNAPPY, SWEEP, MATERIAL...) do nothing while it plays a sample. |
 
 A kit you WRITE keeps every drum's sample (or that it is on its synth); the panel itself doesn't show which drums play a sample.
@@ -238,7 +238,7 @@ A knob in orange shows the drum's own value; move it and it turns blue: the step
 
 - **Seq screen**: a track set to Kessel plays it over MIDI, its piano roll showing Kessel's 16 voices by name (velocity 100 and up plays accented). Its notes go to the drums like the MIDI notes above. Kessel's own patterns are separate and keep working.
 - **Arrange screen**: Kessel's Seq track is a lane there; with **SONG** on, only the arrangement plays, not Kessel's own patterns.
-- **Saved sequences** keep every instrument's sound, Kessel's knobs included, and the mixer.
+- **Saved sequences and songs** keep every instrument's sound: Kessel's knobs and which sample each drum plays (sequences saved before this keep the drums as they are).
 - **Sounds screen**: sends a sample to any Kessel drum (see Your samples on any drum, under The sample voice).
 - **Copies**: up to 16 Kessels can play side by side (Kessel 2, Kessel 3...), each with its own kit, patterns and samples.
 
@@ -261,7 +261,7 @@ A knob in orange shows the drum's own value; move it and it turns blue: the step
 
 - **No sound when pressing START**: is the pattern empty (an E–H slot)? Is VOLUME down? Is AUDIO lit? In the rack, press the rack's PLAY.
 - **The rack's PLAY doesn't play Kessel's pattern**: a Seq track plays Kessel, so that track plays it instead (or SONG is on in Arrange). Press Kessel's START to hear its own pattern.
-- **A sampled drum sounds cut short**: turn its DECAY all the way up.
+- **A sampled drum sounds cut short**: turn its DECAY all the way up (sending a sound does that; a kit or a saved song may have it lower).
 - **A drum is silent**: its LEVEL (SOUND page), or a step's VELOCITY set very low. The SAMPLE voice is silent until you LOAD a sample.
 - **A file won't load**: only WAV files are read (no MP3, FLAC or AIFF); convert it first.
 - **The reverb or delay does nothing**: turn up that drum's REVERB or DELAY send on the MIX page.

@@ -58,6 +58,8 @@ public:
     void process(const krate::AudioBlock &block) noexcept override;
 
     float param(ParamId id) const noexcept { return m_params.get(int(id)); }
+    // A drum's DECAY knob (its parameter index; -1: crash and ride have none).
+    static int decayParam(int drum) noexcept;
 
     // Audio thread (or offline, between blocks): play a voice now, with the
     // current knob settings. velocity 0..1; accent adds Total Accent; a

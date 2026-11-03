@@ -13,6 +13,20 @@ Instance::Instance(const krate::InstrumentContext &context)
         controller.setRunControl(context.run, context.id.isEmpty() ? QStringLiteral("klang") : context.id);
 }
 
+QJsonObject Instance::saveSound()
+{
+    QJsonObject sound = InstrumentInstance::saveSound();
+    sound.insert(QStringLiteral("pads"), pads.padsJson());
+    return sound;
+}
+
+void Instance::loadSound(const QJsonObject &sound)
+{
+    InstrumentInstance::loadSound(sound); // Klang's own knobs (and the edited pad's: the pads below win)
+    if (sound.contains(u"pads"))
+        pads.setPads(sound.value(u"pads").toArray());
+}
+
 void Instance::triggerAction(const QString &action)
 {
     if (action.startsWith(u"pad"))

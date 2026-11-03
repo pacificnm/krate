@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include <QJsonArray>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -61,6 +62,10 @@ public:
     // their defaults too (otherwise kept: ◂ ▸ tries sounds through them).
     Q_INVOKABLE bool loadFromLibrary(int pad, const QString &name, bool plain = false);
     Q_INVOKABLE void step(int pad, int delta); // the next or previous file in the library
+    // Every pad's sample (by its name in the library) and settings, as a song
+    // or a saved sequence keeps them, and put back from there.
+    QJsonArray padsJson() const;
+    void setPads(const QJsonArray &pads);
     Q_INVOKABLE void clear(int pad);
     Q_INVOKABLE QString name(int pad) const;    // its file, "" = none
     Q_INVOKABLE double seconds(int pad) const;  // the whole sample's length
@@ -91,6 +96,7 @@ private:
     void sliceInto(int pad, const std::vector<double> &cuts); // cuts: fractions, ascending, first = start
     void rescan();
     void load();
+    void applyPads(const QJsonArray &pads);
     void edited(); // notify, save in 2 s
     void freeRetired();
 

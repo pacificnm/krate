@@ -1,5 +1,7 @@
 #include "kessel/app/KesselInstrument.h"
 
+#include <QJsonArray>
+
 namespace kessel {
 
 Instance::Instance(const krate::InstrumentContext &context)
@@ -76,9 +78,30 @@ bool Instance::assignSample(int target, const QString &path, QString *error)
     return false;
 }
 
+QJsonObject Instance::saveSound()
+{
+    QJsonObject sound = InstrumentInstance::saveSound();
+    sound.insert(QStringLiteral("samples"), QJsonArray::fromStringList(samples.drumSamples()));
+    return sound;
+}
+
+void Instance::loadSound(const QJsonObject &sound)
+{
+    InstrumentInstance::loadSound(sound);
+    if (!sound.contains(u"samples"))
+        return; // (saved before drum samples were kept: as they are)
+    const QJsonArray names = sound.value(u"samples").toArray();
+    for (int d = 0; d < DrumCount; ++d)
+        samples.setDrumSample(d, names.at(d).toString());
+}
+
 void Instance::clearSample(int target)
 {
+    const bool had = !samples.drumSample(target).isEmpty();
     samples.setDrumSample(target, QString());
+    // Back on its synth: its DECAY as the drum's own (a sample sent there had it at Full).
+    if (const int decay = Engine::decayParam(target); had && decay >= 0 && target != int(DrumId::Sm))
+        engine.setParamFromHost(decay, kParams[std::size_t(decay)].defaultValue);
 }
 
 } // namespace Kessel

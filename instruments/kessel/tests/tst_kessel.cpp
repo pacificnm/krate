@@ -189,6 +189,54 @@ private slots:
         return path;
     }
 
+    // A sound sent to a drum plays whole: its DECAY goes to Full (back to the
+    // drum's own when the sample comes off); crash and ride, which have no
+    // DECAY, play theirs whole too. A song's sound keeps the drums' samples.
+    void sentSamplesPlayWhole()
+    {
+        QTemporaryDir dir;
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const QString tone = writeTone(dir.filePath("long.wav"), 2.0);
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        const int sd = int(kessel::DrumId::Sd), cr = int(kessel::DrumId::Cr);
+        const int decay = kessel::Engine::decayParam(sd);
+        QVERIFY(decay >= 0);
+        QCOMPARE(kessel::Engine::decayParam(cr), -1);
+        QVERIFY(k.engine.param(decay) < 0.99f);
+        QVERIFY(k.assignSample(sd, tone, nullptr));
+        QCOMPARE(k.engine.param(decay), 1.0f);
+        k.clearSample(sd);
+        QCOMPARE(k.engine.param(decay), kParams[std::size_t(decay)].defaultValue);
+
+        // The crash's sample, 1.2 s in, as loud as at the start.
+        QVERIFY(k.assignSample(cr, tone, nullptr));
+        k.engine.prepare(48000.0, 512);
+        std::vector<float> l(512), r(512);
+        float *outputs[2] = {l.data(), r.data()};
+        k.engine.process(krate::AudioBlock{outputs, 512, nullptr, 0, nullptr, nullptr}); // takes the sample
+        k.engine.trigger(kessel::DrumId::Cr, 1.0f, false, -1.0f, -1.0f);
+        double early = 0.0, late = 0.0; // energy over 0.05-0.27 s and 1.2-1.4 s
+        for (int b = 0; b < 140; ++b) {
+            k.engine.process(krate::AudioBlock{outputs, 512, nullptr, 0, nullptr, nullptr});
+            double energy = 0.0;
+            for (float v : l)
+                energy += double(v) * v;
+            if (b >= 5 && b < 25)
+                early += energy;
+            else if (b >= 112 && b < 132)
+                late += energy;
+        }
+        QVERIFY2(late > 0.8 * early, qPrintable(QStringLiteral("early %1, late %2").arg(early).arg(late)));
+
+        // Kept with a song's sound, and put back.
+        const QJsonObject sound = k.saveSound();
+        k.clearSample(cr);
+        QCOMPARE(k.samples.drumSample(cr), QString());
+        k.loadSound(sound);
+        QCOMPARE(k.samples.drumSample(cr), QStringLiteral("long.wav"));
+    }
+
     // Importing copies the file into the library and plays it; it is still
     // there after a restart; a kit WRITE stores it, and loading that kit
     // brings it back; a factory kit leaves it alone; a non-WAV file is refused.

@@ -189,6 +189,31 @@ private slots:
         QCOMPARE(k.engine.padParam(6, ParamId::Bits), 0.5f); // tried through the same settings
     }
 
+    // A song's or a saved sequence's sound keeps every pad (its sample and
+    // settings), not only the edited pad's knobs; putting it back restores them.
+    void soundKeepsEveryPad()
+    {
+        QTemporaryDir dir;
+        const QString voice = writeWav(dir.filePath("voice.wav"), 1.0);
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        k.pads.loadUrls(9, {url(voice)});
+        k.engine.setPadParam(9, ParamId::Tune, position(30, positions::kTune));
+        k.engine.setPadParam(3, ParamId::Reverse, 1.0f);
+        const QString pad3 = k.pads.name(3);
+        const QJsonObject sound = k.saveSound();
+
+        k.pads.clear(9);
+        k.pads.loadUrls(3, {url(voice)});
+        QCOMPARE(k.engine.padParam(3, ParamId::Reverse), 0.0f);
+        k.loadSound(sound);
+        QCOMPARE(k.pads.name(9), QStringLiteral("voice.wav"));
+        QCOMPARE(k.engine.padParam(9, ParamId::Tune), position(30, positions::kTune));
+        QCOMPARE(k.pads.name(3), pad3);
+        QCOMPARE(k.engine.padParam(3, ParamId::Reverse), 1.0f);
+    }
+
     // Equal slices onto the pad and the ones after it; slices at the hits.
     void slicing()
     {

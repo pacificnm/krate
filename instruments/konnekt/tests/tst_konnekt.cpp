@@ -9,6 +9,7 @@
 
 #include "app/JsonFile.h"
 #include "konnekt/app/KonnektController.h"
+#include "konnekt/app/KonnektInstrument.h"
 #include "konnekt/dsp/Modules.h"
 #include "konnekt/dsp/PatchSpec.h"
 
@@ -35,6 +36,34 @@ class TestKonnekt : public QObject
     }
 
 private slots:
+    // A song or a saved sequence keeps Konnekt's patch with its sound, and
+    // putting that sound back brings the patch back.
+    void soundKeepsThePatch()
+    {
+        QTemporaryDir dir;
+        const krate::InstrumentContext context{nullptr, dir.filePath(QStringLiteral("config")), dir.filePath(QStringLiteral("data"))};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        k.engine.prepare(48000.0, 64);
+        k.controller.clearPatch();
+        const int osc = k.controller.addModule(QStringLiteral("oscillator"), 10, 20);
+        const int out = k.controller.addModule(QStringLiteral("output"), 300, 20);
+        QVERIFY(k.controller.plug(osc, 0, out, 0));
+        k.controller.setKnob(osc, 0, 1.0); // octave +3
+        const qreal knob = k.controller.knob(osc, 0);
+        const QJsonObject sound = k.saveSound();
+        QVERIFY(sound.contains(QStringLiteral("patch")));
+
+        k.controller.clearPatch();
+        QCOMPARE(k.controller.modules().size(), 0);
+        k.loadSound(sound);
+        QCOMPARE(k.controller.modules().size(), 2);
+        QCOMPARE(k.controller.cables().size(), 1);
+        QCOMPARE(k.controller.knob(osc, 0), knob);
+        k.loadSound(QJsonObject{}); // a sound from before patches were kept: the patch stays
+        QCOMPARE(k.controller.modules().size(), 2);
+    }
+
     // First run: MIDI In -> Oscillator -> VCA (opened by an Envelope) -> Output, and it plays.
     void firstPatchPlays()
     {

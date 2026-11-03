@@ -132,7 +132,7 @@ In the Krate rack, Klang is one of the instruments (MIDI channel 11), and up to 
 - **Seq screen**: a track set to Klang plays its pads on notes 36–51. Its piano roll shows the 16 pads as lanes, each by the sound on it ("9 · 09 break 120"; "empty" for a pad without one). A note's length matters for a Gate or Loop pad: it plays as long as the note, so a loop held for a bar plays for a bar; a One shot pad plays to its end whatever the length.
 - **PLAY and Klang's own patterns**: the rack's PLAY starts every instrument's own patterns, except one a Seq track plays. With a Klang track, Klang's own pattern doesn't play on top of it; Klang's START (RUN) still plays its patterns.
 - **Sounds screen**: **SEND TO** Klang puts a sound onto one of its 16 pads, copied into Klang's samples folder, and the pad starts plain, as with LOAD; a right click there empties a pad.
-- **Saved songs and sequences** keep Klang's knobs with the rest of the rack's sound.
+- **Saved songs and sequences** keep Klang's sound: its knobs and every pad, with its sample and settings, so opening one puts the same kit back on the pads (the samples stay in Klang's library; one saved before this keeps only the knobs).
 
 ## Sound design recipes
 

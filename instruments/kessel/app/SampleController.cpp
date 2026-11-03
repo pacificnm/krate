@@ -235,7 +235,12 @@ bool SampleController::assignFile(int drum, const QString &path)
         return false;
     }
     rescan();
-    return setDrumSample(drum, name);
+    if (!setDrumSample(drum, name))
+        return false;
+    // A sound sent to a drum plays whole: its DECAY to the top (Full), not the synth drum's.
+    if (const int decay = kessel::Engine::decayParam(drum); decay >= 0 && drum != int(kessel::DrumId::Sm))
+        m_engine.setParamFromHost(decay, 1.0f);
+    return true;
 }
 
 void SampleController::freeRetired()
