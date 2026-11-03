@@ -163,6 +163,32 @@ private slots:
         }
     }
 
+    // A file loaded onto a pad starts plain (a voice onto a crushed, looped,
+    // gated starter pad plays as recorded); ◂ ▸ keeps the pad's settings.
+    void loadingStartsPlain()
+    {
+        QTemporaryDir dir;
+        const QString voice = writeWav(dir.filePath("voice.wav"), 3.0);
+        krate::InstrumentContext context{nullptr, dir.filePath("config"), dir.filePath("data")};
+        const auto instance = registryEntry().create(context);
+        auto &k = static_cast<Instance &>(*instance);
+        k.engine.setPadParam(6, ParamId::Mode, 1.0f);   // Loop
+        k.engine.setPadParam(6, ParamId::Sync, 0.6f);
+        k.engine.setPadParam(6, ParamId::Decay, 0.2f);
+        k.engine.setPadParam(6, ParamId::Bits, 0.5f);
+        k.engine.setPadParam(6, ParamId::Gate, 1.0f);
+        k.engine.setPadParam(6, ParamId::Start, 0.3f);
+        k.pads.loadUrls(6, {url(voice)});
+        QCOMPARE(k.pads.name(6), QStringLiteral("voice.wav"));
+        for (int i = 0; i < klang::PadParamCount; ++i)
+            QCOMPARE(k.engine.padParam(6, ParamId(i)), klang::kParams[std::size_t(i)].defaultValue);
+
+        k.engine.setPadParam(6, ParamId::Bits, 0.5f);
+        k.pads.step(6, 1);
+        QVERIFY(k.pads.name(6) != QStringLiteral("voice.wav"));
+        QCOMPARE(k.engine.padParam(6, ParamId::Bits), 0.5f); // tried through the same settings
+    }
+
     // Equal slices onto the pad and the ones after it; slices at the hits.
     void slicing()
     {

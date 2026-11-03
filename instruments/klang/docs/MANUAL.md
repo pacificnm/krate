@@ -8,7 +8,7 @@ This manual goes through the panel: the pads, the edited pad's controls, the pat
 
 1. **Hear the starter kit.** The first time, Klang puts 16 sounds it makes itself on the pads (drums, metal, noise, a break, a drone, two voices, a stab...) and two patterns. Press **START** (Space): pattern **A** plays. Click pattern **B**: it starts at the end of the bar.
 2. **Play the pads.** Click them, or play notes 36–51 (C2–D#3) from your keyboard or pad controller. Clicking a pad also picks it for editing: its waveform and controls show on the right.
-3. **Load your own sounds.** Drag WAV or MP3 files from your file manager onto a pad (several files fill the pads after it), or click a pad and press **LOAD**. They are copied into Klang's library, so they keep working if you move the originals.
+3. **Load your own sounds.** Drag WAV or MP3 files from your file manager onto a pad (several files fill the pads after it), or click a pad and press **LOAD**. They are copied into Klang's library, so they keep working if you move the originals. A pad you load a file onto starts plain: a one shot, played whole at its own speed, DECAY on Full, no effects (not with the settings of the sound that was there), so a voice or an effect plays as recorded.
 4. **Mangle.** On the edited pad, try **REVERSE**, **BITS**, **RATE**, **DRIVE**, **RING**, a **FILTER** with **RES** up, **GATE** on.
 5. **Chop a loop.** Load a drum loop, set **MODE** to Loop and **SYNC** to its length in beats (4 for a bar), then press **SLICE 16** or **HITS**: its pieces land on the pads, ready for a new pattern.
 6. **Write a pattern.** Pick a pattern (A–P), click steps in the grid (a row per pad), then use the tools (**ACCENT**, **ROLL**, **REVERSE**, **PITCH**) on them.
@@ -31,8 +31,8 @@ Each pad plays one hit at a time: hitting it again fades the last hit out in 3 m
 | --- | --- |
 | **The 16 pads** | Click to play and edit; let go to stop a Gate or Loop pad. Pad 1 is at the bottom left, as on a pad controller. A pad lights while it sounds; a dot shows it has steps in the pattern shown. Drop files on a pad to load them there. |
 | **STARTER KIT** | Puts the starter kit back on the pads (Klang's own sounds; also in the library). |
-| **LOAD** | Opens a file dialog: WAV or MP3 files onto the edited pad and the pads after it. |
-| **◂ ▸** | The previous or next sound in the library onto the edited pad. |
+| **LOAD** | Opens a file dialog: WAV or MP3 files onto the edited pad and the pads after it, each pad's settings back to plain (as a file dropped on a pad). |
+| **◂ ▸** | The previous or next sound in the library onto the edited pad, keeping its settings: try sounds through the same effects. |
 | **CLEAR** | No sound on the edited pad. |
 | **SLICE 4 / 8 / 16** | Cuts the edited pad's region into that many equal slices, onto it and the pads after it (as far as pad 16). Each slice keeps the pad's settings, as a one shot. Best with a loop of a whole number of bars. |
 | **HITS** | Cuts the region where its hits are (drum hits, notes starting), up to 16 slices. |

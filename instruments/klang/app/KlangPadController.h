@@ -53,9 +53,13 @@ public:
     QString message() const { return m_message; }
     QString libraryDir() const { return m_libraryDir; }
 
-    // Files onto pads: the first onto `pad`, the next onto the pads after it.
+    // Files onto pads: the first onto `pad`, the next onto the pads after it,
+    // each pad starting plain (every setting at its default: a one shot,
+    // whole, at its own speed, no effects), not with the last sound's settings.
     Q_INVOKABLE void loadUrls(int pad, const QList<QUrl> &urls);
-    Q_INVOKABLE bool loadFromLibrary(int pad, const QString &name);
+    // A sound from the library onto a pad, whole; `plain`: its settings back to
+    // their defaults too (otherwise kept: ◂ ▸ tries sounds through them).
+    Q_INVOKABLE bool loadFromLibrary(int pad, const QString &name, bool plain = false);
     Q_INVOKABLE void step(int pad, int delta); // the next or previous file in the library
     Q_INVOKABLE void clear(int pad);
     Q_INVOKABLE QString name(int pad) const;    // its file, "" = none

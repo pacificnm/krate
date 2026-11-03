@@ -171,7 +171,7 @@ void KlangPadController::loadUrls(int pad, const QList<QUrl> &urls)
             continue;
         }
         const QString name = import(path, &error);
-        if (name.isEmpty() || !loadFromLibrary(pad, name)) {
+        if (name.isEmpty() || !loadFromLibrary(pad, name, true)) {
             failed << QFileInfo(path).fileName() + QStringLiteral(" (") + error + u')';
             continue;
         }
@@ -184,7 +184,7 @@ void KlangPadController::loadUrls(int pad, const QList<QUrl> &urls)
     edited();
 }
 
-bool KlangPadController::loadFromLibrary(int pad, const QString &name)
+bool KlangPadController::loadFromLibrary(int pad, const QString &name, bool plain)
 {
     if (pad < 0 || pad >= kPads)
         return false;
@@ -196,6 +196,9 @@ bool KlangPadController::loadFromLibrary(int pad, const QString &name)
         return false;
     }
     use(pad, sample, name);
+    if (plain)
+        for (int i = 0; i < klang::PadParamCount; ++i)
+            m_engine.setPadParam(pad, ParamId(i), klang::kParams[std::size_t(i)].defaultValue);
     // A new sample plays whole from the start.
     m_engine.setPadParam(pad, ParamId::Start, 0.0f);
     m_engine.setPadParam(pad, ParamId::End, 1.0f);
