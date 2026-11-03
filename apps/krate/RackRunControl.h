@@ -61,6 +61,9 @@ public:
     bool anyInstrumentRunning() const;
     bool transportPlaying() const;
     void stopTransport();
+    // An export renders the song alone: the instruments' own sequencers off
+    // while it runs (on), then each back as it was (off).
+    void holdForExport(bool on);
     // The transport started or stopped elsewhere: tell the panels.
     void transportChanged() { emit changed(); }
 
@@ -71,6 +74,7 @@ private:
     krate::Transport &m_transport;
     QStringList m_ids;
     QList<bool> m_enabled;
+    QList<bool> m_beforeExport;
     QSet<QString> m_runners;
     std::function<bool()> m_rackSequencerRunning;
     std::function<void(bool)> m_setRackSequencer;

@@ -362,6 +362,7 @@ int main(int argc, char *argv[])
     host.setMidiInputMatch(settings.midiInputs());
     settings.onMidiInputsChanged = [&host](const QString &pattern) { host.setMidiInputMatch(pattern); };
     settings.onExportsChanged = [&exporter](const QString &folder) { exporter.setFolder(folder); };
+    exporter.setHoldSequencers([&runControl](bool on) { runControl.holdForExport(on); });
     rack.setProgramChangeFocus(settings.programChangeFocus());
     settings.onProgramChangeFocusChanged = [&rack](bool on) { rack.setProgramChangeFocus(on); };
     host.setRequestedBufferSize(session.bufferSize());

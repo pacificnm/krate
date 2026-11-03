@@ -775,7 +775,7 @@ Item {
                         }
                     }
                     Accessible.role: Accessible.Button
-                    Accessible.name: (screen.laned && note.row >= 0 ? rollFrame.lanes[note.row].name : screen.noteName(modelData.pitch))
+                    Accessible.name: (screen.laned && note.row >= 0 ? rollFrame.lanes[note.row]?.name ?? "" : screen.noteName(modelData.pitch)) // (lanes catch up a moment after the track changes)
                                      + ", step " + (Math.floor(modelData.start / Sequencer.gridTicks) + 1)
                                      + ", velocity " + modelData.velocity
                 }

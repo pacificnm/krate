@@ -370,6 +370,19 @@ private slots:
         QVERIFY(!run.running("alpha"));
         run.setRunning("nobody", true); // unknown: nothing
         QVERIFY(!f.transport.playing());
+
+        // An export renders the song alone: no instrument's own sequencer
+        // plays along (on at start, before PLAY was ever pressed), then each
+        // is back as it was.
+        run.setRunning("beta", true);
+        run.setRunning("alpha", false);
+        f.transport.setPlaying(false);
+        f.a.sequencer = f.b.sequencer = true; // (as an instrument starts)
+        run.holdForExport(true);
+        QVERIFY(!f.a.sequencer && !f.b.sequencer);
+        run.holdForExport(false);
+        QVERIFY(!f.a.sequencer);
+        QVERIFY(f.b.sequencer);
     }
 
     // The mixer screen: shown on request, gone when focus changes (from a tab,

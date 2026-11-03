@@ -69,6 +69,8 @@ public:
     QString message() const { return m_message; }
     QStringList files() const { return m_files; }
     QString folder() const { return m_folder; }
+    // The instruments' own sequencers: off while it renders (the song alone, as SONG plays it).
+    void setHoldSequencers(std::function<void(bool)> hold) { m_holdSequencers = std::move(hold); }
     void setFolder(const QString &folder)
     {
         m_folder = folder;
@@ -99,6 +101,7 @@ private:
 
     static inline ExportController *s_instance = nullptr;
     krate::Rack &m_rack;
+    std::function<void(bool)> m_holdSequencers;
     krate::JackProcessor &m_processor;
     krate::Transport &m_transport;
     krate::seq::Sequencer &m_sequencer;

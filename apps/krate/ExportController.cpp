@@ -134,6 +134,8 @@ bool ExportController::start(bool loopRange, bool stems, bool metronome)
         m_host.suspend();
     // The arrangement plays (SONG), its automation too; the metronome only if asked.
     m_sequencer.setSongMode(true);
+    if (m_holdSequencers) // (the instruments' own patterns don't play along)
+        m_holdSequencers(true);
     if (m_automation)
         m_automation->setActive(true);
     if (m_klick >= 0 && !metronome)
@@ -218,6 +220,8 @@ void ExportController::finish()
     // Everything as it was.
     for (int d = 0; d < m_rack.deviceCount(); ++d)
         m_rack.setMute(d, m_rackController.mute(d));
+    if (m_holdSequencers)
+        m_holdSequencers(false);
     const bool song = m_sequencerController.state().songMode;
     m_sequencer.setSongMode(song);
     if (m_automation)

@@ -76,6 +76,18 @@ void RackRunControl::songModeChanged()
     emit changed();
 }
 
+void RackRunControl::holdForExport(bool on)
+{
+    if (on) {
+        m_beforeExport = m_enabled;
+        m_enabled.fill(false);
+    } else if (m_beforeExport.size() == m_enabled.size()) {
+        m_enabled = m_beforeExport;
+    }
+    for (qsizetype j = 0; j < m_ids.size(); ++j)
+        apply(int(j));
+}
+
 void RackRunControl::playWithoutInstruments()
 {
     for (qsizetype j = 0; j < m_ids.size(); ++j) {
