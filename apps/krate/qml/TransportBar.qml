@@ -150,6 +150,23 @@ Rectangle {
             }
             PanelLabel { width: 58; text: "AUDIO"; font.pixelSize: 10 }
         }
+        Column {
+            spacing: 2
+            PanelButton {
+                width: 58
+                height: 30
+                faceText: "?"
+                text: "Krate's manual: the screens, recording, saving, settings (each instrument has its own HELP)"
+                onClicked: manual.open()
+            }
+            PanelLabel { width: 58; text: "HELP"; font.pixelSize: 10 }
+        }
+    }
+
+    ManualView {
+        id: manual
+        title: "Krate"
+        source: "qrc:/qt/qml/KrateRack/docs/MANUAL.md"
     }
 
     // The audio interface's inputs (a guitar, for Krunch) and the buffer size.

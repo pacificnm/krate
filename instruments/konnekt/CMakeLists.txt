@@ -25,6 +25,7 @@ target_compile_options(konnekt-render PRIVATE ${KONNEKT_WARNINGS})
 
 # --- konnekt_ui: QML module "Konnekt": the controller and the window
 qt_add_library(konnekt_ui STATIC)
+file(GLOB konnekt_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(konnekt_ui
     URI Konnekt
     VERSION 1.0
@@ -46,6 +47,7 @@ qt_add_qml_module(konnekt_ui
         qml/SendPopup.qml
     RESOURCES
         docs/MANUAL.md
+        ${konnekt_manual_images}
         explain/1-general.json
         explain/2-sources.json
         explain/3-shaping.json

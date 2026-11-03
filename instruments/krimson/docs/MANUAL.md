@@ -2,7 +2,9 @@
 
 Krimson is a four-part virtual analog synthesizer: four complete sounds (slots **A–D**) that you can play one at a time, layer, split across the keyboard, or play from four MIDI channels at once. Each slot has two oscillators, a multi-mode filter, three envelopes, two LFOs, an arpeggiator, morph, and its own effects. Sixteen voices are shared between the slots.
 
-This manual goes through the panel from left to right. Every control you can turn, press or pick is described here: what it does, its range, and how to use it. Most knobs show their value in a bubble while you drag them; double-click a knob to put it back to its default.
+This manual goes through the panel from left to right. Every control you can turn, press or pick is described here: what it does, its range, and how to use it. Most knobs show their value in a bubble while you drag them; double-click a knob to put it back to its default. **HELP** at the top of the panel opens this manual.
+
+![Krimson panel](images/panel.png)
 
 ## Quick start
 
@@ -40,7 +42,7 @@ The left of the panel holds controls for the whole instrument and the edited slo
 | --- | --- |
 | **MASTER LEVEL** | The whole instrument's volume (all four slots). |
 | **OCTAVE ◂ ▸** | Shifts what your MIDI keyboard plays by −3 to +3 octaves (the on-screen keyboard shows the shifted range). The display adds your MIDI keyboard's own octave buttons; 0 is where the keys play as marked. A song's notes always play as written, whatever OCTAVE is set to. |
-| **TEMPO** | Standalone only: the tempo for the arpeggiator and tempo-synced delay. In the Krate rack the transport bar sets the tempo. |
+| **TEMPO** | Standalone only: the tempo for the arpeggiator and tempo-synced delay (40 to 240 BPM). When a DAW leads over JACK transport, the knob follows the DAW's tempo. In the Krate rack the knob isn't shown: the transport bar sets the tempo. |
 | **WHEEL** | What the mod wheel does for the edited slot: **Morph** (moves the sound towards its morph targets, see *Morph*) or **Vibrato** (pitch vibrato, up to 0.7 semitones at full). |
 | **MORPH** | Switches the knobs into morph-target editing (see *Morph*). |
 | **CLEAR** | Clears the edited slot's morph targets. |
@@ -71,7 +73,7 @@ Each slot has its own arpeggiator, locked to the tempo: it plays the keys you ho
 
 | Control | What it does |
 | --- | --- |
-| **ARP** | Turns the edited slot's arpeggiator on. Standalone, it also starts the transport. |
+| **ARP** | Turns the edited slot's arpeggiator on. Standalone, it also starts the transport (not while a DAW leads over JACK: then the arpeggio runs when the DAW plays). |
 | **HOLD** | Latches the keys: lift your hands and the arpeggio keeps going. Play a new chord to replace it. |
 | **MODE** | **Up**, **Down**, **Up & Down** or **Random**. |
 | **RANGE** | 1 to 4 octaves: the pattern repeats this many octaves up. |
@@ -85,7 +87,7 @@ The arpeggio plays in the slot's voice mode: in **Poly** each step gets its own 
 | --- | --- |
 | **VOICE MODE** | **Poly**: chords, each note its own voice. **Mono**: one note at a time, the last key wins, every note restarts the envelopes. **Legato**: one note, and notes played while another is held slide on without restarting the envelopes (classic for basses and leads). **Unison**: one note made of a stack of detuned voices: huge leads and basses. |
 | **GLIDE** | Portamento: the pitch slides from the last note to the new one (Off to 2 s). In Legato it only glides between held notes. |
-| **DETUNE** | In Unison: how far apart the stacked voices are tuned (the outer ones up to ±35 cents). A little = thick; a lot = a wide, buzzy supersaw-like sound. |
+| **DETUNE** | In Unison: how far apart the stacked voices are tuned (the outer ones up to ±35 cents). A little = thick; a lot = a wide, buzzy wall of saws. |
 | **VOICES** | In Unison: **3**, **5** or **7** stacked voices, spread across the stereo field. More voices are each quieter, so the level stays about the same. |
 | **BEND** | Pitch-bend range: 1 to 12 semitones. |
 
@@ -231,6 +233,15 @@ Only knobs morph: waves, filter type, switches and lists don't. **Ideas**: cutof
 - **Learnable buttons**: ARP, HOLD, MORPH, the bank and program buttons, so a controller can switch arpeggios or programs while you play.
 - **Program Change** loads programs; **CC 1** (mod wheel), **pitch bend**, **CC 64** (sustain) and **aftertouch** are understood; CC 120 and 123 stop every note.
 
+## Krimson in Krate
+
+In the Krate rack Krimson is one instrument with one mixer strip; its strip reads **CH 3+3** (channels 3 to 6, one per slot).
+
+- **Seq screen**: a sequencer track can play **Krimson A**, **B**, **C** or **D**: each target is one slot, played on that slot's channel, so four tracks can play four different sounds. Krimson has no step sequencer of its own; the rack's **PLAY** runs the Seq patterns and the arpeggiators.
+- **Arrange screen**: the lanes are the sequencer's tracks, so the same Krimson A–D targets play the arrangement; every knob can be automated there.
+- **Saved sequences and songs** keep every instrument's sound, Krimson's four slots included, and the mixer.
+- **Copies**: up to 16 Krimsons can be in the rack (**Krimson 2** and on, each with its own sound). Copies keep their slots A–D for the sequencer and songs, on the same channels as Krimson's.
+
 ## Sound design recipes
 
 Start each from a simple program (or set OSC 1 to Saw, MIX to OSC 1, filter LP 24 open, amp envelope fully up).
@@ -239,7 +250,7 @@ Start each from a simple program (or set OSC 1 to Saw, MIX to OSC 1, filter LP 2
 - **Acid**: OSC 1 Saw or Pulse alone; LP 12 or LP 24; RES high; ENV AMT up with a short filter decay; filter VELOCITY up; GLIDE a little; Legato. Play the cutoff while a sequence runs.
 - **Pluck**: AMP ENV attack 0, decay short, sustain 0, release short; filter ENV AMT up with a short decay; DELAY on 1/8. dotted.
 - **Pad**: two Saws, FINE a few cents; LP 12, FREQ in the middle; AMP ENV attack and release long, sustain full; CHORUS Ensemble; REVERB up; ANALOG 40–60 %.
-- **Supersaw lead**: VOICE MODE Unison, VOICES 7, DETUNE 40–60 %; Saws; LP 12 fairly open; CHORUS Chorus; DELAY on.
+- **Stacked-saw lead**: VOICE MODE Unison, VOICES 7, DETUNE 40–60 %; Saws; LP 12 fairly open; CHORUS Chorus; DELAY on.
 - **Sync lead**: SYNC on; MIX towards OSC 2; MOD ENV to OSC 2 pitch, AMOUNT +, a medium decay (the sweep at each note's start); or LFO 1 to OSC 2 for a moving tear.
 - **FM bell**: OSC 1 Sine, OSC 2 Triangle, SEMITONES +19; FM 30–60 %; AMP ENV attack 0, long decay, sustain 0; MOD ENV to FM with a short decay for the strike.
 - **Ring-mod clang**: RING on, MIX towards OSC 2, SEMITONES +13 or +6; short amp decay; REVERB.
@@ -252,5 +263,5 @@ Start each from a simple program (or set OSC 1 to Saw, MIX to OSC 1, filter LP 2
 - **A slot plays when you didn't expect it**: notes on a slot's own channel always play it; change its **CH** or turn it **OFF**.
 - **The sound is quieter than a program you remember**: VELOCITY in AMP ENV makes soft playing quieter; play harder or turn VELOCITY down.
 - **The wheel does nothing**: WHEEL on Morph only does something if the slot has morph targets (MORPH, then turn knobs). Try WHEEL on Vibrato.
-- **The arpeggio doesn't start**: in the Krate rack it follows the rack's PLAY; standalone, ARP starts the transport.
+- **The arpeggio doesn't start**: in the Krate rack it follows the rack's PLAY; standalone, ARP starts the transport, unless a DAW leads over JACK (then press play in the DAW).
 - **Aftertouch does nothing**: set PRESSURE, and check that your keyboard sends aftertouch (many don't).

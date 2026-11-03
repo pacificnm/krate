@@ -27,7 +27,18 @@ public:
 
     static QList<Section> split(const QString &markdown);
 
-    // [{title, text}] from a file (a path, "qrc:/..." or ":/..."); empty if it can't be read.
+    // A section's text as the view shows it: Markdown, and pictures (a line
+    // of its own, `![caption](path)`, the path relative to the manual).
+    struct Block
+    {
+        QString text;    // Markdown ("" for a picture)
+        QString image;   // the picture's path, as written
+        QString caption;
+    };
+    static QList<Block> blocks(const QString &text);
+
+    // [{title, text, blocks: [{text} or {image (a URL), caption}]}] from a
+    // file (a path, "qrc:/..." or ":/..."); empty if it can't be read.
     Q_INVOKABLE QVariantList sections(const QString &source) const;
     // The section numbers whose title or text contain every word of `query` (case-insensitive).
     Q_INVOKABLE QVariantList search(const QVariantList &sections, const QString &query) const;

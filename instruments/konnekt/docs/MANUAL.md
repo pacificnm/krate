@@ -1,13 +1,15 @@
 # Konnekt manual
 
-Konnekt is a modular synthesizer: instead of a fixed synth with its parts already joined, you get the parts, oscillators, filters, envelopes, LFOs, VCAs, mixers, effects, and join them yourself with patch cables. Every synth in Krate is made of these same parts; here you can see each one, hear what it does, and wire them however you like. It plays from your MIDI keyboard, up to 8 notes at once.
+Konnekt is a modular synthesizer: instead of a fixed synth with its parts already joined, you get the parts, oscillators, filters, envelopes, LFOs, VCAs, mixers, effects, and join them yourself with patch cables. Every synth in Krate is made of these same parts; here you can see each one, hear what it does, and wire them however you like. It plays from your MIDI keyboard, up to 8 notes at once. It runs on its own (the `konnekt` app) or in Krate's rack, like the other instruments (see [In Krate](#in-krate)).
+
+![Konnekt panel](images/panel.png)
 
 ## Quick start
 
 1. **Play.** Konnekt opens with a small patch: MIDI In → Oscillator → VCA (opened by an Envelope) → Output. Play your keyboard.
 2. **Point at things, right-click them.** Hover over any module, knob or jack: the bar at the bottom says what it is in a line. Right-click it for the whole story: what it is, how it works, why you'd want it, where it goes, what to try (see [Explanations](#explanations)).
 3. **Do the lessons.** **LESSONS** loads patches that build a synth up a module at a time (ten basics, then ten advanced techniques), each with what to listen for and what to try. Start with lesson 1.
-4. **Add a module.** **+ ADD MODULE**, pick one: it appears in view. Drag it by its header.
+4. **Add a module.** **+ ADD MODULE**, pick one: it appears in view. Drag it by its header; **✕** on the header removes it (and its cables).
 5. **Wire.** Click a jack, then another: an output and an input. The cable follows the modules when you drag them.
 6. **Keep it.** **PATCHES**, type a name, **SAVE**.
 7. **Take a finished sound apart.** **PRESETS** loads one of 84 ready-made sounds (basses, leads, 80s and synth-pop leads, pads, drum loops, effects), each with how it's built and what to tweak.
@@ -73,7 +75,7 @@ For an output, **SHOW ON SCOPE** puts it on the scope. While **LEARN** is on, ri
 | Module | What it does |
 | --- | --- |
 | **MIDI In** | Your keyboard. PITCH, GATE, VELOCITY and PRESSURE per voice; MOD WHEEL and BEND for all. BEND sets the pitch bend's range. Start almost every patch here. |
-| **Output** | To your speakers. Nothing is heard until something is plugged into LEFT (and RIGHT, for stereo). VOLUME. |
+| **Output** | To your speakers. Nothing is heard until something is plugged into LEFT (and RIGHT, for stereo; LEFT alone plays on both sides). VOLUME. |
 | **Scope** | A screen for a signal; TIME sets how much it shows. |
 
 ### Sources
@@ -108,7 +110,7 @@ All three have CUTOFF, RESONANCE, CV (how far the CUTOFF input moves it, in octa
 | --- | --- |
 | **VCA** | A volume a signal controls: LEVEL (with nothing in its CV), CV (how much the CV opens it), RESPONSE (linear or exponential). An envelope into CV is what starts and stops a note. |
 | **Mixer** | Four inputs added at their levels. |
-| **Attenuverter** | Scales a signal (SCALE: more, less, none, or upside down) and shifts it (OFFSET). Unplugged, its OFFSET is a steady value: a fixed pitch, a VCA held open. |
+| **Attenuverter** | Two of them, A and B: each scales a signal (SCALE A / SCALE B: more, less, none, or upside down) and shifts it (OFFSET A / OFFSET B), to OUT A and OUT B. Unplugged, an OFFSET is a steady value: a fixed pitch, a VCA held open. |
 | **Ring Mod** | Multiplies two signals (MIX against the first alone): bells and robots from two oscillators, tremolo from an LFO. |
 
 ### Effects
@@ -116,7 +118,7 @@ All three have CUTOFF, RESONANCE, CV (how far the CUTOFF input moves it, in octa
 | Module | What it does |
 | --- | --- |
 | **Drive** | Soft clipping (DRIVE) into a wavefolder (FOLD), LEVEL. Per voice. |
-| **Crusher** | BITS (16 down to 2) and RATE (down to 1/32): digital damage. Per voice. |
+| **Crusher** | BITS (off, then 16 down to 2) and RATE (1, down to 1/32): digital damage. Per voice. |
 | **Chorus** | Thickens and spreads a sound to stereo: MODE I, II, Ensemble. |
 | **Delay** | Echoes bouncing left and right: TIME, FEEDBACK, MIX. |
 | **Reverb** | A room: SIZE, MIX. |
@@ -195,9 +197,17 @@ What each synth is good for:
 | **Kobalt** (one voice) | One oscillator's saw and pulse, a sub an octave or two down, noise, the OTA filter, glide, an LFO on pitch, filter and PWM | A second oscillator, sync, FM, separate filter and amp envelopes, chorus, drive |
 | **Krimson** (16 voices) | Two oscillators with semitone tuning, sync, FM, ring mod, five filter types (band- and high-pass too), filter and amp envelopes, a pitch envelope, two LFOs, glide, chorus, drive | The first oscillator's octave (set Krimson's OCTAVE), a third oscillator |
 
+## In Krate
+
+Konnekt is in Krate's rack too: add it from **+** like the other instruments, up to 16 of it (**Konnekt 2** and on), each with its own patch, its own saved patches (a copy's are in its own folder, `~/.local/share/konnekt2` and so on) and its own mixer strip. Its panel fills the rack's panel area; the top bar is the same.
+
+- **Playing it**: your keyboard plays it while its tab has focus (it has no MIDI channel of its own); a track on the **Seq** screen, or a lane on the **Arrange** screen, can play it as it plays the others: the notes go to MIDI In.
+- **Its own time**: Konnekt keeps time with its Clock modules (their TEMPO), not the rack's tempo or PLAY.
+- **Saved sequences**: a sequence saved in Krate doesn't keep Konnekt's patch. The patch is kept by Konnekt itself (the rack as you leave it comes back), and in **PATCHES**.
+
 ## MIDI and MIDI Learn
 
-- Konnekt listens to every MIDI controller connected: notes with velocity, pitch bend, mod wheel (CC 1), sustain (CC 64), aftertouch; CC 123 stops every note.
+- On its own, Konnekt listens to every MIDI controller connected: notes with velocity, pitch bend, mod wheel (CC 1), sustain (CC 64), aftertouch; CC 123 stops every note.
 - **LEARN** (top bar): every knob gets a ring; click one (it turns red), then move a knob or slider on your controller: linked. Its value then shows the CC. Right-click a knob's ring to forget its link. **LEARN** again (or Esc) to finish. The links are saved with the patch.
 
 ## Tips

@@ -3,6 +3,7 @@
 find_package(X11 REQUIRED) # plugin editors' windows (docs/DAW.md, D7)
 
 qt_add_executable(krate main.cpp)
+file(GLOB krate_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(krate
     URI KrateRack
     VERSION 1.0
@@ -80,6 +81,9 @@ qt_add_qml_module(krate
         qml/KeysSettings.qml
         qml/SettingsScreen.qml
         qml/SourceMenu.qml
+    RESOURCES
+        docs/MANUAL.md
+        ${krate_manual_images}
 )
 target_include_directories(krate PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(krate PROPERTIES ENABLE_EXPORTS ON) # -rdynamic: function names in crash reports

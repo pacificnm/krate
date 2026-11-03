@@ -4,11 +4,13 @@ Klang is a sampler: 16 pads, each playing a sound file of your own (WAV or MP3) 
 
 This manual goes through the panel: the pads, the edited pad's controls, the patterns, Klang's own knobs. Drag a knob (or use the mouse wheel over it) to change it; its value shows under it; double-click to put it back to its default.
 
+![Klang panel](images/panel.png)
+
 ## Quick start
 
-1. **Hear the starter kit.** The first time, Klang puts 16 sounds it makes itself on the pads (drums, metal, noise, a break, a drone, two voices, a stab...) and two patterns. Press **START** (Space): pattern **A** plays. Click pattern **B**: it starts at the end of the bar.
+1. **Hear the starter kit.** The first time, Klang puts 16 sounds it makes itself on the pads (drums, metal, noise, a break, a drone, two voices, a stab...) and two patterns. Press **START** (Space): pattern **A** plays. Click pattern **B**: it starts when A reaches its end.
 2. **Play the pads.** Click them, or play notes 36–51 (C2–D#3) from your keyboard or pad controller. Clicking a pad also picks it for editing: its waveform and controls show on the right.
-3. **Load your own sounds.** Drag WAV or MP3 files from your file manager onto a pad (several files fill the pads after it), or click a pad and press **LOAD**. They are copied into Klang's library, so they keep working if you move the originals. A pad you load a file onto starts plain: a one shot, played whole at its own speed, DECAY on Full, no effects (not with the settings of the sound that was there), so a voice or an effect plays as recorded.
+3. **Load your own sounds.** Drag WAV or MP3 files from your file manager onto a pad (several files fill the pads after it), or click a pad and press **LOAD**. They are copied into Klang's library, so they keep working if you move the originals. A pad you load a file onto (by LOAD, a drop, or Krate's Sounds screen) starts plain: every pad setting back to its default (a one shot, played whole at its own speed, DECAY on Full, no effects), not with the settings of the sound that was there, so a voice or an effect plays as recorded. To try other sounds through a pad's settings, use **◂ ▸** instead: they keep them.
 4. **Mangle.** On the edited pad, try **REVERSE**, **BITS**, **RATE**, **DRIVE**, **RING**, a **FILTER** with **RES** up, **GATE** on.
 5. **Chop a loop.** Load a drum loop, set **MODE** to Loop and **SYNC** to its length in beats (4 for a bar), then press **SLICE 16** or **HITS**: its pieces land on the pads, ready for a new pattern.
 6. **Write a pattern.** Pick a pattern (A–P), click steps in the grid (a row per pad), then use the tools (**ACCENT**, **ROLL**, **REVERSE**, **PITCH**) on them.
@@ -29,10 +31,10 @@ Each pad plays one hit at a time: hitting it again fades the last hit out in 3 m
 
 | Control | What it does |
 | --- | --- |
-| **The 16 pads** | Click to play and edit; let go to stop a Gate or Loop pad. Pad 1 is at the bottom left, as on a pad controller. A pad lights while it sounds; a dot shows it has steps in the pattern shown. Drop files on a pad to load them there. |
+| **The 16 pads** | Click to play and edit; let go to stop a Gate or Loop pad. Pad 1 is at the bottom left, as on a pad controller. A pad lights while it sounds; a dot shows it has steps in the pattern shown. Drop files on a pad to load them there (several fill the pads after it), each pad starting plain, as with LOAD. |
 | **STARTER KIT** | Puts the starter kit back on the pads (Klang's own sounds; also in the library). |
 | **LOAD** | Opens a file dialog: WAV or MP3 files onto the edited pad and the pads after it, each pad's settings back to plain (as a file dropped on a pad). |
-| **◂ ▸** | The previous or next sound in the library onto the edited pad, keeping its settings: try sounds through the same effects. |
+| **◂ ▸** | The previous or next sound in the library onto the edited pad, keeping its settings (only START and END go back to the whole sound): try sounds through the same effects. |
 | **CLEAR** | No sound on the edited pad. |
 | **SLICE 4 / 8 / 16** | Cuts the edited pad's region into that many equal slices, onto it and the pads after it (as far as pad 16). Each slice keeps the pad's settings, as a one shot. Best with a loop of a whole number of bars. |
 | **HITS** | Cuts the region where its hits are (drum hits, notes starting), up to 16 slices. |
@@ -77,7 +79,7 @@ Each pad plays one hit at a time: hitting it again fades the last hit out in 3 m
 
 | Control | What it does |
 | --- | --- |
-| **A … P** | Pick a pattern to see and edit; it also plays next: at once when stopped, from the end of the bar when playing. Lit: the one shown; dark orange: the one playing; grey: has steps. |
+| **A … P** | Pick a pattern to see and edit; it also plays next: at once when stopped, from the end of the pass when playing (when the pattern playing reaches its last step). Lit: the one shown; dark orange: the one playing; grey: has steps. |
 | **START** | Starts and stops the transport (Space does the same) standalone; in the Krate rack, Klang's own RUN on the rack's transport. |
 | **LENGTH − +** | The pattern's length, 1–64 steps. |
 | **1–16 … 49–64** | The page of 16 steps the grid shows. |
@@ -123,6 +125,15 @@ The grid's rows are the pads, 16 at the top and 1 at the bottom; click a row's n
 - **Learnable buttons**: the 16 pads (play and edit), the 16 patterns, START, SLICE (8 slices of the edited pad), and next / previous pad.
 - Keys on the computer: Space start / stop, ← → the edited pad, L learn.
 
+## Klang in Krate
+
+In the Krate rack, Klang is one of the instruments (MIDI channel 11), and up to 16 copies of it can play side by side.
+
+- **Seq screen**: a track set to Klang plays its pads on notes 36–51. Its piano roll shows the 16 pads as lanes, each by the sound on it ("9 · 09 break 120"; "empty" for a pad without one). A note's length matters for a Gate or Loop pad: it plays as long as the note, so a loop held for a bar plays for a bar; a One shot pad plays to its end whatever the length.
+- **PLAY and Klang's own patterns**: the rack's PLAY starts every instrument's own patterns, except one a Seq track plays. With a Klang track, Klang's own pattern doesn't play on top of it; Klang's START (RUN) still plays its patterns.
+- **Sounds screen**: **SEND TO** Klang puts a sound onto one of its 16 pads, copied into Klang's samples folder, and the pad starts plain, as with LOAD; a right click there empties a pad.
+- **Saved songs and sequences** keep Klang's knobs with the rest of the rack's sound.
+
 ## Sound design recipes
 
 - **Chopped break**: load a one-bar drum loop, SLICE 16, then write a new pattern from the slices; ROLL a few steps ×3, REVERSE one, PITCH a snare slice down 5.
@@ -136,7 +147,8 @@ The grid's rows are the pads, 16 at the top and 1 at the bottom; click a row's n
 
 - **A pad is silent**: does it have a sound (its name on the pad)? Is END before START? Is LEVEL down, or FILTER closed (low CUTOFF on Low-pass)? With GATE on and the gate row dark, it's chopped silent.
 - **A loop drifts out of time**: set SYNC to its length in beats; without SYNC it plays at its own speed.
-- **The pattern doesn't play**: press START; in the rack, Klang's RUN must be on and the rack's transport playing.
-- **The pattern changes late**: a pattern picked while playing starts at the end of the bar (by design).
+- **The pattern doesn't play**: press START; in the rack, Klang's RUN must be on and the rack's transport playing. If a track on Krate's Seq screen plays Klang, the rack's PLAY leaves Klang's own patterns off (its START still runs them).
+- **A sound from the library lost its effects**: a file loaded by LOAD, a drop or the Sounds screen starts plain; use ◂ ▸ to keep a pad's settings.
+- **The pattern changes late**: a pattern picked while playing starts at the end of the pass, when the one playing reaches its last step (by design); a long pattern takes longer.
 - **An MP3 won't load**: Klang reads MP3 and WAV (16/24/32-bit, float); the message under the pads says why a file was refused. Files longer than 2 minutes are cut at 2 minutes.
 - **Too loud with many pads**: lower the pads' LEVELs or VOLUME; the reverb and delay add up too.

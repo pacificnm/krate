@@ -37,6 +37,7 @@ set(KLANG_APP_SOURCES
     app/KlangPatternController.cpp
 )
 qt_add_library(klang_ui STATIC)
+file(GLOB klang_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(klang_ui
     URI Klang
     VERSION 1.0
@@ -47,6 +48,7 @@ qt_add_qml_module(klang_ui
         qml/Panel.qml
     RESOURCES
         docs/MANUAL.md
+        ${klang_manual_images}
 )
 target_include_directories(klang_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
 # krate_song: MP3 decoding (dr_mp3).

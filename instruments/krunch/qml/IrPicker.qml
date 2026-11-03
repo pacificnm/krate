@@ -79,7 +79,7 @@ Popup {
         TextField {
             id: search
             width: parent.width
-            placeholderText: "Search: pack, folder, name (e.g. 57 bright)"
+            placeholderText: "Search: pack, folder, name (e.g. bright, room)"
             onTextChanged: picker.filter = text
             Accessible.name: "Search impulse responses"
         }

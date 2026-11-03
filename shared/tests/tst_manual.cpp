@@ -1,6 +1,8 @@
 #include <QtTest>
 
 #include <QFile>
+#include <QUrl>
+#include <QTemporaryDir>
 #include <QRegularExpression>
 
 #include "app/ManualReader.h"
@@ -29,6 +31,47 @@ private slots:
         QCOMPARE(sections[2].text, QStringLiteral("Second."));
     }
 
+    // A picture on a line of its own splits the text around it (not in code);
+    // its path is found next to the manual.
+    void picturesBetweenTheText()
+    {
+        const auto blocks = ManualReader::blocks(QStringLiteral(
+            "Before.\n\n![The panel](images/panel.png)\n\nAfter, ![inline](x.png) stays.\n```\n![code](c.png)\n```"));
+        QCOMPARE(blocks.size(), 3);
+        QCOMPARE(blocks[0].text, QStringLiteral("Before."));
+        QCOMPARE(blocks[1].image, QStringLiteral("images/panel.png"));
+        QCOMPARE(blocks[1].caption, QStringLiteral("The panel"));
+        QVERIFY(blocks[2].text.startsWith(QStringLiteral("After, ![inline](x.png) stays.")));
+        QVERIFY(blocks[2].text.contains(QStringLiteral("![code](c.png)")));
+
+        QTemporaryDir dir;
+        QFile f(dir.filePath(QStringLiteral("MANUAL.md")));
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write("# T\n\nIntro.\n\n![Shot](images/a.png)\n");
+        f.close();
+        const QVariantList shown = ManualReader().sections(f.fileName()).value(0).toMap().value(QStringLiteral("blocks")).toList();
+        QCOMPARE(shown.size(), 2);
+        QCOMPARE(shown[1].toMap().value(QStringLiteral("image")).toString(),
+                 QUrl::fromLocalFile(dir.filePath(QStringLiteral("images/a.png"))).toString());
+    }
+
+    // Every picture a manual shows is there (in the repo, and so in the app's resources).
+    void picturesExist()
+    {
+        for (const QString &manual : {QStringLiteral("/apps/krate"), QStringLiteral("/instruments/korrode"), QStringLiteral("/instruments/kessel"),
+                                      QStringLiteral("/instruments/kalliope"), QStringLiteral("/instruments/krimson"), QStringLiteral("/instruments/kobalt"),
+                                      QStringLiteral("/instruments/klang"), QStringLiteral("/instruments/konnekt"), QStringLiteral("/instruments/krunch"),
+                                      QStringLiteral("/instruments/klick")}) {
+            const QString dir = QStringLiteral(KRATE_SOURCE_DIR) + manual + QStringLiteral("/docs/");
+            const QString text = read(dir + QStringLiteral("MANUAL.md"));
+            QVERIFY2(!text.isEmpty(), qPrintable(manual));
+            for (const auto &s : ManualReader::split(text))
+                for (const auto &b : ManualReader::blocks(s.text))
+                    if (!b.image.isEmpty())
+                        QVERIFY2(QFile::exists(dir + b.image), qPrintable(manual + QStringLiteral(": ") + b.image));
+        }
+    }
+
     void searches()
     {
         ManualReader reader;
@@ -51,6 +94,8 @@ private slots:
         QTest::newRow("klang") << QStringLiteral("klang") << QStringLiteral("label");
         QTest::newRow("kessel") << QStringLiteral("kessel") << QStringLiteral("label");
         QTest::newRow("korrode") << QStringLiteral("korrode") << QStringLiteral("name");
+        QTest::newRow("krunch") << QStringLiteral("krunch") << QStringLiteral("label");
+        QTest::newRow("klick") << QStringLiteral("klick") << QStringLiteral("label");
     }
     void manualCoversThePanel()
     {

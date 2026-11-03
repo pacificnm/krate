@@ -154,17 +154,48 @@ Popup {
                     font.bold: true
                     wrapMode: Text.WordWrap
                 }
-                Text {
-                    width: parent.width
-                    text: view.sections[view.current]?.text ?? ""
-                    textFormat: Text.MarkdownText
-                    color: "#E2E2E2"
-                    linkColor: "#7FB2FF"
-                    font.family: Theme.labelFont
-                    font.pixelSize: 16
-                    lineHeight: 1.25
-                    wrapMode: Text.WordWrap
-                    onLinkActivated: link => Qt.openUrlExternally(link)
+                Repeater { // its text, and its pictures (each fitted to the page, with its caption)
+                    model: view.sections[view.current]?.blocks ?? []
+                    Column {
+                        id: block
+                        required property var modelData
+                        readonly property bool picture: modelData.image !== undefined
+                        width: body.width
+                        spacing: 6
+                        Text {
+                            visible: !block.picture
+                            width: parent.width
+                            text: block.modelData.text ?? ""
+                            textFormat: Text.MarkdownText
+                            color: "#E2E2E2"
+                            linkColor: "#7FB2FF"
+                            font.family: Theme.labelFont
+                            font.pixelSize: 16
+                            lineHeight: 1.25
+                            wrapMode: Text.WordWrap
+                            onLinkActivated: link => Qt.openUrlExternally(link)
+                        }
+                        Image {
+                            visible: block.picture
+                            source: block.picture ? block.modelData.image : ""
+                            width: Math.min(parent.width, sourceSize.width)
+                            height: sourceSize.width > 0 ? width * sourceSize.height / sourceSize.width : 0
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            mipmap: true
+                            asynchronous: true
+                        }
+                        Text {
+                            visible: block.picture && text !== ""
+                            width: parent.width
+                            text: block.modelData.caption ?? ""
+                            color: "#9A9C9F"
+                            font.family: Theme.labelFont
+                            font.pixelSize: 13
+                            font.italic: true
+                            wrapMode: Text.WordWrap
+                        }
+                    }
                 }
             }
         }

@@ -4,6 +4,8 @@ Korrode is an acid bass synthesizer: one voice (a saw or square oscillator into 
 
 This manual goes through the panel from the top left to the bottom right. Every knob, button and display is described here: what it does, its range, and how to use it. Drag a knob up or down (Shift for fine moves) or use the mouse wheel; its value shows while you drag; double-click to put it back to its default.
 
+![Korrode panel](images/panel.png)
+
 ## Quick start
 
 1. **Play.** Press **RUN / STOP** (or Space): pattern 1 plays.
@@ -79,10 +81,10 @@ Keep DELAY and REVERB low for a bass that sits in a mix; turn them up for a lead
 | **PATTERN** display | The pattern shown, **A1** to **H8**; ▲▼ step through all 64 in order. |
 | **Beat light** (by the status line) | Flashes on each beat. |
 | **LENGTH** display | How many steps the pattern has, 1–16 (▲▼). Short patterns make odd loops. |
-| **TEMPO** | Standalone only: 40–240 BPM. In the Krate rack, the rack's transport sets the tempo. |
+| **TEMPO** | Standalone only: 40–240 BPM (120 by default). When a DAW leads over JACK transport, it follows the DAW's tempo. In the Krate rack the knob is hidden: the rack's transport sets the tempo. |
 | **SCALE** | How long a step is: **1/16** (normal), **1/32** (double speed), **1/16T** (triplets). |
 | **PLAY MODE** | The step order: **FORWARD**, **REVERSE**, **FWD+REV** (back and forth), **INVERT** (forward, every note mirrored around C: an instant variation), **RANDOM**. |
-| **RUN / STOP** | Start and stop (Space too). |
+| **RUN / STOP** | Start and stop (Space too). In the Krate rack it starts and stops just Korrode's own pattern on the rack's transport: pressed while the rack is stopped, only Korrode's pattern plays; pressed while the rack plays, it joins at the next bar. |
 
 ## Writing a pattern
 
@@ -114,7 +116,17 @@ The lower deck edits the pattern step by step.
 
 - **Keys** play Korrode when the sequencer is stopped: holding one key and playing another slides to it; velocity 100 and up plays accented.
 - Every knob (including the effects), the waveform switch, RUN / STOP and the pattern buttons can be learned.
-- In the Krate rack, Korrode listens on its MIDI channel and runs with the rack's transport.
+- In the Krate rack, Korrode listens on its MIDI channel (FOCUS by default: the keys play it while its tab has focus) and runs with the rack's transport.
+
+## Korrode in Krate
+
+In the Krate rack Korrode is one of the instruments, with its own tab and mixer strip.
+
+- **Rack PLAY and STOP**: the rack's PLAY starts every instrument's own sequencer, Korrode's pattern included, and STOP stops them all. Korrode's own RUN / STOP plays its pattern alone.
+- **Seq screen**: a Seq track can play Korrode over MIDI, like a keyboard, with longer patterns than Korrode's 16 steps. Korrode plays one note at a time, so a chord on its track keeps its top note. While a track plays Korrode, the rack's PLAY leaves Korrode's own pattern off so the two don't play over each other; its own RUN / STOP still starts it.
+- **Arrange screen**: Korrode's Seq tracks are lanes there. With SONG on, PLAY plays the arrangement only, and Korrode's own patterns stay off.
+- **Saved sequences** keep Korrode's sound (all its knobs) with the notes and the mixer: opening one puts it back.
+- **Copies**: up to 16 Korrodes can play side by side (**Korrode 2**, **Korrode 3** and on), each with its own sound, patterns and MIDI links.
 
 ## Sound recipes
 
@@ -127,7 +139,7 @@ The lower deck edits the pattern step by step.
 
 ## Troubleshooting
 
-- **No sound**: is it running (RUN / STOP lit)? Is VOLUME down, or CUT OFF all the way left with ENV MOD at 0? Is AUDIO lit? In the rack, press the rack's PLAY.
+- **No sound**: is it running (RUN / STOP lit)? Is VOLUME down, or CUT OFF all the way left with ENV MOD at 0? Is AUDIO lit? In the rack, press the rack's PLAY (or Korrode's own RUN / STOP if a Seq track plays Korrode).
 - **The pattern is silent on some steps**: they are rests (blank step buttons) or ties after a rest.
 - **Notes don't glide**: a slide only glides into a Note or Tie on the next step.
 - **Accents sound the same**: turn ACCENT (and SWEEP) up.

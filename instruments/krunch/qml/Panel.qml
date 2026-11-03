@@ -249,12 +249,25 @@ Item {
                 text: "Save the amp as a new preset"
                 onClicked: saveAsPopup.open()
             }
+            PanelButton { // the manual
+                width: 64
+                height: 40
+                dark: true
+                faceText: "HELP"
+                text: "Krunch's manual: what every control does and how to use it"
+                onClicked: manual.open()
+            }
+        }
+        ManualView {
+            id: manual
+            title: "Krunch"
+            source: "qrc:/qt/qml/Krunch/docs/MANUAL.md"
         }
 
         // Where the guitar comes from, and how long it takes to reach the speakers.
         Column {
-            x: 900
-            width: parent.width - 940
+            x: 960
+            width: parent.width - 1000
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
 
@@ -497,8 +510,7 @@ Item {
             width: 76
             height: 24
             dark: true
-            hasLed: true
-            ledOn: cabinetOn
+            tint: cabinetOn ? "transparent" : Theme.labelOrange // (too low for a LED over the word)
             faceText: cabinetOn ? "ON" : "OFF"
             text: "Channel " + (panel.channel + 1) + " cabinet on or off"
             onClicked: panel.krunch.setValue(panel.chKey("cabinet"), cabinetOn ? 0 : 1)

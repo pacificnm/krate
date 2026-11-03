@@ -2,7 +2,9 @@
 
 Kessel is a drum machine: fifteen synthesized drum voices (the classic eleven of an analog drum machine, plus four for industrial and EBM sounds: Metal, Clank, Noise and Boom), a sample voice for your own WAV files, a mixer with drive and effect sends for every voice, a gated reverb, a delay, a bus compressor and crusher, 16 kits, and a 16-step sequencer with accents, flams, step velocities and per-step tune and decay.
 
-This manual goes through the panel from top to bottom. Every knob, button and display is described here: what it does, its range, and how to use it. Drag a knob up or down (Shift for fine moves) or use the mouse wheel; its value shows while you drag; double-click to put it back to its default.
+This manual goes through the panel from top to bottom. Every knob, button and display is described here: what it does, its range, and how to use it. Drag a knob up or down (Shift for fine moves) or use the mouse wheel; its value shows while you drag; double-click to put it back to its default. **HELP** (top left) opens this manual.
+
+![Kessel panel](images/panel.png)
 
 ## Quick start
 
@@ -16,7 +18,7 @@ Patterns save themselves as you edit; kits only change when you WRITE.
 
 ## How Kessel makes sound
 
-Every drum is synthesized when it plays: no samples. Each drum is a separate voice with its own knobs, and each has a place in the mix:
+Every drum is synthesized when it plays, unless you give it a sample of your own (see Your samples on any drum, below). Each drum is a separate voice with its own knobs, and each has a place in the mix:
 
 ```
 drum ─► DRIVE ─► LEVEL ─► PAN ─┬─────────────────────────────► mix ─► COMP ─► CRUSH ─► VOLUME
@@ -123,6 +125,20 @@ SAMPLE plays a WAV file of your own: a drum hit, a vocal shout, a hit on a metal
 
 Play it from MIDI on notes 60 and 61. A kit you WRITE remembers its sample. Files: any WAV (stereo is mixed to mono); longer than 30 s is cut; non-WAV files are refused with a message in the display.
 
+### Your samples on any drum
+
+Any drum, not only SAMPLE, can play a sample instead of its synthesized sound. In the Krate rack, open the **Sounds** screen, pick a sound and **SEND TO** Kessel, then click the drum it goes on (Kick, Snare, Closed Hat...; Sample puts it on the SAMPLE voice). A right click there puts the drum back on its own synthesized sound. The sound is copied into Kessel's samples folder, so it keeps working if the original moves.
+
+The drum keeps its knobs, its mix strip and its place in every pattern, but its knobs now shape the sample:
+
+| Control | What it does |
+| --- | --- |
+| **TUNE** | The sample's pitch, ±24 semitones; the middle plays it as recorded (on NOISE, its TONE knob; on the hats, the shared hi hat TUNE). Step tune locks work too. |
+| **DECAY** | Fades the sample out, 50 ms to 4 s; at the top it plays to its end. At the drum's default (the middle) a sample fades over about half a second, so turn DECAY all the way up to hear the whole sound. Crash and ride have no DECAY: their samples always fade over about half a second. |
+| **LEVEL**, **PAN**, **DRIVE**, sends | As before. The drum's other knobs (SNAPPY, SWEEP, MATERIAL...) do nothing while it plays a sample. |
+
+A kit you WRITE keeps every drum's sample (or that it is on its synth); the panel itself doesn't show which drums play a sample.
+
 ## The mix page
 
 Press **MIX** (top right) to show a strip for every drum instead of its sound knobs; **SOUND** goes back.
@@ -167,7 +183,7 @@ Kits and patterns are separate: any kit plays any pattern.
 | Control | What it does |
 | --- | --- |
 | **A–H**, **I–P** (above the buttons) | Which eight patterns the buttons show. |
-| **Pattern buttons** | Choose the pattern to play and edit. The dark button is the one shown; its light is the one playing. While playing, a new choice waits for the end of the bar (its light blinks), so it never cuts a bar short. |
+| **Pattern buttons** | Choose the pattern to play and edit (keys A–H too, on the page shown). The dark button is the one shown; its light is the one playing. While playing, a new choice waits for the end of the bar (its light blinks), so it never cuts a bar short. |
 | **PATTERN** display | The pattern shown; ▲▼ step through all 16. |
 | **LENGTH** | 1–16 steps: shorter patterns make odd, looping rhythms. |
 | **SCALE** | How long a step is: **1/16** (normal), **1/32** (double speed), **1/8 triplet**, **1/16 triplet**. |
@@ -204,7 +220,7 @@ A knob in orange shows the drum's own value; move it and it turns blue: the step
 | **TEMPO** | Standalone only: 40–240 BPM. In the Krate rack, the rack's transport bar sets the tempo. |
 | **VOLUME** | Kessel's output level. |
 | **SHUFFLE** | Swing: every second step comes a little late, from straight to fully swung (6 positions). |
-| **START**, **STOP** | Run and stop (Space too). In the rack, the rack's transport runs Kessel. |
+| **START**, **STOP** | Run and stop Kessel's own pattern (Space too). In the rack, the rack's **PLAY** starts it with everything else (unless a track on the Seq screen plays Kessel: then that track plays it instead); START plays it alone when the rack is stopped, or joins at the next bar while it plays. |
 
 ## MIDI and MIDI Learn
 
@@ -217,6 +233,14 @@ A knob in orange shows the drum's own value; move it and it turns blue: the step
 - **Notes** play the drums (General MIDI numbers): 35/36 bass drum, 37 rim, 38/40 snare, 39 clap, 41/43 low tom, 42/44 closed hat, 45/47 mid tom, 46 open hat, 48/50 hi tom, 49/57 crash, 51/59 ride, 56/67 metal, 54/69 clank, 52/70 noise, 33/34 boom, 60/61 sample. Velocity 100 and up plays accented.
 - **Channel**: standalone, any channel; in the Krate rack, channel 10.
 - **Learnable buttons**: the patterns (A–P) and START, so a controller can switch patterns while it plays.
+
+## Kessel in the Krate rack
+
+- **Seq screen**: a track set to Kessel plays it over MIDI, its piano roll showing Kessel's 16 voices by name (velocity 100 and up plays accented). Its notes go to the drums like the MIDI notes above. Kessel's own patterns are separate and keep working.
+- **Arrange screen**: Kessel's Seq track is a lane there; with **SONG** on, only the arrangement plays, not Kessel's own patterns.
+- **Saved sequences** keep every instrument's sound, Kessel's knobs included, and the mixer.
+- **Sounds screen**: sends a sample to any Kessel drum (see Your samples on any drum, under The sample voice).
+- **Copies**: up to 16 Kessels can play side by side (Kessel 2, Kessel 3...), each with its own kit, patterns and samples.
 
 ## Sound design recipes
 
@@ -236,6 +260,8 @@ A knob in orange shows the drum's own value; move it and it turns blue: the step
 ## Troubleshooting
 
 - **No sound when pressing START**: is the pattern empty (an E–H slot)? Is VOLUME down? Is AUDIO lit? In the rack, press the rack's PLAY.
+- **The rack's PLAY doesn't play Kessel's pattern**: a Seq track plays Kessel, so that track plays it instead (or SONG is on in Arrange). Press Kessel's START to hear its own pattern.
+- **A sampled drum sounds cut short**: turn its DECAY all the way up.
 - **A drum is silent**: its LEVEL (SOUND page), or a step's VELOCITY set very low. The SAMPLE voice is silent until you LOAD a sample.
 - **A file won't load**: only WAV files are read (no MP3, FLAC or AIFF); convert it first.
 - **The reverb or delay does nothing**: turn up that drum's REVERB or DELAY send on the MIX page.

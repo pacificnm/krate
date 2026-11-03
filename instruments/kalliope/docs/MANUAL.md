@@ -4,6 +4,8 @@ Kalliope is a sixteen-voice polyphonic synthesizer: two oscillators per voice, a
 
 This manual goes through the panel from left to right and top to bottom. Every slider, knob, switch and button is described here: what it does, its range, and how to use it. Drag a slider or knob (or use the mouse wheel over it) to change it; its value shows while you drag; double-click to put it back to its default.
 
+![Kalliope panel](images/panel.png)
+
 ## Quick start
 
 1. **Pick a sound.** The first time, Kalliope starts in Manual (the display shows **--**). Click **BANK 1** then **PATCH 1**: the display shows **11**, Brass. Step through all 64 with **▲ ▼** next to the display. Banks 1 and 2 hold the factory sounds.
@@ -125,10 +127,10 @@ The left of the function deck. **Play Mode** chooses what your keys do:
 | Control | What it does |
 | --- | --- |
 | **NOTE** | Keys play notes. |
-| **ARP** | Keys feed the **arpeggiator**: hold a chord and it plays its notes one after another, in time. Standalone, ARP starts the clock; in the Krate rack it follows the rack's PLAY. |
+| **ARP** | Keys feed the **arpeggiator**: hold a chord and it plays its notes one after another, in time. Standalone, ARP starts the clock (unless a DAW leads the transport: then the arpeggio plays when the DAW plays); in the Krate rack it follows the rack's transport. |
 | **SEQ** | The **step sequencer**: 8 patterns of up to 16 steps that play while the transport runs; your keys then transpose the pattern (by their distance from middle C) instead of sounding. |
 | **HOLD** | Arpeggio notes stay after you let go; the first key of a new chord replaces them. |
-| **START** | Standalone: starts and stops the transport (Space does the same). |
+| **START** | Standalone: starts and stops the transport (Space does the same). In the Krate rack it is Kalliope's own RUN / STOP: pressed while the rack is stopped it plays just Kalliope's arpeggio or pattern; pressed while the rack plays, Kalliope joins at the next bar. Its light shows whether Kalliope is running. |
 | **MODE** | Arpeggio order: **Up**, **Down**, **Up & Down** (without repeating the top and bottom notes), **Random**. |
 | **RANGE** | The arpeggio (and the generator) spreads the held notes over 1–4 octaves. |
 | **RATE** | Steps per beat for the arpeggiator and the sequencer: **1/8**, **1/16**, **1/8T**, **1/16T** (triplets). Each note lasts half a step. |
@@ -197,7 +199,7 @@ The **mod wheel** adds LFO vibrato, up to ±1 semitone at full (at the LFO's RAT
 | Control | What it does |
 | --- | --- |
 | **VOLUME** | Kalliope's output level. |
-| **TEMPO** | Standalone only: the tempo (40–240 BPM) for the arpeggiator, the sequencer and the delay. In the Krate rack, the rack's transport sets the tempo. |
+| **TEMPO** | Standalone only: the tempo (40–240 BPM, 120 by default) for the arpeggiator, the sequencer and the delay. In the Krate rack it is hidden: the rack's transport sets the tempo. When a DAW leads over JACK transport, its tempo is used and TEMPO follows it (the audio line shows **JACK sync** and the tempo). |
 | **OCTAVE ◂ ▸** | Shifts your MIDI keyboard and the on-screen keyboard by −3 to +3 octaves (Z and X on the computer keyboard). The display shows the octave you're playing in, as on Krimson: 0 is where the keys play as marked; it adds your MIDI keyboard's own octave buttons (as the keys show it) to Kalliope's shift. A song's notes always play as written, whatever OCTAVE is set to. |
 | **The on-screen keyboard** | Two octaves, played with the mouse (press and glide). Keys held from MIDI light up. |
 
@@ -209,9 +211,9 @@ The **mod wheel** adds LFO vibrato, up to ±1 semitone at full (at the LFO's RAT
 | **UNMAP** | Removes every MIDI link. |
 | **AUDIO** | Lit when Kalliope is connected to the audio system; click to reconnect. The line under it shows the sample rate, buffer and dropouts, and the meter the output level. |
 
-- **Channel**: standalone, Kalliope plays on every channel; in the Krate rack, on channel 2 by default.
+- **Channel**: standalone, Kalliope plays on every channel; in the Krate rack, on channel 2 by default (a copy, Kalliope 2 and on, has no channel of its own: it plays from your keys when it has focus, or from the channel you give it on its mixer strip).
 - **Learnable buttons**: NOTE, ARP, SEQ, HOLD, START, GEN, REST, TIE, WRITE, the BANK and PATCH buttons and OCTAVE ◂ ▸, so a controller can switch patches, arpeggios and patterns while you play.
-- **Program Change** loads a patch (0 = 11, 1 = 12, … 8 = 21, …). **Pitch bend**, **CC 1** (mod wheel), **CC 64** (sustain) and **aftertouch** are understood; CC 120 and 123 stop every note.
+- **Program Change** loads a patch (0 = 11, 1 = 12, … 8 = 21, …). In the Krate rack, Program Change switches which instrument has focus unless that is turned off in Krate's settings; then it reaches Kalliope and loads a patch. **Pitch bend**, **CC 1** (mod wheel), **CC 64** (sustain) and **aftertouch** are understood; CC 120 and 123 stop every note.
 
 ## Sound design recipes
 
@@ -228,11 +230,23 @@ Start from an Init patch (an empty one in banks 3–8) or from the nearest facto
 - **Noise sweep**: VCO-2 Noise, SOURCE MIX to VCO-2; RES high; ENV MOD up with long ENV-1 attack and decay; REVERB large.
 - **Expressive lead**: PRESSURE Both: press into the keys to brighten and add vibrato.
 
+## Kalliope in Krate
+
+In the Krate rack Kalliope is one instrument among the others, with its own tab, mixer strip and output.
+
+- **PLAY and STOP**: the rack's PLAY runs Kalliope's arpeggiator and step sequencer with everything else; START runs Kalliope alone (see above). TEMPO is the rack's.
+- **The Seq screen**: a rack sequencer track can play Kalliope, over MIDI as a keyboard would, with notes on a full piano roll and no 16-step limit. The rack's PLAY then leaves Kalliope's own step sequencer off, so its pattern doesn't play on top of the track; START still runs it.
+- **Arrange**: with SONG on, PLAY plays the arrangement only, and Kalliope's own patterns stay off. The MIDI clips on a lane whose track plays Kalliope play it.
+- **The Song screen**: while a song is open, Kalliope's step sequencer is off and the song's notes play as written (OCTAVE doesn't shift them).
+- **Saved sequences**: a sequence saved on the Seq screen keeps Kalliope's sound (every knob on the panel) with the rest; opening it puts that sound back.
+- **Copies**: up to 16 Kalliopes can play side by side (Kalliope 2, 3 …), each with its own patches, patterns, MIDI links and mixer strip. A copy starts with the first one's files and then keeps its own.
+
 ## Troubleshooting
 
 - **No sound**: is VOLUME or the VCA LEVEL down? Is ENV-2's S at 0 with a short D (notes too short to hear)? Is CUTOFF FREQ at the bottom with ENV MOD at 0? Is AUDIO lit?
 - **Keys don't sound in SEQ mode**: while the sequencer runs, keys transpose the pattern instead of playing. Choose NOTE to play.
-- **The arpeggio doesn't start**: in the Krate rack it follows the rack's PLAY; standalone, ARP starts the transport.
+- **The arpeggio doesn't start**: in the Krate rack it follows the rack's PLAY (or START); standalone, ARP starts the transport, unless a DAW leads it over JACK: start the DAW.
+- **The step sequencer doesn't play with the rack's PLAY**: a Seq track is playing Kalliope, or SONG is on in Arrange, or a song is open. Press START to run Kalliope's own pattern.
 - **High or low notes are missing**: check OCTAVE: it shifts your MIDI keyboard, and notes shifted past the MIDI range don't play.
 - **Two oscillators on the same pitch swell and dip**: that's ANALOG drifting them against each other; turn ANALOG down for that sound.
 - **Big chords distort**: turn the VCA LEVEL or VOLUME down, or DRIVE and RES down.

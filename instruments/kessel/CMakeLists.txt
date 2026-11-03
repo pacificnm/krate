@@ -23,6 +23,7 @@ target_compile_options(kessel_dsp PRIVATE ${KESSEL_WARNINGS})
 
 # --- kessel_ui: QML module "Kessel": controller and the panel
 qt_add_library(kessel_ui STATIC)
+file(GLOB kessel_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(kessel_ui
     URI Kessel
     VERSION 1.0
@@ -45,6 +46,7 @@ qt_add_qml_module(kessel_ui
         qml/Panel.qml
     RESOURCES
         docs/MANUAL.md
+        ${kessel_manual_images}
 )
 # Generated type registration includes headers by bare name.
 target_include_directories(kessel_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)

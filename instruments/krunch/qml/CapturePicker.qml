@@ -78,7 +78,7 @@ Popup {
         Label {
             width: parent.width
             wrapMode: Text.WordWrap
-            text: "A capture is a real amp, modelled (Neural Amp Modeler, .nam). It plays in place of Krunch's preamp and power amp: "
+            text: "A capture is a real amp, modelled (a .nam file). It plays in place of Krunch's preamp and power amp: "
                   + "GAIN drives it, BASS to PRESENCE shape it after, your cabinet IRs follow. "
                   + (picker.captures.message !== "" ? "\n" + picker.captures.message : "")
             font.pixelSize: 11

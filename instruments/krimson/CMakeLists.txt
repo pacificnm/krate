@@ -28,6 +28,7 @@ target_compile_options(krimson-render PRIVATE ${KRIMSON_WARNINGS})
 
 # --- krimson_ui: QML module "Krimson": controllers and the panel
 qt_add_library(krimson_ui STATIC)
+file(GLOB krimson_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(krimson_ui
     URI Krimson
     VERSION 1.0
@@ -48,6 +49,7 @@ qt_add_qml_module(krimson_ui
         qml/Panel.qml
     RESOURCES
         docs/MANUAL.md
+        ${krimson_manual_images}
 )
 # Generated type registration includes headers by bare name.
 target_include_directories(krimson_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)

@@ -30,6 +30,7 @@ target_compile_options(kalliope-render PRIVATE ${KALLIOPE_WARNINGS})
 
 # --- kalliope_ui: QML module "Kalliope": controller and the panel
 qt_add_library(kalliope_ui STATIC)
+file(GLOB kalliope_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(kalliope_ui
     URI Kalliope
     VERSION 1.0
@@ -52,6 +53,7 @@ qt_add_qml_module(kalliope_ui
         qml/Panel.qml
     RESOURCES
         docs/MANUAL.md
+        ${kalliope_manual_images}
 )
 # Generated type registration includes headers by bare name.
 target_include_directories(kalliope_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)

@@ -57,6 +57,7 @@ add_test(NAME tst_krunch COMMAND tst_krunch)
 
 # --- krunch_ui: QML module "Krunch": controller and panel
 qt_add_library(krunch_ui STATIC)
+file(GLOB krunch_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(krunch_ui
     URI Krunch
     VERSION 1.0
@@ -81,6 +82,9 @@ qt_add_qml_module(krunch_ui
         qml/IrPicker.qml
         qml/CapturePicker.qml
         qml/Pedalboard.qml
+    RESOURCES
+        docs/MANUAL.md
+        ${krunch_manual_images}
 )
 target_include_directories(krunch_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)
 target_link_libraries(krunch_ui PUBLIC krunch_dsp krate_app krate_qml krate_song Qt6::Quick Qt6::Sql)

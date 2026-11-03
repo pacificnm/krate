@@ -15,6 +15,7 @@ add_test(NAME tst_klick COMMAND tst_klick)
 
 # --- klick_ui: QML module "Klick": controller and panel
 qt_add_library(klick_ui STATIC)
+file(GLOB klick_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(klick_ui
     URI Klick
     VERSION 1.0
@@ -26,6 +27,9 @@ qt_add_qml_module(klick_ui
         app/KlickInstrument.cpp
     QML_FILES
         qml/Panel.qml
+    RESOURCES
+        docs/MANUAL.md
+        ${klick_manual_images}
 )
 target_include_directories(klick_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE app)
 target_link_libraries(klick_ui PUBLIC klick_dsp krate_app krate_qml Qt6::Quick)

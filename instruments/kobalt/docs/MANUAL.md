@@ -4,6 +4,8 @@ Kobalt is a monophonic synthesizer: one note at a time, made by one oscillator w
 
 This manual goes through the panel from left to right and top to bottom. Every slider, knob, switch and button is described here: what it does, its range, and how to use it. Drag a slider or knob (or use the mouse wheel over it) to change it; its value shows while you drag; double-click to put it back to its default. Click a switch to step through its positions.
 
+![Kobalt panel](images/panel.png)
+
 ## Quick start
 
 1. **Pick a sound.** The first time, Kobalt starts in Manual (the display shows **--**). Click **BANK 1** then **PATCH 1**: the display shows **11**, Sub Bass. Step through all 64 with **▲ ▼** next to the display. Banks 1 and 2 hold the factory sounds.
@@ -107,7 +109,7 @@ The left of the function deck. **Play mode** chooses what your keys do:
 | Control | What it does |
 | --- | --- |
 | **NOTE** | Keys play notes. |
-| **ARP** | Keys feed the **arpeggiator**: hold a chord and it plays its notes one after another, in time. Standalone, ARP starts the clock; in the Krate rack it follows the rack's PLAY. |
+| **ARP** | Keys feed the **arpeggiator**: hold a chord and it plays its notes one after another, in time. Standalone, ARP starts the clock (not while a DAW leads over JACK: it waits for the DAW's play); in the Krate rack it follows the rack's PLAY. |
 | **SEQ** | The **step sequencer**: 8 patterns of up to 64 steps that play while the transport runs; your keys then transpose the pattern (by their distance from middle C) instead of sounding. Stopped, keys play as usual. |
 | **HOLD** | Arpeggio notes stay after you let go; the first key of a new chord replaces them. |
 | **START** | Starts and stops the transport (Space does the same) standalone; in the rack, Kobalt's own RUN: its sequencer on the rack's transport. |
@@ -180,7 +182,7 @@ The **mod wheel** adds LFO vibrato (see LEVER). The **sustain pedal** holds the 
 | Control | What it does |
 | --- | --- |
 | **VOLUME** | Kobalt's output level. |
-| **TEMPO** | Standalone only: the tempo (40–240 BPM) for the arpeggiator, the sequencer and the delay. In the Krate rack, the rack's transport sets the tempo. |
+| **TEMPO** | Standalone only: the tempo (40–240 BPM, 120 by default) for the arpeggiator, the sequencer and the delay. In the Krate rack, the rack's transport sets the tempo. When a DAW leads over JACK transport, its tempo and play / stop are followed (the audio line shows "JACK sync" and the tempo). |
 | **OCTAVE ◂ ▸** | Shifts your MIDI keyboard and the on-screen keyboard by −3 to +3 octaves (Z and X on the computer keyboard). The display shows the octave you're playing in, as on Krimson: 0 is where the keys play as marked; it adds your MIDI keyboard's own octave buttons (as the keys show it) to Kobalt's shift. A song's notes always play as written, whatever OCTAVE is set to. |
 | **The on-screen keyboard** | Played with the mouse (press and glide). Keys held from MIDI light up. |
 
@@ -193,9 +195,18 @@ The **mod wheel** adds LFO vibrato (see LEVER). The **sustain pedal** holds the 
 | **AUDIO** | Lit when Kobalt is connected to the audio system; click to reconnect. The line under it shows the sample rate, buffer and dropouts, and the meter the output level. |
 | **HELP** | Opens this manual, with a search. |
 
-- **Channel**: standalone, Kobalt plays on every channel; in the Krate rack, on channel 7 by default.
+- **Channel**: standalone, Kobalt plays on every channel; in the Krate rack, on channel 7 by default. A copy (Kobalt 2 and on) takes no channel of its own: your keys play it when it has focus, or give it a channel on its mixer strip.
 - **Learnable buttons**: NOTE, ARP, SEQ, HOLD, START, GEN, REST, TIE, LEGATO, WRITE, the BANK and PATCH buttons and OCTAVE ◂ ▸, so a controller can switch patches, arpeggios and patterns while you play.
-- **Program Change** loads a patch (0 = 11, 1 = 12, … 8 = 21, …). **Pitch bend**, **CC 1** (mod wheel) and **CC 64** (sustain) are understood; CC 120 and 123 stop the note.
+- **Program Change** loads a patch (0 = 11, 1 = 12, … 8 = 21, …). In the Krate rack, Program Change focuses an instrument instead, unless that is switched off in Krate's settings ("Program Change n focuses the nth instrument in the rack"): then it reaches Kobalt and loads a patch. **Pitch bend**, **CC 1** (mod wheel) and **CC 64** (sustain) are understood; CC 120 and 123 stop the note.
+
+## Kobalt in Krate
+
+In the Krate rack Kobalt is one of the instruments, on channel 7, with its panel, mixer strip and MIDI links.
+
+- **The Seq screen**: a sequencer track can play Kobalt, as a keyboard would. Kobalt plays one note at a time, so a chord copied from a song keeps its top note. The rack's **PLAY** starts every instrument's own sequencer, but not Kobalt's while a Seq track plays Kobalt: the track plays it alone. **START** (Kobalt's own RUN) still plays its own pattern, alone when the rack is stopped, or joining at the next bar.
+- **The Arrange screen**: the sequencer tracks are its lanes, so a lane aimed at Kobalt plays its patterns and MIDI clips there. With **SONG** on, PLAY plays the arrangement only, and Kobalt's own pattern stays off.
+- **Saved sequences and songs** keep every instrument's sound: all of Kobalt's knobs come back with them (its own patterns and patches stay in Kobalt's files).
+- **Copies**: up to 16 Kobalts play side by side (**Kobalt 2**, **Kobalt 3**…, added from **+**), each with its own sound, patterns, patches and mixer strip. A copy starts with the first one's files (`~/.config/kobalt2`, `~/.local/share/kobalt2` and so on), then keeps its own.
 
 ## Sound design recipes
 

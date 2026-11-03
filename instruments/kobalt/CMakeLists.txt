@@ -42,6 +42,7 @@ set(KOBALT_APP_SOURCES
     app/SequenceFile.cpp
 )
 qt_add_library(kobalt_ui STATIC)
+file(GLOB kobalt_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(kobalt_ui
     URI Kobalt
     VERSION 1.0
@@ -52,6 +53,7 @@ qt_add_qml_module(kobalt_ui
         qml/Panel.qml
     RESOURCES
         docs/MANUAL.md
+        ${kobalt_manual_images}
 )
 # Generated type registration includes headers by bare name.
 target_include_directories(kobalt_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/.. PRIVATE app)

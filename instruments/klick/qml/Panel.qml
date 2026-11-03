@@ -38,6 +38,21 @@ Item {
         text: "METRONOME"
         font.pixelSize: 14
     }
+    PanelButton { // the manual
+        anchors.right: parent.right
+        anchors.rightMargin: 36
+        y: 30
+        width: 64
+        height: 26
+        faceText: "HELP"
+        text: "Klick's manual: what every control does and how to use it"
+        onClicked: manual.open()
+    }
+    ManualView {
+        id: manual
+        title: "Klick"
+        source: "qrc:/qt/qml/Klick/docs/MANUAL.md"
+    }
 
     Repeater {
         model: [

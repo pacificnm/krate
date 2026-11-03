@@ -1,6 +1,7 @@
 #include "ManualReader.h"
 
 #include <QFile>
+#include <QRegularExpression>
 #include <QUrl>
 
 QList<ManualReader::Section> ManualReader::split(const QString &markdown)
@@ -28,6 +29,31 @@ QList<ManualReader::Section> ManualReader::split(const QString &markdown)
     return result;
 }
 
+QList<ManualReader::Block> ManualReader::blocks(const QString &text)
+{
+    static const QRegularExpression picture(QStringLiteral(R"(^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$)"));
+    QList<Block> result;
+    QString pending;
+    bool inCode = false;
+    const auto flush = [&] {
+        if (!pending.trimmed().isEmpty())
+            result << Block{pending.trimmed(), {}, {}};
+        pending.clear();
+    };
+    for (const QString &line : text.split(u'\n')) {
+        if (line.startsWith(QStringLiteral("```")))
+            inCode = !inCode;
+        if (const auto m = picture.match(line); !inCode && m.hasMatch()) {
+            flush();
+            result << Block{{}, m.captured(2), m.captured(1)};
+            continue;
+        }
+        pending += line + u'\n';
+    }
+    flush();
+    return result;
+}
+
 QVariantList ManualReader::sections(const QString &source) const
 {
     QString path = source;
@@ -39,8 +65,18 @@ QVariantList ManualReader::sections(const QString &source) const
     QVariantList result;
     if (!file.open(QIODevice::ReadOnly))
         return result;
-    for (const Section &s : split(QString::fromUtf8(file.readAll())))
-        result << QVariantMap{{QStringLiteral("title"), s.title}, {QStringLiteral("text"), s.text}};
+    // Pictures are found next to the manual.
+    const QUrl base = source.startsWith(u"qrc:") || source.startsWith(u"file:") ? QUrl(source)
+                      : source.startsWith(u':')                                 ? QUrl(QStringLiteral("qrc") + source)
+                                                                                : QUrl::fromLocalFile(source);
+    for (const Section &s : split(QString::fromUtf8(file.readAll()))) {
+        QVariantList shown;
+        for (const Block &b : blocks(s.text))
+            shown << (b.image.isEmpty() ? QVariantMap{{QStringLiteral("text"), b.text}}
+                                        : QVariantMap{{QStringLiteral("image"), base.resolved(QUrl(b.image)).toString()},
+                                                      {QStringLiteral("caption"), b.caption}});
+        result << QVariantMap{{QStringLiteral("title"), s.title}, {QStringLiteral("text"), s.text}, {QStringLiteral("blocks"), shown}};
+    }
     return result;
 }
 

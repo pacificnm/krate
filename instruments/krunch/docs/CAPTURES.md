@@ -1,10 +1,10 @@
 # Krunch: amp captures
 
-A channel can play a **capture** of a real amp instead of Krunch's own preamp and power amp. A capture is a small neural network trained on recordings of that amp: you play through it and it answers as that amp did, distortion and feel included. Krunch plays the open **Neural Amp Modeler** format (`.nam` files); thousands of free ones are shared by players.
+A channel can play a **capture** of a real amp instead of Krunch's own preamp and power amp. A capture is a small neural network trained on recordings of that amp: you play through it and it answers as that amp did, distortion and feel included. Krunch plays the open `.nam` capture format; thousands of free ones are shared by players on community capture sites.
 
 ## Using one
 
-1. Get `.nam` files of amps you like (TONE3000 is the big free library). **Amp-only** captures (the amp through a load box, no cabinet) take your own cabinet IRs after them; a **full-rig** capture (a miked cabinet in it: "mic", "cab", "full rig" in the name) wants the channel's **CABINET** switched **OFF**, or you hear two cabinets (muffled, boxy). Most captures are made at 48 kHz, which is what the player runs at.
+1. Get `.nam` files of amps you like (community capture sites share thousands for free). **Amp-only** captures (the amp through a load box, no cabinet) take your own cabinet IRs after them; a **full-rig** capture (a miked cabinet in it: "mic", "cab", "full rig" in the name) wants the channel's **CABINET** switched **OFF**, or you hear two cabinets (muffled, boxy). Most captures are made at 48 kHz, which is what the player runs at.
 2. Put them in Krunch's captures folder, `~/.local/share/krunch/captures`. Use **Krate Remote** (**Files ▸ Places ▸ Amp captures (Krunch)**, upload or drop them), or **IMPORT** in the picker, or drop them on it. Files that land in the folder show up by themselves.
 3. On the channel, **AMP** (top right of the channel) opens the list: pick a capture, or **Krunch's own amp (its tubes)**. A click plays it at once (it loads in the background), so you can play and compare.
 
@@ -25,4 +25,4 @@ Captures are played at a common loudness (−18 dB, from the level the file reco
 - The engine: [Neural Amp Modeler's core](https://github.com/sdatkinson/NeuralAmpModelerCore) v0.6.0 (MIT) and Eigen (MPL 2.0), fetched when Krate is built (pinned, checked by SHA-256; `third_party/nam/CMakeLists.txt`), single precision. Their licences are installed with the package (`/usr/share/doc/krate/third-party`).
 - Cost: a standard WaveNet capture about 10 % of one core at 48 kHz; lighter architectures 2 %.
 
-Tests: `tst_krunch` capturePlaysInPlaceOfTheAmp (NAM's own example model: on its channel only, bounded, faster than real time; a file that isn't a model refused with a reason).
+Tests: `tst_krunch` capturePlaysInPlaceOfTheAmp (the capture library's own example model: on its channel only, bounded, faster than real time; a file that isn't a model refused with a reason).

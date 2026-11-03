@@ -24,6 +24,7 @@ target_compile_options(korrode_dsp PRIVATE ${KORRODE_WARNINGS})
 
 # --- korrode_ui: QML module "Korrode": controllers and the panel
 qt_add_library(korrode_ui STATIC)
+file(GLOB korrode_manual_images RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS docs/images/*.png) # the manual's pictures
 qt_add_qml_module(korrode_ui
     URI Korrode
     VERSION 1.0
@@ -45,6 +46,7 @@ qt_add_qml_module(korrode_ui
         qml/WaveSwitch.qml
     RESOURCES
         docs/MANUAL.md
+        ${korrode_manual_images}
 )
 # Generated type registration includes headers by bare name.
 target_include_directories(korrode_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE app)
