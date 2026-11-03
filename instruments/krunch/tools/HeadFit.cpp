@@ -165,9 +165,17 @@ Material buildMaterial(const std::vector<std::vector<float>> &takes, int windows
     for (std::size_t t = 0; t < takes.size(); ++t) {
         const auto &x = takes[t];
         for (float s : x)
-            m.diPeak = std::max(m.diPeak, double(std::fabs(s)));
-        for (std::size_t at = 0; at + total <= x.size(); at += std::size_t(0.25 * kRate))
+            if (std::fabs(s) < kClipped)
+                m.diPeak = std::max(m.diPeak, double(std::fabs(s)));
+        for (std::size_t at = 0; at + total <= x.size(); at += std::size_t(0.25 * kRate)) {
+            // Not where the interface clipped: a squared-off guitar isn't what the guitar sends.
+            if (std::any_of(x.begin() + std::ptrdiff_t(at), x.begin() + std::ptrdiff_t(at + total),
+                            [](float s) { return std::fabs(s) >= kClipped; })) {
+                ++m.clippedSpots;
+                continue;
+            }
             spots.push_back({t, at, rms(x.data() + at + std::size_t(m.leadIn), length)});
+        }
     }
     const double loudest = spots.empty() ? 0.0 : std::max_element(spots.begin(), spots.end(), [](auto &a, auto &b) {
                                                      return a.level < b.level;

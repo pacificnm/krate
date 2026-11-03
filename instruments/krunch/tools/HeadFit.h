@@ -19,6 +19,7 @@ class CaptureModel;
 namespace krunch::fit {
 
 inline constexpr double kRate = 48000.0;
+inline constexpr float kClipped = 0.98f; // a take this loud clipped at the interface (-0.2 dBFS)
 
 // What both amps play: windows of the dry takes, from the softest playing to
 // the hardest, and steady tones at three levels (for the harmonics). Each
@@ -32,7 +33,8 @@ struct Material
 {
     std::vector<Window> windows;
     int leadIn = 0; // frames
-    double diPeak = 0.0;
+    double diPeak = 0.0;      // (of what's used: not counting clipped places)
+    int clippedSpots = 0;     // places left out because the take clipped there
 };
 Material buildMaterial(const std::vector<std::vector<float>> &takes, int windows = 10, double seconds = 0.75,
                        double leadInSeconds = 0.3);

@@ -171,6 +171,10 @@ int main(int argc, char **argv)
     const fit::Material material = fit::buildMaterial(di);
     std::printf("material: %zu windows from %zu take(s), DI peak %.1f dBFS; %d threads\n", material.windows.size(), di.size(),
                 20.0 * std::log10(std::max(material.diPeak, 1e-9)), threads);
+    if (material.clippedSpots > 0)
+        std::printf("note: the takes clipped in places (at full scale): %d window place(s) left out. Turn the interface's gain\n"
+                    "      down a little and record again for the hardest playing to count.\n",
+                    material.clippedSpots);
 
     std::unique_ptr<krunch::IrKernel> ir;
     if (!irPath.empty()) {

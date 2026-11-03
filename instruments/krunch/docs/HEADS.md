@@ -38,6 +38,7 @@ A head's name is the capture's file name; rename the `.json` (or its `"name"`) a
 - **Where it starts**: every built-in voice with every preamp tube and every power tube (64 heads) is scored; the closest few (one per voice and preamp tube; `--starts`, 3 by default) are searched from. A search keeps its start's number of stages, its tubes and its tone stack.
 - **The search**: separable CMA-ES over about 35 of the head's insides, each mapped to 0..1 (log scales for ohms and hertz): each stage's cathode resistor, cathode bypass, coupling capacitor and treble roll-off, the dividers into the third and fourth stages, the Gain pot's range, the loss into the second stage, the top cut, the preamp's level into the power amp; the power tubes' headroom, knee, bias, sag and voicing, how hard Master's noon drives them; after them, a low cut, a high cut and a peak (the output transformer and the speaker's pull). Each generation is played in parallel, one head per core.
 - A capture that's nearly silent with the takes (below −60 dBFS) is skipped: not an amp.
+- Where a take clipped at the interface (−0.2 dBFS and up), no window is taken from there, and the tool says how many places it left out: a squared-off guitar isn't what the guitar sends. Record with the interface's gain a little lower (the hardest strums well under the top).
 
 Checked: a built-in voice reshaped at random (an amp none of the built-ins is, 5.8 apart from the nearest) is fitted back to 0.23 apart (0.07 dB tone, 0.04 dB envelope) in 3000 tries (`krunch-fit --target-voice heavy`, the self-test).
 
