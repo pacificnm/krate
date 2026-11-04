@@ -56,7 +56,7 @@ Rectangle {
                 board.pedals.inLoop(i) ? ++loop : ++front
             return [front, loop]
         }
-        text: "PEDALS  ·  guitar → " + counts[0] + " in front → preamp → " + counts[1] + " in the loop → power amp"
+        text: "PEDALS  ·  guitar → " + counts[0] + " in front → amp → " + counts[1] + " in the loop (if the channel's LOOP is on) → cabinet"
         color: "#8F897A"
         font.family: Theme.labelFont
         font.pixelSize: 12

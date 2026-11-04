@@ -6,6 +6,7 @@
 #include <random>
 #include <vector>
 
+#include "dsp/Capture.h"
 #include "dsp/Cabinet.h"
 #include "dsp/Krunch.h"
 #include "dsp/Wav.h"
@@ -301,6 +302,9 @@ private slots:
         auto a = IrKernel::build(wavOf(h), kRate), b = IrKernel::build(wavOf(hb), kRate);
         const auto level = [&](bool withA, bool withB, float mix) {
             Krunch amp;
+            std::string error; // (an amp to play: the capture engine's example model, a fresh one each time)
+            const auto capture = CaptureModel::load(NAM_EXAMPLES "/wavenet_a1_standard.nam", kRate, int(Krunch::kBlock), &error);
+            amp.setCapture(0, capture.get());
             amp.prepare(kRate, 128);
             amp.setParam(channelParam(0, ChannelParam::CabMix), mix);
             if (withA)

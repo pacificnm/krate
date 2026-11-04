@@ -21,8 +21,8 @@ class Krunch;
 // QML type "Captures" (one per instrument, given to its panel): amp captures
 // (docs/CAPTURES.md), the .nam files in Krunch's captures folder
 // (~/.local/share/krunch/captures: put there by hand, by Krate Remote, or
-// IMPORT), and which one each channel plays ("" = Krunch's own preamp and
-// power amp). A capture is loaded off the GUI thread and handed to the audio
+// IMPORT), and which one each channel plays ("" = none: the channel is
+// silent). A capture is loaded off the GUI thread and handed to the audio
 // thread; one replaced is freed once the audio thread has moved on. Choices
 // are kept in captures.json (by file name) and in songs' sounds and presets.
 class CaptureController : public QObject
@@ -50,6 +50,9 @@ public:
     // A channel's capture ("" = none) and whether it's playing yet (loaded).
     Q_INVOKABLE QString capture(int channel) const;
     Q_INVOKABLE bool loading(int channel) const;
+    // Chosen, but its file isn't in the folder (deleted, renamed, a preset from
+    // elsewhere): the channel is silent until it's back or another is chosen.
+    Q_INVOKABLE bool missing(int channel) const;
     Q_INVOKABLE void choose(int channel, const QString &name); // "" = Krunch's own amp
     // .nam files (file:// URLs or paths) copied into the folder.
     Q_INVOKABLE void importUrls(const QVariantList &urls);

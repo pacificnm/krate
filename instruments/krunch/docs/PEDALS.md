@@ -1,6 +1,6 @@
 # Krunch: pedals
 
-The pedalboard sits under the amp. Up to eight pedals, left to right, each placed **FRONT** (in front of the amp, before the gate: `frontPedals()`) or **LOOP** (in the amp's effects loop, between the preamp and the power amp: `loopPedals()`, played while the channel's LOOP is on). Each group plays in the board's order, so the guitar goes: front pedals → preamp → loop pedals → power amp. Drives belong in front; time-based effects (chorus, delay, reverb) in the loop, after the distortion, so the echoes and the room stay clean. A new pedal goes where its kind belongs, and the switch on the pedal moves it.
+The pedalboard sits under the amp. Up to eight pedals, left to right, each placed **FRONT** (in front of the amp, before the gate: `frontPedals()`) or **LOOP** (in the amp's effects loop, between the channel's amp capture and its cabinet: `loopPedals()`, played while the channel's LOOP is on). Each group plays in the board's order, so the guitar goes: front pedals → amp → loop pedals → cabinet. Drives belong in front; time-based effects (chorus, delay, reverb) in the loop, after the distortion, so the echoes and the room stay clean. A new pedal goes where its kind belongs, and the switch on the pedal moves it.
 
 - **Add:** the **+** tile at the end of the board, then the pedal from the menu.
 - **Reorder:** drag a pedal by its body; it drops into the nearest place.
@@ -31,11 +31,11 @@ The classic green mid-boost overdrive, modelled on its circuit in broad strokes 
 
 ## Signature pedals
 
-One pedal for one well-known sound: its whole chain inside (real pedals from this board, their knobs set from the signature pedal's), each part brought in by one knob, 0 taking it out (`dsp/SignaturePedals.cpp`).
+One pedal for one well-known sound: its whole chain inside (real pedals from this board, their knobs set from the signature pedal's), each part brought in by one knob, 0 taking it out (`dsp/SignaturePedals.cpp`). There is one, Prism; the amp itself always comes from the channel's capture.
 
 ### Prism
 
-The early-70s spacey, singing lead and clean sound. The rig behind it: a single-coil guitar into very loud, very clean amps, a silicon round fuzz for the solos, a photocell vibe for the slow swirls, a multi-head drum echo and plenty of reverb. Prism is that chain, in that order: Round Fuzz (silicon) → Vibe (chorus) → Drum Echo → Reverb, then a tilt and the level. Use it on a clean channel with headroom (Clean voice, Master up); start in FRONT.
+The early-70s spacey, singing lead and clean sound. The rig behind it: a single-coil guitar into very loud, very clean amps, a silicon round fuzz for the solos, a photocell vibe for the slow swirls, a multi-head drum echo and plenty of reverb. Prism is that chain, in that order: Round Fuzz (silicon) → Vibe (chorus) → Drum Echo → Reverb, then a tilt and the level. Use it on a channel with a clean capture with lots of headroom; start in FRONT.
 
 | Knob | What it does | Default |
 | --- | --- | --- |
@@ -48,71 +48,6 @@ The early-70s spacey, singing lead and clean sound. The rig behind it: a single-
 | `level` | −12 … +12 dB | 0 dB |
 
 With every part at 0, Tone centred and Level at 0 dB it passes the guitar untouched.
-
-### Madman
-
-The early-80s neoclassical metal lead and rhythm sound, made for the **clean channel**: the pedal brings the whole rig. That rig was a classic op-amp distortion pedal (op-amp gain, germanium diodes clipping to ground) into a 10-band EQ pushing the mids and trimming the lows, slamming a cranked, master-less British amp; the leads were double-tracked. Madman is that chain, in that order:
-
-- **The distortion** (GAIN), at 4×: op-amp gain 1 + 1 M / (4.7 k + the 1 M pot, audio taper), 2 … ~210, less of it below 720 Hz (the gain leg's capacitor); the op-amp's own ceiling; germanium diodes to ground (a soft knee at about ±0.35); the output capacitor rolling off above 6 kHz.
-- **The EQ**: lows trimmed (−5 dB below 160 Hz), mids pushed at 1 kHz by MIDS (0 … +12 dB).
-- **The amp**: the pedal's level turned up into Krunch's own British two-stage preamp (the Crunch voice), driven by AMP, its tone stack's BASS and TREBLE (mids up, presence 6).
-- **The doubler** (DOUBLE): two "other takes" 17 and 26 ms late, each drifting a little (0.3 and 0.47 Hz), mixed in and levelled as separate performances, for the double-tracked width.
-- **LEVEL**: at the defaults it comes in about 5 dB over bypass and is saturated (20 dB more pick is under 4 dB louder).
-
-| Knob | Range | Default |
-| --- | --- | --- |
-| `gain` | 0 … 10 (op-amp gain 2 … ~210) | 7.5 |
-| `amp` | 0 … 10 (the preamp's gain 4.5 … 10) | 6.5 |
-| `bass` | 0 … 10 | 4.5 |
-| `mids` | +0 … +12 dB at 1 kHz | +7.2 dB |
-| `treble` | 0 … 10 | 6 |
-| `double` | off … 100 % | 30 % |
-| `level` | −12 … +12 dB | 0 dB |
-
-A black case with white polka dots (PedalInfo's `pattern`: `dots:`, `pyramid:` and `paisley:` are drawn on the board; patterned cases get plates behind the name, and the dots a panel behind the knobs). Set Krunch's channel to the Clean voice with its gain low (the pedal is the drive), pick a 4×12 IR, and start in FRONT; a Delay or Reverb in the LOOP finishes the lead sound.
-
-### Pyramid
-
-The mid-80s British twin-guitar heavy metal sound, made for the **clean channel**: master-volume British heads at a medium crunch (not saturated: the riffs stay articulate and answer the pick), bright and mid-forward with tight lows, two guitars double-tracked, a touch of delay on the leads. Pyramid is that chain:
-
-- **A tightening boost**: the lows out below 110 Hz, the mids up 5 dB at 900 Hz, a little soft clipping (it tightens more than it distorts).
-- **The amp**: Krunch's two-stage British preamp (the Crunch voice) at GAIN, with **BODY**, **MIDS** and **BITE** as its bass, mid and treble (Bite raises the presence too).
-- **TWIN**: the doubler (Madman's), for the two-guitar width.
-- **ECHO**: a Delay pedal inside, about 380 ms, 30 % repeats, darkish, its mix from the knob (0 = off).
-- **LEVEL**: about 4 dB over bypass at the defaults. At its default gain, 20 dB more pick is about 9 dB louder (Madman: saturated, 0 dB).
-
-| Knob | Range | Default |
-| --- | --- | --- |
-| `gain` | 0 … 10 (the preamp's gain 1.5 … 7.5) | 5.5 |
-| `body` | 0 … 10 | 5 |
-| `mids` | 0 … 10 | 6.5 |
-| `bite` | 0 … 10 | 6.5 |
-| `twin` | off … 100 % | 45 % |
-| `echo` | off … 100 % (delay mix 0 … 50 %) | 20 % |
-| `level` | −12 … +12 dB | 0 dB |
-
-A yellow case with a pyramid. Use the Clean voice with its gain low, a 4×12 IR, and start in FRONT.
-
-### Haze
-
-The late-60s psychedelic fuzz sound, made for the **clean channel**: a germanium round fuzz into a cranked British amp, and on the solos the octave-up fuzz, a full-wave rectifier that flips the wave's lower half up so it rings an octave higher (best above the 12th fret, on the neck pickup). Haze is that chain:
-
-- **OCTAVE** (0 = off): the rectified signal (twice the frequency, its offset removed, as loud as the guitar) blended in before the fuzz, at 4×. At full the note itself is gone and the octave rings.
-- **FUZZ**: the Round Fuzz on germanium, from mild (it cleans up: at 0, 20 dB more pick is 8 dB louder) to full (saturated).
-- **AMP**: Krunch's two-stage British preamp (the Crunch voice), cranked, mids up; **TONE** its treble and presence.
-- **ROOM**: a 60s studio room (a short reverb).
-- **LEVEL**: about 3 dB over bypass at the defaults.
-
-| Knob | Range | Default |
-| --- | --- | --- |
-| `octave` | off … 10 | off |
-| `fuzz` | 0 … 10 | 7 |
-| `amp` | 0 … 10 | 6 |
-| `tone` | 0 … 10 | 5.5 |
-| `room` | off … 10 | 3.5 |
-| `level` | −12 … +12 dB | 0 dB |
-
-A purple case with gold paisleys. Use the Clean voice with its gain low and start in FRONT; roll the guitar's volume back and it cleans up, as the original did.
 
 ## Vibe
 
@@ -247,4 +182,4 @@ Two amps set apart (`dsp/DualHead.cpp`). The amp's sound after its cabinets play
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (Haze: the octave in place of the note, cleaning up at low fuzz and saturated at high, the room's tail, bounded; Pyramid: a dynamic crunch, Gain adding drive, Bite brightening, the echo on time, bounded; Madman: the distortion's gain range, saturated at its defaults, Gain adding distortion, the mid push, the doubler adding takes at an even level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (the board's 15 types; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

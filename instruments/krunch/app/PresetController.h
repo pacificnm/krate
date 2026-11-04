@@ -13,8 +13,8 @@ class QQmlEngine;
 class QJSEngine;
 
 // QML type "Presets" (one per instrument, given to its panel): Krunch's presets (docs/PRESETS.md). A preset is
-// the whole amp: every knob of all four channels and the power amp, each
-// channel's IRs, the pedalboard (pedals, order, places, footswitches, knobs):
+// the whole rig: every knob of all four channels, each channel's amp capture
+// and IRs, the pedalboard (pedals, order, places, footswitches, knobs):
 // the instance's saveSound(), the same snapshot songs keep. Kept in
 // presets.json; the preset last loaded or saved is remembered.
 class PresetController : public QObject

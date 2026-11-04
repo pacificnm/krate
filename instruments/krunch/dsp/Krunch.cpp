@@ -9,15 +9,14 @@ namespace krunch {
 namespace units {
 int input(float v) { return v >= 0.5f ? 1 : 0; }
 int channel(float v) { return std::clamp(int(std::lround(double(v) * (kChannels - 1))), 0, kChannels - 1); }
-Voice voice(float v) { return Voice(std::clamp(int(std::lround(double(v) * (int(Voice::Count) - 1))), 0, int(Voice::Count) - 1)); }
-PreTube preTube(float v)
-{
-    return PreTube(std::clamp(int(std::lround(double(v) * (int(PreTube::Count) - 1))), 0, int(PreTube::Count) - 1));
-}
-PowerTube powerTube(float v)
-{
-    return PowerTube(std::clamp(int(std::lround(double(v) * (int(PowerTube::Count) - 1))), 0, int(PowerTube::Count) - 1));
-}
+namespace {
+double around(float v, double range) { return (std::clamp(double(v), 0.0, 1.0) - 0.5) * 2.0 * range; }
+} // namespace
+double gainDb(float v) { return around(v, 12.0); }
+double bassDb(float v) { return around(v, 12.0); }
+double midDb(float v) { return around(v, 10.0); }
+double trebleDb(float v) { return around(v, 12.0); }
+double presenceDb(float v) { return around(v, 8.0); }
 double levelDb(float v) { return kLevelMinDb + double(v) * (kLevelMaxDb - kLevelMinDb); }
 double levelGain(float v) { return v <= 0.0f ? 0.0 : std::pow(10.0, levelDb(v) / 20.0); }
 double volumeDb(float v) { return -40.0 + 46.0 * double(v); }
@@ -33,23 +32,11 @@ std::string input(float v) { return std::format("In {}", units::input(v) + 1); }
 std::string channel(float v) { return std::format("Channel {}", units::channel(v) + 1); }
 std::string dial(float v) { return std::format("{:.1f}", double(v) * 10.0); }
 std::string level(float v) { return v <= 0.0f ? "-inf dB" : db(units::levelDb(v)); }
-std::string preTube(float v)
-{
-    static const char *const kNames[] = {"High gain", "Smooth", "Medium", "Low gain"};
-    return kNames[int(units::preTube(v))];
-}
-
-std::string powerTube(float v)
-{
-    static const char *const kNames[] = {"British pentode", "American beam", "Small pentode", "Big beam"};
-    return kNames[int(units::powerTube(v))];
-}
-
-std::string voice(float v)
-{
-    static constexpr const char *kNames[] = {"Clean", "Crunch", "Heavy", "Lead"};
-    return kNames[int(units::voice(v))];
-}
+std::string gain(float v) { return db(units::gainDb(v)); }
+std::string bass(float v) { return db(units::bassDb(v)); }
+std::string mid(float v) { return db(units::midDb(v)); }
+std::string treble(float v) { return db(units::trebleDb(v)); }
+std::string presence(float v) { return db(units::presenceDb(v)); }
 std::string volume(float v) { return v <= 0.0f ? "-inf dB" : db(units::volumeDb(v)); }
 std::string gate(float v) { return v <= 0.0f ? "Off" : std::format("{:.0f} dB", units::gateDb(v)); }
 std::string onOff(float v) { return v >= 0.5f ? "On" : "Off"; }
@@ -71,8 +58,6 @@ void holdPeak(std::atomic<float> &held, float peak) noexcept
 Krunch::Krunch()
 {
     m_volume.fill(-1.0f);
-    for (int t = 0; t < int(PreTube::Count); ++t) // the triode tables, built here: not on the audio thread
-        TriodeCurve::get(PreTube(t));
 }
 
 void Krunch::prepare(double sampleRate, std::uint32_t) noexcept
@@ -81,9 +66,6 @@ void Krunch::prepare(double sampleRate, std::uint32_t) noexcept
     m_front.prepare(sampleRate);
     m_loop.prepare(sampleRate);
     m_gate.prepare(sampleRate);
-    for (Preamp &p : m_preamps)
-        p.prepare(sampleRate);
-    m_powerAmp.prepare(sampleRate);
     m_dualHead.prepare(sampleRate);
     m_speaker.prepare(sampleRate);
     m_cabinet.prepare();
@@ -130,20 +112,6 @@ void Krunch::addCabinet(int channel, const float *weight, std::uint32_t frames) 
     m_slotPans[std::size_t(slotB)] = space;
 }
 
-Preamp::Settings Krunch::preampSettings(int channel) const noexcept
-{
-    Preamp::Settings s;
-    s.voice = units::voice(channelValue(channel, ChannelParam::Voice));
-    s.gain = channelValue(channel, ChannelParam::Gain);
-    s.bass = channelValue(channel, ChannelParam::Bass);
-    s.mid = channelValue(channel, ChannelParam::Mid);
-    s.treble = channelValue(channel, ChannelParam::Treble);
-    s.presence = channelValue(channel, ChannelParam::Presence);
-    s.tube = units::preTube(channelValue(channel, ChannelParam::Tube));
-    s.head = head(channel);
-    return s;
-}
-
 bool Krunch::playsCapture(int channel) const noexcept
 {
     const CaptureModel *model = m_captures[std::size_t(channel)].load(std::memory_order_acquire);
@@ -154,30 +122,27 @@ void Krunch::runChannel(int channel, float *out, std::uint32_t frames) noexcept
 {
     std::copy_n(m_in.data(), frames, out);
     CaptureModel *capture = m_captures[std::size_t(channel)].load(std::memory_order_acquire);
-    if (capture && capture->sampleRate() == m_sampleRate) {
-        // The capture: GAIN drives it (-12 .. +12 dB, noon as captured), then the EQ.
-        const float drive = float(std::pow(10.0, (std::clamp(double(channelValue(channel, ChannelParam::Gain)), 0.0, 1.0) - 0.5) * 24.0 / 20.0));
-        for (std::uint32_t n = 0; n < frames; ++n)
-            out[n] *= drive;
-        capture->process(out, frames);
-        CaptureEq &eq = m_captureEq[std::size_t(channel)];
-        const std::array<float, 4> knobs{channelValue(channel, ChannelParam::Bass), channelValue(channel, ChannelParam::Mid),
-                                         channelValue(channel, ChannelParam::Treble), channelValue(channel, ChannelParam::Presence)};
-        if (knobs != eq.knobs) {
-            eq.knobs = knobs;
-            const auto db = [](float v, double range) { return (std::clamp(double(v), 0.0, 1.0) - 0.5) * 2.0 * range; };
-            eq.bass.setLowShelf(m_sampleRate, 120.0, db(knobs[0], 12.0));
-            eq.mid.setPeak(m_sampleRate, 700.0, 0.7, db(knobs[1], 10.0));
-            eq.treble.setHighShelf(m_sampleRate, 2500.0, db(knobs[2], 12.0));
-            eq.presence.setHighShelf(m_sampleRate, 5000.0, db(knobs[3], 8.0));
-        }
-        for (std::uint32_t n = 0; n < frames; ++n)
-            out[n] = eq.presence.process(eq.treble.process(eq.mid.process(eq.bass.process(out[n]))));
-    } else {
-        Preamp &preamp = m_preamps[std::size_t(channel)];
-        preamp.set(preampSettings(channel));
-        preamp.process(out, frames);
+    if (!capture || capture->sampleRate() != m_sampleRate) { // no amp: silence
+        std::fill_n(out, frames, 0.0f);
+        return;
     }
+    // The capture: GAIN drives it (noon as captured), then the EQ.
+    const float drive = float(std::pow(10.0, units::gainDb(channelValue(channel, ChannelParam::Gain)) / 20.0));
+    for (std::uint32_t n = 0; n < frames; ++n)
+        out[n] *= drive;
+    capture->process(out, frames);
+    CaptureEq &eq = m_captureEq[std::size_t(channel)];
+    const std::array<float, 4> knobs{channelValue(channel, ChannelParam::Bass), channelValue(channel, ChannelParam::Mid),
+                                     channelValue(channel, ChannelParam::Treble), channelValue(channel, ChannelParam::Presence)};
+    if (knobs != eq.knobs) {
+        eq.knobs = knobs;
+        eq.bass.setLowShelf(m_sampleRate, 120.0, units::bassDb(knobs[0]));
+        eq.mid.setPeak(m_sampleRate, 700.0, 0.7, units::midDb(knobs[1]));
+        eq.treble.setHighShelf(m_sampleRate, 2500.0, units::trebleDb(knobs[2]));
+        eq.presence.setHighShelf(m_sampleRate, 5000.0, units::presenceDb(knobs[3]));
+    }
+    for (std::uint32_t n = 0; n < frames; ++n)
+        out[n] = eq.presence.process(eq.treble.process(eq.mid.process(eq.bass.process(out[n]))));
 
     // Volume, ramped across the block.
     const float target = float(units::volumeGain(channelValue(channel, ChannelParam::Volume)));
@@ -222,7 +187,6 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
             m_fade = 0.0;
         }
         m_active = channel;
-        m_preamps[std::size_t(channel)].reset();
     }
 
     m_front.process(m_in.data(), frames);
@@ -248,22 +212,6 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
     if (channelValue(m_active, ChannelParam::Loop) >= 0.5f)
         m_loop.process(m_a.data(), frames);
 
-    m_powerAmp.set(m_params.get(int(ParamId::Master)), m_params.get(int(ParamId::Sag)),
-                   m_params.get(int(ParamId::Resonance)), units::powerTube(m_params.get(int(ParamId::PowerTube))),
-                   head(m_active));
-    // A capture has its own power amp: Krunch's fades out of the path while one plays (and back in).
-    const double powerTarget = playsCapture(m_active) ? 0.0 : 1.0;
-    if (powerTarget == 1.0 && m_powerMix == 1.0) {
-        m_powerAmp.process(m_a.data(), frames);
-    } else {
-        std::copy_n(m_a.data(), frames, m_preAmp.data());
-        m_powerAmp.process(m_a.data(), frames);
-        for (std::uint32_t n = 0; n < frames; ++n) {
-            m_powerMix += std::clamp(powerTarget - m_powerMix, -m_fadeStep, m_fadeStep);
-            m_a[n] = float(m_powerMix * double(m_a[n]) + (1.0 - m_powerMix) * double(m_preAmp[n]));
-        }
-    }
-
     // The cabinets: the playing channel's (and the previous one's while it fades).
     std::fill_n(left, frames, 0.0f);
     std::fill_n(right, frames, 0.0f);
@@ -280,7 +228,7 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
         right[n] += y;
     }
     // The cabinet off: the amp's output as it is (at the speaker's level, so switching doesn't jump much).
-    constexpr float kDirectGain = 1.0f; // (measured: within 1.5 dB of a cabinet IR, through a capture or the tubes)
+    constexpr float kDirectGain = 1.0f; // (measured: within 1.5 dB of a cabinet IR, through a capture)
     for (std::uint32_t n = 0; n < frames; ++n) {
         const float y = m_a[n] * m_directWeight[n] * kDirectGain;
         left[n] += y;
@@ -300,9 +248,8 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
                 }
     m_dualHead.process(dual, left, right, frames);
 
-    // Level (ramped). The trim keeps a cranked master (the output stage at full
-    // swing, plus the speaker's peaks) under full scale.
-    constexpr double kOutputTrimDb = -0.5; // (-4 before the tube stages: they swing less)
+    // Level (ramped), a little under unity (the speaker's peaks).
+    constexpr double kOutputTrimDb = -0.5;
     const float target = float(units::levelGain(m_params.get(int(ParamId::Level))) * std::pow(10.0, kOutputTrimDb / 20.0));
     if (m_level < 0.0f)
         m_level = target;

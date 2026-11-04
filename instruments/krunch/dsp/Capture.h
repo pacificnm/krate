@@ -12,8 +12,7 @@ class DSP;
 namespace krunch {
 
 // An amp capture (docs/CAPTURES.md): a capture model (a .nam
-// file) of a real amp, played in place of Krunch's own preamp and power
-// amp. load() parses and builds it and readies it for a rate and block size
+// file) of a real amp: what a Krunch channel plays. load() parses and builds it and readies it for a rate and block size
 // (it allocates: never on the audio thread); process() is for the audio thread.
 class CaptureModel
 {

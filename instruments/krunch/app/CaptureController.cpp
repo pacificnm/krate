@@ -72,6 +72,12 @@ bool CaptureController::loading(int channel) const
     return channel >= 0 && channel < kChannels && m_loading[std::size_t(channel)].model.valid();
 }
 
+bool CaptureController::missing(int channel) const
+{
+    const QString name = capture(channel);
+    return !name.isEmpty() && !m_names.contains(name);
+}
+
 void CaptureController::choose(int channel, const QString &name)
 {
     if (channel < 0 || channel >= kChannels || name == m_chosen[std::size_t(channel)])

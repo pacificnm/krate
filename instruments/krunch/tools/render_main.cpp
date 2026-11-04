@@ -1,7 +1,7 @@
 // krunch-render: play a guitar DI through Krunch offline, one WAV per channel.
 // The DI is a WAV file (--in; its first channel) or a synthetic riff; --ir and
 // --ir-b load cabinet IRs (A and B) into every channel; --capture plays an amp
-// capture (.nam) on every channel in place of the preamp and power amp.
+// capture (.nam) on every channel (without one, Krunch is silent).
 //
 //   krunch-render [--in di.wav] [--ir a.wav] [--ir-b b.wav] [--capture amp.nam] [--out prefix] [--channel 1..4]
 //                 [--set key=value]... [--bench]
@@ -151,8 +151,7 @@ int main(int argc, char **argv)
         }
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
         const double rms = std::sqrt(sum / double(di.size()));
-        std::printf("channel %d (%s): peak %.1f dBFS, RMS %.1f dBFS", channel,
-                    krunch::format::voice(amp.param(krunch::channelParam(channel - 1, krunch::ChannelParam::Voice))).c_str(),
+        std::printf("channel %d (%s): peak %.1f dBFS, RMS %.1f dBFS", channel, capture ? "capture" : "no amp: silent",
                     20.0 * std::log10(std::max(double(peak), 1e-9)), 20.0 * std::log10(std::max(rms, 1e-9)));
         if (bench)
             std::printf(", %.2f %% of real time", 100.0 * seconds / (double(di.size()) / rate));

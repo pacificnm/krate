@@ -30,10 +30,10 @@ std::unique_ptr<CaptureModel> CaptureModel::load(const std::string &path, double
     model->m_expected = model->m_dsp->GetExpectedSampleRate();
     model->m_dsp->Reset(sampleRate, maxFrames); // readies and prewarms it
     model->m_out.assign(std::size_t(maxFrames), 0.0f);
-    // Captures play at a common level, as loud as Krunch's own voices: -8 dB by
-    // the files' measure (measured with a hot bridge pickup at noon: a
-    // capture there sits between the Crunch and Heavy voices; at the -18 dB of
-    // NAM's own player they were about 13 dB quieter than the voices).
+    // Captures play at a common level: -8 dB by the files' measure (with a hot
+    // bridge pickup at noon, a high-gain capture about -23 dBFS RMS; at the
+    // -18 dB other capture players use they were too quiet next to the rack's
+    // instruments).
     if (model->m_dsp->HasLoudness())
         model->m_outputGain = float(std::pow(10.0, (kLoudnessDb - model->m_dsp->GetLoudness()) / 20.0));
     return model;

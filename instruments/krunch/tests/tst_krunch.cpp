@@ -3,6 +3,7 @@
 #include <QTemporaryDir>
 #include <QElapsedTimer>
 
+#include <array>
 #include <cmath>
 #include <memory>
 #include <complex>
@@ -12,14 +13,10 @@
 #include <vector>
 
 #include "SyntheticGuitar.h"
-#include "app/HeadFile.h"
 #include "dsp/Gate.h"
 #include "dsp/Krunch.h"
 #include "dsp/Capture.h"
 #include "dsp/DualHead.h"
-#include "dsp/PowerAmp.h"
-#include "dsp/Preamp.h"
-#include "dsp/ToneStack.h"
 #include "dsp/Wav.h"
 
 using namespace krunch;
@@ -103,6 +100,30 @@ std::vector<float> burst(std::size_t n)
 
 void setChannel(Krunch &amp, int channel) { amp.setParam(int(ParamId::Channel), float(channel) / float(kChannels - 1)); }
 
+// An amp capture for the tests (the capture engine's own example model): a
+// fresh one each time (a capture keeps its recent input: one per amp and channel).
+std::unique_ptr<CaptureModel> testCapture()
+{
+    std::string error;
+    auto model = CaptureModel::load(NAM_EXAMPLES "/wavenet_a1_standard.nam", kRate, int(Krunch::kBlock), &error);
+    if (!model)
+        qFatal("the test capture: %s", error.c_str());
+    return model;
+}
+
+// An amp with a capture on every channel (kept with it).
+struct Amped
+{
+    std::array<std::unique_ptr<CaptureModel>, kChannels> captures;
+    explicit Amped(Krunch &amp)
+    {
+        for (int c = 0; c < kChannels; ++c) {
+            captures[std::size_t(c)] = testCapture();
+            amp.setCapture(c, captures[std::size_t(c)].get());
+        }
+    }
+};
+
 // Share of the signal's power away from the harmonics of `hz` (aliasing, noise),
 // by a Hann-windowed DFT of `n` samples from `from`.
 double inharmonicShare(const std::vector<float> &s, double hz, std::size_t from, std::size_t n)
@@ -120,24 +141,6 @@ double inharmonicShare(const std::vector<float> &s, double hz, std::size_t from,
         (std::fabs(f - nearest) <= 3.0 * binHz && nearest > 0.0 ? harmonic : other) += std::norm(sum);
     }
     return other / (harmonic + other);
-}
-
-// Total harmonic distortion of a sine through a preamp (harmonics 2..10 against the fundamental).
-double thd(Preamp &preamp, double hz = 220.0, float amplitude = 0.2f)
-{
-    auto s = sine(9600, hz, amplitude);
-    preamp.process(s.data(), std::uint32_t(s.size()));
-    const std::size_t from = 4800, n = 4800;
-    const auto power = [&](double f) {
-        std::complex<double> sum = 0.0;
-        for (std::size_t i = 0; i < n; ++i)
-            sum += double(s[from + i]) * std::polar(1.0, -2.0 * std::numbers::pi * f * double(i) / kRate);
-        return std::norm(sum);
-    };
-    double harmonics = 0.0;
-    for (int h = 2; h <= 10; ++h)
-        harmonics += power(hz * h);
-    return std::sqrt(harmonics / power(hz));
 }
 
 // A pedal for the chains: multiplies by its one knob (0..1 -> 0..2).
@@ -171,7 +174,7 @@ private slots:
 
     void parameterTable()
     {
-        QCOMPARE(int(kParams.size()), 7 + 4 * 13);
+        QCOMPARE(int(kParams.size()), 3 + 4 * 11);
         QVERIFY(kParams.size() <= 64); // the "changed by audio" mask
         std::set<std::string_view> keys;
         for (const auto &p : kParams) {
@@ -180,18 +183,22 @@ private slots:
         }
         QCOMPARE(kParams[std::size_t(channelParam(2, ChannelParam::Gain))].key, std::string_view("ch3_gain"));
         QCOMPARE(kParams[std::size_t(channelParam(0, ChannelParam::Loop))].key, std::string_view("ch1_loop"));
-        QCOMPARE(kParams[std::size_t(channelParam(3, ChannelParam::Tube))].key, std::string_view("ch4_tube"));
-        QCOMPARE(kParams[std::size_t(ParamId::PowerTube)].key, std::string_view("power_tube"));
-        // The four channels start clean, crunch, heavy, lead.
+        QCOMPARE(kParams[std::size_t(channelParam(3, ChannelParam::Cabinet))].key, std::string_view("ch4_cabinet"));
+        QCOMPARE(kParams[std::size_t(ParamId::Level)].key, std::string_view("level"));
+        // Every channel starts with its capture as captured: GAIN and the EQ at noon.
         for (int c = 0; c < kChannels; ++c)
-            QCOMPARE(int(units::voice(kParams[std::size_t(channelParam(c, ChannelParam::Voice))].defaultValue)), c);
+            for (ChannelParam p : {ChannelParam::Gain, ChannelParam::Bass, ChannelParam::Mid, ChannelParam::Treble, ChannelParam::Presence})
+                QCOMPARE(kParams[std::size_t(channelParam(c, p))].defaultValue, 0.5f);
     }
 
     void displayText()
     {
         QCOMPARE(format::input(1.0f), std::string("In 2"));
         QCOMPARE(format::channel(1.0f), std::string("Channel 4"));
-        QCOMPARE(format::voice(2.0f / 3.0f), std::string("Heavy"));
+        QCOMPARE(format::gain(0.5f), std::string("+0.0 dB"));
+        QCOMPARE(format::gain(1.0f), std::string("+12.0 dB"));
+        QCOMPARE(format::mid(0.0f), std::string("-10.0 dB"));
+        QCOMPARE(format::presence(1.0f), std::string("+8.0 dB"));
         QCOMPARE(format::dial(0.65f), std::string("6.5"));
         QCOMPARE(format::level(60.0f / 72.0f), std::string("+0.0 dB"));
         QCOMPARE(format::level(0.0f), std::string("-inf dB"));
@@ -200,228 +207,7 @@ private slots:
         QCOMPARE(format::onOff(1.0f), std::string("On"));
     }
 
-    // --- Tone stack ---------------------------------------------------------------
-
-    void toneStackScoopsTheMids()
-    {
-        ToneStack t;
-        t.set(kRate, ToneStack::kAmerican, 0.5, 0.5, 0.5);
-        QVERIFY(db(t.magnitude(kRate, 700.0)) < db(t.magnitude(kRate, 100.0)) - 6.0);
-        QVERIFY(db(t.magnitude(kRate, 700.0)) < db(t.magnitude(kRate, 5000.0)) - 4.0);
-        for (double f : {30.0, 100.0, 1000.0, 10000.0, 20000.0}) // passive: never gains
-            QVERIFY(t.magnitude(kRate, f) <= 1.0);
-    }
-
-    void toneStackControls()
-    {
-        ToneStack t;
-        const auto at = [&](double bass, double mid, double treble, double f) {
-            t.set(kRate, ToneStack::kBritish, bass, mid, treble);
-            return db(t.magnitude(kRate, f));
-        };
-        QVERIFY(at(1, .5, .5, 60) > at(0, .5, .5, 60) + 6.0);
-        QVERIFY(at(.5, 1, .5, 700) > at(.5, 0, .5, 700) + 6.0);
-        QVERIFY(at(.5, .5, 1, 5000) > at(.5, .5, 0, 5000) + 6.0);
-        // Treble barely moves the lows, bass barely the highs.
-        QVERIFY(std::fabs(at(.5, .5, 1, 60) - at(.5, .5, 0, 60)) < 1.5);
-        QVERIFY(std::fabs(at(1, .5, .5, 8000) - at(0, .5, .5, 8000)) < 1.5);
-    }
-
-    void toneStackIsStable()
-    {
-        ToneStack t;
-        for (double b : {0.0, 1.0})
-            for (double m : {0.0, 1.0})
-                for (double tr : {0.0, 1.0}) {
-                    t.set(kRate, ToneStack::kAmerican, b, m, tr);
-                    t.reset();
-                    float y = t.process(1.0f); // impulse
-                    for (int n = 0; n < 48000; ++n)
-                        y = t.process(0.0f);
-                    QVERIFY(std::isfinite(y) && std::fabs(y) < 1e-6f);
-                }
-    }
-
-    // --- Preamp -------------------------------------------------------------------
-
-    void moreGainMoreDistortion()
-    {
-        Preamp low, high;
-        low.prepare(kRate);
-        high.prepare(kRate);
-        Preamp::Settings s;
-        s.voice = Voice::Crunch;
-        s.gain = 0.1f;
-        low.set(s);
-        s.gain = 0.9f;
-        high.set(s);
-        QVERIFY(thd(high) > 2.0 * thd(low));
-    }
-
-    // Clean, Crunch, Heavy: more distorted each; Lead (smoother, for sustain) well past Crunch.
-    void voicesFromCleanToLead()
-    {
-        std::vector<double> d;
-        for (Voice v : {Voice::Clean, Voice::Crunch, Voice::Heavy, Voice::Lead}) {
-            Preamp p;
-            p.prepare(kRate);
-            Preamp::Settings s;
-            s.voice = v;
-            s.gain = 0.5f;
-            p.set(s);
-            d.push_back(thd(p, 220.0, 0.05f));
-        }
-        QVERIFY2(d[0] < d[1] && d[1] < d[2], qPrintable(QStringLiteral("THD %1 %2 %3").arg(d[0]).arg(d[1]).arg(d[2])));
-        QVERIFY2(d[3] > 1.5 * d[1], qPrintable(QStringLiteral("lead %1, crunch %2").arg(d[3]).arg(d[1])));
-    }
-
-    // The tubes answer the pick: played 12 dB softer, a driven channel is
-    // quieter (Crunch by several dB; the old stages came out within half a
-    // dB) and cleaner.
-    void touchResponse()
-    {
-        for (Voice v : {Voice::Crunch, Voice::Heavy, Voice::Lead}) {
-            Preamp::Settings s;
-            s.voice = v;
-            s.gain = 0.5f;
-            const auto level = [&s](float amplitude) {
-                Preamp p;
-                p.prepare(kRate);
-                p.set(s);
-                auto x = sine(19200, 220.0, amplitude);
-                p.process(x.data(), std::uint32_t(x.size()));
-                return db(rms(x, 9600));
-            };
-            const auto distortion = [&s](float amplitude) {
-                Preamp p;
-                p.prepare(kRate);
-                p.set(s);
-                return thd(p, 220.0, amplitude);
-            };
-            // Crunch quieter by several dB; the high-gain voices hold their level
-            // (as such amps do: they're saturated) without choking, and clean up.
-            const double drop = level(0.2f) - level(0.05f);
-            const double least = v == Voice::Crunch ? 2.5 : -0.5; // (and no choking: never much louder played softer)
-            QVERIFY2(drop > least, qPrintable(QStringLiteral("voice %1: %2 dB quieter for 12 dB softer").arg(int(v)).arg(drop)));
-            QVERIFY2(distortion(0.05f) < distortion(0.2f), qPrintable(QStringLiteral("voice %1: no cleaner played softer").arg(int(v))));
-        }
-    }
-
-    // Each preamp tube changes the sound; a lower-gain tube distorts less.
-    void tubesChangeTheSound()
-    {
-        std::vector<double> d;
-        for (PreTube t : {PreTube::HighGain, PreTube::Smooth, PreTube::Medium, PreTube::LowGain}) {
-            Preamp p;
-            p.prepare(kRate);
-            Preamp::Settings s;
-            s.voice = Voice::Crunch;
-            s.gain = 0.5f;
-            s.tube = t;
-            p.set(s);
-            d.push_back(thd(p, 220.0, 0.05f));
-        }
-        QVERIFY2(d[3] < d[0], qPrintable(QStringLiteral("low gain %1, high gain %2").arg(d[3]).arg(d[0])));
-        for (std::size_t i = 1; i < d.size(); ++i)
-            QVERIFY(std::fabs(d[i] - d[0]) > 0.002);
-    }
-
-    // The resting bias is right whatever the tube and stage: silence in, silence out
-    // (no thump settling at the start).
-    void silenceIsSilentFromTheStart()
-    {
-        for (int v = 0; v < int(Voice::Count); ++v)
-            for (int t = 0; t < int(PreTube::Count); ++t) {
-                Preamp p;
-                p.prepare(kRate);
-                Preamp::Settings s;
-                s.voice = Voice(v);
-                s.tube = PreTube(t);
-                s.gain = 1.0f;
-                p.set(s);
-                std::vector<float> x(4800, 0.0f);
-                p.process(x.data(), std::uint32_t(x.size()));
-                float peak = 0.0f;
-                for (float y : x)
-                    peak = std::max(peak, std::fabs(y));
-                QVERIFY2(peak < 1e-4f, qPrintable(QStringLiteral("voice %1 tube %2: %3").arg(v).arg(t).arg(peak)));
-            }
-    }
-
-    // The power tubes: each clips at its own level.
-    void powerTubesDiffer()
-    {
-        std::vector<double> levels;
-        for (int t = 0; t < int(PowerTube::Count); ++t) {
-            PowerAmp p;
-            p.prepare(kRate);
-            p.set(0.9f, 0.0f, 0.0f, PowerTube(t));
-            auto x = sine(9600, 220.0, 0.5f);
-            p.process(x.data(), std::uint32_t(x.size()));
-            levels.push_back(db(rms(x, 4800)));
-        }
-        // The big beam's headroom is the most, the small pentode's the least.
-        QVERIFY2(levels[int(PowerTube::BigBeam)] > levels[int(PowerTube::SmallPentode)] + 3.0,
-                 qPrintable(QStringLiteral("%1 vs %2 dB").arg(levels[int(PowerTube::BigBeam)]).arg(levels[int(PowerTube::SmallPentode)])));
-    }
-
-    void cleanAtLowGainIsClean()
-    {
-        Preamp p;
-        p.prepare(kRate);
-        Preamp::Settings s;
-        s.voice = Voice::Clean;
-        s.gain = 0.2f;
-        p.set(s);
-        QVERIFY(thd(p, 220.0, 0.05f) < 0.03);
-    }
-
-    // 4x oversampling keeps aliasing low with a high note into the most gain.
-    void littleAliasing()
-    {
-        Preamp p;
-        p.prepare(kRate);
-        Preamp::Settings s;
-        s.voice = Voice::Lead;
-        s.gain = 1.0f;
-        p.set(s);
-        auto x = sine(12000, 1318.5, 0.3f); // the top E
-        p.process(x.data(), std::uint32_t(x.size()));
-        QVERIFY(inharmonicShare(x, 1318.5, 6000, 4096) < 0.01); // under -20 dB
-    }
-
-    // --- Power amp, gate ----------------------------------------------------------
-
-    void sagCompresses()
-    {
-        const auto gainAt = [](float sag, float amplitude) {
-            PowerAmp p;
-            p.prepare(kRate);
-            p.set(0.8f, sag, 0.0f);
-            auto x = sine(9600, 220.0, amplitude);
-            p.process(x.data(), std::uint32_t(x.size()));
-            return rms(x, 4800) / amplitude;
-        };
-        // Dig in harder: the output grows less than the input, more so with sag.
-        const double without = gainAt(0.0f, 0.5f) / gainAt(0.0f, 0.05f);
-        const double with = gainAt(1.0f, 0.5f) / gainAt(1.0f, 0.05f);
-        QVERIFY(without < 1.0);
-        QVERIFY(with < without * 0.9);
-    }
-
-    void masterIsLouder()
-    {
-        double previous = 0.0;
-        for (float master : {0.1f, 0.4f, 0.7f, 1.0f}) {
-            PowerAmp p;
-            p.prepare(kRate);
-            p.set(master, 0.3f, 0.4f);
-            auto x = sine(4800, 220.0, 0.1f);
-            p.process(x.data(), std::uint32_t(x.size()));
-            QVERIFY(rms(x, 2400) > previous);
-            previous = rms(x, 2400);
-        }
-    }
+    // --- The gate -------------------------------------------------------------------
 
     void gateShutsTheNoiseOut()
     {
@@ -452,49 +238,10 @@ private slots:
         QCOMPARE(amp.outputChannels(), 2);
     }
 
-    // The channels peak at a similar level (a clean sound can't match a
-    // compressed one's average without slamming the power amp).
-    void everyChannelPlaysAtASimilarLevel()
-    {
-        const auto di = tools::SyntheticGuitar(kRate).riff();
-        std::vector<double> peaks;
-        for (int c = 0; c < kChannels; ++c) {
-            Krunch amp;
-            amp.prepare(kRate, 128);
-            setChannel(amp, c);
-            const auto out = play(amp, di);
-            QVERIFY(peak(out) < 1.0f);
-            QVERIFY(db(rms(out)) > -34.0);
-            peaks.push_back(db(peak(out)));
-        }
-        const auto [lo, hi] = std::minmax_element(peaks.begin(), peaks.end());
-        QVERIFY2(*hi - *lo < 5.0, qPrintable(QStringLiteral("%1 .. %2 dB").arg(*lo).arg(*hi)));
-    }
-
-    // The clean channel stays clean when you dig in: hot guitar, sag up.
-    void cleanChannelHasHeadroom()
-    {
-        Krunch amp;
-        amp.prepare(kRate, 128);
-        amp.setParam(int(ParamId::Sag), 0.7f);
-        const auto out = play(amp, sine(48000, 196.0, 0.45f)); // a hot pickup through a healthy interface gain
-        const std::size_t from = 24000, n = 12000;
-        const auto power = [&](double f) {
-            std::complex<double> sum = 0.0;
-            for (std::size_t i = 0; i < n; ++i)
-                sum += double(out[from + i]) * std::polar(1.0, -2.0 * std::numbers::pi * f * double(i) / kRate);
-            return std::norm(sum);
-        };
-        double harmonics = 0.0;
-        for (int h = 2; h <= 11; ++h)
-            harmonics += power(196.0 * h);
-        const double thd = std::sqrt(harmonics / power(196.0));
-        QVERIFY2(thd < 0.04, qPrintable(QStringLiteral("THD %1").arg(thd)));
-    }
-
     void inputKnobChoosesTheInput()
     {
         Krunch amp;
+        Amped amped(amp);
         amp.prepare(kRate, 128);
         const auto note = sine(4800, 110.0, 0.2f);
         const std::vector<float> silence(4800, 0.0f);
@@ -504,10 +251,11 @@ private slots:
         krate::AudioBlock block{outputs, 4800};
         block.inputs = inputs;
         amp.process(block);
-        QCOMPARE(peak(left), 0.0f);
+        const float quiet = peak(left); // (a capture hums a little with nothing in)
+        QVERIFY(quiet < 0.002f);
         amp.setParam(int(ParamId::Input), 1.0f);
         amp.process(block);
-        QVERIFY(peak(left) > 0.01f);
+        QVERIFY(peak(left) > 10.0f * quiet);
         QCOMPARE(left, right); // mono, both sides
     }
 
@@ -523,10 +271,13 @@ private slots:
     {
         const auto note = sine(9600, 110.0, 0.2f);
         Krunch amp;
+        Amped amped(amp);
         amp.prepare(kRate, 128);
+        QVERIFY(peak(play(amp, note), 4800) > 1e-3f); // it sounds
         amp.setParam(channelParam(0, ChannelParam::Volume), 0.0f);
         QVERIFY(peak(play(amp, note), 4800) < 1e-6f);
         Krunch amp2;
+        Amped amped2(amp2);
         amp2.prepare(kRate, 128);
         amp2.setParam(int(ParamId::Level), 0.0f);
         QVERIFY(peak(play(amp2, note), 4800) < 1e-6f);
@@ -536,7 +287,9 @@ private slots:
     void channelSwitchDoesNotClick()
     {
         Krunch amp;
+        Amped amped(amp);
         amp.prepare(kRate, 128);
+        amp.setParam(channelParam(2, ChannelParam::Gain), 0.9f); // another sound there
         const auto note = sine(48000, 82.41, 0.2f);
         auto first = play(amp, std::vector<float>(note.begin(), note.begin() + 24000));
         float steady = 0.0f;
@@ -557,6 +310,7 @@ private slots:
         const auto note = sine(9600, 110.0, 0.05f);
         const auto levelWith = [&](float front, float loop, bool loopOn) {
             Krunch amp;
+            Amped amped(amp);
             GainPedal a(front), b(loop);
             PedalList frontList, loopList;
             frontList.count = loopList.count = 1;
@@ -566,12 +320,11 @@ private slots:
             amp.loopPedals().set(&loopList);
             amp.prepare(kRate, 128);
             amp.setParam(channelParam(0, ChannelParam::Loop), loopOn ? 1.0f : 0.0f);
-            amp.setParam(channelParam(0, ChannelParam::Gain), 0.1f); // clean: levels pass through
-            amp.setParam(int(ParamId::Master), 0.2f);
+            amp.setParam(channelParam(0, ChannelParam::Gain), 0.1f); // driven gently: levels pass through
             return rms(play(amp, note), 4800);
         };
         const double base = levelWith(1.0f, 1.0f, true);
-        QVERIFY(levelWith(0.5f, 1.0f, true) < base * 0.6);  // front pedals: always in
+        QVERIFY(levelWith(0.0f, 1.0f, true) < base * 0.1);  // front pedals: always in (into the capture)
         QVERIFY(levelWith(1.0f, 0.5f, true) < base * 0.6);  // loop pedals: with the loop on
         QVERIFY(std::fabs(levelWith(1.0f, 0.5f, false) - base) < base * 0.01); // loop off: bypassed
     }
@@ -593,6 +346,7 @@ private slots:
         // The amp with A, B or both loaded, SPACE as given.
         const auto sides = [&](bool withA, bool withB, float space) {
             Krunch amp;
+            Amped amped(amp);
             amp.prepare(kRate, 128);
             if (withA)
                 amp.cabinet().setKernel(Krunch::cabinetSlot(0, false), kernelA.get());
@@ -631,6 +385,7 @@ private slots:
     {
         const auto sides = [](bool pedal, float delay) {
             Krunch amp;
+            Amped amped(amp);
             DualHead dual;
             dual.setKnob(DualHead::Delay, delay);
             PedalList list;
@@ -640,7 +395,6 @@ private slots:
                 amp.frontPedals().set(&list);
             amp.prepare(kRate, 128);
             dual.prepare(kRate);
-            amp.setParam(int(ParamId::Master), 0.2f);
             return playStereo(amp, burst(19200));
         };
         const auto lagOf = [](const std::vector<float> &l, const std::vector<float> &r) {
@@ -665,41 +419,31 @@ private slots:
         QCOMPARE(DualHead::delayMs(0.25f), 10.0);
     }
 
-    // An amp capture (a .nam model) plays in place of the preamp and power
-    // amp: on its channel only, bounded, faster than real time; a file that
-    // isn't a model is refused with a reason.
-    void capturePlaysInPlaceOfTheAmp()
+    // A channel plays its amp capture (a .nam model): bounded, faster than
+    // real time; a channel without one is silent; a file that isn't a model
+    // is refused with a reason.
+    void capturesPlayOnTheirChannels()
     {
-        std::string error;
-        const auto model = CaptureModel::load(NAM_EXAMPLES "/wavenet_a1_standard.nam", kRate, int(Krunch::kBlock), &error);
-        QVERIFY2(model, error.c_str());
+        const auto model = testCapture();
         QCOMPARE(model->sampleRate(), kRate);
         const auto di = tools::SyntheticGuitar(kRate).riff();
-        const auto run = [&](bool capture, int channel) {
+        const auto run = [&](int channel) {
             Krunch amp;
             amp.prepare(kRate, 128);
-            if (capture)
-                amp.setCapture(2, model.get());
+            amp.setCapture(2, model.get());
             setChannel(amp, channel);
             return play(amp, di);
         };
-        const auto own = run(false, 2);
         QElapsedTimer timer;
         timer.start();
-        const auto captured = run(true, 2);
+        const auto captured = run(2);
         const double seconds = double(timer.nsecsElapsed()) * 1e-9;
         QVERIFY2(seconds < double(di.size()) / kRate, qPrintable(QStringLiteral("%1 s for %2 s").arg(seconds).arg(double(di.size()) / kRate)));
-        double diff = 0.0;
-        for (std::size_t i = 0; i < own.size(); ++i)
-            diff += std::fabs(double(own[i]) - double(captured[i]));
-        QVERIFY(diff > 1.0);                // it plays the capture, not Krunch's preamp
         QVERIFY(peak(captured) < 2.0f);     // bounded
         QVERIFY(db(rms(captured)) > -60.0); // and sounds
         for (float x : captured)
             QVERIFY(std::isfinite(x));
-        // Another channel plays Krunch's own amp as before.
-        const auto other = run(true, 1), otherOwn = run(false, 1);
-        QCOMPARE(other, otherOwn);
+        QCOMPARE(peak(run(1)), 0.0f); // no amp on that channel: silent
 
         QTemporaryDir dir;
         const QString junk = dir.filePath("junk.nam");
@@ -707,80 +451,47 @@ private slots:
         QVERIFY(f.open(QIODevice::WriteOnly));
         f.write("{ not a model");
         f.close();
-        error.clear();
+        std::string error;
         QVERIFY(!CaptureModel::load(junk.toStdString(), kRate, 128, &error));
         QVERIFY(!error.empty());
     }
 
-    // Amp heads (docs/HEADS.md): a channel built as a head. A built-in voice
-    // made explicit (its tubes and power amp spelled out) plays exactly as the
-    // voice does; another head plays differently, on its channel only; none
-    // again: the voice. A head file keeps the design, and brings wild values in.
-    void headsBuildTheChannel()
+    // GAIN drives the capture (noon as captured), the EQ shapes what comes out.
+    void gainAndEqShapeTheCapture()
     {
         const auto di = tools::SyntheticGuitar(kRate).riff();
-        const auto run = [&](const HeadDesign *head, int channel) {
+        const auto run = [&](float gain, float bass, float treble) {
             Krunch amp;
+            Amped amped(amp);
             amp.prepare(kRate, 128);
-            amp.setParam(channelParam(2, ChannelParam::Tube), 1.0f / 3.0f);     // smooth
-            amp.setParam(int(ParamId::PowerTube), 2.0f / 3.0f);                // small pentodes
-            amp.setHead(2, head);
-            setChannel(amp, channel);
+            amp.setParam(channelParam(0, ChannelParam::Gain), gain);
+            amp.setParam(channelParam(0, ChannelParam::Bass), bass);
+            amp.setParam(channelParam(0, ChannelParam::Treble), treble);
+            amp.setParam(channelParam(0, ChannelParam::Cabinet), 0.0f);
             return play(amp, di);
         };
-        const HeadDesign same = explicitHead(Voice::Heavy, PreTube::Smooth, PowerTube::SmallPentode);
-        QCOMPARE(run(&same, 2), run(nullptr, 2)); // (channel 3's voice is Heavy)
-        HeadDesign other = same;
-        other.stage[0].cathodeOhms = 4000.0;
-        other.power.headroom = 0.5;
-        other.peakDb = 6.0;
-        other.lowCutHz = 90.0;
-        other.highCutHz = 5000.0;
-        const auto changed = run(&other, 2), voice = run(nullptr, 2);
-        double diff = 0.0;
-        for (std::size_t i = 0; i < changed.size(); ++i)
-            diff += std::fabs(double(changed[i]) - double(voice[i]));
-        QVERIFY(diff > 1.0);
-        QCOMPARE(run(&other, 1), run(nullptr, 1)); // another channel: its voice
-        for (float x : changed)
-            QVERIFY(std::isfinite(x));
-
-        HeadFile file;
-        file.name = QStringLiteral("Test head");
-        file.design = other;
-        file.design.channelTube = false;
-        file.design.channelPower = false;
-        const auto back = HeadFile::fromJson(file.toJson());
-        QVERIFY(back);
-        QCOMPARE(back->name, file.name);
-        QCOMPARE(run(&back->design, 2), run(&file.design, 2)); // the same amp
-        QJsonObject wild = file.toJson();
-        QJsonObject power = wild.value(u"power").toObject();
-        power[QStringLiteral("headroom")] = -5.0;
-        power[QStringLiteral("high_cut_hz")] = 1e9;
-        wild[QStringLiteral("power")] = power;
-        const auto tamed = HeadFile::fromJson(wild);
-        QVERIFY(tamed);
-        QVERIFY(tamed->design.power.headroom > 0.0);
-        QVERIFY(tamed->design.highCutHz <= 20000.0);
-        QVERIFY(!HeadFile::fromJson(QJsonObject{{QStringLiteral("version"), 1}}));
-
-        // A head gone (replaced, freed) by the time the amp is prepared again
-        // (audio restarting): not read again (it was, from the old pointer).
-        {
-            Krunch amp;
-            amp.prepare(kRate, 128);
-            setChannel(amp, 2);
-            auto gone = std::make_unique<HeadDesign>(other);
-            amp.setHead(2, gone.get());
-            play(amp, di);
-            amp.setHead(2, nullptr);
-            gone.reset(); // (filled with garbage, it would be read by the next prepare)
-            amp.prepare(kRate, 128);
-            const auto after = play(amp, di);
-            for (float x : after)
-                QVERIFY(std::isfinite(x));
-        }
+        const auto noon = run(0.5f, 0.5f, 0.5f);
+        // Driven harder or gentler: not as noon (the test capture is a toy model:
+        // how its level follows isn't an amp's, only that it changes).
+        const auto differs = [&noon](const std::vector<float> &x) {
+            double apart = 0.0;
+            for (std::size_t i = 0; i < x.size(); ++i)
+                apart += std::fabs(double(x[i]) - double(noon[i]));
+            return apart > 1.0;
+        };
+        QVERIFY(differs(run(1.0f, 0.5f, 0.5f)));
+        QVERIFY(differs(run(0.0f, 0.5f, 0.5f)));
+        // The top end: a first difference against the whole.
+        const auto highs = [](const std::vector<float> &x) {
+            double e = 0.0, z = 0.0;
+            for (std::size_t i = 1; i < x.size(); ++i) {
+                e += std::pow(double(x[i]) - double(x[i - 1]), 2.0);
+                z += double(x[i]) * double(x[i]);
+            }
+            return e / z;
+        };
+        QVERIFY(highs(run(0.5f, 0.5f, 1.0f)) > 1.5 * highs(noon)); // TREBLE up
+        QVERIFY(highs(run(0.5f, 1.0f, 0.5f)) < highs(noon));       // BASS up: more lows
     }
 
     // CABINET off: no IR and no speaker, the amp straight out (both sides);
@@ -790,6 +501,7 @@ private slots:
         const auto di = tools::SyntheticGuitar(kRate).riff();
         const auto run = [&](bool cabinet) {
             Krunch amp;
+            Amped amped(amp);
             amp.prepare(kRate, 128);
             setChannel(amp, 1);
             amp.setParam(channelParam(1, ChannelParam::Cabinet), cabinet ? 1.0f : 0.0f);
@@ -816,6 +528,7 @@ private slots:
     void peaksForTheMeters()
     {
         Krunch amp;
+        Amped amped(amp);
         amp.prepare(kRate, 128);
         auto in = std::vector<float>(1024, 0.0f);
         in[100] = -0.8f;
@@ -828,6 +541,7 @@ private slots:
     void noDenormalsOrNaNsFromSilence()
     {
         Krunch amp;
+        Amped amped(amp);
         amp.prepare(kRate, 128);
         setChannel(amp, 3);
         auto in = sine(4800, 110.0, 0.5f);

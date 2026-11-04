@@ -6,16 +6,15 @@ import Krate
 
 // Krunch's panel at design size 1400 x 990: grille cloth with the logo and
 // where the guitar comes from; below, the control plate: input, the four
-// channel buttons, the power amp, level; then the playing channel's controls
-// and its cabinet (IRs A and B from the IR library, and their mix). Under the
-// amp, the pedalboard.
+// channel buttons (each with its amp capture's name), the playing channel's
+// amp, level; then the playing channel's controls and its cabinet (IRs A and
+// B from the IR library, and their mix). Under the amp, the pedalboard.
 Item {
     id: panel
     required property Krunch krunch
     required property Presets presets
     required property Cabinets cabinets
     required property Captures captures
-    required property Heads heads
     required property Pedals pedals
 
     width: 1400
@@ -26,18 +25,13 @@ Item {
     readonly property string inputPort: Host.inputPorts[input] ?? ""
     readonly property bool inputConnected: Host.inputsConnected[input] ?? false
     readonly property color cream: "#E9DFC4"
-    readonly property var voiceNames: ["CLEAN", "CRUNCH", "HEAVY", "LEAD"]
     readonly property var channelColors: ["#5FB0E8", "#F2C230", "#F08A2B", "#E2412E"]
 
     function chKey(name) { return "ch" + (channel + 1) + "_" + name }
     readonly property string captureName: panel.captures.revision >= 0 ? panel.captures.capture(panel.channel) : ""
-    readonly property string headName: panel.heads.revision >= 0 ? panel.heads.head(panel.channel) : ""
-    // The playing channel's amp: a capture, a head (Krunch's tubes built as it), or the VOICE's.
-    readonly property string ampName: captureName !== "" ? captureName.toUpperCase()
-                                    : headName !== "" ? panel.heads.title(headName).toUpperCase()
-                                    : "KRUNCH TUBES"
-    readonly property bool headPowerTubes: panel.heads.revision >= 0 && captureName === "" && panel.heads.ownPowerTubes(panel.channel)
-    function voiceOf(c) { return panel.krunch.revision >= 0 ? Math.round(panel.krunch.value("ch" + (c + 1) + "_voice") * 3) : 0 }
+    function captureOf(c) { return panel.captures.revision >= 0 ? panel.captures.capture(c) : "" }
+    function missingOf(c) { return panel.captures.revision >= 0 && panel.captures.missing(c) }
+    readonly property bool captureMissing: missingOf(panel.channel)
 
     component Meter: Rectangle { // vertical, -60..0 dB
         property real level: 0
@@ -71,47 +65,6 @@ Item {
     }
 
     // A knob with its label above and its value under it, centred on cx.
-    // A choice of four, stepped (the tubes): ◂ its name ▸.
-    component Stepper: Row {
-        id: stepper
-        required property string key
-        required property string label
-        property int count: 4
-        readonly property int at: panel.krunch.revision >= 0 ? Math.round(panel.krunch.value(key) * (count - 1)) : 0
-        function step(delta) { panel.krunch.setValue(key, ((at + delta + count) % count) / (count - 1)) }
-        spacing: 6
-        Label {
-            anchors.verticalCenter: parent.verticalCenter
-            text: stepper.label
-            font.pixelSize: 11
-            color: "#8F897A"
-        }
-        PanelButton {
-            width: 26
-            height: 22
-            dark: true
-            faceText: "◂"
-            text: "Previous " + stepper.label.toLowerCase()
-            onClicked: stepper.step(-1)
-        }
-        Label {
-            width: 130
-            anchors.verticalCenter: parent.verticalCenter
-            horizontalAlignment: Text.AlignHCenter
-            text: panel.krunch.revision >= 0 ? panel.krunch.displayText(stepper.key, panel.krunch.value(stepper.key)).toUpperCase() : ""
-            font.pixelSize: 12
-            color: panel.cream
-        }
-        PanelButton {
-            width: 26
-            height: 22
-            dark: true
-            faceText: "▸"
-            text: "Next " + stepper.label.toLowerCase()
-            onClicked: stepper.step(1)
-        }
-    }
-
     component AmpKnob: Item {
         id: ampKnob
         required property string key
@@ -119,9 +72,7 @@ Item {
         required property real cx
         property real size: 84
         property int detents: 0
-        property bool inUse: true // dimmed when the amp doesn't use it (a head's VOICE, a capture's power amp)
         x: cx - 70
-        opacity: inUse ? 1.0 : 0.35
         width: 140
         height: size + 54
 
@@ -332,7 +283,7 @@ Item {
             GradientStop { position: 1.0; color: "#0F0F10" }
         }
 
-        // --- Top row: input, channels, power amp, level ---------------------------
+        // --- Top row: input, channels, the playing channel's amp, level --------------
 
         AmpKnob { y: 14; cx: 70; key: "input"; label: "INPUT"; size: 64; detents: 2 }
 
@@ -367,11 +318,14 @@ Item {
                         round: false
                     }
                 }
-                Label {
+                Label { // its amp, by name
                     width: 104
-                    text: panel.voiceNames[panel.voiceOf(channelButton.index)]
-                    font.pixelSize: 12
-                    color: panel.channel === channelButton.index ? panel.channelColors[channelButton.index] : "#8F897A"
+                    text: panel.captureOf(channelButton.index) === "" ? "NO AMP"
+                        : (panel.missingOf(channelButton.index) ? "MISSING: " : "") + panel.captureOf(channelButton.index)
+                    elide: Text.ElideRight
+                    font.pixelSize: 11
+                    color: panel.missingOf(channelButton.index) ? "#F2C230"
+                         : panel.channel === channelButton.index ? panel.channelColors[channelButton.index] : "#8F897A"
                 }
             }
         }
@@ -385,7 +339,7 @@ Item {
             Label { y: 40; width: parent.width; text: "GATE\nSHUT"; font.pixelSize: 10 }
         }
 
-        Rectangle { // power amp section
+        Rectangle { // the playing channel's amp: a capture
             x: 760
             y: 8
             width: 410
@@ -393,18 +347,47 @@ Item {
             radius: 6
             color: "transparent"
             border.color: "#3A3B3E"
-            Label { x: 10; y: 152; text: "POWER AMP"; font.pixelSize: 11; color: "#8F897A" }
-            Stepper {
-                x: 112
-                y: 148
-                key: "power_tube"
-                label: "TUBES"
-                visible: !panel.headPowerTubes && panel.captureName === "" // a head's own power tubes, a capture's
+            Label { x: 12; y: 12; text: "AMP · CHANNEL " + (panel.channel + 1); font.pixelSize: 11; color: "#8F897A" }
+            Text {
+                x: 12
+                y: 40
+                width: parent.width - 24
+                text: panel.captureName === "" ? "No amp on this channel" : (panel.captureMissing ? "Missing: " : "") + panel.captureName
+                color: panel.captureMissing ? "#F2C230" : panel.captureName !== "" ? panel.cream : "#8F897A"
+                font.family: Theme.labelFont
+                font.pixelSize: 20
+                font.bold: true
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+            }
+            Text {
+                x: 12
+                y: 98
+                width: parent.width - 24
+                visible: panel.captureName === "" || panel.captureMissing
+                text: panel.captureMissing
+                      ? "Its file isn't in the captures folder any more: the channel is silent. Put it back (Krate Remote: Amp captures) or CHOOSE AMP another."
+                      : "Choose a capture (.nam) for it: CHOOSE AMP, or upload captures with Krate Remote (Amp captures)."
+                color: "#F2C230"
+                font.family: Theme.labelFont
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+            }
+            PanelButton {
+                x: 12
+                y: 132
+                width: parent.width - 24
+                height: 32
+                dark: true
+                faceText: "CHOOSE AMP ▾"
+                text: "Choose this channel's amp capture"
+                onClicked: {
+                    capturePicker.channel = panel.channel
+                    capturePicker.open()
+                }
             }
         }
-        AmpKnob { y: 14; cx: 830; key: "master"; label: "MASTER"; inUse: panel.captureName === "" } // (a capture has its own power amp)
-        AmpKnob { y: 14; cx: 965; key: "sag"; label: "SAG"; inUse: panel.captureName === "" } // (a capture has its own power amp)
-        AmpKnob { y: 14; cx: 1100; key: "resonance"; label: "RESONANCE"; inUse: panel.captureName === "" } // (a capture has its own power amp)
 
         AmpKnob { y: 14; cx: 1240; key: "level"; label: "LEVEL" }
         Label { x: 1296; y: 14; width: 40; text: "OUT" }
@@ -426,43 +409,13 @@ Item {
                 x: 16
                 y: 10
                 text: "CHANNEL " + (panel.channel + 1) + "  ·  "
-                      + (panel.headName !== "" || panel.captureName !== "" ? panel.ampName : panel.voiceNames[panel.voiceOf(panel.channel)])
+                      + (panel.captureName === "" ? "NO AMP" : (panel.captureMissing ? "MISSING: " : "") + panel.captureName.toUpperCase())
                 font.pixelSize: 12
                 color: panel.channelColors[panel.channel]
-            }
-            Stepper {
-                x: 300
-                y: 6
-                key: panel.chKey("tube")
-                label: "PREAMP TUBES"
-                visible: panel.captureName === "" && panel.headName === "" // a capture or a head has its own
-            }
-            Row { // the channel's amp: Krunch's tubes or a capture
-                x: 760
-                y: 4
-                spacing: 8
-                Label {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "AMP"
-                    font.pixelSize: 11
-                    color: "#8F897A"
-                }
-                PanelButton {
-                    width: 300
-                    height: 26
-                    dark: true
-                    faceText: panel.ampName + " ▾"
-                    text: "Choose this channel's amp: Krunch's tubes, an amp head, or a capture"
-                    onClicked: {
-                        capturePicker.channel = panel.channel
-                        capturePicker.open()
-                    }
-                }
             }
         }
         Repeater {
             model: [
-                { name: "voice", label: "VOICE", detents: 4 },
                 { name: "gain", label: "GAIN" },
                 { name: "bass", label: "BASS" },
                 { name: "mid", label: "MID" },
@@ -475,12 +428,11 @@ Item {
                 required property var modelData
                 required property int index
                 y: 226
-                cx: 96 + index * 142
+                cx: 110 + index * 160
                 size: 96
                 key: panel.chKey(modelData.name)
                 label: modelData.label
-                detents: modelData.detents ?? 0
-                inUse: modelData.name !== "voice" || (panel.headName === "" && panel.captureName === "") // a head or a capture is the voice
+
             }
         }
         Column { // the channel's effects loop
@@ -759,7 +711,6 @@ Item {
     CapturePicker {
         id: capturePicker
         captures: panel.captures
-        heads: panel.heads
         x: (panel.width - width) / 2
         y: 40
     }

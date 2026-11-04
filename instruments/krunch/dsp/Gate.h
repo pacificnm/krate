@@ -6,7 +6,7 @@
 
 namespace krunch {
 
-// Noise gate on the guitar before the preamp (where hum and string noise get
+// Noise gate on the guitar before the amp (where hum and string noise get
 // amplified): opens fast above the threshold, holds, then closes smoothly
 // once the level is 6 dB under it.
 class Gate

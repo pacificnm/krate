@@ -6,7 +6,6 @@ Instance::Instance(const krate::InstrumentContext &context)
     : controller(engine, context.configDir + QStringLiteral("/panel.json"), nullptr)
     , cabinets(engine, context.dataDir + QStringLiteral("/irs"), context.configDir + QStringLiteral("/cabinets.json"), nullptr)
     , captures(engine, context.dataDir + QStringLiteral("/captures"), context.configDir + QStringLiteral("/captures.json"), nullptr)
-    , heads(engine, context.dataDir + QStringLiteral("/heads"), context.configDir + QStringLiteral("/heads.json"), nullptr)
     , pedals(engine, context.configDir + QStringLiteral("/pedals.json"), nullptr)
     , presets(context.dataDir + QStringLiteral("/presets.json"), [this] { return saveSound(); },
               [this](const QJsonObject &sound) { loadSound(sound); }, nullptr)
@@ -15,7 +14,6 @@ Instance::Instance(const krate::InstrumentContext &context)
     QObject::connect(&controller, &KrunchController::paramsChanged, &presets, &PresetController::ampChanged);
     QObject::connect(&cabinets, &CabinetController::changed, &presets, &PresetController::ampChanged);
     QObject::connect(&captures, &CaptureController::changed, &presets, &PresetController::ampChanged);
-    QObject::connect(&heads, &HeadController::changed, &presets, &PresetController::ampChanged);
     QObject::connect(&pedals, &PedalController::changed, &presets, &PresetController::ampChanged);
 }
 
@@ -24,7 +22,6 @@ QJsonObject Instance::saveSound()
     QJsonObject sound = krate::InstrumentInstance::saveSound();
     sound.insert(QStringLiteral("cabinets"), cabinets.save());
     sound.insert(QStringLiteral("captures"), captures.save());
-    sound.insert(QStringLiteral("heads"), heads.save());
     sound.insert(QStringLiteral("pedals"), pedals.save());
     return sound;
 }
@@ -36,8 +33,6 @@ void Instance::loadSound(const QJsonObject &sound)
         cabinets.load(sound.value(u"cabinets").toArray());
     if (sound.contains(u"captures"))
         captures.load(sound.value(u"captures").toArray());
-    if (sound.contains(u"heads"))
-        heads.load(sound.value(u"heads").toArray());
     if (sound.contains(u"pedals"))
         pedals.load(sound.value(u"pedals").toArray());
 }

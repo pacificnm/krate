@@ -52,7 +52,7 @@ private:
     std::array<Side, 2> m_side;
 };
 
-// The speaker cabinet: convolves the power amp's output with impulse responses,
+// The speaker cabinet: convolves the amp's output with impulse responses,
 // with no delay (docs/DSP.md#cabinet). The input's history is shared by every
 // slot, so a slot (a channel's IR A or B) can start playing at any moment and
 // be right at once. Uniformly partitioned: the first kBlock taps directly, the
