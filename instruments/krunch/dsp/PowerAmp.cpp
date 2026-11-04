@@ -13,6 +13,7 @@ void PowerAmp::prepare(double sampleRate) noexcept
     m_release = std::exp(-1.0 / (0.200 * sampleRate));
     m_master = m_sag = m_resonance = -1.0f; // retune on the next set()
     m_tube = PowerTube::Count;
+    m_head = nullptr; // (it may be gone by now: the next set() brings the playing channel's)
     reset();
 }
 

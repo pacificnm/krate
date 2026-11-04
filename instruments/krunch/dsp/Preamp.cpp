@@ -15,6 +15,7 @@ void Preamp::prepare(double sampleRate) noexcept
 {
     m_rate = sampleRate;
     m_tuned = false;
+    m_settings.head = nullptr; // (it may be gone by now: the next set() brings the channel's head)
     retune();
     reset();
 }

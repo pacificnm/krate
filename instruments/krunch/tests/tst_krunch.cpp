@@ -4,6 +4,7 @@
 #include <QElapsedTimer>
 
 #include <cmath>
+#include <memory>
 #include <complex>
 #include <numbers>
 #include <set>
@@ -763,6 +764,23 @@ private slots:
         QVERIFY(tamed->design.power.headroom > 0.0);
         QVERIFY(tamed->design.highCutHz <= 20000.0);
         QVERIFY(!HeadFile::fromJson(QJsonObject{{QStringLiteral("version"), 1}}));
+
+        // A head gone (replaced, freed) by the time the amp is prepared again
+        // (audio restarting): not read again (it was, from the old pointer).
+        {
+            Krunch amp;
+            amp.prepare(kRate, 128);
+            setChannel(amp, 2);
+            auto gone = std::make_unique<HeadDesign>(other);
+            amp.setHead(2, gone.get());
+            play(amp, di);
+            amp.setHead(2, nullptr);
+            gone.reset(); // (filled with garbage, it would be read by the next prepare)
+            amp.prepare(kRate, 128);
+            const auto after = play(amp, di);
+            for (float x : after)
+                QVERIFY(std::isfinite(x));
+        }
     }
 
     // CABINET off: no IR and no speaker, the amp straight out (both sides);
