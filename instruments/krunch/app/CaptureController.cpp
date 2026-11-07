@@ -54,11 +54,19 @@ void CaptureController::bump()
 void CaptureController::rescan()
 {
     QStringList names;
-    for (const QFileInfo &f : QDir(m_folder).entryInfoList({QStringLiteral("*.nam")}, QDir::Files, QDir::Name | QDir::IgnoreCase))
+    QSet<QString> withCabinet;
+    for (const QFileInfo &f : QDir(m_folder).entryInfoList({QStringLiteral("*.nam")}, QDir::Files, QDir::Name | QDir::IgnoreCase)) {
         names << f.completeBaseName();
-    if (names == m_names)
+        // What it is, as its file says ("amp", "amp_cab", "amp_pedal_cab"...): a cabinet in it or not.
+        QFile file(f.filePath());
+        if (file.open(QIODevice::ReadOnly)
+            && QJsonDocument::fromJson(file.readAll()).object().value(u"metadata").toObject().value(u"gear_type").toString().contains(u"cab"))
+            withCabinet.insert(f.completeBaseName());
+    }
+    if (names == m_names && withCabinet == m_withCabinet)
         return;
     m_names = names;
+    m_withCabinet = withCabinet;
     bump();
 }
 
@@ -84,6 +92,9 @@ void CaptureController::choose(int channel, const QString &name)
         return;
     m_chosen[std::size_t(channel)] = name;
     start(channel);
+    // A full rig has its cabinet: Krunch's off (no IR A or B, no speaker); an amp alone wants one.
+    if (!name.isEmpty())
+        m_engine.setParamFromHost(krunch::channelParam(channel, krunch::ChannelParam::Cabinet), hasCabinet(name) ? 0.0f : 1.0f);
     saveFile();
     bump();
 }

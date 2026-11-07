@@ -475,22 +475,22 @@ Item {
         PanelButton {
             readonly property bool cabinetOn: panel.krunch.revision < 0 || panel.krunch.value(panel.chKey("cabinet")) >= 0.5
             x: 118
-            y: 394
-            width: 76
-            height: 24
+            y: 391
+            width: 120
+            height: 30
             dark: true
             tint: cabinetOn ? "transparent" : Theme.labelOrange // (too low for a LED over the word)
-            faceText: cabinetOn ? "ON" : "OFF"
+            faceText: cabinetOn ? "ON" : "OFF: NONE"
             text: "Channel " + (panel.channel + 1) + " cabinet on or off"
             onClicked: panel.krunch.setValue(panel.chKey("cabinet"), cabinetOn ? 0 : 1)
 
             LearnOverlay { anchors.fill: parent; paramKey: "cabinet"; round: false }
         }
         Label {
-            x: 206
+            x: 250
             y: 400
             visible: panel.krunch.revision >= 0 && panel.krunch.value(panel.chKey("cabinet")) < 0.5
-            text: "bypassed: the amp straight out (for a capture with its cabinet in it)"
+            text: "no cabinet: no IR on A or B, no speaker (for a capture with its own cabinet in it)"
             font.pixelSize: 11
             font.bold: false
             color: "#F2C230"

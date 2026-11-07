@@ -110,6 +110,13 @@ target_link_libraries(tst_pedals PRIVATE krunch_dsp krate_testing Qt6::Test)
 add_test(NAME tst_pedals COMMAND tst_pedals)
 
 # Presets, with a fake amp.
+add_executable(tst_captures tests/tst_captures.cpp app/CaptureController.h app/CaptureController.cpp)
+target_include_directories(tst_captures PRIVATE app)
+target_compile_options(tst_captures PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_definitions(tst_captures PRIVATE NAM_EXAMPLES="${nam_core_SOURCE_DIR}/example_models")
+target_link_libraries(tst_captures PRIVATE krunch_dsp krate_app Qt6::Qml Qt6::Test)
+add_test(NAME tst_captures COMMAND tst_captures)
+
 add_executable(tst_presets tests/tst_presets.cpp app/PresetController.h app/PresetController.cpp)
 target_include_directories(tst_presets PRIVATE app)
 target_compile_options(tst_presets PRIVATE -Wall -Wextra -Wpedantic)

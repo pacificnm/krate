@@ -13,7 +13,7 @@ This manual goes through the panel from top to bottom: the grille (presets and w
 3. **Get some amp captures.** Krunch has no amp of its own: a channel plays the capture you give it, and a channel without one is silent (its button says **NO AMP**). Captures are `.nam` files, an open format; thousands are shared for free on community capture sites. Get **amp-only** captures (the amp into a load, no speaker: they take your cabinet IRs) or **full-rig** captures (a miked cabinet in them). Choose ones made at 48 kHz, the rate the player runs at.
 4. **Put them on Krunch.** From your phone or another computer, open **Krate Remote**, go to **Files ▸ Places ▸ Amp captures (Krunch)** and upload or drop them. Or press **CHOOSE AMP ▾** and **IMPORT** them from this computer.
 5. **Choose one per channel.** Press **1**, **2**, **3** or **4** under **CHANNEL**, then **CHOOSE AMP ▾** and click a capture: it plays at once, so you can play and compare. A clean one on 1, a crunch on 2, high gain on 3 and 4, say.
-6. **Choose cabinets.** For an amp-only capture, click the **A** bar under **CABINET** and import your IRs (WAV files, folders or zip packs); click one to hear it at once. For a full-rig capture, set **CABINET** to **OFF**.
+6. **Choose cabinets.** For an amp-only capture, click the **A** bar under **CABINET** and import your IRs (WAV files, folders or zip packs); click one to hear it at once. For a full-rig capture, **CABINET** goes **OFF** by itself when you choose it (if its file says it has its cabinet in it; otherwise set it **OFF** yourself): no IR on A or B and no speaker.
 7. **Shape it.** **GAIN** drives the capture harder or softer (noon: as it was captured), **BASS**, **MID**, **TREBLE** and **PRESENCE** shape it after, **VOLUME** balances the channel with the others, **LEVEL** sets how loud it all is.
 8. **Add pedals.** Click **+** (**ADD PEDAL**) on the pedalboard and choose one; its footswitch turns it on and off.
 9. **Keep it.** Press **SAVE AS…** on the grille and give the rig a name. Make a preset for each song or style you play; within one, the four channels switch instantly.
@@ -84,7 +84,7 @@ A capture is a real amp, modelled: a small file made by playing recordings throu
 - copy them into the folder yourself (files that land there show up by themselves);
 - from your phone or another computer, **Krate Remote**: **Files ▸ Places ▸ Amp captures (Krunch)**, then upload or drop them.
 
-**Amp-only or full rig?** An amp-only capture (the amp into a load, no speaker) wants a cabinet after it: keep the channel's **CABINET** **ON** and choose IRs. A full-rig capture already has a miked cabinet in it (look for "cab", "mic" or "full rig" in its name or description): set the channel's **CABINET** to **OFF**, or you hear two cabinets, muffled and boxy.
+**Amp-only or full rig?** An amp-only capture (the amp into a load, no speaker) wants a cabinet after it: keep the channel's **CABINET** **ON** and choose IRs. A full-rig capture already has a miked cabinet in it, so the channel wants no cabinet at all, neither IR A nor B nor the built-in speaker, or you hear two cabinets, muffled and boxy. Most capture files say which they are: the picker marks those with their cabinet (**with its cabinet**), and choosing one switches the channel's **CABINET** **OFF**; choosing an amp-only capture switches it back **ON**. (It only switches when you choose a capture, not when a preset or song loads, so what you set stays set.) A file that doesn't say: look for "cab", "mic" or "full rig" in its name and set **CABINET** yourself.
 
 Captures play at a common loudness (when the file says how loud it is), so switching between them doesn't jump. A channel's capture is kept with it, in presets and with songs' sounds.
 
@@ -109,7 +109,7 @@ Each channel has its own cabinet: two IR slots, **A** and **B**, mixed, or Krunc
 
 | Control | What it does |
 | --- | --- |
-| **CABINET** **ON** / **OFF** | The channel's cabinet on or off. **OFF**: no IR and no speaker, the amp straight out ("bypassed" shows), for a full-rig capture with its cabinet in it. Learnable (it switches the playing channel's cabinet). |
+| **CABINET** **ON** / **OFF: NONE** | The channel's cabinet on or off. **OFF: NONE**: no cabinet at all (no IR on A or B, no built-in speaker), the capture straight out, for a full-rig capture with its cabinet in it; A and B dim. Choosing a capture sets it by what the capture is (see Amp captures). Learnable (it switches the playing channel's cabinet). |
 | **A**, **B** | The channel's two IRs. Click one to open the IR library and choose. **A** with no IR is the **Built-in speaker**; **B** can be **None**. |
 | **CAB MIX** | The balance between A and B, from **A 100 / B 0** to **A 0 / B 100** (with both IRs chosen). Two different cabinets or mics blended make a fuller sound than either. |
 | **SPACE** | Stereo spread between the two cabinets, 0 … 10: at 0 both play in the centre; turning up moves A to the left and B to the right, hard left and right at 10. With one IR or none it does nothing. |
@@ -194,7 +194,7 @@ Every knob can also be automated from Krate's arranger.
 
 - **Hearing a second, dry guitar?** An armed audio track in Krate with **MONITOR** on **Auto** (or **On**) plays its input straight through, so you hear your dry guitar next to Krunch's. Disarm the track (or set its MONITOR to Off, or its source to Krunch's output if you want to record the amp).
 - **No sound, or the wrong guitar?** Set Krunch's **INPUT** to the interface input your guitar is plugged into, and check that input under **AUDIO** in the top bar. The grille says **GUITAR** when it's connected. If the channel button says **NO AMP**, the channel has no capture: **CHOOSE AMP ▾**.
-- **Muffled, boxy capture?** It's probably a full-rig capture: set **CABINET** to **OFF**.
+- **Muffled, boxy capture?** It's probably a full-rig capture whose file doesn't say so: set **CABINET** to **OFF: NONE**.
 - **Hiss between notes**: turn **GATE** up until it stops, on the high-gain channels especially.
 - **Too much fizz** with high gain: lower **PRESENCE** and **TREBLE**, try another IR, or put a Green Drive in front with its DRIVE low and LEVEL up to tighten the amp instead of more GAIN.
 - **Not enough gain?** **GAIN** only goes as far as the captured amp's own setting allows: pick a capture made with more gain, or put a drive pedal in front.

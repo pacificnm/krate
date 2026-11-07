@@ -8,6 +8,7 @@
 #include <QFileSystemWatcher>
 #include <QJsonArray>
 #include <QObject>
+#include <QSet>
 #include <QStringList>
 #include <QTimer>
 #include <QVariantList>
@@ -53,7 +54,11 @@ public:
     // Chosen, but its file isn't in the folder (deleted, renamed, a preset from
     // elsewhere): the channel is silent until it's back or another is chosen.
     Q_INVOKABLE bool missing(int channel) const;
-    Q_INVOKABLE void choose(int channel, const QString &name); // "" = Krunch's own amp
+    // "" = none (silent). Choosing one sets the channel's CABINET by what the
+    // capture is: off for one with its cabinet in it (a full rig), on otherwise.
+    Q_INVOKABLE void choose(int channel, const QString &name);
+    // The capture has its cabinet in it (its file says so: a full rig).
+    Q_INVOKABLE bool hasCabinet(const QString &name) const { return m_withCabinet.contains(name); }
     // .nam files (file:// URLs or paths) copied into the folder.
     Q_INVOKABLE void importUrls(const QVariantList &urls);
 
@@ -82,6 +87,7 @@ private:
     krunch::Krunch &m_engine;
     QString m_folder, m_filePath;
     QStringList m_names;
+    QSet<QString> m_withCabinet; // captures whose file says the cabinet is in them
     QString m_message;
     int m_revision = 0;
     std::array<QString, kChannels> m_chosen;

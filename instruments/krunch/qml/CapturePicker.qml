@@ -79,7 +79,7 @@ Popup {
             width: parent.width
             wrapMode: Text.WordWrap
             text: "A capture is a real amp, modelled (a .nam file): GAIN drives it, BASS to PRESENCE shape it after, "
-                  + "your cabinet IRs follow. "
+                  + "your cabinet IRs follow; one with its cabinet in it (a full rig) switches the channel's CABINET off. "
                   + (picker.captures.message !== "" ? "\n" + picker.captures.message : "")
             font.pixelSize: 11
             color: "#A9A392"
@@ -104,7 +104,8 @@ Popup {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - 20
                     elide: Text.ElideRight
-                    text: row.modelData === "" ? "No amp (the channel is silent)" : row.modelData
+                    text: row.modelData === "" ? "No amp (the channel is silent)"
+                        : row.modelData + (picker.captures.hasCabinet(row.modelData) ? "   ·  with its cabinet (CABINET goes off)" : "")
                     color: picker.current === row.modelData ? "#F2C230" : "#E9DFC4"
                     font.family: Theme.labelFont
                     font.pixelSize: 13
