@@ -41,8 +41,9 @@ public:
         const double a = std::pow(10.0, db / 40.0);
         set(1.0 + p.alpha * a, -2.0 * p.cosw, 1.0 - p.alpha * a, 1.0 + p.alpha / a, -2.0 * p.cosw, 1.0 - p.alpha / a);
     }
-    void setLowShelf(double fs, double f, double db) noexcept { setShelf(fs, f, db, false); }
-    void setHighShelf(double fs, double f, double db) noexcept { setShelf(fs, f, db, true); }
+    // Shelves of slope 1; with q > 0, that steep (0.707: slope 1; higher: a bump at the corner).
+    void setLowShelf(double fs, double f, double db, double q = 0.0) noexcept { setShelf(fs, f, db, false, q); }
+    void setHighShelf(double fs, double f, double db, double q = 0.0) noexcept { setShelf(fs, f, db, true, q); }
 
     // Magnitude at f (tests and level checks).
     double magnitude(double fs, double f) const noexcept
@@ -73,12 +74,12 @@ private:
         return sum;
     }
 
-    void setShelf(double fs, double f, double db, bool high) noexcept
+    void setShelf(double fs, double f, double db, bool high, double q = 0.0) noexcept
     {
         const double a = std::pow(10.0, db / 40.0);
         const double w = 2.0 * std::numbers::pi * std::min(f, 0.49 * fs) / fs;
         const double cosw = std::cos(w);
-        const double alpha = std::sin(w) / 2.0 * std::sqrt(2.0); // shelf slope 1
+        const double alpha = q > 0.0 ? std::sin(w) / (2.0 * q) : std::sin(w) / 2.0 * std::sqrt(2.0); // (shelf slope 1)
         const double sq = 2.0 * std::sqrt(a) * alpha;
         const double s = high ? -1.0 : 1.0; // the high shelf mirrors the low one
         set(a * ((a + 1.0) - s * (a - 1.0) * cosw + sq), s * 2.0 * a * ((a - 1.0) - s * (a + 1.0) * cosw),

@@ -117,4 +117,135 @@ template<> const PedalInfo Eq10::kInfo = []() {
     return PedalInfo{"eq10", "10-Band EQ", "#2B2D31", knobs, false, 2.4f, true};
 }();
 
+// --- Parametric EQ -----------------------------------------------------------------
+
+namespace {
+const char *const kTypeNames[] = {"Off", "Peak", "Low shelf", "High shelf", "Low cut", "High cut"};
+std::string typeText(float v) { return kTypeNames[int(ParametricEq::type(v))]; }
+std::string freqText(float v)
+{
+    const double hz = ParametricEq::freqHz(v);
+    return hz < 1000.0 ? std::format("{} Hz", std::lround(hz)) : std::format("{:.2g} kHz", hz / 1000.0);
+}
+std::string gainText(float v) { return std::format("{:+.1f} dB", std::round(ParametricEq::gainDb(v) * 10.0) / 10.0 + 0.0); }
+std::string qText(float v) { return std::format("{:.2f}", ParametricEq::q(v)); }
+std::string peqLevelText(float v) { return std::format("{:+.1f} dB", std::round(ParametricEq::levelDb(v) * 10.0) / 10.0 + 0.0); }
+// Position of a type on its switch, and of a frequency on its log knob.
+constexpr float typePosition(int t) { return float(t) / float(ParametricEq::TypeCount - 1); }
+float freqPosition(double hz) { return float(std::log(hz / 20.0) / std::log(1000.0)); }
+float qPosition(double q) { return float(std::log(q / 0.3) / std::log(10.0 / 0.3)); }
+} // namespace
+
+ParametricEq::Type ParametricEq::type(float v)
+{
+    return Type(std::clamp(int(std::lround(double(v) * (TypeCount - 1))), 0, TypeCount - 1));
+}
+double ParametricEq::freqHz(float v) { return 20.0 * std::pow(1000.0, std::clamp(double(v), 0.0, 1.0)); }
+double ParametricEq::gainDb(float v) { return (std::clamp(double(v), 0.0, 1.0) - 0.5) * 36.0; }
+double ParametricEq::q(float v) { return 0.3 * std::pow(10.0 / 0.3, std::clamp(double(v), 0.0, 1.0)); }
+double ParametricEq::levelDb(float v) { return (std::clamp(double(v), 0.0, 1.0) - 0.5) * 24.0; }
+
+// Flat to start with: a low shelf, four peaks, a high shelf, all at 0 dB.
+const PedalInfo ParametricEq::kInfo = []() {
+    struct Band
+    {
+        const char *type, *freq, *gain, *q;
+        const char *label;
+        int kind;
+        double hz;
+    };
+    static const Band bands[kBands] = {
+        {"b1_type", "b1_freq", "b1_gain", "b1_q", "1", LowShelf, 100.0},  {"b2_type", "b2_freq", "b2_gain", "b2_q", "2", Peak, 250.0},
+        {"b3_type", "b3_freq", "b3_gain", "b3_q", "3", Peak, 700.0},      {"b4_type", "b4_freq", "b4_gain", "b4_q", "4", Peak, 1800.0},
+        {"b5_type", "b5_freq", "b5_gain", "b5_q", "5", Peak, 4000.0},     {"b6_type", "b6_freq", "b6_gain", "b6_q", "6", HighShelf, 8000.0},
+    };
+    static const std::array<KnobInfo, kLevel + 1> knobs = [] {
+        std::array<KnobInfo, kLevel + 1> k{};
+        for (int b = 0; b < kBands; ++b) {
+            const Band &d = bands[b];
+            k[std::size_t(knobOf(b, TypeKnob))] = {d.type, "TYPE", typePosition(d.kind), &typeText, TypeCount};
+            k[std::size_t(knobOf(b, Freq))] = {d.freq, "FREQ", freqPosition(d.hz), &freqText};
+            k[std::size_t(knobOf(b, Gain))] = {d.gain, "GAIN", 0.5f, &gainText};
+            k[std::size_t(knobOf(b, Q))] = {d.q, "Q", qPosition(0.707), &qText};
+        }
+        k[kLevel] = {"level", "LEVEL", 0.5f, &peqLevelText};
+        return k;
+    }();
+    PedalInfo info{"parametric_eq", "Parametric EQ", "#1E2A33", knobs, false, 1.3f, false};
+    info.editor = true;
+    return info;
+}();
+
+void ParametricEq::tune(Biquad &f, double rate, Type type, double hz, double db, double q) noexcept
+{
+    switch (type) {
+    case Peak: f.setPeak(rate, hz, q, db); break;
+    case LowShelf: f.setLowShelf(rate, hz, db, q); break;
+    case HighShelf: f.setHighShelf(rate, hz, db, q); break;
+    case LowCut: f.setHighpass(rate, hz, q); break;
+    case HighCut: f.setLowpass(rate, hz, q); break;
+    case Off:
+    case TypeCount: f.setPeak(rate, 1000.0, 0.707, 0.0); break; // (flat: not run)
+    }
+}
+
+double ParametricEq::responseDb(const float *knobs, double rate, double hz)
+{
+    double db = levelDb(knobs[kLevel]);
+    for (int b = 0; b < kBands; ++b) {
+        const Type t = type(knobs[knobOf(b, TypeKnob)]);
+        if (t == Off)
+            continue;
+        Biquad f;
+        tune(f, rate, t, freqHz(knobs[knobOf(b, Freq)]), gainDb(knobs[knobOf(b, Gain)]), q(knobs[knobOf(b, Q)]));
+        db += 20.0 * std::log10(std::max(f.magnitude(rate, hz), 1e-9));
+    }
+    return db;
+}
+
+void ParametricEq::prepareEffect(double sampleRate) noexcept
+{
+    m_rate = sampleRate;
+    m_seen.fill(-1.0f);
+    m_level = -1.0f;
+    resetEffect();
+}
+
+void ParametricEq::resetEffect() noexcept
+{
+    for (Biquad &b : m_bands)
+        b.reset();
+}
+
+void ParametricEq::processEffect(float *buffer, std::uint32_t frames) noexcept
+{
+    std::array<Type, kBands> types{};
+    for (int b = 0; b < kBands; ++b) {
+        const float t = knob(knobOf(b, TypeKnob)), f = knob(knobOf(b, Freq)), g = knob(knobOf(b, Gain)), qq = knob(knobOf(b, Q));
+        types[std::size_t(b)] = type(t);
+        float *seen = &m_seen[std::size_t(knobOf(b, TypeKnob))];
+        if (seen[0] != t || seen[1] != f || seen[2] != g || seen[3] != qq) {
+            seen[0] = t;
+            seen[1] = f;
+            seen[2] = g;
+            seen[3] = qq;
+            tune(m_bands[std::size_t(b)], m_rate, types[std::size_t(b)], freqHz(f), gainDb(g), q(qq));
+        }
+    }
+    for (int b = 0; b < kBands; ++b)
+        if (types[std::size_t(b)] != Off)
+            for (std::uint32_t n = 0; n < frames; ++n)
+                buffer[n] = m_bands[std::size_t(b)].process(buffer[n]);
+    // Level, ramped.
+    const float target = float(std::pow(10.0, levelDb(knob(kLevel)) / 20.0));
+    if (m_level < 0.0f)
+        m_level = target;
+    const float step = (target - m_level) / float(frames);
+    for (std::uint32_t n = 0; n < frames; ++n) {
+        m_level += step;
+        buffer[n] *= m_level;
+    }
+    m_level = target;
+}
+
 } // namespace krunch

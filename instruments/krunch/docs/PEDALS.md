@@ -106,6 +106,16 @@ A band at full lifts its own frequency by its range (within 1 dB) and leaves fre
 
 The board scrolls sideways when its pedals are wider than it is.
 
+## Parametric EQ
+
+Six bands, each one of: **Peak** (a bell: FREQ, GAIN, Q), **Low shelf** and **High shelf** (everything below or above FREQ lifted or cut by GAIN; Q 0.71 is a plain shelf, higher puts a bump at the corner), **Low cut** and **High cut** (12 dB an octave below or above FREQ; Q is the corner's resonance, 0.71 flat; no gain), or **Off**. FREQ 20 Hz … 20 kHz, GAIN −18 … +18 dB, Q 0.3 … 10; then **LEVEL** ±12 dB. It starts flat: band 1 a low shelf at 100 Hz, bands 2–5 peaks at 250 Hz, 700 Hz, 1.8 kHz and 4 kHz, band 6 a high shelf at 8 kHz, all at 0 dB. An Off band costs nothing.
+
+Its face shows the curve; **EDIT** opens the editor: the curve over 20 Hz … 20 kHz and ±18 dB with a coloured point per band (drag a point: its frequency and gain; the wheel over it: its Q), and under it each band's TYPE (◂ ▸), FREQ, GAIN, Q and the LEVEL. The curve is the filters' own response (`ParametricEq::responseDb`), so what's drawn is what plays.
+
+Where it goes: **in the loop** it shapes the amp capture's sound before the cabinet (a low cut to tighten the lows, a scoop or a push in the mids, a high cut to tame fizz); **in front**, the guitar going into the capture (a mid push drives it harder there). More than one can be on the board.
+
+Code: `dsp/StudioPedals.cpp` (`ParametricEq`), `qml/ParametricEqEditor.qml`, `PedalController::response`. Pedals may have up to 32 knobs; one with more than its face shows sets `PedalInfo::editor`. Tests: `tst_pedals` parametricEq (flat to start with; a +12 dB peak at 1 kHz lifts 1 kHz by 12 dB within 0.3 dB and 100 Hz by under 1 dB; the curve agrees with the sound within 0.3 dB; a low cut at 200 Hz takes 50 Hz down more than 18 dB and leaves 2 kHz; an Off band does nothing).
+
 ## Phaser
 
 The classic one-knob four-stage phaser (`dsp/ModPedals.cpp`): four first-order all-pass stages swept together (their corner from about 140 Hz to 1.6 kHz, the LFO bent to linger low as a FET's sweep does), mixed half and half with the guitar: two notches moving through the low mids. **MODE**: Smooth (no feedback: notches about 60 dB deep, flat peaks), or Deep, which feeds the last stage back to the first (0.6) as the later version of the pedal does: resonant peaks about 3 dB up, notches about 16 dB deep, trimmed so it isn't louder overall.

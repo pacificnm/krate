@@ -32,6 +32,7 @@ struct PedalInfo
     float width = 1.0f;         // its case, in standard pedal widths
     bool sliders = false;       // its controls are sliders (a graphic EQ), not knobs
     std::string_view pattern = {}; // drawn on the case: "" plain, "dots:#RRGGBB" polka dots in that colour
+    bool editor = false;           // too many controls for its face: it shows its curve, EDIT opens an editor
 };
 
 // One pedal: mono, in place, at the base rate (docs/PEDALS.md). Knobs and the
@@ -41,7 +42,7 @@ struct PedalInfo
 class Pedal
 {
 public:
-    static constexpr int kMaxKnobs = 12;
+    static constexpr int kMaxKnobs = 32;
     static constexpr std::uint32_t kMaxFrames = 256; // per process() call
 
     explicit Pedal(const PedalInfo &info);

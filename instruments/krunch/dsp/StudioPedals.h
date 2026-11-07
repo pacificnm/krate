@@ -96,4 +96,44 @@ template<> const double Eq10::kRangeDb;
 template<> const double Eq5::kQ;
 template<> const double Eq10::kQ;
 
+// Parametric EQ (docs/PEDALS.md#parametric-eq): six bands, each a peak, a
+// low or high shelf, or a low or high cut (12 dB/octave, its Q the corner's
+// resonance), or off; frequency 20 Hz .. 20 kHz, gain -18..+18 dB (peaks
+// and shelves), Q 0.3 .. 10; then the level. In the loop it shapes the
+// amp's sound before the cabinet; in front, the guitar into the amp. Its
+// face shows the curve; EDIT opens the editor (the panel's).
+class ParametricEq final : public Pedal
+{
+public:
+    static constexpr int kBands = 6;
+    enum Type : int { Off, Peak, LowShelf, HighShelf, LowCut, HighCut, TypeCount };
+    enum BandKnob : int { TypeKnob, Freq, Gain, Q, KnobsPerBand };
+    static constexpr int kLevel = kBands * KnobsPerBand; // the last knob
+    static const PedalInfo kInfo;
+
+    ParametricEq() : Pedal(kInfo) {}
+
+    static constexpr int knobOf(int band, BandKnob k) { return band * KnobsPerBand + k; }
+    static Type type(float v);
+    static double freqHz(float v); // 20 Hz .. 20 kHz, log
+    static double gainDb(float v); // -18 .. +18
+    static double q(float v);      // 0.3 .. 10, log
+    static double levelDb(float v); // -12 .. +12
+    // The response, dB at `hz`, for these knob values (the editor's curve).
+    static double responseDb(const float *knobs, double sampleRate, double hz);
+
+protected:
+    void prepareEffect(double sampleRate) noexcept override;
+    void resetEffect() noexcept override;
+    void processEffect(float *buffer, std::uint32_t frames) noexcept override;
+
+private:
+    static void tune(Biquad &filter, double sampleRate, Type type, double hz, double db, double q) noexcept;
+
+    double m_rate = 48000.0;
+    std::array<Biquad, kBands> m_bands;
+    std::array<float, kLevel + 1> m_seen{}; // the knobs as last tuned (-1: not yet)
+    float m_level = -1.0f; // ramped
+};
+
 } // namespace krunch

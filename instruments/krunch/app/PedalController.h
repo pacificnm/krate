@@ -60,6 +60,8 @@ public:
     Q_INVOKABLE void setOn(int position, bool on);
     Q_INVOKABLE void toggle(int position); // a footswitch (learnable as "pedal1".."pedal8")
     Q_INVOKABLE void setKnob(int position, int knob, qreal value);
+    // A Parametric EQ's response: dB at `points` frequencies from 20 Hz to 20 kHz (log spaced).
+    Q_INVOKABLE QVariantList response(int position, int points) const;
 
     // For songs' sounds and pedals.json: [{type, on, loop, knobs: {key: value}}].
     QJsonArray save() const;

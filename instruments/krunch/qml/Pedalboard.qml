@@ -274,7 +274,7 @@ Rectangle {
                 // Its knobs.
                 Row {
                     id: knobRow
-                    visible: !(pedal.info.sliders ?? false)
+                    visible: !(pedal.info.sliders ?? false) && !(pedal.info.editor ?? false)
                     readonly property real size: Math.min(44, (pedal.width - 12) / Math.max(1, (pedal.info.knobs ?? []).length) - 2)
                     x: (parent.width - width) / 2
                     y: 20
@@ -310,6 +310,57 @@ Rectangle {
                                 fontSizeMode: Text.HorizontalFit // long names shrink rather than run together
                                 minimumPixelSize: 6
                             }
+                        }
+                    }
+                }
+
+                // Too many controls for the face (the Parametric EQ): its curve, and EDIT.
+                Item {
+                    id: editorFace
+                    visible: pedal.info.editor ?? false
+                    x: 8
+                    y: 12
+                    width: pedal.width - 16
+                    height: 88
+                    Canvas {
+                        id: miniCurve
+                        width: parent.width
+                        height: 60
+                        readonly property var curve: editorFace.visible && board.pedals.revision >= 0 ? board.pedals.response(pedal.index, 64) : []
+                        onCurveChanged: requestPaint()
+                        onPaint: {
+                            const ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            ctx.fillStyle = "#0E1418"
+                            ctx.fillRect(0, 0, width, height)
+                            ctx.strokeStyle = "#33424D"
+                            ctx.beginPath()
+                            ctx.moveTo(0, height / 2)
+                            ctx.lineTo(width, height / 2)
+                            ctx.stroke()
+                            if (curve.length < 2)
+                                return
+                            ctx.strokeStyle = "#5FD3C8"
+                            ctx.lineWidth = 2
+                            ctx.beginPath()
+                            for (let i = 0; i < curve.length; ++i) {
+                                const x = i * width / (curve.length - 1)
+                                const y = height / 2 - Math.max(-18, Math.min(18, curve[i])) * (height / 2 - 3) / 18
+                                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+                            }
+                            ctx.stroke()
+                        }
+                    }
+                    PanelButton {
+                        y: 64
+                        width: parent.width
+                        height: 22
+                        dark: true
+                        faceText: "EDIT"
+                        text: "Edit the " + (pedal.info.name ?? "") + ": its six bands"
+                        onClicked: {
+                            eqEditor.position = pedal.index
+                            eqEditor.open()
                         }
                     }
                 }
@@ -358,8 +409,8 @@ Rectangle {
                 }
 
                 Led {
-                    x: (pedal.info.sliders ?? false) ? 12 : (parent.width - width) / 2
-                    y: (pedal.info.sliders ?? false) ? 116 : 88
+                    x: (pedal.info.editor ?? false) ? parent.width - 22 : (pedal.info.sliders ?? false) ? 12 : (parent.width - width) / 2
+                    y: (pedal.info.editor ?? false) ? 140 : (pedal.info.sliders ?? false) ? 116 : 88
                     width: 10
                     height: 10
                     on: pedal.on
@@ -368,7 +419,7 @@ Rectangle {
                 Rectangle { // on a patterned case, a plate behind the name so it reads
                     visible: dots.visible || pyramid.visible || paisley.visible
                     x: 14
-                    y: (pedal.info.sliders ?? false) ? 106 : 98
+                    y: (pedal.info.sliders ?? false) || (pedal.info.editor ?? false) ? 106 : 98
                     width: parent.width - 28
                     height: 30
                     radius: 4
@@ -377,7 +428,7 @@ Rectangle {
                 }
                 Text { // the name, on a plate
                     x: 8
-                    y: (pedal.info.sliders ?? false) ? 110 : 102
+                    y: (pedal.info.sliders ?? false) || (pedal.info.editor ?? false) ? 110 : 102
                     width: parent.width - 16
                     horizontalAlignment: Text.AlignHCenter
                     text: pedal.info.name ?? ""
@@ -552,5 +603,10 @@ Rectangle {
             font.family: Theme.labelFont
             font.pixelSize: 14
         }
+    }
+
+    ParametricEqEditor {
+        id: eqEditor
+        pedals: board.pedals
     }
 }

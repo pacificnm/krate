@@ -153,6 +153,11 @@ The board scrolls sideways once its pedals are wider than it. It's kept in `~/.c
 | **Round Fuzz** | **FUZZ**, **VOLUME**, **BIAS**, **TYPE** | The classic two-transistor round fuzz. FUZZ cleans up as you pick softer or roll the guitar's volume back. BIAS off centre makes quiet notes sputter (the dying-battery sound). TYPE: **Germanium** (softer, warmer) or **Silicon** (more gain, brighter). |
 | **5-Band EQ** | **120**, **360**, **800**, **2K**, **4.5K**, **LEVEL** | Sliders at guitar-centred frequencies (Hz), ±15 dB, flat in the middle; LEVEL (the orange slider) ±12 dB. In front it shapes what drives the amp; in the loop, the amp's finished tone. |
 | **10-Band EQ** | **31** … **16K** (octaves), **LEVEL** | Ten octave-wide sliders, ±12 dB; LEVEL ±12 dB. A double-wide case. |
+| **Parametric EQ** | **EDIT** (six bands: **TYPE**, **FREQ**, **GAIN**, **Q**; **LEVEL**) | Six bands, each a **Peak**, **Low shelf**, **High shelf**, **Low cut**, **High cut** or **Off**: FREQ 20 Hz … 20 kHz, GAIN ±18 dB, Q 0.3 … 10 (for a cut, the corner's resonance). It starts flat. The pedal shows the curve; **EDIT** opens the editor (below). In the **LOOP** it shapes the capture's sound before the cabinet: a low cut to tighten, a mid scoop or push, a high cut to tame fizz. |
+
+![The Parametric EQ's editor](images/parametric-eq.png)
+
+**The Parametric EQ's editor.** The curve runs from 20 Hz to 20 kHz across and −18 to +18 dB up, with a coloured point per band: drag a point to move its frequency and gain; turn the mouse wheel over it to change its Q (narrower or wider). Under the curve each band has its **TYPE** (◂ ▸), **FREQ**, **GAIN** and **Q**, and on the right the **LEVEL**; double-click a knob to put it back. **CLOSE** closes it. The curve is exactly what the pedal does.
 
 ## Pedals: modulation
 

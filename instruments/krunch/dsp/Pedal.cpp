@@ -65,7 +65,7 @@ std::span<const PedalInfo *const> pedalTypes()
     static const PedalInfo *const kTypes[] = {&Prism::kInfo,   &Compressor::kInfo, &GreenDrive::kInfo, &RoundFuzz::kInfo,
                                               &Eq5::kInfo,     &Eq10::kInfo,       &Phaser::kInfo,     &Flanger::kInfo,
                                               &Vibe::kInfo,    &Chorus::kInfo,     &Tremolo::kInfo,    &Delay::kInfo,
-                                              &DrumEcho::kInfo, &Reverb::kInfo,   &DualHead::kInfo};
+                                              &DrumEcho::kInfo, &Reverb::kInfo,   &DualHead::kInfo, &ParametricEq::kInfo};
     return kTypes;
 }
 
@@ -89,6 +89,8 @@ std::unique_ptr<Pedal> makePedal(std::string_view type)
         return std::make_unique<Eq5>();
     if (type == Eq10::kInfo.type)
         return std::make_unique<Eq10>();
+    if (type == ParametricEq::kInfo.type)
+        return std::make_unique<ParametricEq>();
     if (type == Flanger::kInfo.type)
         return std::make_unique<Flanger>();
     if (type == Tremolo::kInfo.type)

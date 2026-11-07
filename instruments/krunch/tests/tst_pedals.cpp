@@ -82,7 +82,7 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(15));
+        QCOMPARE(pedalTypes().size(), std::size_t(16));
         QCOMPARE(pedalTypes()[2]->type, std::string_view("green_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
@@ -506,6 +506,56 @@ private slots:
         for (std::size_t i = 4800; i < x.size(); ++i)
             diff = std::max(diff, std::fabs(y[i] - x[i]));
         QVERIFY(diff < 1e-6f);
+    }
+
+    // --- Parametric EQ ------------------------------------------------------------------
+
+    // Flat to start with; a peak lifts its own frequency only, a low cut
+    // cuts below its corner, an Off band does nothing; the editor's curve
+    // (responseDb) is what the pedal does.
+    void parametricEq()
+    {
+        QVERIFY(ParametricEq::kInfo.knobs.size() == std::size_t(ParametricEq::kLevel + 1));
+        QVERIFY(ParametricEq::kInfo.knobs.size() <= std::size_t(Pedal::kMaxKnobs));
+        QVERIFY(ParametricEq::kInfo.editor);
+        const auto gainAt = [](ParametricEq &eq, double hz) {
+            eq.prepare(kRate);
+            const auto x = sine(19200, hz, 0.1f), y = run(eq, x);
+            double ex = 0.0, ey = 0.0;
+            for (std::size_t i = 9600; i < x.size(); ++i) {
+                ex += double(x[i]) * x[i];
+                ey += double(y[i]) * y[i];
+            }
+            return 10.0 * std::log10(ey / ex);
+        };
+        ParametricEq flat;
+        for (double hz : {60.0, 440.0, 3000.0, 12000.0})
+            QVERIFY2(std::fabs(gainAt(flat, hz)) < 0.05, qPrintable(QString::number(hz)));
+
+        // Band 3: a +12 dB peak at 1 kHz.
+        const auto at = [](int band, ParametricEq::BandKnob k) { return ParametricEq::knobOf(band, k); };
+        ParametricEq peak;
+        peak.setKnob(at(2, ParametricEq::Freq), float(std::log(1000.0 / 20.0) / std::log(1000.0)));
+        peak.setKnob(at(2, ParametricEq::Gain), 0.5f + 12.0f / 36.0f);
+        QVERIFY2(std::fabs(gainAt(peak, 1000.0) - 12.0) < 0.3, qPrintable(QString::number(gainAt(peak, 1000.0))));
+        QVERIFY(std::fabs(gainAt(peak, 100.0)) < 1.0);
+        // The curve the editor draws says the same.
+        std::array<float, Pedal::kMaxKnobs> knobs{};
+        for (int k = 0; k <= ParametricEq::kLevel; ++k)
+            knobs[std::size_t(k)] = peak.knob(k);
+        QVERIFY(std::fabs(ParametricEq::responseDb(knobs.data(), kRate, 1000.0) - gainAt(peak, 1000.0)) < 0.3);
+        QVERIFY(std::fabs(ParametricEq::responseDb(knobs.data(), kRate, 100.0) - gainAt(peak, 100.0)) < 0.3);
+
+        // Band 1 a low cut at 200 Hz: 50 Hz far down, 2 kHz untouched.
+        ParametricEq cut;
+        cut.setKnob(at(0, ParametricEq::TypeKnob), float(ParametricEq::LowCut) / float(ParametricEq::TypeCount - 1));
+        cut.setKnob(at(0, ParametricEq::Freq), float(std::log(200.0 / 20.0) / std::log(1000.0)));
+        QVERIFY(gainAt(cut, 50.0) < -18.0);
+        QVERIFY(std::fabs(gainAt(cut, 2000.0)) < 0.3);
+        // Off: that band's gain is gone.
+        peak.setKnob(at(2, ParametricEq::TypeKnob), 0.0f);
+        QVERIFY(std::fabs(gainAt(peak, 1000.0)) < 0.05);
+        QCOMPARE(ParametricEq::kInfo.knobs[std::size_t(at(0, ParametricEq::TypeKnob))].format(1.0f), std::string("High cut"));
     }
 
     void eqBandsLiftTheirOwnFrequency()

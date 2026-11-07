@@ -76,6 +76,7 @@ qt_add_qml_module(krunch_ui
         qml/IrPicker.qml
         qml/CapturePicker.qml
         qml/Pedalboard.qml
+        qml/ParametricEqEditor.qml
     RESOURCES
         docs/MANUAL.md
         ${krunch_manual_images}

@@ -1,5 +1,10 @@
 #include "PedalController.h"
 
+#include <array>
+#include <cmath>
+
+#include "dsp/StudioPedals.h"
+
 #include <QJSEngine>
 #include <QJsonObject>
 #include <QLoggingCategory>
@@ -73,6 +78,7 @@ QVariantList PedalController::pedals() const
                               {QStringLiteral("width"), info.width},
                               {QStringLiteral("sliders"), info.sliders},
                               {QStringLiteral("pattern"), QString::fromUtf8(info.pattern)},
+                              {QStringLiteral("editor"), info.editor},
                               {QStringLiteral("knobs"), knobs}};
     }
     return result;
@@ -224,4 +230,22 @@ void PedalController::saveFile()
     if (!krate::files::writeJsonFile(m_filePath, QJsonObject{{QStringLiteral("version"), kVersion},
                                                              {QStringLiteral("pedals"), save()}}))
         qCWarning(lcPedals) << "could not save" << m_filePath;
+}
+
+QVariantList PedalController::response(int position, int points) const
+{
+    QVariantList result;
+    if (position < 0 || position >= m_board.count() || points < 2)
+        return result;
+    krunch::Pedal &pedal = const_cast<krunch::Pedalboard &>(m_board).pedal(position);
+    if (pedal.info().type != krunch::ParametricEq::kInfo.type)
+        return result;
+    std::array<float, krunch::Pedal::kMaxKnobs> knobs{};
+    for (int k = 0; k < int(pedal.info().knobs.size()); ++k)
+        knobs[std::size_t(k)] = pedal.knob(k);
+    for (int i = 0; i < points; ++i) {
+        const double hz = 20.0 * std::pow(1000.0, double(i) / double(points - 1));
+        result << krunch::ParametricEq::responseDb(knobs.data(), 48000.0, hz);
+    }
+    return result;
 }
