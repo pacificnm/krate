@@ -167,7 +167,7 @@ Under the amp: up to eight pedals, left to right. Each is placed **FRONT** (in f
 
 | Control | What it does |
 | --- | --- |
-| **+** (**ADD PEDAL**) | Adds a pedal at the end of the board, from a menu of all 15. |
+| **+** (**ADD PEDAL**) | Adds a pedal at the end of the board, from a menu of all 19. |
 | **The footswitch** | Turns the pedal on and off; its light shows it's on. Switching crossfades, so it never clicks. Learnable by its place on the board (pedal 1 … 8, the number under it). |
 | **FRONT** / **LOOP** | Puts the pedal in front of the amp or in its effects loop. |
 | **×** | Takes the pedal off the board (it fades out first). |
@@ -180,7 +180,10 @@ The board scrolls sideways once its pedals are wider than it. It's kept in `~/.c
 | Pedal | Knobs | What it does |
 | --- | --- | --- |
 | **Compressor** | **SUSTAIN**, **ATTACK**, **LEVEL**, **BLEND** | Evens your playing out and lengthens notes. SUSTAIN: more squash (the level made up, so more isn't quieter); ATTACK: how fast it grabs, 0.5 … 50 ms (slower lets the pick through); BLEND: how much of the compressed sound against the dry (keep some dry for the pick's attack). Best first on the board. |
+| **Boost** | **BOOST**, **BRIGHT** | A clean boost: BOOST raises the level 0 … +20 dB with no colour of its own; **BRIGHT** (a switch) adds a little sparkle on top. In **FRONT** it drives the capture harder (more gain and sustain from the same amp); in the **LOOP**, a louder solo with the same tone. Learn its footswitch for a solo button. |
 | **Green Drive** | **DRIVE**, **TONE**, **LEVEL** | The classic green mid-boost overdrive: the bass stays tight, the mids push. In front of a crunchy capture it tightens and sharpens the distortion; in front of a clean one, a smooth overdrive. LEVEL −24 … +12 dB. |
+| **Yellow Drive** | **DRIVE**, **TONE**, **LEVEL** | The classic yellow overdrive: the same tight bass and pushed mids as the Green Drive, with more gain, a grittier, more open edge (it clips one way harder than the other) and a brighter tone range. Great for cutting rhythm, and as a boost in front of a high-gain capture (DRIVE low, LEVEL up). LEVEL −24 … +12 dB. |
+| **Blue Drive** | **LEVEL**, **TONE**, **GAIN** | The classic blue amp-like overdrive: no mid hump, the lows get the drive too, so it sounds like a small amp turned up. It follows your picking: play softly and it cleans up, dig in and it breaks up. TONE tilts it, darker and fuller one way, brighter and leaner the other. Lovely in front of a clean capture for blues and classic rock; at low GAIN, a touch of hair that stays out of the way. LEVEL −24 … +12 dB (noon: about as loud as the guitar alone). |
 | **Round Fuzz** | **FUZZ**, **VOLUME**, **BIAS**, **TYPE** | The classic two-transistor round fuzz. FUZZ cleans up as you pick softer or roll the guitar's volume back. BIAS off centre makes quiet notes sputter (the dying-battery sound). TYPE: **Germanium** (softer, warmer) or **Silicon** (more gain, brighter). |
 | **5-Band EQ** | **120**, **360**, **800**, **2K**, **4.5K**, **LEVEL** | Sliders at guitar-centred frequencies (Hz), ±15 dB, flat in the middle; LEVEL (the orange slider) ±12 dB. In front it shapes what drives the amp; in the loop, the amp's finished tone. |
 | **10-Band EQ** | **31** … **16K** (octaves), **LEVEL** | Ten octave-wide sliders, ±12 dB; LEVEL ±12 dB. A double-wide case. |

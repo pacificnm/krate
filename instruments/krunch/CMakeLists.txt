@@ -15,6 +15,12 @@ add_library(krunch_dsp STATIC
     dsp/Gate.h
     dsp/GreenDrive.h
     dsp/GreenDrive.cpp
+    dsp/YellowDrive.h
+    dsp/YellowDrive.cpp
+    dsp/BlueDrive.h
+    dsp/BlueDrive.cpp
+    dsp/Boost.h
+    dsp/Boost.cpp
     dsp/Krunch.h
     dsp/Krunch.cpp
     dsp/ModPedals.h

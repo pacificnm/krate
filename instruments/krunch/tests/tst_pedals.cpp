@@ -9,6 +9,9 @@
 #include "dsp/Fuzz.h"
 #include "dsp/SignaturePedals.h"
 #include "dsp/GreenDrive.h"
+#include "dsp/YellowDrive.h"
+#include "dsp/BlueDrive.h"
+#include "dsp/Boost.h"
 #include "dsp/ModPedals.h"
 #include "dsp/StudioPedals.h"
 #include "dsp/Pedal.h"
@@ -65,6 +68,40 @@ std::unique_ptr<GreenDrive> drive(float d, float tone = 0.5f, float lvl = 0.5f)
     return g;
 }
 
+std::unique_ptr<YellowDrive> yellow(float d, float tone = 0.5f, float lvl = 0.5f)
+{
+    auto g = std::make_unique<YellowDrive>();
+    g->prepare(kRate);
+    g->setKnob(YellowDrive::Drive, d);
+    g->setKnob(YellowDrive::Tone, tone);
+    g->setKnob(YellowDrive::Level, lvl);
+    return g;
+}
+
+double yellowGainAt(float d, double hz, float tone = 0.5f)
+{
+    auto g = yellow(d, tone);
+    const auto y = run(*g, sine(24000, hz, 0.0005f));
+    return level(y, hz, 12000, 9600) / 0.0005;
+}
+
+std::unique_ptr<BlueDrive> blue(float g, float tone = 0.5f, float lvl = 0.5f)
+{
+    auto p = std::make_unique<BlueDrive>();
+    p->prepare(kRate);
+    p->setKnob(BlueDrive::Gain, g);
+    p->setKnob(BlueDrive::Tone, tone);
+    p->setKnob(BlueDrive::Level, lvl);
+    return p;
+}
+
+double blueGainAt(float g, double hz, float tone = 0.5f)
+{
+    auto p = blue(g, tone);
+    const auto y = run(*p, sine(24000, hz, 0.0005f));
+    return level(y, hz, 12000, 9600) / 0.0005;
+}
+
 // Small-signal gain of the pedal at hz (well below clipping).
 double gainAt(float d, double hz, float tone = 0.5f)
 {
@@ -82,8 +119,11 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(16));
-        QCOMPARE(pedalTypes()[2]->type, std::string_view("green_drive"));
+        QCOMPARE(pedalTypes().size(), std::size_t(19));
+        QCOMPARE(pedalTypes()[2]->type, std::string_view("boost"));
+        QCOMPARE(pedalTypes()[3]->type, std::string_view("green_drive"));
+        QCOMPARE(pedalTypes()[4]->type, std::string_view("yellow_drive"));
+        QCOMPARE(pedalTypes()[5]->type, std::string_view("blue_drive"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
             QVERIFY(p);
@@ -96,6 +136,7 @@ private slots:
         QVERIFY(makePedal("delay")->info().loopByDefault);
         QVERIFY(!makePedal("nope"));
         QCOMPARE(GreenDrive::kInfo.knobs.size(), std::size_t(3));
+        QVERIFY(!makePedal("yellow_drive")->info().loopByDefault);
     }
 
     // --- Footswitch ---------------------------------------------------------------
@@ -138,6 +179,159 @@ private slots:
         std::vector<float> x(128, 0.3f);
         g->process(x.data(), 128);
         QVERIFY(std::fabs(x[0] - 0.3f) < 0.01f); // starts as the dry signal, then fades to the effect
+    }
+
+    // --- Yellow Drive -----------------------------------------------------------------
+
+    void yellowBoostsTheMidsNotTheBass()
+    {
+        const double bass = yellowGainAt(0.5f, 80.0), mids = yellowGainAt(0.5f, 1000.0);
+        QVERIFY2(db(mids) - db(bass) > 12.0, qPrintable(QStringLiteral("%1 vs %2 dB").arg(db(mids)).arg(db(bass))));
+    }
+
+    // A 1 M Drive pot against the green one's 500 k: more gain at the top.
+    void yellowHasMoreGainThanGreen()
+    {
+        QVERIFY(db(yellowGainAt(1.0f, 1000.0)) > db(gainAt(1.0f, 1000.0)) + 3.0);
+        QVERIFY(db(yellowGainAt(1.0f, 1000.0)) > db(yellowGainAt(0.0f, 1000.0)) + 18.0);
+    }
+
+    // Asymmetric clipping: even harmonics, where the green one's symmetric diodes make almost none.
+    void yellowClipsAsymmetrically()
+    {
+        const auto second = [](Pedal &p) {
+            const auto y = run(p, sine(24000, 330.0, 0.2f));
+            return level(y, 660.0, 12000, 9600) / level(y, 330.0, 12000, 9600);
+        };
+        auto y = yellow(0.7f);
+        auto g = drive(0.7f);
+        const double ys = second(*y), gs = second(*g);
+        QVERIFY2(ys > 0.05, qPrintable(QString::number(ys)));
+        QVERIFY2(ys > 5.0 * gs, qPrintable(QStringLiteral("%1 vs %2").arg(ys).arg(gs)));
+        // And no DC left over from it.
+        auto p = yellow(1.0f);
+        const auto out = run(*p, sine(48000, 220.0, 0.3f));
+        double mean = 0.0;
+        for (std::size_t i = 24000; i < 48000; ++i)
+            mean += out[i];
+        mean /= 24000.0;
+        QVERIFY2(std::fabs(mean) < 0.005, qPrintable(QString::number(mean)));
+    }
+
+    void yellowToneAndLevel()
+    {
+        QVERIFY(db(yellowGainAt(0.3f, 4000.0, 1.0f)) > db(yellowGainAt(0.3f, 4000.0, 0.0f)) + 12.0);
+        QVERIFY(std::fabs(db(yellowGainAt(0.3f, 100.0, 1.0f)) - db(yellowGainAt(0.3f, 100.0, 0.0f))) < 2.0);
+        const auto at = [](float lvl) {
+            auto g = yellow(0.5f, 0.5f, lvl);
+            const auto y = run(*g, sine(9600, 330.0, 0.1f));
+            return db(level(y, 330.0, 4800, 4800));
+        };
+        QVERIFY(std::fabs((at(1.0f) - at(0.0f)) - 36.0) < 0.5);
+    }
+
+    void yellowIsBounded()
+    {
+        auto g = yellow(1.0f, 1.0f, 1.0f);
+        const auto y = run(*g, sine(9600, 165.0, 0.8f));
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak));
+        QVERIFY2(peak < 10.0f, qPrintable(QString::number(peak)));
+    }
+
+    // --- Boost ------------------------------------------------------------------------
+
+    void boostIsACleanLift()
+    {
+        const auto gain = [](float amount, bool bright, double hz) {
+            Boost b;
+            b.prepare(kRate);
+            b.setKnob(Boost::Amount, amount);
+            b.setKnob(Boost::Bright, bright ? 1.0f : 0.0f);
+            const auto y = run(b, sine(24000, hz, 0.1f));
+            return db(level(y, hz, 12000, 9600) / 0.1);
+        };
+        QVERIFY(std::fabs(gain(0.0f, false, 1000.0)) < 0.1);
+        QVERIFY(std::fabs(gain(1.0f, false, 1000.0) - 20.0) < 0.1);
+        QVERIFY(std::fabs(gain(0.5f, false, 1000.0) - 10.0) < 0.1);
+        // Flat across the guitar's range.
+        QVERIFY(std::fabs(gain(0.5f, false, 82.0) - gain(0.5f, false, 5000.0)) < 0.3);
+        // BRIGHT: the top up about 4 dB, the lows untouched.
+        QVERIFY(std::fabs(gain(0.5f, true, 10000.0) - gain(0.5f, false, 10000.0) - 4.0) < 0.6);
+        QVERIFY(std::fabs(gain(0.5f, true, 150.0) - gain(0.5f, false, 150.0)) < 0.2);
+        // No distortion of its own, even at the top.
+        Boost b;
+        b.prepare(kRate);
+        b.setKnob(Boost::Amount, 1.0f);
+        QVERIFY(thd(run(b, sine(24000, 330.0, 0.08f)), 330.0, 12000, 9600) < 1e-3);
+        QCOMPARE(Boost::kInfo.knobs[1].detents, 2);
+    }
+
+    // --- Blue Drive -------------------------------------------------------------------
+
+    // No mid hump: the lows get the gain too (the green one's bass is 14 dB under its mids).
+    void blueIsFullRange()
+    {
+        const double low = blueGainAt(0.5f, 150.0), mids = blueGainAt(0.5f, 1000.0);
+        QVERIFY2(std::fabs(db(mids) - db(low)) < 4.0, qPrintable(QStringLiteral("%1 vs %2 dB").arg(db(mids)).arg(db(low))));
+        QVERIFY(db(gainAt(0.5f, 1000.0)) - db(gainAt(0.5f, 150.0)) > 8.0);
+    }
+
+    void blueMoreGainMoreDistortion()
+    {
+        QVERIFY(db(blueGainAt(1.0f, 1000.0)) > db(blueGainAt(0.0f, 1000.0)) + 40.0);
+        auto low = blue(0.1f), high = blue(0.9f);
+        const auto a = run(*low, sine(24000, 330.0, 0.1f)), b = run(*high, sine(24000, 330.0, 0.1f));
+        QVERIFY(thd(b, 330.0, 12000, 9600) > 2.0 * thd(a, 330.0, 12000, 9600));
+    }
+
+    // Played softly it cleans up; dug in it breaks up (at the same GAIN).
+    void blueCleansUpWithThePick()
+    {
+        auto soft = blue(0.35f), hard = blue(0.35f);
+        const double s = thd(run(*soft, sine(24000, 196.0, 0.005f)), 196.0, 12000, 9600);
+        const double h = thd(run(*hard, sine(24000, 196.0, 0.3f)), 196.0, 12000, 9600);
+        QVERIFY2(s < 0.05 && h > 4.0 * s, qPrintable(QStringLiteral("soft %1, hard %2").arg(s).arg(h)));
+    }
+
+    void blueHasSomeEvenHarmonicsAndNoDc()
+    {
+        auto p = blue(0.6f);
+        const auto y = run(*p, sine(48000, 330.0, 0.1f));
+        const double second = level(y, 660.0, 24000, 9600) / level(y, 330.0, 24000, 9600);
+        QVERIFY2(second > 0.01, qPrintable(QString::number(second)));
+        double mean = 0.0;
+        for (std::size_t i = 24000; i < 48000; ++i)
+            mean += y[i];
+        QVERIFY(std::fabs(mean / 24000.0) < 0.005);
+    }
+
+    void blueToneTilts()
+    {
+        QVERIFY(db(blueGainAt(0.3f, 5000.0, 1.0f)) > db(blueGainAt(0.3f, 5000.0, 0.0f)) + 15.0);
+        // The lows go the other way, a little.
+        const double lows = db(blueGainAt(0.3f, 120.0, 0.0f)) - db(blueGainAt(0.3f, 120.0, 1.0f));
+        QVERIFY2(lows > 2.0 && lows < 8.0, qPrintable(QString::number(lows)));
+        const auto at = [](float lvl) {
+            auto p = blue(0.5f, 0.5f, lvl);
+            const auto y = run(*p, sine(9600, 330.0, 0.1f));
+            return db(level(y, 330.0, 4800, 4800));
+        };
+        QVERIFY(std::fabs((at(1.0f) - at(0.0f)) - 36.0) < 0.5);
+    }
+
+    void blueIsBounded()
+    {
+        auto p = blue(1.0f, 1.0f, 1.0f);
+        const auto y = run(*p, sine(9600, 82.0, 0.9f));
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max(peak, std::fabs(v));
+        QVERIFY(std::isfinite(peak));
+        // The diodes' ceiling, with +12 dB of LEVEL and the treble's +10 dB overshooting the clipped edges.
+        QVERIFY2(peak < 12.0f, qPrintable(QString::number(peak)));
     }
 
     // --- Green Drive ------------------------------------------------------------------

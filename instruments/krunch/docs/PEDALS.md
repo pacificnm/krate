@@ -14,6 +14,15 @@ The board is kept in `~/.config/krunch/pedals.json` (each pedal's type, place, f
 
 `dsp/Pedal.h`: a `Pedal` has its kind (`PedalInfo`: type, name, colour, knobs), its knobs and footswitch as atomics, and the bypass crossfade; each kind of pedal only writes its effect. `PedalChain` is what the audio thread plays: a list of pedals handed over through an atomic pointer (one chain in front, one in the loop). `Pedalboard` owns the pedals on the GUI side: every add, remove, move or change of place builds new lists for both chains and hands them over, and a replaced list or a removed pedal is freed once the audio thread has moved two blocks on (`Krunch::blocksProcessed()`), so changing the board never stops or glitches the sound. `app/PedalController.cpp` (QML `Pedals`) is the panel's view of it.
 
+## Boost
+
+A clean boost (`dsp/Boost.cpp`): the input through a coupling capacitor (15 Hz), then **BOOST**, 0 … +20 dB (linear in dB; ramped, so turning it never zips). **BRIGHT**, a switch, adds a high shelf of +4 dB from about 3 kHz; off, it's flat. No clipping: what it does to the sound is what the amp (in front) or the cabinet and your ears (in the loop) make of the extra level.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `boost` | +0 … +20 dB | +6 dB |
+| `bright` | Off / On | Off |
+
 ## Green Drive
 
 The classic green mid-boost overdrive, modelled on its circuit in broad strokes (`dsp/GreenDrive.cpp`):
@@ -28,6 +37,37 @@ The classic green mid-boost overdrive, modelled on its circuit in broad strokes 
 | `drive` | 0 … 10 | 5 |
 | `tone` | 0 … 10 | 5 |
 | `level` | −24 … +12 dB | −6 dB |
+
+## Yellow Drive
+
+The classic yellow overdrive, the green one's brighter, edgier cousin, modelled on its circuit in broad strokes (`dsp/YellowDrive.cpp`):
+
+- **The clipping stage:** as the Green Drive's, gain 1 + (33 k + Drive) / 4.7 k with the 4.7 k leg leaving everything below about 720 Hz at unity, but with a 1 M audio-taper Drive pot: more gain at the top (about 6 dB more than the green one at full drive). The clipping is **asymmetric**: two diodes in series one way, one the other, so the signal clips softly at 1.2 going up and 0.6 going down. That makes even harmonics (the green one's symmetric diodes make almost none) and the grittier, more open sound; a 15 Hz coupling capacitor after it takes off the DC that lopsided clipping leaves. The feedback capacitor (51 pF) rolls the treble off, lower as Drive goes up. The stage runs at 4×.
+- **Tone:** a fixed 1 kHz low-pass, with the Tone control bringing back what it took, further than the green one's: dark at 0, about −4 dB of treble at noon, bright (+4 dB) at 10.
+- **Level:** −24 … +12 dB.
+- Small-signal response at noon: about +5 dB at 80 Hz, +21 dB at 1 kHz, +21 dB at 5 kHz; at full drive the mids get about 37 dB (the green one: 30), at none about 9 dB.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `drive` | 0 … 10 | 5 |
+| `tone` | 0 … 10 | 5 |
+| `level` | −24 … +12 dB | −6 dB |
+
+## Blue Drive
+
+The classic blue amp-like overdrive, modelled on its circuit in broad strokes (`dsp/BlueDrive.cpp`). Where the green and yellow drives amplify only the mids and highs and add them to the clean signal, this one drives the whole range, so it behaves like a small amp turned up:
+
+- **Two gain stages in a row**, both turned up together by GAIN (a dual-gang pot): 2 … 26 dB each, 4 … 52 dB in all. Each has a coupling capacitor in front (90 Hz: full range, without the boom) and a treble roll-off (7 kHz).
+- **Each stage clips twice:** softly in its own feedback, then firmer (still rounded) at 0.55 by diodes to ground. The discrete transistors lean a little to one side, the first stage one way and the second the other: a few even harmonics, with the DC taken off after. Soft playing stays under the clipping and comes through clean; digging in breaks up.
+- **Tone:** a tilt around noon: above about 1.2 kHz −12 dB at 0 to +10 dB at 10, while below 250 Hz goes the other way, +3 to −3 dB.
+- **Level:** −24 … +12 dB, made up so noon is about as loud as the guitar alone.
+- Small-signal response at noon: about +13 dB at 80 Hz, +18 dB at 150 Hz, +21 dB at 1 kHz, +17 dB at 5 kHz (flat across, where the green one has a 14 dB hump). At its default GAIN (4), a soft note (−46 dBFS) comes out with about 1 % distortion and a hard one (−10 dBFS) with about 37 %.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `level` | −24 … +12 dB | −6 dB |
+| `tone` | 0 … 10 | 5 |
+| `gain` | 0 … 10 | 4 |
 
 ## Signature pedals
 
@@ -192,4 +232,4 @@ Two amps set apart (`dsp/DualHead.cpp`). The amp's sound after its cabinets play
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (the board's 15 types; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (the board's 19 types; the boost exact, flat and clean, BRIGHT on the top only; the blue drive full range (no hump), more gain more distortion, cleaning up when played softly, its even harmonics and no DC, its tone tilt, level, bounded; the yellow drive's mid hump, its gain over the green one, its even harmonics and no DC, tone, level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
