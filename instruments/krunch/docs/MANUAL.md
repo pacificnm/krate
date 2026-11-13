@@ -39,11 +39,42 @@ Only the playing channel's capture runs. Switching channels crossfades over 15 m
 | **◂ ▸** | The previous or next preset, round the list. Both are MIDI-learnable, for a foot controller. |
 | **SAVE** | Saves the rig over the current preset (lit orange while it's modified). With no preset, it asks for a name. |
 | **SAVE AS…** | Saves the rig as a new preset: type a name and press **SAVE** (or **CANCEL**). A name that's taken is replaced, and it says so first. |
+| **TUNER** | Opens the tuner (lit orange while it's open); see [Tuner](#tuner). Learnable, for a footswitch. |
 | **HELP** | Opens this manual. |
 | **GUITAR** | The interface input Krunch is playing. **WAITING FOR** that input means the device isn't there yet (is it plugged in?); **NO INPUT CHOSEN** means none is chosen under **AUDIO** for Krunch's **INPUT**. |
 | **DELAY** | How long your guitar takes to reach the speakers, and the buffer size. Under about 10 ms feels like playing an amp; over 12 ms it turns orange. **AUDIO OFFLINE**: Krate isn't connected to the audio system. |
 
 A preset is the whole rig: every knob of the four channels, which channel plays, each channel's amp capture and cabinet IRs, and the pedalboard. Keep one per sound you need: one per song, or one per style (a clean jazz rig, a crunch rig, a high-gain rig), each with four channels to switch between while you play. Presets are kept in `~/.local/share/krunch/presets.json`. Saving a song's sounds on the Song screen keeps the same snapshot with the song.
+
+## Tuner
+
+![The tuner, in Drop D, with the A string a little flat](images/tuner.png)
+
+Press **TUNER** on the grille (or its learned footswitch) and play one open string. The tuner listens to the guitar as it comes in, before the pedals, so a drive, wah or delay never throws it off.
+
+| Part | What it shows or does |
+| --- | --- |
+| **The note** | The string you're tuning: the tuning's string nearest the pitch you play, with its octave (A2 is the A string). Cream while it's off, green when it's in tune. **FLAT · tune up ▲** or **SHARP · tune down ▼** says which way to turn the peg; **IN TUNE** when you're there. |
+| **The needle** | How far off you are, from 50 cents flat (left) to 50 sharp (right); a cent is a hundredth of a semitone. In tune is within 3 cents, the green zone in the middle. Further off than 50 cents, the needle waits at the end, red. Under it, the cents and the frequency you're playing. |
+| **The strings** | The tuning's strings, lowest first, each with its note and frequency at your A4; the one you're tuning is lit. |
+| **TUNING** | Which tuning to tune to (see below). **Chromatic** shows the nearest note, whatever it is: for odd tunings, or a capo. |
+| **A4 REFERENCE** | The pitch of A above middle C, which every string is tuned from: **440** Hz as standard, **400** … **480** Hz. **−** / **+** move it a hertz; type a value (to a tenth, 432.5) and press Enter; **432**, **440**, **442** and **444** are one press. Set it to match a piano, a record or a band that isn't at 440. |
+| **MUTED / MUTE OFF** | **MUTED** (orange) silences the amp while the tuner is open, as a tuner pedal does; **MUTE OFF** lets it play on. |
+| **CLOSE** | Closes the tuner (so does Escape, a click outside it, or the footswitch again). The amp plays again. |
+
+**Tunings**, lowest string first:
+
+| Group | Tunings |
+| --- | --- |
+| Guitar, standard | **Standard E** (E A D G B E), **E♭ Standard** (half a step down), **D Standard** (a whole step down), **C♯ Standard**, **C Standard**, **B Standard** |
+| Guitar, drop | **Drop D** (D A D G B E), **Drop C♯** (D♭ A♭ D♭ G♭ B♭ E♭), **Drop C** (C G C F A D), **Drop B** (B F♯ B E G♯ C♯), **Drop A** (A E A D F♯ B) |
+| Guitar, open | **DADGAD**, **Open D** (D A D F♯ A D), **Open G** (D G D G B D), **Open E** (E B E G♯ B E), **Open C** (C G C G C E) |
+| 7- and 8-string | **7-String Standard** (B E A D G B E), **7-String Drop A** (A E A D G B E), **8-String Standard** (F♯ B E A D G B E) |
+| Bass | **Bass Standard (4)** (E A D G), **Bass Drop D (4)**, **Bass E♭ Standard (4)**, **Bass Standard (5)** (B E A D G) |
+
+The tuning, A4 and MUTE are yours rather than a preset's: they stay as you left them, kept in Krunch's `tuner.json`.
+
+**Tips**: pick the string a little away from the bridge and let it ring; tune up to the note (from flat), so the string settles in the nut; with a lot of drive on a channel, the tuner still reads the clean guitar.
 
 ## Input, meters and channels
 
@@ -191,7 +222,7 @@ A whole rig for one well-known sound in one pedal, each part brought in by its o
 Krunch plays no MIDI notes, but its controls can be learned: press **LEARN** in Krate's top bar, click a knob or button on Krunch, then move a knob or press a button (or a footswitch) on your controller; they're linked.
 
 - **Knobs**: every knob on the plate (**INPUT**, **LEVEL**, the channel's knobs, **CAB MIX**, **SPACE**).
-- **Buttons**: **CHANNEL** 1–4, the playing channel's **LOOP** and **CABINET**, the pedals' footswitches by place (pedal 1 … 8), and the presets' **◂ ▸**. With a foot controller that's a whole floor rig: channels, loop, pedals and presets at your feet.
+- **Buttons**: **CHANNEL** 1–4, the playing channel's **LOOP** and **CABINET**, the pedals' footswitches by place (pedal 1 … 8), the presets' **◂ ▸**, and **TUNER**. With a foot controller that's a whole floor rig: channels, loop, pedals, presets and the tuner at your feet.
 
 Every knob can also be automated from Krate's arranger.
 

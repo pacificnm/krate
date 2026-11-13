@@ -16,6 +16,7 @@ Item {
     required property Cabinets cabinets
     required property Captures captures
     required property Pedals pedals
+    required property Tuner tuner
 
     width: 1400
     height: 990
@@ -149,12 +150,12 @@ Item {
         // The preset: its name (* when the amp has changed since), the list,
         // previous and next (learnable), SAVE over it, SAVE AS a new one.
         Row {
-            x: 400
+            x: 370
             anchors.verticalCenter: parent.verticalCenter
             spacing: 6
 
             Rectangle { // the name; a click opens the list
-                width: 230
+                width: 180
                 height: 40
                 radius: 4
                 color: "#0F1410"
@@ -208,6 +209,16 @@ Item {
                 faceText: "SAVE AS…"
                 text: "Save the amp as a new preset"
                 onClicked: saveAsPopup.open()
+            }
+            PanelButton { // the tuner (learnable: a footswitch)
+                width: 74
+                height: 40
+                dark: true
+                faceText: "TUNER"
+                text: "Open the tuner"
+                tint: panel.tuner.open ? Theme.labelOrange : "transparent"
+                onClicked: panel.tuner.toggle()
+                LearnOverlay { anchors.fill: parent; paramKey: "tuner"; round: false }
             }
             PanelButton { // the manual
                 width: 64
@@ -706,6 +717,12 @@ Item {
                 }
             }
         }
+    }
+
+    TunerPopup {
+        tuner: panel.tuner
+        x: (panel.width - width) / 2
+        y: 40
     }
 
     CapturePicker {

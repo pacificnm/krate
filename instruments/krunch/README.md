@@ -8,6 +8,8 @@ A guitar amp for the [Krate](../../README.md) rack, built around **amp captures*
 
 **Pedals:** under the amp: **+** adds one of 15 (Prism, a whole early-70s spacey lead and clean rig in one; Compressor; Green Drive, a mid-boost overdrive; Round Fuzz; 5-Band and 10-Band EQ; Phaser; Flanger; Vibe; Chorus; Tremolo; Delay; Drum Echo; Reverb; Dual Head, two amps set apart), **FRONT / LOOP** puts it in front of the amp or in its effects loop, drag to reorder, **×** removes, the footswitch turns it on and off (learnable). See [docs/PEDALS.md](docs/PEDALS.md).
 
+**Tuner:** **TUNER** on the grille (learnable, for a footswitch): the note, a needle in cents and the strings, for 23 tunings (Standard E, E♭, D, C and B standard; Drop D, C♯, C, B, A; DADGAD and open tunings; 7- and 8-string; 4- and 5-string bass; or Chromatic), with A4 anywhere from 400 to 480 Hz (440 as standard). It reads the guitar before the pedals, and mutes the amp while it's open (or not). See [docs/MANUAL.md](docs/MANUAL.md#tuner).
+
 **Cabinets:** click a channel's **A** or **B** to open the IR library; a click on an IR plays it at once, so you can compare while you play. **IMPORT** (or drop on the amp) adds WAV files, folders or zip packs; each IR is copied into the library once, and ★ marks favourites, listed first.
 
 The panel shows the playing channel's controls under the four channel buttons. The input meter's clip light means the interface's gain is too high; under about 10 ms of delay feels like playing an amp (set the buffer to 128 frames under **AUDIO**).

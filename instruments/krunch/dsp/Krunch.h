@@ -13,6 +13,7 @@
 #include "dsp/Gate.h"
 #include "dsp/Pedal.h"
 #include "dsp/Speaker.h"
+#include "dsp/Tuner.h"
 
 namespace krunch {
 
@@ -147,6 +148,12 @@ public:
     // front of the amp, in the loop.
     PedalChain &frontPedals() noexcept { return m_front; }
     PedalChain &loopPedals() noexcept { return m_loop; }
+    // The tuner: its tap on the input (before the pedals), and muting the amp
+    // while tuning (any thread).
+    TunerTap &tunerTap() noexcept { return m_tunerTap; }
+    void setMuted(bool muted) noexcept { m_muted.store(muted, std::memory_order_relaxed); }
+    bool muted() const noexcept { return m_muted.load(std::memory_order_relaxed); }
+
     // Blocks processed so far (any thread): something replaced before this
     // count moved two on is no longer in use by the audio thread.
     std::uint64_t blocksProcessed() const noexcept { return m_blocks.load(std::memory_order_acquire); }
@@ -198,6 +205,8 @@ private:
     std::atomic<float> m_outputPeak{0.0f};
     std::atomic<bool> m_gateClosed{false};
     std::atomic<std::uint64_t> m_blocks{0};
+    TunerTap m_tunerTap;
+    std::atomic<bool> m_muted{false};
 };
 
 } // namespace krunch

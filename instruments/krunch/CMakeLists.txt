@@ -34,6 +34,8 @@ add_library(krunch_dsp STATIC
     dsp/StudioPedals.cpp
     dsp/TimePedals.h
     dsp/TimePedals.cpp
+    dsp/Tuner.h
+    dsp/Tuner.cpp
 )
 target_include_directories(krunch_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # The whole archive: its model types register themselves from objects nothing else references.
@@ -71,12 +73,15 @@ qt_add_qml_module(krunch_ui
         app/PedalController.cpp
         app/PresetController.h
         app/PresetController.cpp
+        app/TunerController.h
+        app/TunerController.cpp
     QML_FILES
         qml/Panel.qml
         qml/IrPicker.qml
         qml/CapturePicker.qml
         qml/Pedalboard.qml
         qml/ParametricEqEditor.qml
+        qml/TunerPopup.qml
     RESOURCES
         docs/MANUAL.md
         ${krunch_manual_images}
@@ -109,6 +114,12 @@ target_compile_options(tst_pedals PRIVATE -Wall -Wextra -Wpedantic)
 target_include_directories(tst_pedals PRIVATE tools)
 target_link_libraries(tst_pedals PRIVATE krunch_dsp krate_testing Qt6::Test)
 add_test(NAME tst_pedals COMMAND tst_pedals)
+
+add_executable(tst_tuner tests/tst_tuner.cpp)
+target_compile_options(tst_tuner PRIVATE -Wall -Wextra -Wpedantic)
+target_include_directories(tst_tuner PRIVATE tools)
+target_link_libraries(tst_tuner PRIVATE krunch_dsp krate_testing Qt6::Test)
+add_test(NAME tst_tuner COMMAND tst_tuner)
 
 # Presets, with a fake amp.
 add_executable(tst_captures tests/tst_captures.cpp app/CaptureController.h app/CaptureController.cpp)

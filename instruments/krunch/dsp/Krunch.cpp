@@ -178,6 +178,7 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
         std::fill_n(m_in.data(), frames, 0.0f);
     }
     holdPeak(m_inputPeak, inPeak);
+    m_tunerTap.write(in, frames);
 
     // A new channel: start it fresh and fade the old one out.
     const int channel = units::channel(m_params.get(int(ParamId::Channel)));
@@ -250,7 +251,9 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
 
     // Level (ramped), a little under unity (the speaker's peaks).
     constexpr double kOutputTrimDb = -0.5;
-    const float target = float(units::levelGain(m_params.get(int(ParamId::Level))) * std::pow(10.0, kOutputTrimDb / 20.0));
+    const float target = m_muted.load(std::memory_order_relaxed) // the tuner's MUTE: ramps down and back
+                             ? 0.0f
+                             : float(units::levelGain(m_params.get(int(ParamId::Level))) * std::pow(10.0, kOutputTrimDb / 20.0));
     if (m_level < 0.0f)
         m_level = target;
     const float step = (target - m_level) / float(frames);
