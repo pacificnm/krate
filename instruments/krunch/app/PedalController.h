@@ -30,7 +30,8 @@ class PedalController : public QObject
     Q_PROPERTY(int layoutRevision READ layoutRevision NOTIFY layoutChanged)
     Q_PROPERTY(int count READ count NOTIFY layoutChanged)
     Q_PROPERTY(int maxPedals READ maxPedals CONSTANT)
-    // Every kind of pedal, for the add menu: [{type, name, colour}].
+    // Every kind of pedal, for the picker: [{type, name, colour, group, blurb, loop (where it goes
+    // when added), width, sliders, pattern, editor, knobs: [{label, defaultValue, detents}]}].
     Q_PROPERTY(QVariantList types READ types CONSTANT)
 
 public:

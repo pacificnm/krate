@@ -15,7 +15,7 @@ This manual goes through the panel from top to bottom: the grille (presets and w
 5. **Choose one per channel.** Press **1**, **2**, **3** or **4** under **CHANNEL**, then **CHOOSE AMP ▾** and click a capture: it plays at once, so you can play and compare. A clean one on 1, a crunch on 2, high gain on 3 and 4, say.
 6. **Choose cabinets.** For an amp-only capture, click the **A** bar under **CABINET** and import your IRs (WAV files, folders or zip packs); click one to hear it at once. For a full-rig capture, **CABINET** goes **OFF** by itself when you choose it (if its file says it has its cabinet in it; otherwise set it **OFF** yourself): no IR on A or B and no speaker.
 7. **Shape it.** **GAIN** drives the capture harder or softer (noon: as it was captured), **BASS**, **MID**, **TREBLE** and **PRESENCE** shape it after, **VOLUME** balances the channel with the others, **LEVEL** sets how loud it all is.
-8. **Add pedals.** Click **+** (**ADD PEDAL**) on the pedalboard and choose one; its footswitch turns it on and off.
+8. **Add pedals.** Click **+** (**ADD PEDAL**) on the pedalboard and click one in the picker; its footswitch turns it on and off.
 9. **Keep it.** Press **SAVE AS…** on the grille and give the rig a name. Make a preset for each song or style you play; within one, the four channels switch instantly.
 
 If the grille's **DELAY** line is orange, the trip from your guitar to the speakers is over 12 ms, which you can feel when you play: set a smaller buffer (128 frames is a good start) under **AUDIO**.
@@ -167,7 +167,7 @@ Under the amp: up to eight pedals, left to right. Each is placed **FRONT** (in f
 
 | Control | What it does |
 | --- | --- |
-| **+** (**ADD PEDAL**) | Adds a pedal at the end of the board, from a menu of all 19. |
+| **+** (**ADD PEDAL**) | Opens the pedal picker: all 19 pedals as they look, grouped (drive and boost, dynamics and EQ, modulation, time and space, rigs), each with what it does and whether it goes in **FRONT** or the **LOOP**. Click one to add it at the end of the board. Type in **Search** to narrow the list (Enter adds the only match); **CLOSE** or Escape adds nothing. |
 | **The footswitch** | Turns the pedal on and off; its light shows it's on. Switching crossfades, so it never clicks. Learnable by its place on the board (pedal 1 … 8, the number under it). |
 | **FRONT** / **LOOP** | Puts the pedal in front of the amp or in its effects loop. |
 | **×** | Takes the pedal off the board (it fades out first). |

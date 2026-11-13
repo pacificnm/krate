@@ -88,6 +88,8 @@ qt_add_qml_module(krunch_ui
         qml/Pedalboard.qml
         qml/ParametricEqEditor.qml
         qml/TunerPopup.qml
+        qml/PedalCase.qml
+        qml/PedalPicker.qml
     RESOURCES
         docs/MANUAL.md
         ${krunch_manual_images}

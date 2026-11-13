@@ -47,13 +47,64 @@ PedalController::~PedalController()
 }
 
 
+namespace {
+// The picker's groups, in its order, and a line on each pedal.
+struct PedalBlurb
+{
+    const char *type;
+    const char *group;
+    const char *blurb;
+};
+constexpr PedalBlurb kBlurbs[] = {
+    {"boost", "Drive & boost", "A clean lift, 0 … +20 dB: pushes the amp harder, or a solo louder."},
+    {"green_drive", "Drive & boost", "Mid-boost overdrive: tight bass, pushed mids, smooth."},
+    {"yellow_drive", "Drive & boost", "Brighter, grittier overdrive with more gain on tap."},
+    {"blue_drive", "Drive & boost", "Amp-like, full-range overdrive that follows your picking."},
+    {"round_fuzz", "Drive & boost", "Thick vintage two-transistor fuzz; cleans up as you play softer."},
+    {"compressor", "Dynamics & EQ", "Evens your playing out and lengthens notes."},
+    {"eq5", "Dynamics & EQ", "Five sliders at guitar-centred frequencies."},
+    {"eq10", "Dynamics & EQ", "Ten octave-wide sliders, 31 Hz … 16 kHz."},
+    {"parametric_eq", "Dynamics & EQ", "Six bands you draw on a curve: peaks, shelves, cuts."},
+    {"phaser", "Modulation", "The one-knob four-stage swoosh; Smooth or Deep."},
+    {"flanger", "Modulation", "The jet-plane sweep, up to metallic and resonant."},
+    {"vibe", "Modulation", "The lopsided, throbbing photocell swirl."},
+    {"chorus", "Modulation", "Shimmer and width: a detuned, swept copy."},
+    {"tremolo", "Modulation", "The volume pulsing, from a gentle sine to a hard chop."},
+    {"delay", "Time & space", "Echoes that darken as they repeat, 40 ms … 1.5 s."},
+    {"drum_echo", "Time & space", "The old multi-head magnetic drum echo and its swell."},
+    {"reverb", "Time & space", "A room to a hall, 0.4 … 8 s."},
+    {"dual_head", "Rigs", "Two amps set apart: wide stereo from one guitar."},
+    {"prism", "Rigs", "A whole early-70s spacey lead rig: fuzz, vibe, echo, reverb."},
+};
+} // namespace
+
 QVariantList PedalController::types() const
 {
     QVariantList result;
-    for (const krunch::PedalInfo *info : krunch::pedalTypes())
+    for (const krunch::PedalInfo *info : krunch::pedalTypes()) {
+        QString group = QStringLiteral("More"), blurb;
+        for (const PedalBlurb &b : kBlurbs)
+            if (info->type == b.type) {
+                group = QString::fromUtf8(b.group);
+                blurb = QString::fromUtf8(b.blurb);
+            }
+        QVariantList knobs;
+        for (const krunch::KnobInfo &k : info->knobs)
+            knobs << QVariantMap{{QStringLiteral("label"), QString::fromUtf8(k.label)},
+                                 {QStringLiteral("defaultValue"), k.defaultValue},
+                                 {QStringLiteral("detents"), k.detents}};
         result << QVariantMap{{QStringLiteral("type"), QString::fromUtf8(info->type)},
                               {QStringLiteral("name"), QString::fromUtf8(info->name)},
-                              {QStringLiteral("colour"), QString::fromUtf8(info->colour)}};
+                              {QStringLiteral("colour"), QString::fromUtf8(info->colour)},
+                              {QStringLiteral("group"), group},
+                              {QStringLiteral("blurb"), blurb},
+                              {QStringLiteral("loop"), info->loopByDefault},
+                              {QStringLiteral("width"), info->width},
+                              {QStringLiteral("sliders"), info->sliders},
+                              {QStringLiteral("pattern"), QString::fromUtf8(info->pattern)},
+                              {QStringLiteral("editor"), info->editor},
+                              {QStringLiteral("knobs"), knobs}};
+    }
     return result;
 }
 

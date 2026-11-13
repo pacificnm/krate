@@ -2,7 +2,7 @@
 
 The pedalboard sits under the amp. Up to eight pedals, left to right, each placed **FRONT** (in front of the amp, before the gate: `frontPedals()`) or **LOOP** (in the amp's effects loop, between the channel's amp capture and its cabinet: `loopPedals()`, played while the channel's LOOP is on). Each group plays in the board's order, so the guitar goes: front pedals → amp → loop pedals → cabinet. Drives belong in front; time-based effects (chorus, delay, reverb) in the loop, after the distortion, so the echoes and the room stay clean. A new pedal goes where its kind belongs, and the switch on the pedal moves it.
 
-- **Add:** the **+** tile at the end of the board, then the pedal from the menu.
+- **Add:** the **+** tile at the end of the board opens the pedal picker: every pedal as it looks on the board, in groups (drive and boost, dynamics and EQ, modulation, time and space, rigs), each with a line on what it does and where it goes (FRONT or LOOP). Click one to add it; type to search (Enter adds the only match); Escape or CLOSE adds nothing. `qml/PedalPicker.qml`; the groups and lines are in `app/PedalController.cpp`.
 - **Reorder:** drag a pedal by its body; it drops into the nearest place.
 - **Remove:** the **×** at a pedal's top right (it switches off and fades out first).
 - **On / off:** the footswitch; the light shows it's on. Switching crossfades over 10 ms, so it never clicks; an added pedal fades in.
