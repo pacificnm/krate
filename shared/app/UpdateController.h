@@ -11,7 +11,8 @@ class QQmlEngine;
 class QJSEngine;
 
 // QML singleton "Updates": Krate's updates from its GitHub releases
-// (docs/UPDATES.md). It asks GitHub for the latest release (soon after
+// (docs/UPDATES.md), for the Krate app and the standalone apps that offer them
+// (Krunch): they all come in Krate's one package. It asks GitHub for the latest release (soon after
 // starting, then twice a day, or on CHECK), and UPDATE starts the installed
 // updater (krate-update.service, as root: it fetches, checks and installs the
 // release itself, then restarts the kiosk), whose progress it shows.
@@ -29,6 +30,8 @@ class UpdateController : public QObject
     // "", "checking", "installing" (and the updater's: "downloading", ...), "done", "current", "failed"
     Q_PROPERTY(QString state READ state NOTIFY changed)
     Q_PROPERTY(QString message READ message NOTIFY changed)             // what's happening, in words
+    // Asking by itself (soon after starting, then twice a day).
+    Q_PROPERTY(bool autoCheck READ autoCheck WRITE setAutoCheck NOTIFY autoCheckChanged)
 
 public:
     // `updaterPath`: the updater the package installs (absent: running from a build).
@@ -47,8 +50,10 @@ public:
     QString message() const { return m_message; }
 
     Q_INVOKABLE void check();
-    // Asking by itself (soon after starting, then twice a day): Settings' switch.
+    bool autoCheck() const { return m_autoCheck; }
     void setAutoCheck(bool on);
+    // The app to start again once an update is in ("Krate", "Krunch").
+    void setAppName(const QString &name) { m_appName = name; }
     Q_INVOKABLE void install();
 
     // GitHub's latest-release answer: its version ("v0.3.0" -> "0.3.0") and
@@ -66,6 +71,7 @@ public:
 
 signals:
     void changed();
+    void autoCheckChanged();
 
 private:
     void set(const QString &state, const QString &message);
@@ -74,6 +80,8 @@ private:
     static inline UpdateController *s_instance = nullptr;
     QString m_current, m_updater, m_statusPath;
     QString m_latest, m_notes, m_state, m_message;
+    QString m_appName = QStringLiteral("Krate");
+    bool m_autoCheck = true;
     QNetworkAccessManager *m_network = nullptr;
     QTimer m_checkTimer, m_statusTimer;
     QDateTime m_statusBefore; // the status file's time when UPDATE was pressed (an older one is a past run's)

@@ -4,7 +4,7 @@
 
 #include <QtTest>
 
-#include "UpdateController.h"
+#include "app/UpdateController.h"
 
 class TestUpdates : public QObject
 {

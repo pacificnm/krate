@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Krunch
+GenericName=Guitar Amp
+Comment=A guitar amp for your audio interface: amp captures, cabinets, pedals and a tuner
+Exec=pw-jack krunch
+Icon=krunch
+Terminal=false
+Categories=AudioVideo;Audio;Music;
+Keywords=guitar;amp;amplifier;pedal;cabinet;tuner;distortion;
+StartupNotify=true
+StartupWMClass=krunch

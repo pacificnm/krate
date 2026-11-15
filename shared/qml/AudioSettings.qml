@@ -3,10 +3,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Krate
-import KrateRack
 
-// Where Krate plays to, the audio interface's inputs (a guitar, for Krunch)
-// and the buffer size: in the AUDIO popup and on the Settings screen.
+// Where the app plays to, the audio interface's inputs (a guitar, for Krunch)
+// and the buffer size: in Krate's AUDIO popup and Settings screen, and in
+// the Krunch app's AUDIO popup.
 Column {
     spacing: 10
     Text {

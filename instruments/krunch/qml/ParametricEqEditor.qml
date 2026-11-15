@@ -21,7 +21,7 @@ Popup {
     // The knobs' defaults (a double-click puts one back), from the pedal's description.
     readonly property var defaults: {
         const layout = editor.pedals.layoutRevision >= 0 && position >= 0 ? editor.pedals.pedals() : []
-        return position < layout.length ? layout[position].knobs.map(k => k.defaultValue) : []
+        return position >= 0 && position < layout.length ? layout[position].knobs.map(k => k.defaultValue) : []
     }
     function knobIndex(band, part) { return band * 4 + part } // part: 0 type, 1 freq, 2 gain, 3 q
     function value(index) { return editor.pedals.revision >= 0 && position >= 0 ? editor.pedals.knob(position, index) : 0 }

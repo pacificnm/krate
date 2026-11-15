@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A2A2C"/><stop offset="1" stop-color="#0E0E0F"/></linearGradient>
+<pattern id="w" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><rect width="4" height="4" fill="#3A372F"/><rect width="1.5" height="4" fill="#4A463C"/></pattern></defs>
+<rect x="3" y="3" width="58" height="58" rx="13" fill="url(#g)"/>
+<rect x="3.5" y="3.5" width="57" height="57" rx="12.5" fill="none" stroke="#000" stroke-opacity="0.5"/>
+<rect x="9" y="10" width="46" height="29" rx="3" fill="url(#w)" stroke="#000" stroke-width="1"/>
+<path d="M35 13 L25 27 H32 L28 37 L40 22 H33 Z" fill="#F08A2B" stroke="#1A1A1A" stroke-width="1" stroke-linejoin="round"/>
+<rect x="9" y="44" width="46" height="11" rx="2" fill="#E9DFC4"/>
+<circle cx="17" cy="49.5" r="3" fill="#1C1C1C"/><circle cx="27" cy="49.5" r="3" fill="#1C1C1C"/>
+<circle cx="37" cy="49.5" r="3" fill="#1C1C1C"/><circle cx="47" cy="49.5" r="3" fill="#1C1C1C"/>
+</svg>

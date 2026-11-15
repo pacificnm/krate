@@ -259,6 +259,25 @@ private slots:
         QCOMPARE(left, right); // mono, both sides
     }
 
+    // The standalone app's MIDI Learn: a learned CC turns its knob, or queues its button.
+    void learnedControllersTurnKnobs()
+    {
+        Krunch amp;
+        amp.prepare(kRate, 128);
+        krate::MidiLearnMap &learn = *amp.midiLearnMap();
+        learn.setActionCount(2);
+        learn.setMapping(20, int(ParamId::Level));
+        learn.setMapping(64, krate::MidiLearnMap::actionTarget(1));
+        std::vector<float> left(128), right(128);
+        float *const outputs[2] = {left.data(), right.data()};
+        const krate::MidiEvent events[] = {{0, 3, {0xB3, 20, 127}}, {5, 3, {0xB0, 64, 127}}, {6, 3, {0xB0, 21, 0}}};
+        krate::AudioBlock block{outputs, 128, events, 3};
+        amp.process(block);
+        QCOMPARE(amp.param(int(ParamId::Level)), 1.0f); // any channel
+        QCOMPARE(learn.popAction().value_or(-1), 1);
+        QVERIFY(!learn.popAction());
+    }
+
     void noInputsIsSilence()
     {
         Krunch amp;

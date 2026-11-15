@@ -110,7 +110,7 @@ A modular synthesizer for building sounds and learning how synths work. 23 modul
 
 ### Krunch (guitar amp)
 
-A guitar amp in the rack that plays **captures of real amps** (`.nam` files, shared for free on community capture sites: [CAPTURES.md](instruments/krunch/docs/CAPTURES.md)), from your audio interface's input: four channels, each with the capture you choose for it (upload them with Krate Remote or import them), gain to drive it, an EQ after it (bass, mid, treble, presence), volume and a gate; cabinets from your own impulse responses (an IR library you import WAVs, folders or zip packs into), a pedalboard in front of the amp and in its effects loop (overdrive, fuzz, compressor, EQs, modulation, delays, reverb, Dual Head for two amps set apart), SPACE between two cabinets, and presets that keep the whole rig, captures included (one per song or style). [More](instruments/krunch/README.md).
+A guitar amp, in the rack or on its own (the `krunch` app, with its own audio settings, MIDI Learn and updates), that plays **captures of real amps** (`.nam` files, shared for free on community capture sites: [CAPTURES.md](instruments/krunch/docs/CAPTURES.md)), from your audio interface's input: four channels, each with the capture you choose for it (upload them with Krate Remote or import them), gain to drive it, an EQ after it (bass, mid, treble, presence), volume and a gate; cabinets from your own impulse responses (an IR library you import WAVs, folders or zip packs into), a pedalboard in front of the amp and in its effects loop (overdrive, fuzz, compressor, EQs, modulation, delays, reverb, Dual Head for two amps set apart), SPACE between two cabinets, and presets that keep the whole rig, captures included (one per song or style). [More](instruments/krunch/README.md).
 
 ![Krunch](docs/screenshots/krate-krunch.png)
 
@@ -146,7 +146,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build build
 ctest --test-dir build
 pw-jack ./build/bin/krate          # the rack, with every instrument
-pw-jack ./build/bin/konnekt        # or any app on its own: korrode, kessel, kalliope, krimson, kobalt, klang, konnekt
+pw-jack ./build/bin/konnekt        # or any app on its own: korrode, kessel, kalliope, krimson, kobalt, klang, konnekt, krunch
 ./build/bin/krate-render --bars 8 --out rack.wav   # the rack rendered offline to a WAV
 ```
 

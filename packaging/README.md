@@ -1,6 +1,6 @@
 # Packaging
 
-Krate installs as one Debian package, `krate`, with all eight apps: **Krate** (the rack) and each instrument on its own (Korrode, Kessel, Kalliope, Krimson, Kobalt, Klang, Konnekt). Each has a menu entry (KDE: *Multimedia*) and an icon.
+Krate installs as one Debian package, `krate`, with all nine apps: **Krate** (the rack) and each instrument on its own (Korrode, Kessel, Kalliope, Krimson, Kobalt, Klang, Konnekt, Krunch). Each has a menu entry (KDE: *Multimedia*) and an icon.
 
 ## Build the .deb
 

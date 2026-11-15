@@ -1,4 +1,4 @@
-#include "UpdateController.h"
+#include "app/UpdateController.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -96,6 +96,10 @@ void UpdateController::set(const QString &state, const QString &message)
 
 void UpdateController::setAutoCheck(bool on)
 {
+    if (on != m_autoCheck) {
+        m_autoCheck = on;
+        emit autoCheckChanged();
+    }
     if (!on)
         m_checkTimer.stop();
     else if (!m_checkTimer.isActive())
@@ -167,7 +171,7 @@ void UpdateController::pollStatus()
     parseStatus(QString::fromUtf8(f.readAll()), &state, &text);
     if (state == u"done") { // the kiosk restarts Krate itself; a desktop's is up to you
         m_statusTimer.stop();
-        set(state, text + QStringLiteral(": restart Krate to use it"));
+        set(state, text + QStringLiteral(": restart %1 to use it").arg(m_appName));
         qCInfo(lcUpdates) << text;
     } else if (state == u"failed" || state == u"current") {
         m_statusTimer.stop();

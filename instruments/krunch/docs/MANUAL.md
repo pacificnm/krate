@@ -8,7 +8,7 @@ This manual goes through the panel from top to bottom: the grille (presets and w
 
 ## Quick start
 
-1. **Plug in.** Plug your guitar into your audio interface's instrument input. In Krate's top bar, open **AUDIO** and choose that interface input as input 1 (or 2).
+1. **Plug in.** Plug your guitar into your audio interface's instrument input. In the top bar (Krate's, or the Krunch app's), open **AUDIO** and choose that interface input as input 1 (or 2).
 2. **Pick the input.** Set Krunch's **INPUT** knob to that input (**In 1** or **In 2**). The grille shows **GUITAR** and the input's name once it's connected; play and the **IN** meter moves. If the **CLIP** light flashes, turn the interface's own gain down.
 3. **Get some amp captures.** Krunch has no amp of its own: a channel plays the capture you give it, and a channel without one is silent (its button says **NO AMP**). Captures are `.nam` files, an open format; thousands are shared for free on community capture sites. Get **amp-only** captures (the amp into a load, no speaker: they take your cabinet IRs) or **full-rig** captures (a miked cabinet in them). Choose ones made at 48 kHz, the rate the player runs at.
 4. **Put them on Krunch.** From your phone or another computer, open **Krate Remote**, go to **Files ▸ Places ▸ Amp captures (Krunch)** and upload or drop them. Or press **CHOOSE AMP ▾** and **IMPORT** them from this computer.
@@ -222,12 +222,23 @@ A whole rig for one well-known sound in one pedal, each part brought in by its o
 
 ## MIDI and MIDI Learn
 
-Krunch plays no MIDI notes, but its controls can be learned: press **LEARN** in Krate's top bar, click a knob or button on Krunch, then move a knob or press a button (or a footswitch) on your controller; they're linked.
+Krunch plays no MIDI notes, but its controls can be learned: press **LEARN** in the top bar (Krate's, or the Krunch app's; **L** too), click a knob or button on Krunch, then move a knob or press a button (or a footswitch) on your controller; they're linked.
 
 - **Knobs**: every knob on the plate (**INPUT**, **LEVEL**, the channel's knobs, **CAB MIX**, **SPACE**).
 - **Buttons**: **CHANNEL** 1–4, the playing channel's **LOOP** and **CABINET**, the pedals' footswitches by place (pedal 1 … 8), the presets' **◂ ▸**, and **TUNER**. With a foot controller that's a whole floor rig: channels, loop, pedals, presets and the tuner at your feet.
 
-Every knob can also be automated from Krate's arranger.
+Every knob can also be automated from Krate's arranger. The Krunch app keeps its own links (`~/.config/krunch/midimap.json`), apart from Krate's.
+
+## The Krunch app
+
+Krunch also runs on its own: **Krunch** in the applications menu (or `pw-jack krunch`), for when you just want to play guitar. It's the same amp with the same files as Krunch in Krate: presets, captures, IRs, pedals and the panel's settings are shared, so a rig made in one plays in the other. The top bar has what Krate's gives Krunch:
+
+- **The audio light** and status: lit while Krunch is connected to the audio server (click it to reconnect), the rate, buffer and xruns, and whether a MIDI controller is connected (every MIDI device plugged in is).
+- **LEARN**: MIDI Learn, as above (**L** turns it on and off, **Esc** ends it).
+- **AUDIO**: which capture port of your interface feeds input 1 and input 2, where Krunch plays to, and the buffer size, with each input's level and the delay from input to speakers. The first time, Krunch takes the inputs and buffer you chose in Krate (or, with none chosen anywhere, your interface's inputs in order); after that it keeps its own, in `~/.config/krunch/app.json`.
+- **UPDATES**: the version you have and Krate's latest release (Krunch comes in Krate's package, so updating one updates both): check by itself (when Krunch starts, then twice a day), **CHECK NOW**, **UPDATE TO …** with what's new. When a newer one is out, the top bar says so. Once it's installed, quit Krunch and start it again. Below, **CRASH REPORTS**: if Krunch ever crashes, it says so at the next start, and the report is kept here (in `~/.local/share/krunch/crashes`).
+
+Run Krunch in Krate or on its own, not both at once: both would use the interface, and the last one to save would win the shared settings.
 
 ## Tips
 

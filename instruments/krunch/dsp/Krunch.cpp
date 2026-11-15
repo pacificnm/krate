@@ -159,6 +159,12 @@ void Krunch::runChannel(int channel, float *out, std::uint32_t frames) noexcept
 
 void Krunch::process(const krate::AudioBlock &block) noexcept
 {
+    for (std::uint32_t i = 0; i < block.midiCount; ++i) { // learned CCs: knobs and buttons (all channels)
+        const krate::MidiMessage m = krate::decode(block.midi[i]);
+        if (m.type == krate::MidiMessage::Type::ControlChange)
+            if (const auto r = m_learn.controlChange(m.data1, m.data2); r.param != krate::MidiLearnMap::kUnmapped)
+                m_params.setFromAudio(r.param, r.value);
+    }
     const float *in = block.inputs ? block.inputs[units::input(m_params.get(int(ParamId::Input)))] : nullptr;
     for (std::uint32_t offset = 0; offset < block.frames; offset += kBlock) {
         const std::uint32_t frames = std::min(kBlock, block.frames - offset);

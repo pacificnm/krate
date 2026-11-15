@@ -1,4 +1,4 @@
-#include "CrashReportsController.h"
+#include "app/CrashReportsController.h"
 
 #include <QFile>
 #include <QJSEngine>

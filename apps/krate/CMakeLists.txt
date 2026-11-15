@@ -19,10 +19,6 @@ qt_add_qml_module(krate
         SoundsController.cpp
         InstrumentCopies.h
         InstrumentCopies.cpp
-        CrashReportsController.h
-        CrashReportsController.cpp
-        UpdateController.h
-        UpdateController.cpp
         SettingsController.h
         SettingsController.cpp
         PluginSlots.h
@@ -76,8 +72,6 @@ qt_add_qml_module(krate
         qml/ArrangeScreen.qml
         qml/PluginPanel.qml
         qml/SoundsScreen.qml
-        qml/CrashReportsPopup.qml
-        qml/AudioSettings.qml
         qml/KeysSettings.qml
         qml/SettingsScreen.qml
         qml/SourceMenu.qml
@@ -205,13 +199,6 @@ target_include_directories(tst_settings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(tst_settings PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_settings PRIVATE krate_app krate_plugin Qt6::Qml Qt6::Test)
 add_test(NAME tst_settings COMMAND tst_settings)
-
-# Updates (docs/UPDATES.md): GitHub's answer, versions, the updater's status.
-add_executable(tst_updates tests/tst_updates.cpp UpdateController.h UpdateController.cpp)
-target_include_directories(tst_updates PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_options(tst_updates PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(tst_updates PRIVATE Qt6::Network Qt6::Qml Qt6::Test)
-add_test(NAME tst_updates COMMAND tst_updates)
 
 # The sound library: categories, WAV headers, folders indexed in place.
 add_executable(tst_sounds tests/tst_sounds.cpp SoundIndex.h SoundIndex.cpp SoundLibrary.h SoundLibrary.cpp)

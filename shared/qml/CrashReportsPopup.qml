@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import Krate
-import KrateRack
 
 // The crash reports (docs/CRASHES.md): the list, newest first, and the one
 // picked: what happened, when, where in the code, and the log before it.
@@ -11,6 +10,7 @@ Popup {
     id: popup
 
     property string chosen: ""
+    property string appName: "Krate" // the app whose reports these are
     readonly property var list: Crashes.reports
 
     modal: true
@@ -32,7 +32,7 @@ Popup {
             Text {
                 width: parent.width - 3 * 130
                 anchors.verticalCenter: parent.verticalCenter
-                text: "CRASH REPORTS. Written when Krate crashes (or a session never ends: killed, frozen, power cut), kept in "
+                text: "CRASH REPORTS. Written when " + popup.appName + " crashes (or a session never ends: killed, frozen, power cut), kept in "
                       + Crashes.folder + " (the last 30)."
                 wrapMode: Text.WordWrap
                 color: Theme.ink
@@ -62,7 +62,7 @@ Popup {
                 width: 120
                 height: 32
                 faceText: "CLOSE"
-                text: "Back to Krate"
+                text: "Back to " + popup.appName
                 onClicked: popup.close()
             }
         }

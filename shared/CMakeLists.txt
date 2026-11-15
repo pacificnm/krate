@@ -160,7 +160,9 @@ add_library(krate_app STATIC
 target_link_libraries(krate_app PUBLIC krate_core Qt6::Core Qt6::Gui Qt6::Quick)
 target_compile_options(krate_app PRIVATE -Wall -Wextra -Wpedantic)
 
-# --- krate_qml: QML module "Krate": panel controls, Theme, MidiLearn
+# --- krate_qml: QML module "Krate": panel controls, Theme, MidiLearn, the
+# audio host's view, and the app pieces Krate and the Krunch app share
+# (updates, crash reports, audio settings, StandaloneSession)
 qt_add_library(krate_qml STATIC)
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_qml_module(krate_qml
@@ -169,6 +171,12 @@ qt_add_qml_module(krate_qml
     SOURCES
         app/HostController.h
         app/HostController.cpp
+        app/CrashReportsController.h
+        app/CrashReportsController.cpp
+        app/StandaloneSession.h
+        app/StandaloneSession.cpp
+        app/UpdateController.h
+        app/UpdateController.cpp
         app/InstrumentRegistry.h
         app/InstrumentMidiLearn.h
         app/InstrumentMidiLearn.cpp
@@ -181,6 +189,8 @@ qt_add_qml_module(krate_qml
         app/ParamController.h
         app/ParamController.cpp
     QML_FILES
+        qml/AudioSettings.qml
+        qml/CrashReportsPopup.qml
         qml/Knob.qml
         qml/LcdField.qml
         qml/LearnOverlay.qml
@@ -197,10 +207,25 @@ qt_add_qml_module(krate_qml
 )
 # Generated type registration includes headers by bare name.
 target_include_directories(krate_qml PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE app)
-target_link_libraries(krate_qml PUBLIC krate_app krate_core Qt6::Qml Qt6::Quick)
+target_link_libraries(krate_qml PUBLIC krate_app krate_core Qt6::Network Qt6::Qml Qt6::Quick)
 target_compile_options(krate_qml PRIVATE -Wall -Wextra -Wpedantic)
 
 # --- Tests for the shared pieces
+# Updates (docs/UPDATES.md): GitHub's answer, versions, the updater's status.
+add_executable(tst_updates tests/tst_updates.cpp app/UpdateController.h app/UpdateController.cpp)
+target_include_directories(tst_updates PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_updates PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_updates PRIVATE Qt6::Network Qt6::Qml Qt6::Test)
+add_test(NAME tst_updates COMMAND tst_updates)
+
+# A standalone app's saved audio choices and update switch, with a fake host.
+add_executable(tst_standalonesession tests/tst_standalonesession.cpp
+               app/StandaloneSession.h app/StandaloneSession.cpp app/HostController.h app/HostController.cpp
+               app/UpdateController.h app/UpdateController.cpp)
+target_include_directories(tst_standalonesession PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(tst_standalonesession PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(tst_standalonesession PRIVATE krate_app Qt6::Network Qt6::Qml Qt6::Test)
+add_test(NAME tst_standalonesession COMMAND tst_standalonesession)
 add_executable(tst_urllist tests/tst_urllist.cpp)
 target_compile_options(tst_urllist PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(tst_urllist PRIVATE krate_app Qt6::Qml Qt6::Test)

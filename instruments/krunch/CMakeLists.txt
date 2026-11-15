@@ -82,6 +82,7 @@ qt_add_qml_module(krunch_ui
         app/TunerController.h
         app/TunerController.cpp
     QML_FILES
+        qml/Main.qml
         qml/Panel.qml
         qml/IrPicker.qml
         qml/CapturePicker.qml

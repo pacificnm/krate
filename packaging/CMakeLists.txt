@@ -1,11 +1,11 @@
 # Installing Krate and packaging it as a .deb (packaging/README.md):
-# the eight apps and Krate Remote, a menu entry and an icon each, and the docs.
+# the nine apps and Krate Remote, a menu entry and an icon each, and the docs.
 include(GNUInstallDirs)
 # Directories as Debian has them (rwxr-xr-x), whatever the builder's umask.
 set(CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
                                                 WORLD_READ WORLD_EXECUTE)
 
-set(KRATE_APPS krate korrode kessel kalliope krimson kobalt klang konnekt krate-remote)
+set(KRATE_APPS krate korrode kessel kalliope krimson kobalt klang konnekt krunch krate-remote)
 install(TARGETS ${KRATE_APPS} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 foreach(app IN LISTS KRATE_APPS)
     install(FILES applications/${app}.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
@@ -51,9 +51,10 @@ set(CPACK_DEBIAN_PACKAGE_DESCRIPTION
     "Krate is a suite of instruments and a rack that plays them together.
 Each instrument also runs on its own: Korrode (acid bass), Kessel (drum
 machine), Kalliope (polysynth), Krimson (multitimbral virtual-analog),
-Kobalt (monosynth), Klang (sampler and looper) and Konnekt (a modular
-synth with lessons, presets and explanations of every part). Krate itself
-adds a mixer, a guitar amp, a song player and a step sequencer. Krate
+Kobalt (monosynth), Klang (sampler and looper), Konnekt (a modular
+synth with lessons, presets and explanations of every part) and Krunch (a
+guitar amp with pedals, cabinets and a tuner). Krate itself adds a mixer, a
+song player and a step sequencer. Krate
 Remote manages a Krate player from another computer over SSH: its
 settings, its files both ways, its crash reports.")
 set(CPACK_DEBIAN_PACKAGE_SECTION sound)

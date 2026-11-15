@@ -30,7 +30,11 @@ The package now depends on `curl`, `jq` (the updater's) and `polkitd`.
 
 Trying the updater by hand without installing: `KRATE_UPDATE_DRY_RUN=1 KRATE_UPDATE_STATUS_DIR=/tmp /usr/libexec/krate/krate-update` (add `KRATE_UPDATE_INSTALLED=0.0.1` to pretend an old Krate).
 
-Code: `packaging/update/` (the script, the service, the rule), `apps/krate/UpdateController` (the `Updates` QML singleton), `SettingsScreen.qml`. Tests: `tst_updates`.
+## Updating from the Krunch app
+
+The Krunch app comes in the same package, so it offers the same releases: **UPDATES** in its top bar has the version, the check-by-itself switch (kept in `~/.config/krunch/app.json`), **CHECK NOW** and **UPDATE TO …**, which starts the same updater. When it's done, quit Krunch and start it again.
+
+Code: `packaging/update/` (the script, the service, the rule), `shared/app/UpdateController` (the `Updates` QML singleton, in the `Krate` module so the Krunch app has it too), `SettingsScreen.qml`, the Krunch app's `instruments/krunch/qml/Main.qml`. Tests: `tst_updates`, `tst_standalonesession`.
 
 ## From 0.1.0
 

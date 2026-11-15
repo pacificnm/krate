@@ -1,6 +1,6 @@
 # Krunch
 
-A guitar amp for the [Krate](../../README.md) rack, built around **amp captures**. Plug a guitar into your audio interface's instrument input, choose that input under **AUDIO** in Krate's top bar, and play through Krunch. Each channel plays a capture of a real amp (a `.nam` file, an open format shared for free on community capture sites) that you choose; a channel without one is silent ([roadmap](docs/ROADMAP.md)).
+A guitar amp for the [Krate](../../README.md) rack, and an app of its own (`krunch`), built around **amp captures**. Plug a guitar into your audio interface's instrument input, choose that input under **AUDIO** in the top bar (Krate's, or the Krunch app's), and play through Krunch. Each channel plays a capture of a real amp (a `.nam` file, an open format shared for free on community capture sites) that you choose; a channel without one is silent ([roadmap](docs/ROADMAP.md)).
 
 **Now:** four channels, each with its own amp capture (**CHOOSE AMP ▾**; the channel buttons show each one's name, or NO AMP), gain (how hard the capture is driven, noon as captured), bass, mid, treble and presence (an EQ after it), volume, gate and an effects-loop switch; cabinets from your own impulse responses (two per channel, mixed and spread with SPACE), a built-in speaker, or none for full-rig captures; meters and the delay from input to speakers. Captures: [docs/CAPTURES.md](docs/CAPTURES.md) (upload them with Krate Remote, **Files ▸ Places ▸ Amp captures (Krunch)**, or IMPORT). How it works: [docs/DSP.md](docs/DSP.md).
 
@@ -14,4 +14,6 @@ A guitar amp for the [Krate](../../README.md) rack, built around **amp captures*
 
 The panel shows the playing channel's controls under the four channel buttons. The input meter's clip light means the interface's gain is too high; under about 10 ms of delay feels like playing an amp (set the buffer to 128 frames under **AUDIO**).
 
-Krunch has no MIDI notes and no standalone app; its knobs and the channel buttons are learnable in the rack. `krunch-render --capture amp.nam` plays a DI WAV (or a synthetic riff) through each channel offline. Tests: `tests/tst_krunch.cpp`.
+**The Krunch app** (`pw-jack krunch`, *Krunch* in the menu): the amp in its own window, with what Krate gives it around the panel: **AUDIO** (each input's capture port, the output, the buffer; kept in `~/.config/krunch/app.json`, a first start taking Krate's), **LEARN** (its own MIDI map, `midimap.json`), **UPDATES** (Krate's releases: Krunch comes in its package) and crash reports. It shares Krunch's files with the rack: presets, captures, IRs and the panel are the same in both. See [docs/MANUAL.md](docs/MANUAL.md#the-krunch-app).
+
+Krunch has no MIDI notes; its knobs and buttons are learnable, in the rack and in the app. `krunch-render --capture amp.nam` plays a DI WAV (or a synthetic riff) through each channel offline. Tests: `tests/tst_krunch.cpp`.

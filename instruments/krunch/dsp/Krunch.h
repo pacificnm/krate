@@ -6,6 +6,7 @@
 #include <string>
 
 #include "core/Instrument.h"
+#include "core/Midi.h"
 #include "core/ParamValues.h"
 #include "dsp/Cabinet.h"
 #include "dsp/Capture.h"
@@ -116,6 +117,10 @@ public:
     void setParamFromHost(int index, float normalized) noexcept override { m_params.setFromAudio(index, normalized); }
     std::uint64_t takeParamsChangedByAudio() noexcept override { return m_params.takeChanged(); }
     void process(const krate::AudioBlock &block) noexcept override;
+    // The standalone app's MIDI Learn (its midimap.json): a learned CC sets its
+    // knob, or presses its button (an action). In the rack the rack's own learn
+    // does this, and this map stays empty.
+    krate::MidiLearnMap *midiLearnMap() noexcept override { return &m_learn; }
 
     // Peaks since the last call (any thread): the chosen input as it arrives,
     // and the amp's output.
@@ -165,6 +170,7 @@ private:
     void processBlock(const float *in, float *left, float *right, std::uint32_t frames) noexcept;
 
     krate::ParamValues<ParamCount> m_params{kParams};
+    krate::MidiLearnMap m_learn{kParams};
     double m_sampleRate = 48000.0;
 
     PedalChain m_front, m_loop;
