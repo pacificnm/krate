@@ -548,6 +548,7 @@ Item {
 
     Pedalboard {
         pedals: panel.pedals
+        captures: panel.captures
         x: 0
         y: 712
         width: parent.width

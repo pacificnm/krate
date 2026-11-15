@@ -33,6 +33,7 @@ struct PedalInfo
     bool sliders = false;       // its controls are sliders (a graphic EQ), not knobs
     std::string_view pattern = {}; // drawn on the case: "" plain, "dots:#RRGGBB" polka dots in that colour
     bool editor = false;           // too many controls for its face: it shows its curve, EDIT opens an editor
+    bool capture = false;          // plays a capture (CapturePedal): its face chooses which
 };
 
 // One pedal: mono, in place, at the base rate (docs/PEDALS.md). Knobs and the

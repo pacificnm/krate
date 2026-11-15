@@ -20,7 +20,9 @@ public:
     ~CaptureModel();
 
     // nullptr and *error if the file isn't a model this engine plays.
-    static std::unique_ptr<CaptureModel> load(const std::string &path, double sampleRate, int maxFrames, std::string *error);
+    // `level`: brought to the common loudness (the amps'); false plays it as captured (pedals).
+    static std::unique_ptr<CaptureModel> load(const std::string &path, double sampleRate, int maxFrames, std::string *error,
+                                              bool level = true);
 
     double sampleRate() const noexcept { return m_rate; }         // what it was readied for
     double expectedRate() const noexcept { return m_expected; }   // what it was trained at (0: any)

@@ -21,6 +21,10 @@ A channel whose capture's file has gone from the folder shows **MISSING:** and t
 
 Captures are played at a common loudness (−8 dB by the loudness the file records; a file that doesn't record one plays as it is), so switching between them doesn't jump. Each channel's capture is kept by name in `~/.config/krunch/captures.json`, in presets and with songs' sounds.
 
+## Pedal captures
+
+Capture sites share pedals too (drives, fuzzes, boosts, preamps), in the same `.nam` format. Put them in the same folder (IMPORT, or Krate Remote's *Amp captures*), add a **Capture** pedal to the board and choose one on its face: see [PEDALS.md](PEDALS.md#capture). A pedal capture is the pedal with its knobs where they were when it was captured; for another setting, get the capture made at that setting.
+
 ## How
 
 - `dsp/Capture.cpp`: the model (built, reset to the engine's rate and block size, prewarmed), loaded off the audio thread (`app/CaptureController.cpp`, `std::async`), handed to the engine through an atomic per channel and freed once the audio thread has moved two blocks on. A model readied for another rate is ignored (the channel is silent) until reloaded (the rate changing reloads them all). A capture made at another rate than the engine's plays, with a note in the picker.

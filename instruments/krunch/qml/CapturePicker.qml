@@ -6,15 +6,42 @@ import QtQuick.Dialogs
 import Krate
 
 // Picks a channel's amp: a capture of a real amp (docs/CAPTURES.md), the
-// .nam files in the captures folder, or none (the channel is silent). A click
-// plays it at once. IMPORT (or a drop) copies .nam files in; Krate Remote can put them
-// there too (Files > Places > Amp captures).
+// .nam files in the captures folder, or none (the channel is silent). Or, given
+// `pedals` and a `pedal`, a Capture pedal's capture (docs/PEDALS.md#capture):
+// the same folder, pedal captures first. A click plays it at once. IMPORT
+// (or a drop) copies .nam files in; Krate Remote can put them there too
+// (Files > Places > Amp captures).
 Popup {
     id: picker
     required property Captures captures
 
     property int channel: 0
-    readonly property string current: picker.captures.revision >= 0 ? picker.captures.capture(channel) : ""
+    property Pedals pedals: null
+    property int pedal: -1
+    readonly property bool forPedal: pedals !== null && pedal >= 0
+    readonly property string current: forPedal ? (picker.pedals.revision >= 0 ? picker.pedals.captureOf(pedal) : "")
+                                               : (picker.captures.revision >= 0 ? picker.captures.capture(channel) : "")
+    // A pedal's: the pedal captures (and preamps) first, then the rest.
+    readonly property var choices: {
+        const names = picker.captures.revision >= 0 ? picker.captures.names : []
+        if (!forPedal)
+            return [""].concat(names)
+        return [""].concat(names.filter(n => picker.captures.isPedal(n)), names.filter(n => !picker.captures.isPedal(n)))
+    }
+    function choose(name) {
+        if (forPedal)
+            picker.pedals.chooseCapture(picker.pedal, name)
+        else
+            picker.captures.choose(picker.channel, name)
+    }
+    function describe(name) {
+        if (name === "")
+            return forPedal ? "No capture (the guitar passes through)" : "No amp (the channel is silent)"
+        const gear = picker.captures.gearType(name)
+        if (forPedal)
+            return name + (gear !== "" ? "   ·  " + gear.replace(/_/g, " + ") : "")
+        return name + (picker.captures.hasCabinet(name) ? "   ·  with its cabinet (CABINET goes off)" : "")
+    }
 
     width: 560
     height: 520
@@ -28,7 +55,7 @@ Popup {
 
     FileDialog {
         id: fileDialog
-        title: "Import amp captures"
+        title: picker.forPedal ? "Import captures" : "Import amp captures"
         fileMode: FileDialog.OpenFiles
         nameFilters: ["Amp captures (*.nam)"]
         onAccepted: picker.captures.importUrls(selectedFiles)
@@ -53,7 +80,7 @@ Popup {
             Label {
                 width: parent.width - importButton.width - closeButton.width - 20
                 anchors.verticalCenter: parent.verticalCenter
-                text: "CHANNEL " + (picker.channel + 1) + " · AMP"
+                text: picker.forPedal ? "PEDAL " + (picker.pedal + 1) + " · CAPTURE" : "CHANNEL " + (picker.channel + 1) + " · AMP"
                 font.pixelSize: 14
                 color: "#E9DFC4"
             }
@@ -78,8 +105,11 @@ Popup {
         Label {
             width: parent.width
             wrapMode: Text.WordWrap
-            text: "A capture is a real amp, modelled (a .nam file): GAIN drives it, BASS to PRESENCE shape it after, "
-                  + "your cabinet IRs follow; one with its cabinet in it (a full rig) switches the channel's CABINET off. "
+            text: (picker.forPedal
+                   ? "A capture of a real pedal (a .nam file, as capture sites share them: look for pedal captures): INPUT drives it, "
+                     + "TONE tilts it, LEVEL sets how loud. It plays as captured, its knobs where they were set. "
+                   : "A capture is a real amp, modelled (a .nam file): GAIN drives it, BASS to PRESENCE shape it after, "
+                     + "your cabinet IRs follow; one with its cabinet in it (a full rig) switches the channel's CABINET off. ")
                   + (picker.captures.message !== "" ? "\n" + picker.captures.message : "")
             font.pixelSize: 11
             color: "#A9A392"
@@ -90,7 +120,7 @@ Popup {
             width: parent.width
             height: parent.height - y
             clip: true
-            model: [""].concat(picker.captures.revision >= 0 ? picker.captures.names : [])
+            model: picker.choices
             ScrollBar.vertical: ScrollBar {}
             delegate: Rectangle {
                 id: row
@@ -104,8 +134,7 @@ Popup {
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width - 20
                     elide: Text.ElideRight
-                    text: row.modelData === "" ? "No amp (the channel is silent)"
-                        : row.modelData + (picker.captures.hasCabinet(row.modelData) ? "   ·  with its cabinet (CABINET goes off)" : "")
+                    text: picker.describe(row.modelData)
                     color: picker.current === row.modelData ? "#F2C230" : "#E9DFC4"
                     font.family: Theme.labelFont
                     font.pixelSize: 13
@@ -115,7 +144,7 @@ Popup {
                     id: area
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: picker.captures.choose(picker.channel, row.modelData)
+                    onClicked: picker.choose(row.modelData)
                 }
             }
             Label {

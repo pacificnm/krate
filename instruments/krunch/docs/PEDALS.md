@@ -122,6 +122,22 @@ The classic two-transistor round fuzz, in broad strokes (`dsp/Fuzz.cpp`): two tr
 | `bias` | −5 … +5 around centre | centre |
 | `type` | Germanium / Silicon (a switch) | Germanium |
 
+## Capture
+
+A pedal that plays a **capture of a real pedal** (`dsp/CapturePedal.cpp`): a `.nam` file, the format the amp channels use, which capture sites share for pedals too (drives, fuzzes, boosts, preamps). Its face shows the capture it plays: click it (**CHOOSE ▾** when there's none) for the captures folder, the pedal captures (and preamps) first by what their files say they are, then the rest; a click plays one at once, **IMPORT** (or a drop) adds `.nam` files. Add as many Capture pedals as you like, each with its own.
+
+- **INPUT** (−18 … +18 dB) drives the capture harder or softer: a capture is the pedal with its knobs where they were when it was made, so this is the one gain you have (for another setting, get the capture made at it).
+- **TONE** tilts the result around 800 Hz, up to 6 dB darker or brighter (flat at noon).
+- **LEVEL** (−24 … +12 dB, 0 dB at its default) after it. Pedal captures play as captured, not brought to the amps' common loudness: a boost captured at +10 dB comes in 10 dB up.
+
+Without a capture, while one loads, or one chosen but not in the folder (**MISSING**), it passes the guitar through. The choice is kept by name with the board, presets and songs. The model is loaded off the GUI thread and handed to the audio thread as the amp's captures are.
+
+| Knob | Range | Default |
+| --- | --- | --- |
+| `input` | −18 … +18 dB | 0 dB |
+| `tone` | −6 … +6 dB tilt | flat |
+| `level` | −24 … +12 dB | 0 dB |
+
 ## Taiga Fuzz
 
 The big four-transistor sustaining fuzz in its green, Russian-made voicing: bassier and smoother than the original, with a shallower mid scoop, the wall of fuzz under heavy riffs and the long, singing lead. Modelled on the circuit in broad strokes (`dsp/TaigaFuzz.cpp`):
@@ -250,4 +266,4 @@ Two amps set apart (`dsp/DualHead.cpp`). The amp's sound after its cabinets play
 
 The amp is mono up to its cabinet, so these are mono for now; stereo chorus, ping-pong delay and a wide reverb come with a stereo loop.
 
-Tests: `tests/tst_pedals.cpp` (the board's 20 types; the Taiga Fuzz's sustain cleaning up when low, holding a note, symmetric clipping, its tone stack's scoop and kept lows, volume, bounded; the boost exact, flat and clean, BRIGHT on the top only; the blue drive full range (no hump), more gain more distortion, cleaning up when played softly, its even harmonics and no DC, its tone tilt, level, bounded; the yellow drive's mid hump, its gain over the green one, its even harmonics and no DC, tone, level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).
+Tests: `tests/tst_pedals.cpp` (the board's 21 types; the Capture pedal dry without a capture or at another rate, playing one, its level and tilt, a replaced model kept until the audio thread is done; the Taiga Fuzz's sustain cleaning up when low, holding a note, symmetric clipping, its tone stack's scoop and kept lows, volume, bounded; the boost exact, flat and clean, BRIGHT on the top only; the blue drive full range (no hump), more gain more distortion, cleaning up when played softly, its even harmonics and no DC, its tone tilt, level, bounded; the yellow drive's mid hump, its gain over the green one, its even harmonics and no DC, tone, level, bounded; Prism: all out is dry, its fuzz, an echo on every head; the drum echo's heads, its swell bounded; the vibe's throb and its steady vibrato; the fuzz: more fuzz more distortion, cleaning up, even harmonics, the bias gate, silicon brighter, bounded with little aliasing; the compressor's curve, evening loud and quiet out, attack, blend; the EQs flat and transparent, each band at its frequency and not three octaves away, level; bypass untouched, no clicks, the mid hump, drive, tone, level, bounded clipping, aliasing; front and loop; switches snap; the flanger's comb where its delay puts it, Color's resonance, its sweep, full Color bounded; the phaser's moving notches and Deep's peaks; the tremolo's curve, its rate, its square without clicks; the delay's time and repeats, never running away; the chorus sweep; the reverb's tail; the board's order).

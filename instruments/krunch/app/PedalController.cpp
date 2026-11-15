@@ -4,6 +4,11 @@
 #include <cmath>
 
 #include "dsp/StudioPedals.h"
+#include "dsp/CapturePedal.h"
+
+#include <QDir>
+#include <QFileInfo>
+#include <chrono>
 
 #include <QJSEngine>
 #include <QJsonObject>
@@ -12,6 +17,7 @@
 
 #include "app/JsonFile.h"
 #include "dsp/Krunch.h"
+#include "app/CaptureController.h"
 
 Q_LOGGING_CATEGORY(lcPedals, "krunch.pedals")
 
@@ -26,8 +32,11 @@ PedalController::PedalController(krunch::Krunch &engine, const QString &filePath
     , m_board(engine.frontPedals(), engine.loopPedals())
     , m_filePath(filePath)
 {
-    m_collectTimer.setInterval(250);
-    connect(&m_collectTimer, &QTimer::timeout, this, [this] { m_board.collect(m_engine.blocksProcessed()); });
+    m_collectTimer.setInterval(100);
+    connect(&m_collectTimer, &QTimer::timeout, this, [this] {
+        m_board.collect(m_engine.blocksProcessed());
+        pollCaptures();
+    });
     m_collectTimer.start();
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(2000);
@@ -65,6 +74,7 @@ constexpr PedalBlurb kBlurbs[] = {
     {"compressor", "Dynamics & EQ", "Evens your playing out and lengthens notes."},
     {"eq5", "Dynamics & EQ", "Five sliders at guitar-centred frequencies."},
     {"eq10", "Dynamics & EQ", "Ten octave-wide sliders, 31 Hz … 16 kHz."},
+    {"capture", "Drive & boost", "Any pedal, from a capture of it (.nam): drives, fuzzes, boosts, preamps."},
     {"parametric_eq", "Dynamics & EQ", "Six bands you draw on a curve: peaks, shelves, cuts."},
     {"phaser", "Modulation", "The one-knob four-stage swoosh; Smooth or Deep."},
     {"flanger", "Modulation", "The jet-plane sweep, up to metallic and resonant."},
@@ -104,6 +114,7 @@ QVariantList PedalController::types() const
                               {QStringLiteral("sliders"), info->sliders},
                               {QStringLiteral("pattern"), QString::fromUtf8(info->pattern)},
                               {QStringLiteral("editor"), info->editor},
+                              {QStringLiteral("capture"), info->capture},
                               {QStringLiteral("knobs"), knobs}};
     }
     return result;
@@ -131,6 +142,7 @@ QVariantList PedalController::pedals() const
                               {QStringLiteral("sliders"), info.sliders},
                               {QStringLiteral("pattern"), QString::fromUtf8(info.pattern)},
                               {QStringLiteral("editor"), info.editor},
+                              {QStringLiteral("capture"), info.capture},
                               {QStringLiteral("knobs"), knobs}};
     }
     return result;
@@ -232,10 +244,13 @@ QJsonArray PedalController::save() const
         QJsonObject knobs;
         for (std::size_t k = 0; k < pedal.info().knobs.size(); ++k)
             knobs.insert(QString::fromUtf8(pedal.info().knobs[k].key), pedal.knob(int(k)));
-        result.append(QJsonObject{{QStringLiteral("type"), QString::fromUtf8(pedal.info().type)},
-                                  {QStringLiteral("on"), pedal.on()},
-                                  {QStringLiteral("loop"), m_board.inLoop(p)},
-                                  {QStringLiteral("knobs"), knobs}});
+        QJsonObject o{{QStringLiteral("type"), QString::fromUtf8(pedal.info().type)},
+                      {QStringLiteral("on"), pedal.on()},
+                      {QStringLiteral("loop"), m_board.inLoop(p)},
+                      {QStringLiteral("knobs"), knobs}};
+        if (const krunch::CapturePedal *c = capturePedal(p))
+            o.insert(QStringLiteral("capture"), QString::fromStdString(c->captureName));
+        result.append(o);
     }
     return result;
 }
@@ -258,8 +273,125 @@ void PedalController::load(const QJsonArray &pedals)
                 pedal.setKnob(int(k), float(knobs.value(key).toDouble()));
         }
         pedal.setOn(o.value(u"on").toBool(true));
+        if (krunch::CapturePedal *c = capturePedal(m_board.count() - 1))
+            c->captureName = o.value(u"capture").toString().toStdString(); // loaded by pollCaptures
     }
     bumpLayout();
+    pollCaptures();
+}
+
+krunch::CapturePedal *PedalController::capturePedal(int position) const
+{
+    return valid(position) ? dynamic_cast<krunch::CapturePedal *>(&const_cast<krunch::Pedalboard &>(m_board).pedal(position))
+                           : nullptr;
+}
+
+QString PedalController::captureOf(int position) const
+{
+    const krunch::CapturePedal *c = capturePedal(position);
+    return c ? QString::fromStdString(c->captureName) : QString();
+}
+
+bool PedalController::captureMissing(int position) const
+{
+    const QString name = captureOf(position);
+    return !name.isEmpty() && m_captures && !m_captures->names().contains(name);
+}
+
+bool PedalController::captureLoading(int position) const
+{
+    const krunch::CapturePedal *c = capturePedal(position);
+    return c && !c->captureName.empty() && c->liveName != c->captureName && c->failedName != c->captureName
+           && !captureMissing(position);
+}
+
+void PedalController::chooseCapture(int position, const QString &name)
+{
+    krunch::CapturePedal *c = capturePedal(position);
+    if (!c || c->captureName == name.toStdString())
+        return;
+    c->captureName = name.toStdString();
+    c->failedName.clear();
+    pollCaptures();
+    bump();
+}
+
+void PedalController::setCaptures(CaptureController *captures)
+{
+    m_captures = captures;
+    m_captureNames = captures ? captures->names() : QStringList();
+    if (captures)
+        connect(captures, &CaptureController::changed, this, [this] {
+            if (m_captures->names() == m_captureNames)
+                return;
+            m_captureNames = m_captures->names(); // new files: a capture that failed may be there now
+            for (int p = 0; p < m_board.count(); ++p)
+                if (krunch::CapturePedal *c = capturePedal(p))
+                    c->failedName.clear();
+            pollCaptures();
+            bump();
+        });
+    pollCaptures();
+}
+
+void PedalController::pollCaptures()
+{
+    const double rate = m_engine.sampleRate();
+    const std::uint64_t blocks = m_engine.blocksProcessed();
+    bool any = false;
+    for (int p = 0; p < m_board.count(); ++p) {
+        krunch::CapturePedal *c = capturePedal(p);
+        if (!c)
+            continue;
+        c->collect(blocks);
+        // A load that finished: still what's wanted, at this rate? Then it plays.
+        if (c->loading.valid() && c->loading.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            std::shared_ptr<krunch::CaptureModel> model = c->loading.get();
+            if (c->loadingName == c->captureName && c->loadingRate == rate) {
+                if (model) {
+                    c->setModel(std::move(model), blocks);
+                    c->liveName = c->captureName;
+                    qCInfo(lcPedals).noquote() << "pedal" << p + 1 << "plays" << QString::fromStdString(c->liveName);
+                } else {
+                    c->failedName = c->captureName;
+                    qCWarning(lcPedals).noquote() << "could not load" << QString::fromStdString(c->captureName) << ":"
+                                                  << QString::fromStdString(*c->loadError);
+                }
+                any = true;
+            }
+        }
+        const std::string &want = c->captureName;
+        if (want.empty()) {
+            if (c->model()) {
+                c->setModel(nullptr, blocks);
+                c->liveName.clear();
+                any = true;
+            }
+            continue;
+        }
+        const bool playing = c->liveName == want && c->model() && c->model()->sampleRate() == rate;
+        const bool coming = c->loading.valid() && c->loadingName == want && c->loadingRate == rate;
+        if (playing || coming || want == c->failedName || !m_captures || rate <= 0.0)
+            continue;
+        const std::string path = QDir(m_captures->folder()).filePath(QString::fromStdString(want) + QStringLiteral(".nam")).toStdString();
+        if (!QFileInfo::exists(QString::fromStdString(path))) {
+            c->failedName = want; // missing: tried again when the folder changes
+            any = true;
+            continue;
+        }
+        c->loadingName = want;
+        c->loadingRate = rate;
+        c->loadError = std::make_shared<std::string>();
+        auto error = c->loadError;
+        // Parsing a model and readying it allocates and takes a moment: not on the GUI thread.
+        c->loading = std::async(std::launch::async, [path, rate, error]() -> std::shared_ptr<krunch::CaptureModel> {
+            return krunch::CaptureModel::load(path, rate, int(krunch::Krunch::kBlock), error.get(), false);
+        });
+    }
+    if (any) {
+        ++m_revision;
+        emit changed();
+    }
 }
 
 void PedalController::bump()

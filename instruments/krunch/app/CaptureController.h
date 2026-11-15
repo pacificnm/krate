@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <QFileSystemWatcher>
+#include <QHash>
 #include <QJsonArray>
 #include <QObject>
 #include <QSet>
@@ -59,6 +60,10 @@ public:
     Q_INVOKABLE void choose(int channel, const QString &name);
     // The capture has its cabinet in it (its file says so: a full rig).
     Q_INVOKABLE bool hasCabinet(const QString &name) const { return m_withCabinet.contains(name); }
+    // What the capture is, as its file says: "amp", "pedal", "amp_cab", "preamp"... ("" if it doesn't).
+    Q_INVOKABLE QString gearType(const QString &name) const { return m_gearTypes.value(name); }
+    // A capture of a pedal (or a preamp): what the Capture pedal lists first.
+    Q_INVOKABLE bool isPedal(const QString &name) const;
     // .nam files (file:// URLs or paths) copied into the folder.
     Q_INVOKABLE void importUrls(const QVariantList &urls);
 
@@ -88,6 +93,7 @@ private:
     QString m_folder, m_filePath;
     QStringList m_names;
     QSet<QString> m_withCabinet; // captures whose file says the cabinet is in them
+    QHash<QString, QString> m_gearTypes;
     QString m_message;
     int m_revision = 0;
     std::array<QString, kChannels> m_chosen;

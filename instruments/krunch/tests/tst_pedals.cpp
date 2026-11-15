@@ -11,6 +11,7 @@
 #include "dsp/GreenDrive.h"
 #include "dsp/YellowDrive.h"
 #include "dsp/TaigaFuzz.h"
+#include "dsp/CapturePedal.h"
 #include "dsp/BlueDrive.h"
 #include "dsp/Boost.h"
 #include "dsp/ModPedals.h"
@@ -138,12 +139,14 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(20));
+        QCOMPARE(pedalTypes().size(), std::size_t(21));
         QCOMPARE(pedalTypes()[2]->type, std::string_view("boost"));
         QCOMPARE(pedalTypes()[3]->type, std::string_view("green_drive"));
         QCOMPARE(pedalTypes()[4]->type, std::string_view("yellow_drive"));
         QCOMPARE(pedalTypes()[5]->type, std::string_view("blue_drive"));
         QCOMPARE(pedalTypes()[7]->type, std::string_view("taiga_fuzz"));
+        QCOMPARE(pedalTypes()[8]->type, std::string_view("capture"));
+        QVERIFY(pedalTypes()[8]->capture);
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
             QVERIFY(p);
@@ -546,6 +549,79 @@ private slots:
             vhi = std::max(vhi, l);
         }
         QVERIFY2(db(vhi) - db(vlo) < 3.0, qPrintable(QStringLiteral("%1 dB").arg(db(vhi) - db(vlo))));
+    }
+
+    // --- Capture -----------------------------------------------------------------------
+
+    std::shared_ptr<CaptureModel> exampleModel(double rate = kRate)
+    {
+        std::string error;
+        std::shared_ptr<CaptureModel> model = CaptureModel::load(NAM_EXAMPLES "/wavenet.nam", rate, int(Pedal::kMaxFrames), &error, false);
+        if (!model)
+            qWarning("%s", error.c_str());
+        return model;
+    }
+
+    // No capture chosen (or loading): the guitar passes through as it is.
+    void captureWithoutOneIsDry()
+    {
+        CapturePedal p;
+        p.prepare(kRate);
+        const auto x = sine(4800, 220.0, 0.2f);
+        QCOMPARE(run(p, x), x);
+        // Readied for another rate (a new one is on its way): dry too.
+        p.setModel(exampleModel(44100.0), 0);
+        QVERIFY(p.model());
+        QCOMPARE(run(p, x), x);
+    }
+
+    void capturePlaysTheModel()
+    {
+        CapturePedal p;
+        p.prepare(kRate);
+        p.setModel(exampleModel(), 0);
+        const auto x = sine(24000, 220.0, 0.2f);
+        const auto y = run(p, x);
+        QVERIFY(y != x);
+        for (float v : y)
+            QVERIFY(std::isfinite(v));
+        QVERIFY(rms(y, 12000, 9600) > 1e-4);
+    }
+
+    // LEVEL after the model: exactly its dB; TONE tilts around 800 Hz, flat at noon.
+    void captureLevelAndTone()
+    {
+        const auto out = [this](float level, float tone, double hz) {
+            CapturePedal p;
+            p.prepare(kRate);
+            p.setKnob(CapturePedal::Level, level);
+            p.setKnob(CapturePedal::Tone, tone);
+            p.setModel(exampleModel(), 0);
+            return run(p, sine(24000, hz, 0.1f));
+        };
+        const double flat = rms(out(2.0f / 3.0f, 0.5f, 220.0), 12000, 9600);
+        QVERIFY(std::fabs(db(rms(out(1.0f, 0.5f, 220.0), 12000, 9600) / flat) - 12.0) < 0.1);
+        const auto bright = [&](float tone) { // a high tone against a low one, through the same model
+            return db(level(out(2.0f / 3.0f, tone, 6000.0), 6000.0, 12000, 9600))
+                   - db(level(out(2.0f / 3.0f, tone, 100.0), 100.0, 12000, 9600));
+        };
+        QVERIFY(bright(1.0f) > bright(0.5f) + 6.0);
+        QVERIFY(bright(0.0f) < bright(0.5f) - 6.0);
+    }
+
+    // A replaced model stays alive until the audio thread has moved on.
+    void captureKeepsTheOldModelAWhile()
+    {
+        CapturePedal p;
+        p.prepare(kRate);
+        std::shared_ptr<CaptureModel> first = exampleModel();
+        std::weak_ptr<CaptureModel> watch = first;
+        p.setModel(std::move(first), 10);
+        p.setModel(exampleModel(), 10);
+        p.collect(11);
+        QVERIFY(!watch.expired());
+        p.collect(12);
+        QVERIFY(watch.expired());
     }
 
     // --- Taiga Fuzz ---------------------------------------------------------------------

@@ -11,6 +11,7 @@ Instance::Instance(const krate::InstrumentContext &context)
               [this](const QJsonObject &sound) { loadSound(sound); }, nullptr)
     , tuner(engine, context.configDir + QStringLiteral("/tuner.json"), nullptr)
 {
+    pedals.setCaptures(&captures); // the Capture pedal's captures: the amps' folder
     // Anything on the amp changing may make the current preset "modified".
     QObject::connect(&controller, &KrunchController::paramsChanged, &presets, &PresetController::ampChanged);
     QObject::connect(&cabinets, &CabinetController::changed, &presets, &PresetController::ampChanged);

@@ -11,7 +11,10 @@
 class QQmlEngine;
 class QJSEngine;
 
+class CaptureController;
+
 namespace krunch {
+class CapturePedal;
 class Krunch;
 }
 
@@ -61,10 +64,19 @@ public:
     Q_INVOKABLE void setOn(int position, bool on);
     Q_INVOKABLE void toggle(int position); // a footswitch (learnable as "pedal1".."pedal8")
     Q_INVOKABLE void setKnob(int position, int knob, qreal value);
+    // A Capture pedal's capture (by name, "" = none; docs/PEDALS.md#capture), from the
+    // captures folder; whether it's loading, or chosen but not in the folder.
+    Q_INVOKABLE QString captureOf(int position) const;
+    Q_INVOKABLE bool captureLoading(int position) const;
+    Q_INVOKABLE bool captureMissing(int position) const;
+    Q_INVOKABLE void chooseCapture(int position, const QString &name);
+    // Where the Capture pedals' captures come from (the amps' folder); before it, they wait.
+    void setCaptures(CaptureController *captures);
+
     // A Parametric EQ's response: dB at `points` frequencies from 20 Hz to 20 kHz (log spaced).
     Q_INVOKABLE QVariantList response(int position, int points) const;
 
-    // For songs' sounds and pedals.json: [{type, on, loop, knobs: {key: value}}].
+    // For songs' sounds and pedals.json: [{type, on, loop, knobs: {key: value}, capture (a Capture pedal's)}].
     QJsonArray save() const;
     void load(const QJsonArray &pedals);
 
@@ -77,6 +89,8 @@ private:
     void bump();
     void bumpLayout();
     void saveFile();
+    krunch::CapturePedal *capturePedal(int position) const;
+    void pollCaptures(); // loads started and finished, the rate changed, retired models freed
 
 
     krunch::Krunch &m_engine;
@@ -86,4 +100,6 @@ private:
     int m_layoutRevision = 0;
     QTimer m_collectTimer;
     QTimer m_saveTimer;
+    CaptureController *m_captures = nullptr;
+    QStringList m_captureNames; // the folder as last seen: a failed load is tried again when it changes
 };

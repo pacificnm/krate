@@ -11,7 +11,8 @@ namespace krunch {
 
 CaptureModel::~CaptureModel() = default;
 
-std::unique_ptr<CaptureModel> CaptureModel::load(const std::string &path, double sampleRate, int maxFrames, std::string *error)
+std::unique_ptr<CaptureModel> CaptureModel::load(const std::string &path, double sampleRate, int maxFrames, std::string *error,
+                                                 bool level)
 {
     std::unique_ptr<CaptureModel> model(new CaptureModel);
     try {
@@ -34,7 +35,7 @@ std::unique_ptr<CaptureModel> CaptureModel::load(const std::string &path, double
     // bridge pickup at noon, a high-gain capture about -23 dBFS RMS; at the
     // -18 dB other capture players use they were too quiet next to the rack's
     // instruments).
-    if (model->m_dsp->HasLoudness())
+    if (level && model->m_dsp->HasLoudness())
         model->m_outputGain = float(std::pow(10.0, (kLoudnessDb - model->m_dsp->GetLoudness()) / 20.0));
     return model;
 }

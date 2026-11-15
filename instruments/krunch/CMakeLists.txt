@@ -19,6 +19,8 @@ add_library(krunch_dsp STATIC
     dsp/YellowDrive.cpp
     dsp/TaigaFuzz.h
     dsp/TaigaFuzz.cpp
+    dsp/CapturePedal.h
+    dsp/CapturePedal.cpp
     dsp/BlueDrive.h
     dsp/BlueDrive.cpp
     dsp/Boost.h
@@ -124,6 +126,7 @@ add_executable(tst_pedals tests/tst_pedals.cpp)
 target_compile_options(tst_pedals PRIVATE -Wall -Wextra -Wpedantic)
 target_include_directories(tst_pedals PRIVATE tools)
 target_link_libraries(tst_pedals PRIVATE krunch_dsp krate_testing Qt6::Test)
+target_compile_definitions(tst_pedals PRIVATE NAM_EXAMPLES="${nam_core_SOURCE_DIR}/example_models") # the Capture pedal's
 add_test(NAME tst_pedals COMMAND tst_pedals)
 
 add_executable(tst_tuner tests/tst_tuner.cpp)

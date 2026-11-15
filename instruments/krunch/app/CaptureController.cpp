@@ -55,19 +55,31 @@ void CaptureController::rescan()
 {
     QStringList names;
     QSet<QString> withCabinet;
+    QHash<QString, QString> gearTypes;
     for (const QFileInfo &f : QDir(m_folder).entryInfoList({QStringLiteral("*.nam")}, QDir::Files, QDir::Name | QDir::IgnoreCase)) {
         names << f.completeBaseName();
         // What it is, as its file says ("amp", "amp_cab", "amp_pedal_cab"...): a cabinet in it or not.
         QFile file(f.filePath());
-        if (file.open(QIODevice::ReadOnly)
-            && QJsonDocument::fromJson(file.readAll()).object().value(u"metadata").toObject().value(u"gear_type").toString().contains(u"cab"))
+        if (!file.open(QIODevice::ReadOnly))
+            continue;
+        const QString gear = QJsonDocument::fromJson(file.readAll()).object().value(u"metadata").toObject().value(u"gear_type").toString();
+        if (gear.contains(u"cab"))
             withCabinet.insert(f.completeBaseName());
+        if (!gear.isEmpty())
+            gearTypes.insert(f.completeBaseName(), gear);
     }
-    if (names == m_names && withCabinet == m_withCabinet)
+    if (names == m_names && withCabinet == m_withCabinet && gearTypes == m_gearTypes)
         return;
     m_names = names;
     m_withCabinet = withCabinet;
+    m_gearTypes = gearTypes;
     bump();
+}
+
+bool CaptureController::isPedal(const QString &name) const
+{
+    const QString gear = m_gearTypes.value(name);
+    return gear == u"pedal" || gear == u"preamp";
 }
 
 QString CaptureController::capture(int channel) const

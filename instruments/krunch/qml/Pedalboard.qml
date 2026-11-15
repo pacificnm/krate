@@ -12,6 +12,7 @@ import Krate
 Rectangle {
     id: board
     required property Pedals pedals
+    required property Captures captures // the Capture pedal's
 
     readonly property real slot: 164 // a standard pedal and the gap after it
     readonly property var layout: board.pedals.layoutRevision >= 0 ? board.pedals.pedals() : []
@@ -285,6 +286,7 @@ Rectangle {
                     border.color: "#60FFFFFF"
                 }
                 Text { // the name, on a plate
+                    visible: !(pedal.info.capture ?? false)
                     x: 8
                     y: (pedal.info.sliders ?? false) || (pedal.info.editor ?? false) ? 110 : 102
                     width: parent.width - 16
@@ -298,6 +300,49 @@ Rectangle {
                     font.bold: true
                     font.italic: true
                     wrapMode: Text.WordWrap
+                }
+
+                // A Capture pedal: which capture it plays (a click chooses).
+                Rectangle {
+                    visible: pedal.info.capture ?? false
+                    x: 8
+                    y: 99
+                    width: parent.width - 16
+                    height: 32
+                    radius: 4
+                    color: "#0F1410"
+                    border.color: captureArea.containsMouse ? "#9CFF9C" : "#3A3B3E"
+                    readonly property string name: visible && board.pedals.revision >= 0 ? board.pedals.captureOf(pedal.index) : ""
+                    readonly property bool missing: visible && board.pedals.revision >= 0 && board.captures.revision >= 0
+                                                    && board.pedals.captureMissing(pedal.index)
+                    readonly property bool loading: visible && board.pedals.revision >= 0 && board.pedals.captureLoading(pedal.index)
+                    Text {
+                        anchors.fill: parent
+                        anchors.leftMargin: 6
+                        anchors.rightMargin: 6
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        text: parent.name === "" ? "CHOOSE ▾" : parent.missing ? "MISSING: " + parent.name
+                                                                                : (parent.loading ? "… " : "") + parent.name
+                        color: parent.name === "" ? "#6A7A6A" : parent.missing ? Theme.labelOrange : "#9CFF9C"
+                        font.family: "monospace"
+                        font.pixelSize: 11
+                        font.bold: true
+                        wrapMode: Text.WrapAnywhere
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                    }
+                    MouseArea {
+                        id: captureArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            pedalCapturePicker.pedal = pedal.index
+                            pedalCapturePicker.open()
+                        }
+                    }
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Capture pedal " + (pedal.index + 1) + ": " + (name || "none") + ". Choose"
                 }
 
                 // In front of the amp, or in its loop.
@@ -454,6 +499,14 @@ Rectangle {
     PedalPicker {
         id: picker
         pedals: board.pedals
+    }
+
+    CapturePicker { // a Capture pedal's
+        id: pedalCapturePicker
+        captures: board.captures
+        pedals: board.pedals
+        x: (board.width - width) / 2
+        y: -height + 40
     }
 
     ParametricEqEditor {
