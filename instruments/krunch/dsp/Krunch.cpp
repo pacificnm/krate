@@ -22,6 +22,7 @@ double levelGain(float v) { return v <= 0.0f ? 0.0 : std::pow(10.0, levelDb(v) /
 double volumeDb(float v) { return -40.0 + 46.0 * double(v); }
 double volumeGain(float v) { return v <= 0.0f ? 0.0 : std::pow(10.0, volumeDb(v) / 20.0); }
 double gateDb(float v) { return -80.0 + 60.0 * double(v); }
+double gateDecaySeconds(float v) { return 0.02 * std::pow(100.0, double(std::clamp(v, 0.0f, 1.0f))); }
 } // namespace units
 
 namespace format {
@@ -39,6 +40,11 @@ std::string treble(float v) { return db(units::trebleDb(v)); }
 std::string presence(float v) { return db(units::presenceDb(v)); }
 std::string volume(float v) { return v <= 0.0f ? "-inf dB" : db(units::volumeDb(v)); }
 std::string gate(float v) { return v <= 0.0f ? "Off" : std::format("{:.0f} dB", units::gateDb(v)); }
+std::string gateDecay(float v)
+{
+    const double s = units::gateDecaySeconds(v);
+    return s < 1.0 ? std::format("{:.0f} ms", s * 1000.0) : std::format("{:.1f} s", s);
+}
 std::string onOff(float v) { return v >= 0.5f ? "On" : "Off"; }
 std::string cabMix(float v)
 {
@@ -197,7 +203,8 @@ void Krunch::processBlock(const float *in, float *left, float *right, std::uint3
     }
 
     m_front.process(m_in.data(), frames);
-    m_gate.process(m_in.data(), frames, channelValue(m_active, ChannelParam::Gate));
+    m_gate.process(m_in.data(), frames, channelValue(m_active, ChannelParam::Gate),
+                   units::gateDecaySeconds(channelValue(m_active, ChannelParam::GateDecay)));
     m_gateClosed.store(m_gate.closed(), std::memory_order_relaxed);
 
     runChannel(m_active, m_a.data(), frames);

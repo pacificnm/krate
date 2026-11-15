@@ -174,7 +174,7 @@ private slots:
 
     void parameterTable()
     {
-        QCOMPARE(int(kParams.size()), 3 + 4 * 11);
+        QCOMPARE(int(kParams.size()), 3 + 4 * 12);
         QVERIFY(kParams.size() <= 64); // the "changed by audio" mask
         std::set<std::string_view> keys;
         for (const auto &p : kParams) {
@@ -185,6 +185,7 @@ private slots:
         QCOMPARE(kParams[std::size_t(channelParam(0, ChannelParam::Loop))].key, std::string_view("ch1_loop"));
         QCOMPARE(kParams[std::size_t(channelParam(3, ChannelParam::Cabinet))].key, std::string_view("ch4_cabinet"));
         QCOMPARE(kParams[std::size_t(ParamId::Level)].key, std::string_view("level"));
+        QCOMPARE(kParams[std::size_t(channelParam(1, ChannelParam::GateDecay))].key, std::string_view("ch2_gate_decay"));
         // Every channel starts with its capture as captured: GAIN and the EQ at noon.
         for (int c = 0; c < kChannels; ++c)
             for (ChannelParam p : {ChannelParam::Gain, ChannelParam::Bass, ChannelParam::Mid, ChannelParam::Treble, ChannelParam::Presence})
@@ -204,6 +205,9 @@ private slots:
         QCOMPARE(format::level(0.0f), std::string("-inf dB"));
         QCOMPARE(format::gate(0.0f), std::string("Off"));
         QCOMPARE(format::gate(0.5f), std::string("-50 dB"));
+        QCOMPARE(format::gateDecay(0.0f), std::string("20 ms"));
+        QCOMPARE(format::gateDecay(0.5f), std::string("200 ms"));
+        QCOMPARE(format::gateDecay(1.0f), std::string("2.0 s"));
         QCOMPARE(format::onOff(1.0f), std::string("On"));
     }
 
@@ -227,6 +231,30 @@ private slots:
         gate.process(note.data(), std::uint32_t(note.size()), 0.5f);
         QVERIFY(peak(note, 100) > 0.19f); // opens within a fraction of a millisecond
         QVERIFY(!gate.closed());
+    }
+
+    // DECAY: how long the gate takes to fade out once the playing stops.
+    void gateDecaysAsSet()
+    {
+        const auto afterNote = [](double decay) { // the hiss after a note, through the gate
+            Gate gate;
+            gate.prepare(kRate);
+            std::vector<float> x = sine(4800, 110.0, 0.2f);
+            for (std::size_t i = 0; i < 96000; ++i)
+                x.push_back((i % 2 ? 1.0f : -1.0f) * 0.0003f);
+            gate.process(x.data(), std::uint32_t(x.size()), 0.5f, decay);
+            return x;
+        };
+        const auto at = [](const std::vector<float> &x, double seconds) { // after the note ends
+            return peak(std::vector<float>(x.begin() + 4800 + std::ptrdiff_t(seconds * kRate),
+                                           x.begin() + 4800 + std::ptrdiff_t(seconds * kRate) + 480), 0);
+        };
+        const auto shortDecay = afterNote(0.05), longDecay = afterNote(1.0);
+        QCOMPARE(at(shortDecay, 0.2), 0.0f); // shut well within 0.2 s (hold, the detector, 50 ms)
+        QVERIFY(at(longDecay, 0.2) > 0.3f * 0.0003f); // still fading: about -10 dB of the hiss
+        QVERIFY(at(longDecay, 0.6) > 0.0f);
+        QVERIFY(at(longDecay, 0.6) < at(longDecay, 0.2));
+        QCOMPARE(at(longDecay, 1.5), 0.0f); // done, under -60 dB
     }
 
     // --- The amp ------------------------------------------------------------------

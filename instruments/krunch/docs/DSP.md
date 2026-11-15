@@ -11,7 +11,7 @@ input 1|2 -> front pedals -> gate -> AMP CAPTURE (playing channel: GAIN drive, t
 
 ## Channels
 
-Four channels, each with its own parameters (`ch<N>_<name>`), capture and cabinet. Only the playing channel's capture runs; switching starts the new one fresh and crossfades over 15 ms (both run during the fade, and both cabinets). The gate takes the playing channel's threshold, the loop its switch.
+Four channels, each with its own parameters (`ch<N>_<name>`), capture and cabinet. Only the playing channel's capture runs; switching starts the new one fresh and crossfades over 15 ms (both run during the fade, and both cabinets). The gate takes the playing channel's threshold and decay, the loop its switch.
 
 ## The amp: a capture
 
@@ -24,7 +24,7 @@ Four channels, each with its own parameters (`ch<N>_<name>`), capture and cabine
 
 ## Gate
 
-`dsp/Gate.h`, after the front pedals and before the capture. Threshold −80 … −20 dBFS (0 = off); opens in 0.5 ms above it, holds 30 ms, closes over 80 ms once the level is 6 dB under it.
+`dsp/Gate.h`, after the front pedals and before the capture. Threshold −80 … −20 dBFS (0 = off); opens in 0.5 ms above it, holds 30 ms, then once the level is 6 dB under it fades out over the channel's decay: exponentially, to −60 dB (then shut) in 20 ms … 2 s (`ch<N>_gate_decay`, log; 120 ms by default, 200 ms at noon).
 
 ## FX loop
 
@@ -66,6 +66,7 @@ After the cabinet, the **Dual Head** pedal's split (`dsp/DualHead.cpp`, when one
 | `ch<N>_presence` | ±8 dB (a shelf at 5 kHz) | 0 dB |
 | `ch<N>_volume` | −inf, −40 … +6 dB | −7.8 dB |
 | `ch<N>_gate` | off, −80 … −20 dBFS | off, off, −59 dB, −62 dB |
+| `ch<N>_gate_decay` | 20 ms … 2 s (log) | 120 ms |
 | `ch<N>_loop` | off / on | on |
 | `ch<N>_cab_mix` | A 100 … B 100 (with both IRs) | A 50 / B 50 |
 | `ch<N>_space` | 0 … 10 (A left, B right) | 0 |

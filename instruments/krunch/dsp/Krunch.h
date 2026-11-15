@@ -33,7 +33,7 @@ inline constexpr int kChannels = 4;
 
 // Parameter ids: the amp's own, then kChannelParams per channel.
 enum class ParamId : int { Input, Channel, Level, FirstChannel };
-enum class ChannelParam : int { Gain, Bass, Mid, Treble, Presence, Volume, Gate, Loop, CabMix, Space, Cabinet, Count };
+enum class ChannelParam : int { Gain, Bass, Mid, Treble, Presence, Volume, Gate, GateDecay, Loop, CabMix, Space, Cabinet, Count };
 inline constexpr int kChannelParams = int(ChannelParam::Count);
 inline constexpr int ParamCount = int(ParamId::FirstChannel) + kChannels * kChannelParams;
 // Index of a channel's parameter (channel 0..3).
@@ -51,6 +51,7 @@ std::string treble(float v);
 std::string presence(float v);
 std::string volume(float v);
 std::string gate(float v);
+std::string gateDecay(float v); // "200 ms", "1.2 s"
 std::string onOff(float v);
 std::string cabMix(float v); // "A 70 / B 30"
 } // namespace format
@@ -73,6 +74,7 @@ double levelGain(float v);  // 0 at the bottom
 double volumeDb(float v);   // -40..+6 dB; the bottom is silence
 double volumeGain(float v);
 double gateDb(float v);     // the threshold, -80..-20 dBFS (0 = off)
+double gateDecaySeconds(float v); // the gate's fade out, 20 ms .. 2 s (log), 200 ms at noon (120 ms by default)
 } // namespace units
 
 #define KRUNCH_CHANNEL_PARAMS(n, dGate)                                                                                  \
@@ -83,6 +85,7 @@ double gateDb(float v);     // the threshold, -80..-20 dBFS (0 = off)
     {"ch" #n "_presence", "Channel " #n " Presence", 0.5f, 0, &format::presence},                                  \
     {"ch" #n "_volume", "Channel " #n " Volume", 0.7f, 0, &format::volume},                                        \
     {"ch" #n "_gate", "Channel " #n " Gate", dGate, 0, &format::gate},                                              \
+    {"ch" #n "_gate_decay", "Channel " #n " Gate Decay", 0.39f, 0, &format::gateDecay}, /* 120 ms */              \
     {"ch" #n "_loop", "Channel " #n " Effects Loop", 1.0f, 2, &format::onOff},                                      \
     {"ch" #n "_cab_mix", "Channel " #n " Cabinet Mix", 0.5f, 0, &format::cabMix},                                \
     {"ch" #n "_space", "Channel " #n " Cabinet Space", 0.0f, 0, &format::dial},                                    \

@@ -132,6 +132,7 @@ The box in the middle of the plate shows the playing channel's controls, its bor
 | **PRESENCE** | A shelf at 5 kHz, ±8 dB: bite and air, or a softer edge. |
 | **VOLUME** | The channel's own level, −40 … +6 dB (all the way down: silent). Use it to balance the channels, so switching from rhythm to lead jumps by as much as you want. |
 | **GATE** | The noise gate, before the amp: **Off**, or a threshold of −80 … −20 dB. Turn it up until the hiss and hum stop between notes, but not so far that it cuts your notes' tails. Out of the box it's on for channels 3 and 4, where high-gain captures usually go. |
+| **DECAY** | How long the gate takes to fade out once you stop playing: 20 ms … 2 s (120 ms out of the box). Short for tight, choppy stops in high-gain riffs; longer so notes and chords ring out and fade naturally instead of being cut. If the gate chops your sustained notes, raise DECAY before lowering GATE. |
 | **LOOP** (**FX LOOP**) | The channel's effects loop on or off (lit: on). On, the pedals placed in **LOOP** play between the amp and the cabinet; the line under it counts them. Learnable (it switches the playing channel's loop). |
 
 ## Cabinet
@@ -247,7 +248,7 @@ Run Krunch in Krate or on its own, not both at once: both would use the interfac
 - **Hearing a second, dry guitar?** An armed audio track in Krate with **MONITOR** on **Auto** (or **On**) plays its input straight through, so you hear your dry guitar next to Krunch's. Disarm the track (or set its MONITOR to Off, or its source to Krunch's output if you want to record the amp).
 - **No sound, or the wrong guitar?** Set Krunch's **INPUT** to the interface input your guitar is plugged into, and check that input under **AUDIO** in the top bar. The grille says **GUITAR** when it's connected. If the channel button says **NO AMP**, the channel has no capture: **CHOOSE AMP ▾**.
 - **Muffled, boxy capture?** It's probably a full-rig capture whose file doesn't say so: set **CABINET** to **OFF: NONE**.
-- **Hiss between notes**: turn **GATE** up until it stops, on the high-gain channels especially.
+- **Hiss between notes**: turn **GATE** up until it stops, on the high-gain channels especially; set **DECAY** short for tight stops, longer if note tails get cut.
 - **Too much fizz** with high gain: lower **PRESENCE** and **TREBLE**, try another IR, or put a Green Drive in front with its DRIVE low and LEVEL up to tighten the amp instead of more GAIN.
 - **Not enough gain?** **GAIN** only goes as far as the captured amp's own setting allows: pick a capture made with more gain, or put a drive pedal in front.
 - **Rhythm and lead**: put a capture on a lead channel, set its **VOLUME** a few dB over the rhythm channel's, learn the **CHANNEL** buttons to a foot controller, and save the rig as a preset.

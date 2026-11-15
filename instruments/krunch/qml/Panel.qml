@@ -427,20 +427,21 @@ Item {
         }
         Repeater {
             model: [
-                { name: "gain", label: "GAIN" },
-                { name: "bass", label: "BASS" },
-                { name: "mid", label: "MID" },
-                { name: "treble", label: "TREBLE" },
-                { name: "presence", label: "PRESENCE" },
-                { name: "volume", label: "VOLUME" },
-                { name: "gate", label: "GATE" }
+                { name: "gain", label: "GAIN", cx: 95 },
+                { name: "bass", label: "BASS", cx: 245 },
+                { name: "mid", label: "MID", cx: 395 },
+                { name: "treble", label: "TREBLE", cx: 545 },
+                { name: "presence", label: "PRESENCE", cx: 695 },
+                { name: "volume", label: "VOLUME", cx: 845 },
+                { name: "gate", label: "GATE", cx: 990 },
+                { name: "gate_decay", label: "DECAY", cx: 1115, size: 72 }
             ]
             AmpKnob {
                 required property var modelData
                 required property int index
-                y: 226
-                cx: 110 + index * 160
-                size: 96
+                y: 226 + (96 - size) / 2
+                cx: modelData.cx
+                size: modelData.size ?? 96
                 key: panel.chKey(modelData.name)
                 label: modelData.label
 

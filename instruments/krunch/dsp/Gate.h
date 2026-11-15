@@ -7,8 +7,9 @@
 namespace krunch {
 
 // Noise gate on the guitar before the amp (where hum and string noise get
-// amplified): opens fast above the threshold, holds, then closes smoothly
-// once the level is 6 dB under it.
+// amplified): opens fast above the threshold, holds, then once the level is
+// 6 dB under it fades out over the decay (exponentially, to -60 dB: short for
+// tight stops, long to let notes ring out).
 class Gate
 {
 public:
@@ -16,7 +17,8 @@ public:
     {
         m_detectRelease = std::exp(-1.0 / (0.020 * sampleRate));
         m_open = 1.0 / (0.0005 * sampleRate); // 0.5 ms
-        m_close = 1.0 / (0.080 * sampleRate); // 80 ms
+        m_rate = sampleRate;
+        m_decay = -1.0;
         m_holdFrames = std::uint32_t(0.030 * sampleRate);
         reset();
     }
@@ -28,11 +30,17 @@ public:
         m_isOpen = true;
     }
 
-    // threshold: 0 = off, else 0..1 over -80..-20 dBFS.
-    void process(float *buffer, std::uint32_t frames, float threshold) noexcept
+    static constexpr double kFloor = 0.001; // -60 dB: the fade ends, the gate is shut
+
+    // threshold: 0 = off, else 0..1 over -80..-20 dBFS; decaySeconds: the fade out.
+    void process(float *buffer, std::uint32_t frames, float threshold, double decaySeconds = 0.12) noexcept
     {
         if (threshold <= 0.0f && m_gain >= 1.0)
             return;
+        if (decaySeconds != m_decay) {
+            m_decay = decaySeconds;
+            m_close = std::pow(kFloor, 1.0 / (std::max(0.001, decaySeconds) * m_rate));
+        }
         const double open = threshold > 0.0f ? std::pow(10.0, (-80.0 + 60.0 * threshold) / 20.0) : 0.0;
         const double close = open * 0.5; // 6 dB under: no chatter around the threshold
         for (std::uint32_t n = 0; n < frames; ++n) {
@@ -46,7 +54,10 @@ public:
             } else if (m_level < close) {
                 m_isOpen = false;
             }
-            m_gain = m_isOpen ? std::min(1.0, m_gain + m_open) : std::max(0.0, m_gain - m_close);
+            if (m_isOpen)
+                m_gain = std::min(1.0, m_gain + m_open);
+            else
+                m_gain = m_gain * m_close < kFloor ? 0.0 : m_gain * m_close;
             buffer[n] = float(buffer[n] * m_gain);
         }
     }
@@ -55,7 +66,8 @@ public:
 
 private:
     double m_detectRelease = 0.0;
-    double m_open = 0.0, m_close = 0.0;
+    double m_open = 0.0, m_close = 0.0; // the open ramp's step; the fade's factor per sample
+    double m_rate = 48000.0, m_decay = -1.0;
     std::uint32_t m_holdFrames = 0;
     double m_level = 0.0;
     double m_gain = 1.0;
