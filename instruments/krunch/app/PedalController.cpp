@@ -61,6 +61,7 @@ constexpr PedalBlurb kBlurbs[] = {
     {"yellow_drive", "Drive & boost", "Brighter, grittier overdrive with more gain on tap."},
     {"blue_drive", "Drive & boost", "Amp-like, full-range overdrive that follows your picking."},
     {"round_fuzz", "Drive & boost", "Thick vintage two-transistor fuzz; cleans up as you play softer."},
+    {"taiga_fuzz", "Drive & boost", "Huge, smooth sustaining fuzz with deep lows and a mild mid scoop."},
     {"compressor", "Dynamics & EQ", "Evens your playing out and lengthens notes."},
     {"eq5", "Dynamics & EQ", "Five sliders at guitar-centred frequencies."},
     {"eq10", "Dynamics & EQ", "Ten octave-wide sliders, 31 Hz … 16 kHz."},

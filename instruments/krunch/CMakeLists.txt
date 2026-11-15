@@ -17,6 +17,8 @@ add_library(krunch_dsp STATIC
     dsp/GreenDrive.cpp
     dsp/YellowDrive.h
     dsp/YellowDrive.cpp
+    dsp/TaigaFuzz.h
+    dsp/TaigaFuzz.cpp
     dsp/BlueDrive.h
     dsp/BlueDrive.cpp
     dsp/Boost.h

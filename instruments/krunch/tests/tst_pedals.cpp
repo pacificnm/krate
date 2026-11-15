@@ -10,6 +10,7 @@
 #include "dsp/SignaturePedals.h"
 #include "dsp/GreenDrive.h"
 #include "dsp/YellowDrive.h"
+#include "dsp/TaigaFuzz.h"
 #include "dsp/BlueDrive.h"
 #include "dsp/Boost.h"
 #include "dsp/ModPedals.h"
@@ -56,6 +57,24 @@ double thd(const std::vector<float> &x, double hz, std::size_t from, std::size_t
     for (int k = 2; k <= 10; ++k)
         h += std::pow(level(x, hz * k, from, n), 2.0);
     return std::sqrt(h) / level(x, hz, from, n);
+}
+
+std::unique_ptr<TaigaFuzz> taiga(float sustain, float tone = 0.5f, float volume = 0.5f)
+{
+    auto t = std::make_unique<TaigaFuzz>();
+    t->prepare(kRate);
+    t->setKnob(TaigaFuzz::Sustain, sustain);
+    t->setKnob(TaigaFuzz::Tone, tone);
+    t->setKnob(TaigaFuzz::Volume, volume);
+    return t;
+}
+
+double rms(const std::vector<float> &x, std::size_t from, std::size_t n)
+{
+    double sum = 0.0;
+    for (std::size_t i = from; i < from + n; ++i)
+        sum += double(x[i]) * double(x[i]);
+    return std::sqrt(sum / double(n));
 }
 
 std::unique_ptr<GreenDrive> drive(float d, float tone = 0.5f, float lvl = 0.5f)
@@ -119,11 +138,12 @@ class TestPedals : public QObject
 private slots:
     void types()
     {
-        QCOMPARE(pedalTypes().size(), std::size_t(19));
+        QCOMPARE(pedalTypes().size(), std::size_t(20));
         QCOMPARE(pedalTypes()[2]->type, std::string_view("boost"));
         QCOMPARE(pedalTypes()[3]->type, std::string_view("green_drive"));
         QCOMPARE(pedalTypes()[4]->type, std::string_view("yellow_drive"));
         QCOMPARE(pedalTypes()[5]->type, std::string_view("blue_drive"));
+        QCOMPARE(pedalTypes()[7]->type, std::string_view("taiga_fuzz"));
         for (const PedalInfo *info : pedalTypes()) {
             auto p = makePedal(info->type);
             QVERIFY(p);
@@ -526,6 +546,77 @@ private slots:
             vhi = std::max(vhi, l);
         }
         QVERIFY2(db(vhi) - db(vlo) < 3.0, qPrintable(QStringLiteral("%1 dB").arg(db(vhi) - db(vlo))));
+    }
+
+    // --- Taiga Fuzz ---------------------------------------------------------------------
+
+    // SUSTAIN: low, a quiet note stays nearly clean; up, everything is fuzz.
+    void taigaSustain()
+    {
+        const auto distortion = [](float sustain) {
+            auto t = taiga(sustain);
+            return thd(run(*t, sine(24000, 196.0, 0.01f)), 196.0, 12000, 9600);
+        };
+        QVERIFY(distortion(0.0f) < 0.06);
+        QVERIFY(distortion(1.0f) > 0.2);
+        QVERIFY(distortion(1.0f) > 4.0 * distortion(0.0f));
+    }
+
+    // It sustains: 20 dB softer in comes out much less than 20 dB softer.
+    void taigaSustainsTheNote()
+    {
+        const auto out = [](float amplitude) {
+            auto t = taiga(0.6f);
+            return rms(run(*t, sine(24000, 196.0, amplitude)), 12000, 9600);
+        };
+        QVERIFY(db(out(0.3f)) - db(out(0.03f)) < 6.0);
+    }
+
+    // Symmetric clipping (diodes both ways): odd harmonics, next to no even ones.
+    void taigaClipsSymmetrically()
+    {
+        auto t = taiga(0.8f);
+        const auto y = run(*t, sine(24000, 196.0, 0.1f));
+        QVERIFY(level(y, 392.0, 12000, 9600) < 0.02 * level(y, 196.0, 12000, 9600));
+        QVERIFY(level(y, 588.0, 12000, 9600) > 0.1 * level(y, 196.0, 12000, 9600));
+    }
+
+    // The tone stack: dark to bright, with the mids scooped at noon, though less
+    // than the original's (the green voicing); the lows kept.
+    void taigaTone()
+    {
+        const auto at = [](double hz, float tone) {
+            auto t = taiga(0.6f, tone);
+            return db(level(run(*t, sine(24000, hz, 0.1f)), hz, 12000, 9600));
+        };
+        QVERIFY(at(100.0, 0.0f) > at(4000.0, 0.0f) + 10.0);
+        QVERIFY(at(4000.0, 1.0f) > at(100.0, 1.0f) + 10.0);
+        const double scoop = std::min(at(100.0, 0.5f), at(4000.0, 0.5f)) - at(700.0, 0.5f);
+        QVERIFY(scoop > 4.0);
+        QVERIFY(scoop < 10.0);
+        QVERIFY(std::fabs(at(60.0, 0.0f) - at(200.0, 0.0f)) < 3.0);
+    }
+
+    void taigaVolume()
+    {
+        const auto out = [](float volume) {
+            auto t = taiga(0.6f, 0.5f, volume);
+            return rms(run(*t, sine(24000, 196.0, 0.1f)), 12000, 9600);
+        };
+        QVERIFY(std::fabs(db(out(1.0f)) - db(out(0.5f)) - 18.0) < 0.5);
+        // At noon, about 3 dB over bypass when played normally.
+        QVERIFY(std::fabs(db(out(0.5f) / rms(sine(24000, 196.0, 0.1f), 12000, 9600)) - 3.0) < 2.0);
+    }
+
+    void taigaIsBounded()
+    {
+        auto t = taiga(1.0f, 1.0f, 1.0f);
+        float peak = 0.0f;
+        for (float v : run(*t, sine(48000, 82.4, 0.9f))) {
+            QVERIFY(std::isfinite(v));
+            peak = std::max(peak, std::fabs(v));
+        }
+        QVERIFY(peak < 4.0f);
     }
 
     // --- Round Fuzz ---------------------------------------------------------------------
